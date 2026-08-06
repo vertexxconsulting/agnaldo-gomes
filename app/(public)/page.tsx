@@ -74,7 +74,6 @@ export default function Home() {
           muted
           playsInline
           preload="metadata"
-          poster="/perfil.jpg"
         >
           <source src="/videos/fachada.mp4" type="video/mp4" />
         </video>
