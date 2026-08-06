@@ -5,12 +5,18 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText } from 'lucide-react';
 import { Button } from '@/components/Button';
-import { MOCK_CURSOS, MOCK_MODULOS } from '@/lib/mock-data';
+import { MOCK_CURSOS, MOCK_MODULOS, MOCK_AULAS } from '@/lib/mock-data';
+import type { Modulo, Aula } from '@/lib/mock-data';
 
 export default function AdminEdicaoCursoPage() {
   const { cursoId } = useParams();
   const curso = MOCK_CURSOS.find(c => c.id === cursoId);
-  const modulos = MOCK_MODULOS[cursoId as string] || [];
+  const modulos: (Modulo & { aulas: Aula[] })[] = MOCK_MODULOS
+    .filter(m => m.curso_id === cursoId)
+    .map(m => ({
+      ...m,
+      aulas: MOCK_AULAS.filter(a => a.modulo_id === m.id)
+    }));
 
   const [activeTab, setActiveTab] = useState<'detalhes' | 'modulos'>('detalhes');
 
@@ -139,7 +145,7 @@ export default function AdminEdicaoCursoPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-foreground">{aula.titulo}</p>
-                            <p className="text-[11px] text-foreground/50">{aula.duracao}</p>
+                            <p className="text-[11px] text-foreground/50">{aula.duracaoMinutos} min</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

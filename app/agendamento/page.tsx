@@ -7,7 +7,7 @@ import { MOCK_CLIENTES, MOCK_SERVICOS, MOCK_PROFISSIONAIS, getCategorias, getPro
 import type { Cliente } from '@/lib/gestao-types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants, type Transition } from 'framer-motion';
 
 export function gerarId() {
   return `ag${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -110,15 +110,16 @@ export default function AgendamentoWizard() {
     localStorage.setItem('agendamentos_app', JSON.stringify([...atuais, novoAgendamento]));
     
     if (!cliente?.id) {
-       localStorage.setItem('telefone_logado', cliente?.telefone || '');
+     const telefoneLogado = cliente?.telefone ?? '';
+      localStorage.setItem('telefone_logado', telefoneLogado);
     } else {
-       localStorage.setItem('telefone_logado', cliente.telefone);
+       localStorage.setItem('telefone_logado', cliente.telefone ?? '');
     }
     setStep(7);
   };
 
   // Motion variants for sleek clerk-like transitions
-  const variants = {
+  const variants: Variants = {
     initial: { opacity: 0, y: 10, scale: 0.98 },
     animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
     exit: { opacity: 0, y: -10, scale: 0.98, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }
