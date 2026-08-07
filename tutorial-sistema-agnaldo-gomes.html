@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial Completo - Agnaldo Gomes | Studio & Academy</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --bg: #faf8f3;
+      --fg: #1d1b18;
+      --primary: #a8862a;
+      --primary-light: #c9a84c;
+      --primary-dark: #93751f;
+      --secondary: #eae3d1;
+      --card: #ffffff;
+      --border: rgba(20,18,14,0.1);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* ===== CAPA ===== */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1d1b18 0%, #2a2520 50%, #1d1b18 100%);
+      color: #fff;
+      text-align: center;
+      padding: 60px 40px;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(168,134,42,0.15) 0%, transparent 60%);
+    }
+    .cover img {
+      width: 180px;
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 1;
+      filter: brightness(1.1);
+    }
+    .cover h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #d4af37, #f5e6a0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover .subtitle {
+      font-size: 18px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 60px;
+      font-weight: 300;
+      position: relative;
+      z-index: 1;
+    }
+    .cover .version {
+      position: relative;
+      z-index: 1;
+      display: inline-block;
+      padding: 8px 24px;
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 999px;
+      color: #d4af37;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    .cover .divider-gold {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(to right, #a8862a, #c9a84c);
+      margin: 30px auto;
+      border-radius: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ===== SUMÁRIO ===== */
+    .toc {
+      page-break-after: always;
+      padding: 60px 40px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .toc h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 30px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--primary);
+    }
+    .toc-section {
+      margin-bottom: 24px;
+    }
+    .toc-section h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fg);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toc-section h3 .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-site { background: #e0f2fe; color: #0284c7; }
+    .badge-studio { background: var(--secondary); color: var(--primary-dark); }
+    .badge-academy { background: #fef3c7; color: #b45309; }
+    .badge-aluno { background: #d1fae5; color: #059669; }
+
+    .toc-section ul {
+      list-style: none;
+      padding-left: 16px;
+    }
+    .toc-section li {
+      padding: 4px 0;
+      font-size: 14px;
+      color: var(--fg);
+      opacity: 0.8;
+    }
+    .toc-section li::before {
+      content: '→ ';
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    /* ===== SEÇÕES ===== */
+    .section {
+      page-break-before: always;
+      padding: 50px 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .section:first-of-type {
+      page-break-before: auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-header .icon-circle {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .section-header h2 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--fg);
+    }
+    .section-header p {
+      font-size: 14px;
+      color: rgba(29,27,24,0.6);
+      margin-top: 4px;
+    }
+
+    /* Cards de Funcionalidade */
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fg);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .feature-card h3 .emoji { font-size: 20px; }
+    .feature-card p {
+      color: rgba(29,27,24,0.7);
+      font-size: 13.5px;
+      margin-bottom: 12px;
+    }
+    .feature-card .url {
+      display: inline-block;
+      background: var(--secondary);
+      color: var(--primary-dark);
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    /* Steps */
+    .steps {
+      counter-reset: step;
+      padding-left: 0;
+      list-style: none;
+    }
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 8px 0 8px 36px;
+      font-size: 13px;
+      color: rgba(29,27,24,0.8);
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Alert Box */
+    .alert {
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin: 16px 0;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .alert-info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+    .alert-warning {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+    }
+    .alert-success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    /* Tabelas */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+    th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child { border-radius: 0 8px 0 0; }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:nth-child(even) { background: rgba(168,134,42,0.04); }
+
+    /* Rodapé de página */
+    .page-footer {
+      text-align: center;
+      padding: 30px 0;
+      font-size: 11px;
+      color: rgba(29,27,24,0.4);
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    /* Controle de impressão */
+    @media print {
+      body { font-size: 12px; }
+      .cover { min-height: auto; padding: 80px 40px; }
+      .section { padding: 30px 20px; }
+      .feature-card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ========================================== -->
+<!-- CAPA -->
+<!-- ========================================== -->
+<div class="cover">
+  <img src="./public/opt/logo-branca.webp" alt="Agnaldo Gomes Logo" />
+  <h1>Manual do Sistema</h1>
+  <div class="divider-gold"></div>
+  <div class="subtitle">Tutorial completo de utilização · Site · Gestão Studio · Academy</div>
+  <div class="version">Versão 1.0 · Agosto 2026</div>
+  <div style="margin-top: 60px; padding-top: 30px; border-top: 1px solid rgba(212,175,55,0.2); font-size: 13px; color: rgba(255,255,255,0.4); position: relative; z-index: 1;">
+    Desenvolvido por <span style="color: #d4af37; font-weight: 600;">Vertex Consulting</span> — Anderson Alves
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- SUMÁRIO -->
+<!-- ========================================== -->
+<div class="toc">
+  <h2>Sumário</h2>
+
+  <div class="toc-section">
+    <h3><span class="badge badge-site">Site Público</span> Módulo 1 — Site Institucional</h3>
+    <ul>
+      <li>Página Inicial (Home)</li>
+      <li>Página do Studio</li>
+      <li>Página da Academy</li>
+      <li>Sobre Nós</li>
+      <li>Contato e Localização</li>
+      <li>Agendamento Online</li>
+      <li>Perfil do Cliente</li>
+    </ul>
+  </div>
+
+  <div class="toc-section">
+    <h3><span class="badge badge-studio">Gestão</span> Módulo 2 — Painel de Gestão do Studio</h3>
+    <ul>
+      <li>Acesso ao Painel (Login)</li>
+      <li>Dashboard de Indicadores</li>
+      <li>Agenda de Atendimentos</li>
+      <li>Gestão de Clientes</li>
+      <li>Cadastro de Serviços</li>
+      <li>Profissionais e Equipe</li>
+      <li>Perfil do Administrador</li>
+      <li>Configurações do Sistema</li>
+    </ul>
+  </div>
+
+  <div class="toc-section">
+    <h3><span class="badge badge-academy">Academy</span> Módulo 3 — Painel da Academy (Produtor)</h3>
+    <ul>
+      <li>Acesso ao Painel (Login Academy)</li>
+      <li>Dashboard Academy</li>
+      <li>Gestão de Cursos e Aulas</li>
+      <li>Gestão de Alunos</li>
+      <li>Comunidade e Dúvidas</li>
+      <li>Configurações da Academy</li>
+      <li>Perfil do Produtor</li>
+    </ul>
+  </div>
+
+  <div class="toc-section">
+    <h3><span class="badge badge-aluno">Aluno</span> Módulo 4 — Área do Aluno</h3>
+    <ul>
+      <li>Acesso à Área do Aluno</li>
+      <li>Dashboard do Aluno</li>
+      <li>Meus Cursos e Aulas</li>
+      <li>Catálogo de Cursos</li>
+      <li>Comunidade</li>
+      <li>Certificados</li>
+      <li>Perfil do Aluno</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MÓDULO 1 — SITE PÚBLICO -->
+<!-- ========================================== -->
+<div class="section">
+  <div class="section-header">
+    <div class="icon-circle">🌐</div>
+    <div>
+      <h2>Módulo 1 — Site Institucional</h2>
+      <p>Páginas públicas acessíveis por qualquer visitante sem necessidade de login.</p>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🏠</span> Página Inicial (Home)</h3>
+    <div class="url">https://seudominio.com/</div>
+    <p>
+      A landing page principal do sistema. Exibe um vídeo da fachada do salão como plano de fundo da Hero Section, com chamada para ação. 
+      Contém seções de destaque dos serviços, cursos Academy, depoimentos de clientes e links de navegação para todas as demais páginas do site.
+    </p>
+    <div class="alert alert-info">
+      ℹ️ <span>A navegação superior (Navbar) aparece em todas as páginas públicas com links para Home, Studio, Academy, Sobre e Contato.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">💇</span> Página do Studio</h3>
+    <div class="url">https://seudominio.com/studio</div>
+    <p>
+      Vitrine dos serviços presenciais oferecidos pelo salão. Exibe categorias de serviços como Cortes, Coloração, Tratamentos Capilares, entre outros, com descrição e faixa de preço. 
+      Inclui um botão de chamada para agendamento online.
+    </p>
+    <ol class="steps">
+      <li>Acesse a página pelo menu superior clicando em <strong>"Studio"</strong>.</li>
+      <li>Navegue pelas categorias de serviços apresentadas em cards visuais.</li>
+      <li>Clique em <strong>"Agendar Agora"</strong> para ser direcionado ao formulário de agendamento.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🎓</span> Página da Academy</h3>
+    <div class="url">https://seudominio.com/academy</div>
+    <p>
+      Vitrine pública dos cursos online oferecidos pela Academy. Exibe os cursos disponíveis com imagem, título, carga horária e número de módulos. 
+      O visitante pode clicar para ver detalhes ou ser direcionado ao login de aluno para acessar os cursos.
+    </p>
+    <ol class="steps">
+      <li>Acesse pelo menu superior clicando em <strong>"Academy"</strong>.</li>
+      <li>Visualize os cursos disponíveis, explore descrições e detalhes.</li>
+      <li>Clique em <strong>"Acessar Plataforma"</strong> para ir à tela de login da Academy.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📖</span> Sobre Nós</h3>
+    <div class="url">https://seudominio.com/sobre</div>
+    <p>
+      Apresenta a história de Agnaldo Gomes, sua trajetória profissional, missão, visão e valores do Studio. 
+      Página institucional de credibilidade para novos visitantes e potenciais alunos.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📍</span> Contato e Localização</h3>
+    <div class="url">https://seudominio.com/contato</div>
+    <p>
+      Exibe endereço completo, telefone, WhatsApp e mapa interativo com a localização do salão. 
+      Inclui formulário de contato direto e links para redes sociais.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📅</span> Agendamento Online</h3>
+    <div class="url">https://seudominio.com/agendamento</div>
+    <p>
+      Sistema de agendamento de serviços em etapas. O cliente seleciona o serviço desejado, o profissional, a data/horário disponível e preenche seus dados para confirmar.
+    </p>
+    <ol class="steps">
+      <li>Selecione o <strong>serviço</strong> desejado na listagem.</li>
+      <li>Escolha o <strong>profissional</strong> de sua preferência (ou qualquer disponível).</li>
+      <li>Selecione uma <strong>data e horário</strong> disponíveis no calendário.</li>
+      <li>Preencha seus dados de contato (nome, telefone/WhatsApp).</li>
+      <li>Confirme o agendamento. Você receberá a confirmação na tela.</li>
+    </ol>
+    <div class="alert alert-warning">
+      ⚠️ <span>Os horários exibidos dependem da agenda configurada pelo gestor do Studio para cada profissional.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👤</span> Perfil do Cliente</h3>
+    <div class="url">https://seudominio.com/perfil</div>
+    <p>
+      Área onde o cliente pode consultar seus agendamentos (futuros e passados), alterar sua foto e dados pessoais. 
+      O acesso é feito informando o telefone/WhatsApp cadastrado.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Minha Conta"</strong> pelo menu do site.</li>
+      <li>Informe seu telefone/WhatsApp para autenticação rápida.</li>
+      <li>Visualize seus agendamentos futuros e histórico completo.</li>
+      <li>Opcionalmente, altere sua foto de perfil ou cancele um agendamento.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MÓDULO 2 — GESTÃO DO STUDIO -->
+<!-- ========================================== -->
+<div class="section">
+  <div class="section-header">
+    <div class="icon-circle">⚙️</div>
+    <div>
+      <h2>Módulo 2 — Painel de Gestão do Studio</h2>
+      <p>Painel administrativo para gerenciamento completo do salão de beleza.</p>
+    </div>
+  </div>
+
+  <div class="alert alert-warning">
+    ⚠️ <span><strong>Acesso Restrito:</strong> O cadastro de administradores NÃO é público. As credenciais de acesso devem ser solicitadas diretamente a Agnaldo Gomes ou ao desenvolvedor, que realizará a criação da conta com e-mail e senha provisória.</span>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🔐</span> Login do Studio</h3>
+    <div class="url">https://seudominio.com/login</div>
+    <p>
+      Tela de autenticação do painel de gestão. Layout split com a logo do Studio à esquerda e formulário de login à direita.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>/login</strong> no navegador.</li>
+      <li>Insira o <strong>e-mail</strong> e <strong>senha</strong> fornecidos pelo administrador.</li>
+      <li>Clique em <strong>"Acessar Painel"</strong>.</li>
+      <li>Você será redirecionado automaticamente para o Dashboard do Studio.</li>
+    </ol>
+    <div class="alert alert-info">
+      ℹ️ <span>Caso necessite de acesso, clique em "Solicitar acesso" para ver as instruções de contato com a gestão.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📊</span> Dashboard de Indicadores</h3>
+    <div class="url">https://seudominio.com/admin</div>
+    <p>
+      Painel principal com visão consolidada do desempenho do salão. Apresenta KPIs em tempo real: faturamento diário, mensal e anual, 
+      quantidade de agendamentos, taxa de cancelamento, gráfico de faturamento por mês (barras) e distribuição por tipo de serviço (pizza).
+    </p>
+    <table>
+      <tr><th>Indicador</th><th>Descrição</th></tr>
+      <tr><td>Faturamento Hoje</td><td>Soma dos atendimentos concluídos no dia.</td></tr>
+      <tr><td>Faturamento Mês</td><td>Total acumulado no mês corrente.</td></tr>
+      <tr><td>Faturamento Ano</td><td>Total acumulado no ano corrente.</td></tr>
+      <tr><td>Agendamentos Hoje</td><td>Quantidade de atendimentos programados para o dia.</td></tr>
+      <tr><td>Concluídos / Cancelados</td><td>Detalhamento dos agendamentos do dia por status.</td></tr>
+    </table>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📅</span> Agenda de Atendimentos</h3>
+    <div class="url">https://seudominio.com/admin/agenda</div>
+    <p>
+      Gestão completa da agenda do salão. Visualize os atendimentos por dia, altere status (Confirmado, Concluído, Cancelado, No-show) e 
+      adicione novos agendamentos manualmente. Filtre por profissional e por status.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Agenda"</strong> no menu lateral esquerdo.</li>
+      <li>Utilize o <strong>calendário</strong> para navegar entre os dias.</li>
+      <li>Visualize os atendimentos do dia selecionado em cards com horário, cliente, serviço e profissional.</li>
+      <li>Clique nos botões de ação para <strong>confirmar</strong>, <strong>concluir</strong> ou <strong>cancelar</strong> um atendimento.</li>
+      <li>Use o botão <strong>"Novo Agendamento"</strong> para criar um agendamento manual.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👥</span> Gestão de Clientes</h3>
+    <div class="url">https://seudominio.com/admin/clientes</div>
+    <p>
+      Base de dados de todos os clientes do salão. Exibe nome, e-mail, telefone, status e última visita. 
+      Permite busca rápida e visualização detalhada de cada cliente.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Clientes"</strong> no menu lateral.</li>
+      <li>Utilize a <strong>barra de pesquisa</strong> para encontrar um cliente por nome, e-mail ou telefone.</li>
+      <li>Visualize o histórico completo de cada cliente (agendamentos, gastos totais).</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">✂️</span> Cadastro de Serviços</h3>
+    <div class="url">https://seudominio.com/admin/servicos</div>
+    <p>
+      Gerencie os serviços oferecidos pelo salão: crie, edite e desative serviços. Cada serviço possui categoria, nome, 
+      duração estimada e preço.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Serviços"</strong> no menu lateral.</li>
+      <li>Visualize a tabela completa de serviços organizados por categoria.</li>
+      <li>Use o botão <strong>"Novo Serviço"</strong> para cadastrar um novo serviço.</li>
+      <li>Defina <strong>nome, categoria, duração</strong> e <strong>preço</strong>.</li>
+      <li>Para editar, clique no ícone de edição ao lado do serviço.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👨‍💼</span> Profissionais e Equipe</h3>
+    <div class="url">https://seudominio.com/admin/profissionais</div>
+    <p>
+      Cadastro e gestão dos profissionais que atendem no salão. Defina especialidades, jornada de trabalho, 
+      comissão e vincule serviços a cada profissional. As informações são usadas para montar a agenda.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Profissionais"</strong> no menu lateral.</li>
+      <li>Visualize a lista de profissionais com foto, nome, especialidade e status.</li>
+      <li>Use <strong>"Cadastrar Profissional"</strong> para adicionar um membro à equipe.</li>
+      <li>Defina seus <strong>horários de trabalho</strong>, <strong>serviços atendidos</strong> e <strong>% de comissão</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👤</span> Perfil do Administrador</h3>
+    <div class="url">https://seudominio.com/admin/perfil</div>
+    <p>
+      Gerencie seus dados pessoais como administrador do Studio: nome, e-mail, foto de perfil e configurações de conta. 
+      Acessível pelo botão do usuário no canto inferior da barra lateral.
+    </p>
+    <ol class="steps">
+      <li>Clique nas suas <strong>iniciais</strong> (botão inferior do menu lateral).</li>
+      <li>Selecione <strong>"Meu Perfil"</strong> no menu suspenso.</li>
+      <li>Edite seus dados e clique em <strong>"Salvar"</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">⚙️</span> Configurações do Sistema</h3>
+    <div class="url">https://seudominio.com/admin/sistema</div>
+    <p>
+      Ajustes gerais do sistema de gestão: integrações com WhatsApp (Evolution API), definições de horário de funcionamento, 
+      dados do salão, e configurações de backup e segurança.
+    </p>
+    <ol class="steps">
+      <li>Clique nas suas <strong>iniciais</strong> → <strong>"Configurações"</strong>.</li>
+      <li>Navegue pelas abas de configuração disponíveis.</li>
+      <li>Após ajustar, clique em <strong>"Salvar Alterações"</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">↩️</span> Navegação e Logoff</h3>
+    <p>O menu lateral pode ser <strong>recolhido/expandido</strong> clicando na seta no topo da barra lateral. A logo permanece visível mesmo com o menu recolhido.</p>
+    <ol class="steps">
+      <li>Use o botão <strong>"Voltar pro Site"</strong> (logo abaixo da logo) para retornar ao site público.</li>
+      <li>Para sair, clique nas suas iniciais → <strong>"Sair da Conta"</strong>. Você será redirecionado para o login do Studio.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MÓDULO 3 — PAINEL DA ACADEMY (PRODUTOR) -->
+<!-- ========================================== -->
+<div class="section">
+  <div class="section-header">
+    <div class="icon-circle">🎓</div>
+    <div>
+      <h2>Módulo 3 — Painel da Academy (Produtor)</h2>
+      <p>Sistema de gestão de cursos online, alunos e conteúdo educacional.</p>
+    </div>
+  </div>
+
+  <div class="alert alert-warning">
+    ⚠️ <span><strong>Acesso Restrito:</strong> Assim como o Studio, as credenciais do painel Academy devem ser criadas pelo desenvolvedor ou administrador. Não existe cadastro público.</span>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🔐</span> Login da Academy (Admin)</h3>
+    <div class="url">https://seudominio.com/academy/login</div>
+    <p>
+      Tela de login exclusiva para o painel administrativo da Academy. Layout clean com a logo na lateral e formulário de acesso.
+      Ao fazer logoff do sistema Academy, o redirecionamento é feito para esta tela (e não para o login do Studio).
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>/academy/login</strong> no navegador.</li>
+      <li>Insira as credenciais fornecidas pelo administrador.</li>
+      <li>Clique em <strong>"Entrar nos Cursos"</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📊</span> Dashboard Academy</h3>
+    <div class="url">https://seudominio.com/admin-academy</div>
+    <p>
+      Visão geral do ecossistema educacional: total de alunos ativos, cursos publicados, taxa de conclusão e tempo médio por aluno. 
+      Inclui atalhos rápidos para as áreas mais acessadas e lista dos cursos mais recentes.
+    </p>
+    <table>
+      <tr><th>Indicador</th><th>Descrição</th></tr>
+      <tr><td>Alunos Ativos</td><td>Total de alunos com matrícula ativa na plataforma.</td></tr>
+      <tr><td>Cursos Publicados</td><td>Quantidade de cursos disponíveis para os alunos.</td></tr>
+      <tr><td>Taxa de Conclusão</td><td>Percentual de alunos que completaram ao menos um curso.</td></tr>
+      <tr><td>Tempo Médio</td><td>Média de horas de estudo por aluno no período.</td></tr>
+    </table>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📚</span> Gestão de Cursos e Aulas</h3>
+    <div class="url">https://seudominio.com/admin-academy/cursos</div>
+    <p>
+      Painel completo para criar, editar e organizar cursos. Cada curso possui módulos e aulas. 
+      Permite upload de vídeo-aulas, definição de ordem de exibição, materiais complementares e status (Rascunho, Publicado).
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Cursos"</strong> no menu lateral.</li>
+      <li>Visualize todos os cursos existentes com status, número de módulos e alunos matriculados.</li>
+      <li>Clique em <strong>"Novo Curso"</strong> para criar um curso.</li>
+      <li>Defina <strong>título, descrição, imagem de capa, categoria</strong> e <strong>preço</strong>.</li>
+      <li>Dentro do curso, crie <strong>módulos</strong> e adicione <strong>aulas</strong> a cada módulo.</li>
+      <li>Para cada aula, faça upload do <strong>vídeo</strong>, adicione <strong>materiais em PDF</strong> e defina a <strong>duração</strong>.</li>
+      <li>Altere o status para <strong>"Publicado"</strong> quando o curso estiver pronto.</li>
+    </ol>
+    <div class="alert alert-info">
+      ℹ️ <span>Cursos em "Rascunho" não ficam visíveis para os alunos na plataforma.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👥</span> Gestão de Alunos</h3>
+    <div class="url">https://seudominio.com/admin-academy/alunos</div>
+    <p>
+      Visualize e gerencie todos os alunos matriculados. Acompanhe o progresso individual de cada aluno, 
+      cursos em andamento, data de matrícula e status (ativo/bloqueado).
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Alunos"</strong> no menu lateral.</li>
+      <li>Utilize a <strong>busca</strong> para localizar um aluno por nome ou e-mail.</li>
+      <li>Visualize detalhes de progresso, cursos matriculados e percentual de conclusão.</li>
+      <li>Use os botões de ação para <strong>bloquear</strong> ou <strong>reativar</strong> o acesso de um aluno.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">💬</span> Comunidade e Dúvidas</h3>
+    <div class="url">https://seudominio.com/admin-academy/comunidade</div>
+    <p>
+      Central de moderação de dúvidas e comentários dos alunos. 
+      Visualize perguntas pendentes de resposta, aprove, rejeite ou responda diretamente.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Comunidade"</strong> no menu lateral.</li>
+      <li>A aba <strong>"Pendentes"</strong> exibe dúvidas que aguardam resposta/aprovação.</li>
+      <li>Clique em <strong>"Responder"</strong> para enviar uma resposta ao aluno.</li>
+      <li>Use <strong>"Aprovar"</strong> ou <strong>"Recusar"</strong> para moderar os comentários.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">⚙️</span> Configurações da Academy</h3>
+    <div class="url">https://seudominio.com/admin-academy/configuracoes</div>
+    <p>
+      Ajuste os parâmetros da plataforma de ensino, organizado em 5 abas:
+    </p>
+    <table>
+      <tr><th>Aba</th><th>Funcionalidade</th></tr>
+      <tr><td>Configurações Gerais</td><td>Nome da plataforma, descrição, e-mail de suporte, fuso horário.</td></tr>
+      <tr><td>Aparência e Layout</td><td>Logotipo, cores, layout da página de vendas.</td></tr>
+      <tr><td>Meios de Pagamento</td><td>Configuração do gateway de pagamento (Mercado Pago, Stripe, etc). Configuração via .env pelo desenvolvedor.</td></tr>
+      <tr><td>Automações (Evolution API)</td><td>Integração com WhatsApp para notificações automáticas via Evolution API.</td></tr>
+      <tr><td>Segurança e Acessos</td><td>Controle de acessos, logs e configurações de segurança.</td></tr>
+    </table>
+    <div class="alert alert-warning">
+      ⚠️ <span><strong>Meios de Pagamento:</strong> Se o gateway aparece como "Desconectado", entre em contato com o desenvolvedor para configurar as chaves de API no arquivo .env do servidor.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👤</span> Perfil do Produtor</h3>
+    <div class="url">https://seudominio.com/admin-academy/perfil</div>
+    <p>
+      Perfil exclusivo do produtor/instrutor da Academy (independente do perfil do Studio). 
+      Gerencie nome público, e-mail, biografia (visível para alunos), redes sociais (Instagram, YouTube) e configurações de segurança da conta.
+    </p>
+    <ol class="steps">
+      <li>Clique nas <strong>iniciais</strong> no canto inferior do menu lateral.</li>
+      <li>Selecione <strong>"Meu Perfil"</strong>.</li>
+      <li>Clique em <strong>"Editar Perfil"</strong> para habilitar os campos.</li>
+      <li>Ajuste seus dados e clique em <strong>"Salvar Alterações"</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">↩️</span> Navegação e Logoff</h3>
+    <p>
+      O menu lateral pode ser recolhido/expandido. A logo permanece visível. O logoff redireciona para <strong>/academy/login</strong> (login próprio da Academy).
+    </p>
+    <ol class="steps">
+      <li>Use <strong>"Voltar ao Site"</strong> para retornar ao site público.</li>
+      <li>Para sair, clique nas iniciais → <strong>"Sair da Conta"</strong>.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MÓDULO 4 — ÁREA DO ALUNO -->
+<!-- ========================================== -->
+<div class="section">
+  <div class="section-header">
+    <div class="icon-circle">🎒</div>
+    <div>
+      <h2>Módulo 4 — Área do Aluno</h2>
+      <p>Ambiente de aprendizado para alunos matriculados nos cursos da Academy.</p>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🔐</span> Acesso à Área do Aluno</h3>
+    <div class="url">https://seudominio.com/academy/login</div>
+    <p>
+      Alunos acessam pela mesma página de login da Academy. Após a autenticação, são redirecionados para o ambiente de estudos com menu próprio.
+    </p>
+    <div class="alert alert-info">
+      ℹ️ <span>O acesso do aluno é criado pelo produtor/administrador. O aluno recebe e-mail e senha provisória, faz login e pode atualizar seus dados no perfil.</span>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">📊</span> Dashboard do Aluno</h3>
+    <div class="url">https://seudominio.com/aluno/dashboard</div>
+    <p>
+      Painel inicial do aluno com resumo do progresso: cursos em andamento, percentual de conclusão, 
+      próximas aulas a assistir e notificações recentes.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">▶️</span> Meus Cursos e Aulas</h3>
+    <div class="url">https://seudominio.com/aluno/cursos</div>
+    <p>
+      Lista todos os cursos nos quais o aluno está matriculado. Ao clicar em um curso, 
+      exibe os módulos e aulas com player de vídeo integrado, barra de progresso e material complementar para download.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Meus Cursos"</strong> no menu lateral.</li>
+      <li>Clique no curso desejado para ver seus módulos.</li>
+      <li>Clique na <strong>aula</strong> para abrir o player de vídeo.</li>
+      <li>Após assistir, a aula será marcada como <strong>concluída</strong> automaticamente.</li>
+      <li>Faça download de <strong>materiais complementares</strong> quando disponíveis.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🛒</span> Catálogo de Cursos</h3>
+    <div class="url">https://seudominio.com/aluno/catalogo</div>
+    <p>
+      Explore todos os cursos disponíveis na plataforma. Veja descrições, carga horária, 
+      número de aulas e solicite matrícula em novos cursos.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">💬</span> Comunidade</h3>
+    <div class="url">https://seudominio.com/aluno/comunidade</div>
+    <p>
+      Espaço para interação entre alunos e instrutor. Envie dúvidas sobre as aulas, 
+      compartilhe experiências e acompanhe respostas do professor.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Comunidade"</strong> no menu lateral.</li>
+      <li>Clique em <strong>"Nova Dúvida"</strong> para enviar uma pergunta.</li>
+      <li>Selecione o <strong>curso</strong> e a <strong>aula</strong> relacionados à sua dúvida.</li>
+      <li>Acompanhe as respostas na mesma tela.</li>
+    </ol>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">🏆</span> Certificados</h3>
+    <div class="url">https://seudominio.com/aluno/certificados</div>
+    <p>
+      Após concluir 100% das aulas de um curso, o certificado de conclusão é gerado automaticamente. 
+      Faça download em PDF com seu nome completo, nome do curso e carga horária.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h3><span class="emoji">👤</span> Perfil do Aluno</h3>
+    <div class="url">https://seudominio.com/aluno/perfil</div>
+    <p>
+      Gerencie seus dados pessoais: nome, e-mail, foto de perfil e senha. 
+      Perfil exclusivo do aluno, independente dos demais sistemas.
+    </p>
+    <ol class="steps">
+      <li>Acesse <strong>"Perfil"</strong> no menu lateral.</li>
+      <li>Atualize seus dados pessoais (nome, e-mail, foto).</li>
+      <li>Para alterar a senha, preencha os campos de senha atual e nova senha.</li>
+      <li>Clique em <strong>"Salvar"</strong> para confirmar as alterações.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- RESUMO DE URLS -->
+<!-- ========================================== -->
+<div class="section">
+  <div class="section-header">
+    <div class="icon-circle">🔗</div>
+    <div>
+      <h2>Resumo de URLs e Acessos</h2>
+      <p>Referência rápida de todas as páginas do sistema e seus respectivos acessos.</p>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Módulo</th><th>Página</th><th>URL</th><th>Acesso</th></tr>
+    <tr><td>Site</td><td>Home</td><td>/</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Studio</td><td>/studio</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Academy</td><td>/academy</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Sobre</td><td>/sobre</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Contato</td><td>/contato</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Agendamento</td><td>/agendamento</td><td>Público</td></tr>
+    <tr><td>Site</td><td>Perfil Cliente</td><td>/perfil</td><td>Telefone</td></tr>
+    <tr><td>Studio</td><td>Login</td><td>/login</td><td>Credenciais</td></tr>
+    <tr><td>Studio</td><td>Dashboard</td><td>/admin</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Agenda</td><td>/admin/agenda</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Clientes</td><td>/admin/clientes</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Serviços</td><td>/admin/servicos</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Profissionais</td><td>/admin/profissionais</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Perfil Admin</td><td>/admin/perfil</td><td>Admin Studio</td></tr>
+    <tr><td>Studio</td><td>Configurações</td><td>/admin/sistema</td><td>Admin Studio</td></tr>
+    <tr><td>Academy</td><td>Login</td><td>/academy/login</td><td>Credenciais</td></tr>
+    <tr><td>Academy</td><td>Dashboard</td><td>/admin-academy</td><td>Admin Academy</td></tr>
+    <tr><td>Academy</td><td>Cursos</td><td>/admin-academy/cursos</td><td>Admin Academy</td></tr>
+    <tr><td>Academy</td><td>Alunos</td><td>/admin-academy/alunos</td><td>Admin Academy</td></tr>
+    <tr><td>Academy</td><td>Comunidade</td><td>/admin-academy/comunidade</td><td>Admin Academy</td></tr>
+    <tr><td>Academy</td><td>Configurações</td><td>/admin-academy/configuracoes</td><td>Admin Academy</td></tr>
+    <tr><td>Academy</td><td>Perfil Produtor</td><td>/admin-academy/perfil</td><td>Admin Academy</td></tr>
+    <tr><td>Aluno</td><td>Dashboard</td><td>/aluno/dashboard</td><td>Aluno</td></tr>
+    <tr><td>Aluno</td><td>Meus Cursos</td><td>/aluno/cursos</td><td>Aluno</td></tr>
+    <tr><td>Aluno</td><td>Catálogo</td><td>/aluno/catalogo</td><td>Aluno</td></tr>
+    <tr><td>Aluno</td><td>Comunidade</td><td>/aluno/comunidade</td><td>Aluno</td></tr>
+    <tr><td>Aluno</td><td>Certificados</td><td>/aluno/certificados</td><td>Aluno</td></tr>
+    <tr><td>Aluno</td><td>Perfil</td><td>/aluno/perfil</td><td>Aluno</td></tr>
+  </table>
+</div>
+
+<!-- ========================================== -->
+<!-- RODAPÉ -->
+<!-- ========================================== -->
+<div class="page-footer">
+  <p>© 2026 Agnaldo Gomes | Studio & Academy — Todos os direitos reservados.</p>
+  <p>Manual gerado automaticamente · Versão 1.0 · Agosto 2026</p>
+  <p style="margin-top: 8px; font-weight: 500; color: rgba(29,27,24,0.5);">Desenvolvido por <span style="color: var(--primary); font-weight: 700;">Vertex Consulting</span> — Anderson Alves</p>
+</div>
+
+</body>
+</html>

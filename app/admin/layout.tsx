@@ -96,6 +96,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-[var(--border-subtle)] flex justify-center">
            <AdminUserButton isCollapsed={isCollapsed} />
         </div>
+        {!isCollapsed && (
+          <div className="px-4 pb-4 text-center">
+            <p className="text-[10px] text-foreground/30">Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span></p>
+          </div>
+        )}
       </motion.aside>
 
       {/* Main Content */}

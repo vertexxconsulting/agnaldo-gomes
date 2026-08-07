@@ -109,6 +109,11 @@ export default function AdminAcademyLayout({ children }: { children: React.React
             logoutHref="/academy/login"
           />
         </div>
+        {!isCollapsed && (
+          <div className="px-4 pb-4 text-center">
+            <p className="text-[10px] text-foreground/30">Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span></p>
+          </div>
+        )}
       </motion.aside>
 
       {/* Main Content */}
