@@ -10,8 +10,8 @@ import { SplitLogin } from '@/components/SplitLogin';
 export default function AcademyLoginPage() {
   return (
     <SplitLogin
-      logoSrc="/opt/logo-studio.webp"
-      sideBg="dark"
+      logoSrc="/opt/logo-branca.webp"
+      sideBg="light"
       title="Academy AG"
       subtitle="Formação e educação de elite. Acesse seus cursos e certificados."
       formTitle="Área do Aluno"
