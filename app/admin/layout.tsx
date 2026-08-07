@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -44,12 +44,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
                   </motion.div>
                 ) : (
-                  <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-serif font-bold text-lg">
-                    AG
+                  <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-10 h-10 relative">
+                    <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
+          </Link>
+        </div>
+
+        <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
+          <Link href="/">
+            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors">
+              <ArrowLeft size={14} />
+              {!isCollapsed && <span>Voltar pro Site</span>}
+            </button>
           </Link>
         </div>
 

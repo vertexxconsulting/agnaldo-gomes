@@ -49,8 +49,8 @@ export default function AdminAcademyLayout({ children }: { children: React.React
                     </span>
                   </motion.div>
                 ) : (
-                  <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-serif font-bold text-lg">
-                    AC
+                  <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-8 h-8 relative">
+                    <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" priority />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -58,12 +58,10 @@ export default function AdminAcademyLayout({ children }: { children: React.React
           </Link>
         </div>
 
-        <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-          <Link href="/admin">
-            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors">
-              <ArrowLeft size={14} />
-              {!isCollapsed && <span>Voltar ao Studio</span>}
-            </button>
+        <div className="py-2 border-b border-[var(--border-subtle)]">
+          <Link href="/" className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground/70 hover:bg-foreground/5 hover:text-foreground transition-colors group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            {!isCollapsed && <span>Voltar ao Site</span>}
           </Link>
         </div>
 
@@ -102,8 +100,14 @@ export default function AdminAcademyLayout({ children }: { children: React.React
           })}
         </nav>
         
-        <div className="p-4 border-t border-[var(--border-subtle)] flex justify-center">
-           <AdminUserButton isCollapsed={isCollapsed} />
+        <div className="p-4 border-t border-[var(--border-subtle)]">
+          {/* Botão de Perfil */}
+          <AdminUserButton 
+            isCollapsed={isCollapsed} 
+            profileHref="/admin-academy/perfil"
+            settingsHref="/admin-academy/configuracao"
+            logoutHref="/academy/login"
+          />
         </div>
       </motion.aside>
 

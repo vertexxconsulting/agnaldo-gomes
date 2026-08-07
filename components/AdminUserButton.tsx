@@ -5,7 +5,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, User, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 
-export function AdminUserButton({ isCollapsed }: { isCollapsed?: boolean }) {
+export function AdminUserButton({ 
+  isCollapsed,
+  profileHref = "/admin/perfil",
+  settingsHref = "/admin/sistema",
+  logoutHref = "/login"
+}: { 
+  isCollapsed?: boolean;
+  profileHref?: string;
+  settingsHref?: string;
+  logoutHref?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -80,13 +90,13 @@ export function AdminUserButton({ isCollapsed }: { isCollapsed?: boolean }) {
             </div>
             
             <div className="p-2">
-              <Link href="/admin/perfil" onClick={() => setIsOpen(false)}>
+              <Link href={profileHref} onClick={() => setIsOpen(false)}>
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/5 transition-colors cursor-pointer">
                   <User size={16} />
                   Meu Perfil
                 </div>
               </Link>
-              <Link href="/admin/sistema" onClick={() => setIsOpen(false)}>
+              <Link href={settingsHref} onClick={() => setIsOpen(false)}>
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/5 transition-colors cursor-pointer">
                   <Settings size={16} />
                   Configurações
@@ -95,7 +105,7 @@ export function AdminUserButton({ isCollapsed }: { isCollapsed?: boolean }) {
             </div>
             
             <div className="p-2 border-t border-[var(--border-subtle)]">
-              <Link href="/login" onClick={() => setIsOpen(false)}>
+              <Link href={logoutHref} onClick={() => setIsOpen(false)}>
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer font-medium">
                   <LogOut size={16} />
                   Sair da Conta

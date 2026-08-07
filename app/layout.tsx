@@ -37,7 +37,7 @@ export default function RootLayout({
           src="/theme-init.js"
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white">
+      <body suppressHydrationWarning className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white">
         {children}
       </body>
     </html>
