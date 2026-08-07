@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
 import { CardGlass } from "@/components/CardGlass";
-import { User, Mail, Shield, Camera, Link as LinkIcon, Instagram, Youtube, Lock } from "lucide-react";
+import { User, Mail, Shield, Camera, Link as LinkIcon, Lock, PlayCircle, Image as ImageIcon } from "lucide-react";
 import Image from 'next/image';
 
 export default function AdminAcademyPerfilPage() {
@@ -107,7 +107,7 @@ export default function AdminAcademyPerfilPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-pink-500/10 text-pink-500 flex items-center justify-center flex-shrink-0">
-                <Instagram size={20} />
+                <ImageIcon size={20} />
               </div>
               <input 
                 type="text"
@@ -119,7 +119,7 @@ export default function AdminAcademyPerfilPage() {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center flex-shrink-0">
-                <Youtube size={20} />
+                <PlayCircle size={20} />
               </div>
               <input 
                 type="text"
