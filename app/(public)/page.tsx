@@ -83,7 +83,7 @@ export default function Home() {
 
         {/* Conteúdo com stagger */}
         <motion.div
-          className="container relative z-10 mx-auto px-6 flex flex-col items-center text-center gap-4 mt-8 pt-24"
+          className="container relative z-10 mx-auto px-6 flex flex-col items-center text-center gap-4"
           variants={staggerContainer(0.15, 0.2)}
           initial="hidden"
           animate="show"
