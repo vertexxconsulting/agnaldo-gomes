@@ -61,7 +61,7 @@ export default function StudioPage() {
         <SectionTitle title="Studio de Beleza" subtitle="Excelência em transformar sua beleza" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
-          <p className="text-foreground/80 text-lg leading-relaxed">
+          <p className="text-foreground/80 text-base leading-relaxed">
             No Studio Agnaldo Gomes, cada detalhe é pensado para revelar a sua melhor versão.
             Cabelo, estilo e autoestima em um só lugar — com técnicas exclusivas e produtos de alta performance.
           </p>
@@ -84,8 +84,8 @@ export default function StudioPage() {
         {/* Horários de Atendimento */}
         <div className="bg-card/40 border border-primary/20 rounded-3xl p-10 max-w-3xl mx-auto mb-20">
           <div className="flex items-center justify-center gap-3 mb-8">
-            <Clock className="text-primary" size={28} />
-            <h3 className="text-3xl font-bold">Horários de Atendimento</h3>
+            <Clock className="text-primary" size={24} />
+            <h3 className="text-2xl font-bold">Horários de Atendimento</h3>
           </div>
           <div className="flex flex-col gap-4">
             {horarios.map((h, i) => (
@@ -102,9 +102,9 @@ export default function StudioPage() {
         </div>
 
         {/* CTA */}
-        <div className="bg-card/40 border border-primary/20 rounded-3xl p-12 text-center max-w-4xl mx-auto">
-          <h3 className="text-3xl font-bold mb-4">Pronto para sua transformação?</h3>
-          <p className="text-foreground/70 mb-8">Reserve seu horário pelo formulário de agendamento.</p>
+        <div className="bg-card/40 border border-primary/20 rounded-3xl p-10 text-center max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold mb-3">Pronto para sua transformação?</h3>
+          <p className="text-foreground/70 mb-8 text-sm">Reserve seu horário pelo formulário de agendamento.</p>
           <Link href="/agendamento">
             <Button variant="primary" size="lg" className="px-12 uppercase tracking-widest">
               Agendar Horário

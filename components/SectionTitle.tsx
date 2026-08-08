@@ -18,14 +18,14 @@ export function SectionTitle({ title, subtitle, className, align = 'center', siz
       'mb-6': size === 'sm',
     }, className)}>
       {subtitle && (
-        <span className={cn("text-primary font-semibold uppercase tracking-widest", size === 'default' ? "text-sm" : "text-xs")}>
+        <span className={cn("text-primary font-semibold uppercase tracking-widest", size === 'default' ? "text-xs" : "text-[10px]")}>
           {subtitle}
         </span>
       )}
-      <h2 className={cn("font-bold tracking-tight text-foreground", size === 'default' ? "text-3xl md:text-5xl" : "text-2xl")}>
+      <h2 className={cn("font-bold tracking-tight text-foreground", size === 'default' ? "text-2xl md:text-4xl" : "text-xl md:text-2xl")}>
         {title}
       </h2>
-      <div className={cn("bg-primary rounded-full mt-2", size === 'default' ? "w-16 h-1 mt-4" : "w-8 h-1")} />
+      <div className={cn("bg-primary rounded-full mt-2", size === 'default' ? "w-12 h-[3px] mt-3" : "w-6 h-[2px]")} />
     </div>
   );
 }

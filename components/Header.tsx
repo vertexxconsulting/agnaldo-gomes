@@ -11,7 +11,6 @@ const navLinks = [
   { name: 'Início', href: '/' },
   { name: 'Studio', href: '/studio' },
   { name: 'Academy', href: '/academy' },
-  { name: 'Contato', href: '/contato' },
 ];
 
 // Rotas dos sistemas — acessíveis apenas por URL direta (fora do menu público)
@@ -32,8 +31,8 @@ export function Header() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        isScrolled ? 'glass py-3' : 'bg-transparent py-5'
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-3',
+        isScrolled ? 'glass' : 'bg-transparent'
       )}
     >
       <div className="container mx-auto px-6 md:px-12 flex items-center justify-between">
@@ -59,9 +58,9 @@ export function Header() {
               {link.name}
             </Link>
           ))}
-          <Link href="/contato">
+          <Link href="/agendamento">
             <Button variant="outline" size="sm" className="uppercase tracking-widest text-xs">
-              Agende sua Visita
+              Agendar meu Horário
             </Button>
           </Link>
         </nav>
@@ -88,9 +87,9 @@ export function Header() {
               {link.name}
             </Link>
           ))}
-          <Link href="/contato" onClick={() => setMobileMenuOpen(false)}>
+          <Link href="/agendamento" onClick={() => setMobileMenuOpen(false)}>
             <Button variant="outline" className="w-full mt-4 uppercase tracking-widest text-sm">
-              Agende sua Visita
+              Agendar meu Horário
             </Button>
           </Link>
         </div>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { User, LogOut, FileText, PlayCircle, Settings, Menu } from 'lucide-react';
+import { User, LogOut, FileText, PlayCircle, Settings, Menu, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 
 export default function AlunoLoggedLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +16,7 @@ export default function AlunoLoggedLayout({ children }: { children: React.ReactN
     { name: 'Catálogo', href: '/aluno/catalogo', icon: PlayCircle },
     { name: 'Comunidade', href: '/aluno/comunidade', icon: PlayCircle },
     { name: 'Certificados', href: '/aluno/certificados', icon: FileText },
+    { name: 'Ajuda / Tutorial', href: '/aluno/tutorial', icon: BookOpen },
   ];
 
   return (

@@ -1,11 +1,84 @@
 'use client';
 
-import { useState } from 'react';
-import { Save, Settings, Shield, Bell, CreditCard, LayoutTemplate } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, Settings, Shield, Bell, CreditCard, LayoutTemplate, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/Button';
+import Image from 'next/image';
 
 export default function AdminAcademyConfiguracoes() {
   const [activeTab, setActiveTab] = useState('geral');
+  const [envStatus, setEnvStatus] = useState({ mercadoPago: false, stripe: false, evolutionApi: false });
+  
+  // WhatsApp States
+  const [instanceName, setInstanceName] = useState('agnaldo-academy-bot');
+  const [instanceState, setInstanceState] = useState('unknown'); // 'connecting', 'open', 'close', 'not_found', 'unknown'
+  const [qrCode, setQrCode] = useState('');
+  const [loadingInstance, setLoadingInstance] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/env-status')
+      .then(res => res.json())
+      .then(data => setEnvStatus(data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'notificacoes') return;
+    if (!envStatus.evolutionApi) return;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`/api/whatsapp/status?instanceName=${instanceName}`);
+        if (res.ok) {
+          const data = await res.json();
+          setInstanceState(data.state || 'unknown');
+          if (data.qrcodeBase64) {
+            setQrCode(data.qrcodeBase64);
+          } else if (data.state === 'open') {
+            setQrCode('');
+          }
+        } else {
+          setInstanceState('not_found');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab, instanceName, envStatus.evolutionApi]);
+
+  const handleCreateInstance = async () => {
+    setLoadingInstance(true);
+    try {
+      await fetch('/api/whatsapp/instance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName })
+      });
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoadingInstance(false);
+    }
+  };
+
+  const handleDeleteInstance = async () => {
+    setLoadingInstance(true);
+    try {
+      await fetch(`/api/whatsapp/instance?instanceName=${instanceName}`, {
+        method: 'DELETE'
+      });
+      setInstanceState('not_found');
+      setQrCode('');
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoadingInstance(false);
+    }
+  };
 
   const tabs = [
     { id: 'geral', label: 'Configurações Gerais', icon: Settings },
@@ -103,95 +176,144 @@ export default function AdminAcademyConfiguracoes() {
               </div>
               <p className="text-sm text-foreground/60 mb-6">Configure o envio de WhatsApp exclusivo para alunos da Academy (boas-vindas, suporte, certificados).</p>
               
-              <div className="space-y-6 max-w-2xl">
-                {/* Fluxo de Conexão WhatsApp */}
-                <div className="p-5 border border-primary/30 bg-primary/5 rounded-xl">
-                  <div className="flex items-start justify-between mb-4">
+              {!envStatus.evolutionApi ? (
+                <div className="mt-4 p-4 bg-red-500/5 border border-red-500/20 rounded-lg max-w-2xl">
+                  <div className="flex items-start gap-3">
+                    <Shield className="text-red-500 mt-0.5" size={18} />
                     <div>
-                      <h3 className="font-bold text-primary mb-1 text-sm">Instância WhatsApp da Academy</h3>
-                      <p className="text-xs text-foreground/70">Gerencie a conexão do número que fará o atendimento exclusivo dos cursos.</p>
+                      <h4 className="text-sm font-bold text-red-500">Evolution API Não Configurada</h4>
+                      <p className="text-xs text-foreground/70 mt-1 leading-relaxed">
+                        As chaves EVOLUTION_API_URL ou EVOLUTION_API_KEY não foram encontradas no arquivo .env. Contate o desenvolvedor para configurar.
+                      </p>
                     </div>
-                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
-                      Desconectado
-                    </span>
                   </div>
-
-                  <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-4">
-                    <div className="space-y-4">
+                </div>
+              ) : (
+                <div className="space-y-6 max-w-2xl">
+                  {/* Fluxo de Conexão WhatsApp */}
+                  <div className="p-5 border border-primary/30 bg-primary/5 rounded-xl">
+                    <div className="flex items-start justify-between mb-4">
                       <div>
-                        <label className="block text-xs font-medium text-foreground/80 mb-1">Nome da Instância</label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            defaultValue="agnaldo-academy-bot" 
-                            className="flex-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary font-mono" 
-                          />
-                          <Button size="sm" variant="primary" className="whitespace-nowrap">
-                            Criar Instância
-                          </Button>
-                        </div>
-                        <p className="text-[10px] text-foreground/50 mt-1">Isso criará uma sessão separada do número principal do salão.</p>
+                        <h3 className="font-bold text-primary mb-1 text-sm">Instância WhatsApp da Academy</h3>
+                        <p className="text-xs text-foreground/70">Gerencie a conexão do número que fará o atendimento exclusivo dos cursos.</p>
                       </div>
+                      
+                      {instanceState === 'open' ? (
+                        <span className="px-2 py-1 bg-green-500/20 text-green-500 text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
+                          Conectado
+                        </span>
+                      ) : instanceState === 'connecting' ? (
+                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
+                          Aguardando
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-red-500/20 text-red-500 text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
+                          Desconectado
+                        </span>
+                      )}
+                    </div>
 
-                      <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-col items-center justify-center">
-                        <div className="w-40 h-40 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center mb-3">
-                          <div className="text-center p-4">
-                            <Shield size={24} className="mx-auto text-gray-300 mb-2" />
-                            <p className="text-[10px] text-gray-400 font-medium">Aguardando Criação...</p>
+                    <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium text-foreground/80 mb-1">Nome da Instância</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={instanceName}
+                              onChange={(e) => setInstanceName(e.target.value)}
+                              disabled={instanceState === 'open' || instanceState === 'connecting'}
+                              className="flex-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary font-mono disabled:opacity-50" 
+                            />
+                            {instanceState === 'open' || instanceState === 'connecting' ? (
+                              <Button size="sm" variant="outline" className="text-red-500 border-red-500 hover:bg-red-500/10" onClick={handleDeleteInstance} disabled={loadingInstance}>
+                                {loadingInstance ? <RefreshCw className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                                <span className="ml-2">Desconectar</span>
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="primary" className="whitespace-nowrap" onClick={handleCreateInstance} disabled={loadingInstance}>
+                                {loadingInstance ? <RefreshCw className="animate-spin" size={16} /> : 'Criar Instância'}
+                              </Button>
+                            )}
                           </div>
+                          <p className="text-[10px] text-foreground/50 mt-1">Isso criará uma sessão separada do número principal do salão.</p>
                         </div>
-                        <p className="text-xs text-center text-foreground/60 max-w-xs mb-3">
-                          Ao criar a instância, o QR Code aparecerá aqui. Abra o WhatsApp no celular que atenderá a Academy e leia o código.
-                        </p>
-                        <Button size="sm" variant="outline" className="w-full text-primary border-primary hover:bg-primary/10">
-                          Gerar QR Code
-                        </Button>
+
+                        {instanceState === 'connecting' && (
+                          <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-col items-center justify-center">
+                            <div className="w-48 h-48 bg-white rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center mb-3 overflow-hidden relative">
+                              {qrCode ? (
+                                <Image src={qrCode} alt="QR Code" fill className="object-contain p-2" />
+                              ) : (
+                                <div className="text-center p-4">
+                                  <RefreshCw size={24} className="mx-auto text-gray-300 mb-2 animate-spin" />
+                                  <p className="text-[10px] text-gray-400 font-medium">Carregando QR Code...</p>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-center text-foreground/60 max-w-xs mb-3">
+                              Abra o WhatsApp no celular que atenderá a Academy, vá em "Aparelhos conectados" e leia este código.
+                            </p>
+                          </div>
+                        )}
+
+                        {instanceState === 'open' && (
+                          <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-col items-center justify-center py-6">
+                            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-3">
+                              <CheckCircle2 size={32} className="text-green-500" />
+                            </div>
+                            <h4 className="font-bold text-foreground">WhatsApp Conectado!</h4>
+                            <p className="text-xs text-foreground/60 mt-1 text-center max-w-sm">
+                              Sua Academy agora pode enviar notificações automáticas para os alunos utilizando este número.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-4 border-t border-[var(--border-subtle)] pt-6">
-                  <h3 className="font-bold text-foreground text-sm">Mensagens Padrão da Academy</h3>
-                  
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className="text-sm text-foreground">Boas-vindas (Novo Aluno)</span>
-                      <input type="checkbox" defaultChecked className="accent-primary" />
-                    </label>
-                    <textarea 
-                      rows={3} 
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
-                      defaultValue={`Olá {nome_aluno}! Seja bem-vindo à Agnaldo Gomes Academy. Seu acesso já está liberado em: {link_acesso}`}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2 pt-4">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className="text-sm text-foreground">Aviso de Nova Aula</span>
-                      <input type="checkbox" defaultChecked className="accent-primary" />
-                    </label>
-                    <textarea 
-                      rows={3} 
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
-                      defaultValue={`Ei {nome_aluno}, acabamos de liberar o módulo "{nome_modulo}" no seu curso! Corre lá na plataforma pra conferir.`}
-                    />
-                  </div>
+                  <div className="space-y-4 border-t border-[var(--border-subtle)] pt-6">
+                    <h3 className="font-bold text-foreground text-sm">Mensagens Padrão da Academy</h3>
+                    
+                    <div className="space-y-2">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-foreground">Boas-vindas (Novo Aluno)</span>
+                        <input type="checkbox" defaultChecked className="accent-primary" />
+                      </label>
+                      <textarea 
+                        rows={3} 
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        defaultValue={`Olá {nome_aluno}! Seja bem-vindo à Agnaldo Gomes Academy. Seu acesso já está liberado em: {link_acesso}`}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2 pt-4">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-foreground">Aviso de Nova Aula</span>
+                        <input type="checkbox" defaultChecked className="accent-primary" />
+                      </label>
+                      <textarea 
+                        rows={3} 
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        defaultValue={`Ei {nome_aluno}, acabamos de liberar o módulo "{nome_modulo}" no seu curso! Corre lá na plataforma pra conferir.`}
+                      />
+                    </div>
 
-                  <div className="space-y-2 pt-4">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <span className="text-sm text-foreground">Conclusão de Curso</span>
-                      <input type="checkbox" defaultChecked className="accent-primary" />
-                    </label>
-                    <textarea 
-                      rows={3} 
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
-                      defaultValue={`Parabéns {nome_aluno}! Você concluiu o curso {nome_curso}. Seu certificado já está disponível na plataforma.`}
-                    />
+                    <div className="space-y-2 pt-4">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-foreground">Conclusão de Curso</span>
+                        <input type="checkbox" defaultChecked className="accent-primary" />
+                      </label>
+                      <textarea 
+                        rows={3} 
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        defaultValue={`Parabéns {nome_aluno}! Você concluiu o curso {nome_curso}. Seu certificado já está disponível na plataforma.`}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -201,7 +323,7 @@ export default function AdminAcademyConfiguracoes() {
               <p className="text-sm text-foreground/60 mb-6">Configure o gateway de pagamento para receber as vendas dos cursos da Academy.</p>
               
               <div className="space-y-6 max-w-2xl">
-                <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--background)]">
+                <div className={`border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--background)] ${!envStatus.mercadoPago ? 'opacity-90' : ''}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#009EE3] rounded flex items-center justify-center">
@@ -212,23 +334,29 @@ export default function AdminAcademyConfiguracoes() {
                         <p className="text-xs text-foreground/60">Checkout Transparente e Pix</p>
                       </div>
                     </div>
-                    <span className="bg-red-500/10 text-red-500 px-2 py-1 text-xs font-bold rounded">DESCONECTADO</span>
+                    {envStatus.mercadoPago ? (
+                      <span className="bg-green-500/10 text-green-500 px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
+                    ) : (
+                      <span className="bg-red-500/10 text-red-500 px-2 py-1 text-xs font-bold rounded">DESCONECTADO</span>
+                    )}
                   </div>
                   
-                  <div className="mt-4 p-4 bg-red-500/5 border border-red-500/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Shield className="text-red-500 mt-0.5" size={18} />
-                      <div>
-                        <h4 className="text-sm font-bold text-red-500">Atenção: Gateway Não Configurado</h4>
-                        <p className="text-xs text-foreground/70 mt-1 leading-relaxed">
-                          O meio de pagamento encontra-se desconectado ou as credenciais falharam. Por favor, <strong>entre em contato com o desenvolvedor</strong> para configurar as chaves de API no ambiente seguro ou informar este problema.
-                        </p>
+                  {!envStatus.mercadoPago && (
+                    <div className="mt-4 p-4 bg-red-500/5 border border-red-500/20 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <Shield className="text-red-500 mt-0.5" size={18} />
+                        <div>
+                          <h4 className="text-sm font-bold text-red-500">Atenção: Gateway Não Configurado</h4>
+                          <p className="text-xs text-foreground/70 mt-1 leading-relaxed">
+                            O meio de pagamento encontra-se desconectado ou as credenciais falharam. Por favor, <strong>entre em contato com o desenvolvedor</strong> para configurar as chaves de API no ambiente seguro ou informar este problema.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--background)] opacity-50 grayscale">
+                <div className={`border border-[var(--border-subtle)] rounded-lg p-5 bg-[var(--background)] ${!envStatus.stripe ? 'opacity-50 grayscale' : ''}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#635BFF] rounded flex items-center justify-center">
@@ -239,7 +367,11 @@ export default function AdminAcademyConfiguracoes() {
                         <p className="text-xs text-foreground/60">Cartão Internacional</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">Conectar</Button>
+                    {envStatus.stripe ? (
+                      <span className="bg-green-500/10 text-green-500 px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>Em Breve</Button>
+                    )}
                   </div>
                 </div>
               </div>

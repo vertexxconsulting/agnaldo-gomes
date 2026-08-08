@@ -116,12 +116,12 @@ const cursos: Curso[] = [
 
 export default function AcademyPage() {
   return (
-    <div className="academy-dark flex flex-col w-full py-20 bg-background">
+    <div className="flex flex-col w-full py-20 bg-background">
       <div className="container mx-auto px-6">
         <SectionTitle title="Academy AG" subtitle="Formação e Educação de Elite" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
-          <p className="text-foreground/80 text-lg leading-relaxed">
+          <p className="text-foreground/80 text-base leading-relaxed">
             <strong>Agnaldo Gomes</strong> — 30 anos de experiência, formado nas academias{" "}
             <strong>Pivot Point, Toni & Guy e Llongueras</strong> e técnico <strong>Truss</strong>.{" "}
             Cursos presenciais e online que formam profissionais de elite e elevam o faturamento do seu salão.
@@ -146,7 +146,7 @@ export default function AcademyPage() {
                   <c.icon size={30} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-2xl font-bold">{c.titulo}</h3>
+                  <h3 className="text-xl font-bold">{c.titulo}</h3>
                   {c.formato && (
                     <span className="text-xs font-bold uppercase tracking-widest text-primary/80">{c.formato}</span>
                   )}
@@ -190,8 +190,8 @@ export default function AcademyPage() {
         {/* Localização / Ficha */}
         <div className="bg-card/40 border border-primary/20 rounded-3xl p-10 max-w-4xl mx-auto mb-16">
           <div className="flex flex-col gap-4 text-foreground/80 text-center">
-            <h3 className="text-3xl font-bold flex items-center justify-center gap-2">
-              <Award className="text-primary" size={30} /> Sobre o Formador
+            <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
+              <Award className="text-primary" size={26} /> Sobre o Formador
             </h3>
             <p className="leading-relaxed max-w-2xl mx-auto">
               Especialista em cortes, coloração e mechas, formado nas academias{" "}
@@ -205,9 +205,9 @@ export default function AcademyPage() {
           </div>
         </div>
 
-        <div className="bg-card/40 border border-primary/20 rounded-3xl p-12 text-center max-w-4xl mx-auto">
-          <h3 className="text-3xl font-bold mb-4">Formação que transforma carreiras</h3>
-          <p className="text-foreground/70 mb-8 max-w-2xl mx-auto">
+        <div className="bg-card/40 border border-primary/20 rounded-3xl p-10 text-center max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold mb-3">Formação que transforma carreiras</h3>
+          <p className="text-foreground/70 mb-8 max-w-2xl mx-auto text-sm">
             Vagas limitadas por turma para garantir atenção individualizada. Preencha o formulário para garantir sua vaga.
           </p>
           <Link href="/academy/login">

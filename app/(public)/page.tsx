@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -62,12 +63,21 @@ const marqueeItems = [
 ];
 
 export default function Home() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = 0.5; // Desacelera o vídeo pela metade
+    }
+  }, []);
+
   return (
     <div className="flex flex-col w-full">
       {/* ===== HERO: vídeo fachada + editorial stagger ===== */}
-      <section className="relative w-full min-h-[85vh] flex items-center justify-center overflow-hidden">
+      <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
         {/* Vídeo de fundo */}
         <video
+          ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
           autoPlay
           loop
@@ -77,38 +87,43 @@ export default function Home() {
         >
           <source src="/videos/fachada.mp4" type="video/mp4" />
         </video>
-        {/* Overlay para legibilidade no modo light */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/40 to-background/90" aria-hidden />
-        <div className="absolute inset-0 bg-white/20" aria-hidden />
+        {/* Overlay premium escuro (luxury mood) */}
+        <div className="absolute inset-0 bg-black/50" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" aria-hidden />
 
-        {/* Conteúdo com stagger */}
+        {/* Conteúdo com stagger - Alinhamento Editorial (Esquerda) */}
         <motion.div
-          className="container relative z-10 mx-auto px-6 flex flex-col items-center text-center gap-4"
+          className="container relative z-10 mx-auto px-6 lg:px-12 flex flex-col items-start text-left gap-5 mt-16"
           variants={staggerContainer(0.15, 0.2)}
           initial="hidden"
           animate="show"
         >
-          <motion.span variants={fadeUp} className="text-primary font-bold tracking-[0.2em] uppercase text-sm md:text-base">
+          <motion.span variants={fadeUp} className="text-primary font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs">
             Bem-vindo à excelência
           </motion.span>
 
-          <motion.h1 variants={fadeUp} className="text-5xl md:text-7xl font-bold tracking-tighter max-w-4xl leading-tight">
-            Descubra o Poder da <br />
-            <span className="text-gradient">Sua Melhor Versão</span>
+          <motion.h1 variants={fadeUp} className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight max-w-3xl leading-[1.1]">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/30">
+              Descubra o <span className="italic font-serif">Poder</span> da
+            </span>
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#D4AF37] to-[#AA8529] font-bold">
+              Sua Melhor Versão
+            </span>
           </motion.h1>
 
-          <motion.p variants={fadeUp} className="text-foreground/80 text-lg md:text-xl max-w-2xl font-light">
+          <motion.p variants={fadeUp} className="text-white/80 text-base md:text-lg max-w-lg font-light leading-relaxed mt-2">
             Onde a arte encontra a técnica. Studio de beleza premium e Academy para formação de profissionais de elite.
           </motion.p>
 
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mt-6">
-            <Link href="/contato">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto uppercase tracking-widest text-sm">
-                Agende sua Visita
+          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
+            <Link href="/studio">
+              <Button variant="primary" className="w-full sm:w-auto uppercase tracking-widest text-xs py-3 px-6 shadow-lg shadow-primary/20">
+                Agende seu Horário
               </Button>
             </Link>
             <Link href="/academy">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto uppercase tracking-widest text-sm">
+              <Button variant="outline" className="w-full sm:w-auto uppercase tracking-widest text-xs py-3 px-6 border-white/30 text-white hover:bg-white hover:text-black">
                 Conheça os Cursos
               </Button>
             </Link>
@@ -149,19 +164,19 @@ export default function Home() {
 
           <Stagger className="flex flex-col gap-6 lg:col-span-7">
             <StaggerItem>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
                 30 anos <br />
                 <span className="text-gradient">refinando a arte capilar</span>
               </h2>
             </StaggerItem>
             <StaggerItem>
-              <p className="text-foreground/80 text-lg leading-relaxed">
+              <p className="text-foreground/80 text-base leading-relaxed">
                 Agnaldo Gomes é especialista em cortes, coloração e mechas, formado nas academias{" "}
                 <strong>Pivot Point, Toni &amp; Guy e Llongueras</strong>. Com 30 anos de experiência — iniciados aos 13 — ele transforma cada cliente na sua melhor versão.
               </p>
             </StaggerItem>
             <StaggerItem>
-              <p className="text-foreground/80 text-lg leading-relaxed">
+              <p className="text-foreground/80 text-base leading-relaxed">
                 Integra o time <strong>Truss</strong> há 7 anos como técnico e <strong>Truss Lover</strong>, e sua academia já formou centenas de profissionais que hoje são referência no mercado.
               </p>
             </StaggerItem>
@@ -242,8 +257,8 @@ export default function Home() {
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
                       <Icon size={32} />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground">{s.name}</h3>
-                    <p className="text-foreground/70">{s.desc}</p>
+                    <h3 className="text-xl font-bold text-foreground">{s.name}</h3>
+                    <p className="text-sm text-foreground/70">{s.desc}</p>
                   </div>
                 </div>
               );
@@ -296,12 +311,12 @@ export default function Home() {
         <div className="container mx-auto px-6 max-w-3xl text-center">
           <Stagger className="flex flex-col items-center gap-6">
             <StaggerItem>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
                 Pronto para <span className="text-gradient">transformar sua imagem?</span>
               </h2>
             </StaggerItem>
             <StaggerItem>
-              <p className="text-foreground/70 text-lg max-w-xl">
+              <p className="text-foreground/70 text-base max-w-xl">
                 Agende seu horário no Studio ou reserve sua vaga na Academy. Comece hoje a sua melhor versão.
               </p>
             </StaggerItem>

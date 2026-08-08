@@ -9,13 +9,13 @@ export default function SobrePage() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mt-16">
           <div className="flex flex-col gap-6">
-            <h3 className="text-3xl font-bold text-gradient">Nossa Missão</h3>
-            <p className="text-foreground/80 text-lg leading-relaxed">
+            <h3 className="text-2xl font-bold text-gradient">Nossa Missão</h3>
+            <p className="text-foreground/80 text-base leading-relaxed">
               Levar a arte do visagismo e da beleza a um novo patamar, entregando não apenas resultados estéticos impecáveis, mas promovendo a autoconfiança e a transformação real na vida de nossos clientes e alunos.
             </p>
             
-            <h3 className="text-3xl font-bold text-gradient mt-8">Visão e Valores</h3>
-            <p className="text-foreground/80 text-lg leading-relaxed">
+            <h3 className="text-2xl font-bold text-gradient mt-8">Visão e Valores</h3>
+            <p className="text-foreground/80 text-base leading-relaxed">
               Ser a principal referência em beleza premium e educação profissionalizante do país. Nossos valores inegociáveis incluem a excelência, o cuidado genuíno com os detalhes, inovação constante e respeito à individualidade.
             </p>
           </div>

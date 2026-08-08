@@ -3,13 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft, X, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const links = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
+    { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 
   return (
@@ -104,25 +106,63 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between p-4 border-b border-[var(--border-subtle)] bg-[var(--color-card)]">
-          <div className="w-24 h-8 relative cursor-pointer">
-            <Image 
-              src="/opt/logo-branca.webp" 
-              alt="Agnaldo Gomes Studio" 
-              fill 
-              className="object-contain drop-shadow-md" 
-            />
+        <header className="md:hidden flex items-center justify-between p-4 border-b border-[var(--border-subtle)] bg-[var(--color-card)] relative z-50">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 -ml-1 text-foreground/70 hover:text-foreground">
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <Link href="/">
+              <div className="w-24 h-8 relative cursor-pointer">
+                <Image 
+                  src="/opt/logo-branca.webp" 
+                  alt="Agnaldo Gomes Studio" 
+                  fill 
+                  className="object-contain drop-shadow-md" 
+                />
+              </div>
+            </Link>
           </div>
-          <select 
-            className="bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-sm text-foreground focus:outline-none"
-            value={pathname}
-            onChange={(e) => window.location.href = e.target.value}
-          >
-            {links.map(l => <option key={l.href} value={l.href}>{l.label}</option>)}
-          </select>
+          <div className="w-10">
+            <AdminUserButton isCollapsed={true} />
+          </div>
         </header>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-b border-[var(--border-subtle)] bg-[var(--color-card)] overflow-hidden shadow-lg z-40 relative"
+            >
+              <nav className="p-4 space-y-2">
+                <Link href="/">
+                  <div className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-foreground/70 hover:bg-foreground/5 hover:text-foreground">
+                    <ArrowLeft size={20} className="shrink-0" />
+                    Voltar pro Site
+                  </div>
+                </Link>
+                {links.map((link) => {
+                  const Icon = link.icon;
+                  const active = pathname === link.href;
+                  return (
+                    <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
+                      <div className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        active ? 'bg-primary/10 text-primary' : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground'
+                      }`}>
+                        <Icon size={20} className="shrink-0" />
+                        {link.label}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="p-6 md:p-10 max-w-7xl mx-auto">
           {children}

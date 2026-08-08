@@ -3,24 +3,27 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, ArrowLeft, ChevronLeft, ChevronRight, Menu, X, BookOpen, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
 export default function AdminAcademyLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const links = [
     { href: '/admin-academy', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin-academy/cursos', label: 'Gestão de Cursos', icon: PlayCircle },
     { href: '/admin-academy/alunos', label: 'Gestão de Alunos', icon: GraduationCap },
     { href: '/admin-academy/comunidade', label: 'Comunidade', icon: Users },
+    { href: '/admin-academy/certificados', label: 'Certificados', icon: Award },
     { href: '/admin-academy/configuracoes', label: 'Configurações', icon: Settings },
+    { href: '/admin-academy/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 
   return (
-    <div className="flex h-screen bg-[var(--background)] overflow-hidden">
+    <div className="flex h-screen bg-white overflow-hidden">
       {/* Sidebar Desktop */}
       <motion.aside 
         initial={false}
@@ -117,26 +120,70 @@ export default function AdminAcademyLayout({ children }: { children: React.React
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[var(--background)]">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-white relative">
         {/* Header Mobile */}
-        <header className="md:hidden h-16 border-b border-[var(--border-subtle)] bg-[var(--color-card)] flex items-center justify-between px-4 shrink-0">
+        <header className="md:hidden h-16 border-b border-[var(--border-subtle)] bg-[var(--color-card)] flex items-center justify-between px-4 shrink-0 relative z-50">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 relative">
-              <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" />
-            </div>
-            <span className="text-lg font-serif font-bold text-primary tracking-wider">
-              Academy
-            </span>
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-1 -ml-1 text-foreground/70 hover:text-foreground">
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <Link href="/">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 relative">
+                  <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" />
+                </div>
+                <span className="text-lg font-serif font-bold text-primary tracking-wider">
+                  Academy
+                </span>
+              </div>
+            </Link>
           </div>
-          
-          <select 
-            className="bg-background border border-[var(--border-subtle)] text-foreground text-sm rounded-lg px-2 py-1 outline-none focus:border-primary"
-            value={pathname}
-            onChange={(e) => window.location.href = e.target.value}
-          >
-            {links.map(l => <option key={l.href} value={l.href}>{l.label}</option>)}
-          </select>
+          <div className="w-10">
+            <AdminUserButton 
+              isCollapsed={true} 
+              profileHref="/admin-academy/perfil"
+              settingsHref="/admin-academy/configuracao"
+              logoutHref="/academy/login"
+            />
+          </div>
         </header>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-b border-[var(--border-subtle)] bg-[var(--color-card)] overflow-hidden shadow-lg z-40 relative flex-shrink-0"
+            >
+              <nav className="p-4 space-y-2">
+                <Link href="/">
+                  <div className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-foreground/70 hover:bg-foreground/5 hover:text-foreground">
+                    <ArrowLeft size={20} className="shrink-0" />
+                    Voltar ao Site
+                  </div>
+                </Link>
+                {links.map((link) => {
+                  const Icon = link.icon;
+                  const active = link.href === '/admin-academy' 
+                    ? pathname === '/admin-academy'
+                    : pathname.startsWith(link.href);
+                  return (
+                    <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
+                      <div className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        active ? 'bg-primary/10 text-primary' : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground'
+                      }`}>
+                        <Icon size={20} className="shrink-0" />
+                        {link.label}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {children}
       </main>
