@@ -28,7 +28,7 @@ export default function PerfilClientePage() {
     }
   }, []);
 
-  const logar = (tel: string) => {
+  function logar(tel: string) {
     const limpo = tel.replace(/\D/g, '');
     const c = MOCK_CLIENTES.find(c => c.telefone.replace(/\D/g, '') === limpo);
     
@@ -45,7 +45,7 @@ export default function PerfilClientePage() {
     setTelefone(tel);
     setIsLogged(true);
     localStorage.setItem('telefone_logado', tel);
-  };
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

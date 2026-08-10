@@ -6,64 +6,7 @@ import Link from 'next/link';
 import { ShoppingBag, Star, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Mock de produtos - E-commerce Densidade Alta Light
-const mockProdutos = [
-  {
-    id: '1',
-    type: 'AFFILIATE_ML',
-    nome: 'Secador Taiff Vulcan 2500W Profissional',
-    categoria: 'Ferramentas',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_841285-MLU74530026210_022024-F.webp',
-    price: 999.00,
-    rating: 5,
-  },
-  {
-    id: '2',
-    type: 'LOCAL_STOCK',
-    nome: 'Kit Maison Visage Cauterização Capilar',
-    categoria: 'Cosméticos',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_606277-MLB48011246991_102021-F.webp',
-    price: 289.90,
-    rating: 4,
-  },
-  {
-    id: '3',
-    type: 'LOCAL_STOCK',
-    nome: 'Pomada Modeladora Mirra 150g Efeito Teia',
-    categoria: 'Barbearia',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_876939-MLU71790479165_092023-F.webp',
-    price: 45.00,
-    rating: 5,
-  },
-  {
-    id: '4',
-    type: 'AFFILIATE_ML',
-    nome: 'Prancha MQ Pro 480 Bivolt Titanium',
-    categoria: 'Ferramentas',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_992147-MLA47124116233_082021-F.webp',
-    price: 549.90,
-    rating: 5,
-  },
-  {
-    id: '5',
-    type: 'LOCAL_STOCK',
-    nome: 'Óleo Reparador de Pontas Argan 60ml',
-    categoria: 'Finalizadores',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_606277-MLB48011246991_102021-F.webp',
-    price: 79.90,
-    rating: 4,
-  },
-  {
-    id: '6',
-    type: 'AFFILIATE_ML',
-    nome: 'Máquina de Corte Wahl Magic Clip Cordless',
-    categoria: 'Barbearia',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_876939-MLU71790479165_092023-F.webp',
-    price: 899.00,
-    rating: 5,
-  },
-];
-
+import { MOCK_PRODUCTS } from '@/lib/mockProducts';
 const bannerImages = [
   '/opt/produto1.png',
   '/opt/produto2.png',
@@ -139,12 +82,12 @@ export default function LojaHome() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-            {mockProdutos.map((produto) => (
+            {MOCK_PRODUCTS.map((produto) => (
               <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
                 
                 {/* Badges */}
                 <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                  {produto.type === 'AFFILIATE_ML' && (
+                  {produto.isNew && (
                     <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-sm shadow-sm">
                       Recomendado
                     </span>
@@ -154,8 +97,8 @@ export default function LojaHome() {
                 {/* Imagem */}
                 <div className="relative w-full pt-[100%] bg-white">
                   <Image 
-                    src={produto.imagem} 
-                    alt={produto.nome} 
+                    src={produto.image_url} 
+                    alt={produto.name} 
                     fill 
                     className="object-contain p-4 group-hover:scale-105 transition-transform duration-300" 
                   />
@@ -165,12 +108,12 @@ export default function LojaHome() {
                 <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
                   <div className="flex text-amber-400 gap-0.5 mb-1.5">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={10} fill={i < produto.rating ? "currentColor" : "none"} className={i >= produto.rating ? "text-slate-300" : ""} />
+                      <Star key={i} size={10} fill={i < (produto.rating || 5) ? "currentColor" : "none"} className={i >= (produto.rating || 5) ? "text-slate-300" : ""} />
                     ))}
                   </div>
                   
                   <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1">
-                    {produto.nome}
+                    {produto.name}
                   </h3>
                   
                   <div className="mt-auto">

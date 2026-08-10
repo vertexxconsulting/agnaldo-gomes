@@ -48,9 +48,9 @@ export default function AlunoPage() {
                 <label htmlFor="aluno-senha" className="block text-sm font-medium text-foreground/80">
                   Senha
                 </label>
-                <a href="#" className="text-xs text-primary hover:text-primary-hover transition-colors">
+                <Link href="/contato" className="text-xs text-primary hover:text-primary-hover transition-colors">
                   Esqueceu a senha?
-                </a>
+                </Link>
               </div>
               <input
                 id="aluno-senha"

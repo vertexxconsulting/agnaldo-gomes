@@ -10,16 +10,15 @@ const client = new MercadoPagoConfig({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { productId, cep, shippingMethod, product } = body;
+    const { items, cep, shippingMethod } = body;
 
-    if (!productId) {
-      return NextResponse.json({ error: 'ID do Produto é obrigatório.' }, { status: 400 });
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: 'Nenhum item enviado.' }, { status: 400 });
     }
 
-    // Usaremos o produto que vem no body (Simulando uma leitura do banco)
     // Numa versão final, idealmente buscamos o preço no banco (Supabase) para evitar que o cliente manipule o valor.
-    const price = product?.price || 150.00;
-    const title = product?.nome || 'Produto Studio Agnaldo';
+    // O array items deve ser processado buscando os dados no DB
+    const subtotal = items.reduce((acc: number, item: any) => acc + (item.unit_price * item.quantity), 0);
     
     // Cálculo de frete (simulado, posteriormente ligar na API do Melhor Envio)
     let shippingCost = 0;
@@ -35,15 +34,13 @@ export async function POST(request: Request) {
     try {
       const response = await preference.create({
         body: {
-          items: [
-            {
-              id: productId,
-              title: title,
-              quantity: 1,
-              unit_price: price,
-              currency_id: 'BRL',
-            },
-          ],
+          items: items.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            currency_id: 'BRL',
+          })),
           shipments: {
             cost: shippingCost,
             mode: 'not_specified',
@@ -61,7 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         shippingCost,
-        total: price + shippingCost,
+        total: subtotal + shippingCost,
         paymentUrl: response.init_point, // Link para ambiente real (sandbox_init_point para testes)
       });
       
@@ -73,7 +70,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         shippingCost,
-        total: price + shippingCost,
+        total: subtotal + shippingCost,
         paymentUrl: simulatedPaymentLink,
         simulated: true, // Avisa o frontend que foi simulado
       });

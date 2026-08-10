@@ -23,7 +23,9 @@ $$ language 'plpgsql';
 -- ==========================================
 -- 2. TIPOS CUSTOMIZADOS (ENUMS)
 -- ==========================================
-CREATE TYPE user_role AS ENUM ('ADMIN', 'STUDENT', 'CUSTOMER');
+CREATE TYPE user_role AS ENUM ('ADMIN', 'PROFESSIONAL', 'STUDENT', 'CUSTOMER');
+CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
+CREATE TYPE appointment_channel AS ENUM ('ONLINE', 'RECEPTION');
 CREATE TYPE product_type AS ENUM ('LOCAL_STOCK', 'AFFILIATE_ML');
 CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED');
 CREATE TYPE shipping_type AS ENUM ('MOTOBOY', 'CORREIOS', 'JADLOG', 'RETIRADA');
@@ -192,8 +194,88 @@ CREATE TABLE order_items (
 );
 
 
+
 -- ==========================================
--- 6. RLS (ROW LEVEL SECURITY)
+-- 6. TABELAS DO SALÃO (CRM E AGENDA)
+-- ==========================================
+
+-- 6.1. SALON_CUSTOMERS (Clientes do Salão - CRM)
+CREATE TABLE salon_customers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL, -- Pode ser null se o cliente não tiver app
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    birth_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE TRIGGER update_salon_customers_modtime BEFORE UPDATE ON salon_customers FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- 6.2. SALON_SERVICES (Serviços)
+CREATE TABLE salon_services (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    category TEXT,
+    duration_minutes INTEGER NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    active BOOLEAN DEFAULT true,
+    visible_in_app BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE TRIGGER update_salon_services_modtime BEFORE UPDATE ON salon_services FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- 6.3. SALON_PROFESSIONALS (Profissionais)
+CREATE TABLE salon_professionals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    photo_url TEXT,
+    specialties TEXT[],
+    active BOOLEAN DEFAULT true,
+    weekly_schedule JSONB, -- Ex: { "1": {"start": "09:00", "end": "19:00"} }
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE TRIGGER update_salon_professionals_modtime BEFORE UPDATE ON salon_professionals FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- 6.4. SALON_PROFESSIONAL_SERVICES (Vínculo)
+CREATE TABLE salon_professional_services (
+    professional_id UUID REFERENCES salon_professionals(id) ON DELETE CASCADE,
+    service_id UUID REFERENCES salon_services(id) ON DELETE CASCADE,
+    PRIMARY KEY(professional_id, service_id)
+);
+
+-- 6.5. SALON_APPOINTMENTS (Agendamentos)
+CREATE TABLE salon_appointments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    customer_id UUID REFERENCES salon_customers(id) ON DELETE RESTRICT,
+    professional_id UUID REFERENCES salon_professionals(id) ON DELETE RESTRICT,
+    service_id UUID REFERENCES salon_services(id) ON DELETE RESTRICT,
+    date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status appointment_status NOT NULL DEFAULT 'PENDING',
+    channel appointment_channel NOT NULL DEFAULT 'ONLINE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE TRIGGER update_salon_appointments_modtime BEFORE UPDATE ON salon_appointments FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- 6.6. SALON_SCHEDULE_BLOCKS (Bloqueios de Agenda)
+CREATE TABLE salon_schedule_blocks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    professional_id UUID REFERENCES salon_professionals(id) ON DELETE CASCADE,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- ==========================================
+-- 7. RLS (ROW LEVEL SECURITY)
 -- ==========================================
 -- Habilitar RLS em todas as tabelas relevantes
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -206,7 +288,7 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
--- 6.1. PROFILES
+-- 7.1. PROFILES
 -- Cada usuário vê/edita apenas o próprio perfil. Admins veem todos.
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
@@ -214,7 +296,7 @@ CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
 );
 
--- 6.2. COURSES, MODULES, LESSONS
+-- 7.2. COURSES, MODULES, LESSONS
 -- Todos veem cursos publicados. Admins gerenciam todos os cursos.
 CREATE POLICY "Published courses are visible to everyone" ON courses FOR SELECT USING (status = 'PUBLISHED');
 CREATE POLICY "Admins manage courses" ON courses FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
@@ -229,19 +311,19 @@ CREATE POLICY "Lessons visible if course is published" ON lessons FOR SELECT USI
 );
 CREATE POLICY "Admins manage lessons" ON lessons FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
 
--- 6.3. ENROLLMENTS & PROGRESS
+-- 7.3. ENROLLMENTS & PROGRESS
 -- Alunos veem as próprias compras/progresso.
 CREATE POLICY "Users view own enrollments" ON course_enrollments FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Users view own progress" ON lesson_progress FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Users update own progress" ON lesson_progress FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "Admins manage enrollments" ON course_enrollments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
 
--- 6.4. PRODUCTS
+-- 7.4. PRODUCTS
 -- Todos veem produtos ativos. Admins gerenciam.
 CREATE POLICY "Active products visible to everyone" ON products FOR SELECT USING (active = true);
 CREATE POLICY "Admins manage products" ON products FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
 
--- 6.5. ORDERS & ITEMS
+-- 7.5. ORDERS & ITEMS
 -- Usuários veem próprios pedidos. Admins gerenciam.
 CREATE POLICY "Users view own orders" ON orders FOR SELECT USING (customer_id = auth.uid());
 CREATE POLICY "Users insert own orders" ON orders FOR INSERT WITH CHECK (true);
@@ -251,3 +333,41 @@ CREATE POLICY "Users view own order items" ON order_items FOR SELECT USING (
   EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND orders.customer_id = auth.uid())
 );
 CREATE POLICY "Users insert own order items" ON order_items FOR INSERT WITH CHECK (true);
+
+
+-- 7.6. SALON
+ALTER TABLE salon_customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salon_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salon_professionals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salon_professional_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salon_appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salon_schedule_blocks ENABLE ROW LEVEL SECURITY;
+
+-- Serviços e Profissionais são públicos
+CREATE POLICY "Salon services are visible to everyone" ON salon_services FOR SELECT USING (active = true AND visible_in_app = true);
+CREATE POLICY "Salon professionals are visible to everyone" ON salon_professionals FOR SELECT USING (active = true);
+CREATE POLICY "Salon professional services are visible to everyone" ON salon_professional_services FOR SELECT USING (true);
+
+-- Agendamentos: Clientes veem os próprios
+CREATE POLICY "Customers view own appointments" ON salon_appointments FOR SELECT USING (
+  EXISTS (SELECT 1 FROM salon_customers WHERE salon_customers.id = salon_appointments.customer_id AND salon_customers.user_id = auth.uid())
+);
+CREATE POLICY "Customers insert own appointments" ON salon_appointments FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM salon_customers WHERE salon_customers.id = salon_appointments.customer_id AND salon_customers.user_id = auth.uid())
+);
+
+-- Profissionais veem seus próprios agendamentos e bloqueios
+CREATE POLICY "Professionals view own appointments" ON salon_appointments FOR SELECT USING (
+  EXISTS (SELECT 1 FROM salon_professionals WHERE salon_professionals.id = salon_appointments.professional_id AND salon_professionals.user_id = auth.uid())
+);
+CREATE POLICY "Professionals view own blocks" ON salon_schedule_blocks FOR SELECT USING (
+  EXISTS (SELECT 1 FROM salon_professionals WHERE salon_professionals.id = salon_schedule_blocks.professional_id AND salon_professionals.user_id = auth.uid())
+);
+
+-- Admins gerenciam tudo do Salão
+CREATE POLICY "Admins manage salon_customers" ON salon_customers FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));
+CREATE POLICY "Admins manage salon_services" ON salon_services FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage salon_professionals" ON salon_professionals FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage salon_appointments" ON salon_appointments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));
+CREATE POLICY "Admins manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));

@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
-    { href: '/admin/loja', label: 'Gestão da Loja', icon: ShoppingBag },
+    { href: '/admin-loja', label: 'Gestão da Loja', icon: ShoppingBag },
     { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 

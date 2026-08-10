@@ -14,6 +14,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
   const itemCount = useCartStore((state) => state.getItemCount());
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -23,7 +24,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       {/* Topbar / Aviso - Escuro elegante no lugar do verde */}
       <div className="bg-[#1A1A1A] text-white text-[11px] md:text-xs uppercase tracking-widest text-center py-2 font-medium flex items-center justify-center gap-4">
         <span>FRETE GRÁTIS NAS COMPRAS ACIMA DE R$ 299,00</span>
-        <Link href="#" className="border border-white/40 px-3 py-0.5 hover:bg-white hover:text-black transition-colors text-[10px]">Saiba Mais</Link>
+        <Link href="/loja" className="border border-white/40 px-3 py-0.5 hover:bg-white hover:text-black transition-colors text-[10px]">Saiba Mais</Link>
       </div>
 
       {/* Header E-commerce - Tom Bege/Areia */}
@@ -64,12 +65,12 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
 
           {/* Direita: Conta, Atendimento & Carrinho */}
           <div className="flex items-center justify-end gap-6 text-slate-700">
-            <Link href="#" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
+            <Link href="/contato" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
               <User size={20} />
               <span>Atendimento</span>
             </Link>
             
-            <Link href="#" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
+            <Link href="/perfil" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
               <User size={20} />
               <span>Minha Conta</span>
             </Link>
@@ -152,12 +153,12 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       </main>
 
       {/* Footer Elegante */}
-      <footer className="bg-[#0a0a0a] text-slate-400 py-10 mt-16 border-t border-white/5">
+      <footer className="bg-[#F4F1EA] text-slate-600 py-10 mt-16 border-t border-[#E5E0D8]">
         <div className="container mx-auto px-4 md:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-1 sm:col-span-2">
              <div className="flex items-center gap-3 mb-6">
                 <Image 
-                  src="/opt/logo-branca.webp" 
+                  src="/opt/logo.webp" 
                   alt="Agnaldo Gomes Logo" 
                   width={110} 
                   height={110} 
@@ -167,23 +168,23 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
             <p className="text-xs leading-relaxed max-w-sm">A curadoria perfeita para profissionais da beleza. Produtos testados e aprovados pela experiência de Agnaldo Gomes.</p>
           </div>
           <div>
-            <h3 className="text-white font-bold text-xs uppercase tracking-widest mb-4">Atendimento</h3>
-            <ul className="space-y-2 text-xs text-slate-500">
+            <h3 className="text-slate-900 font-bold text-xs uppercase tracking-widest mb-4">Atendimento</h3>
+            <ul className="space-y-2 text-xs text-slate-600">
               <li>Segunda a Sábado, 09h às 18h</li>
               <li>WhatsApp: (42) 99999-9999</li>
               <li>contato@agnaldogomes.com.br</li>
             </ul>
           </div>
           <div>
-            <h3 className="text-white font-bold text-xs uppercase tracking-widest mb-4">Políticas</h3>
-            <ul className="space-y-2 text-xs text-slate-500">
-              <li><Link href="#" className="hover:text-amber-500 transition-colors">Trocas e Devoluções</Link></li>
-              <li><Link href="#" className="hover:text-amber-500 transition-colors">Prazos e Entregas</Link></li>
-              <li><Link href="#" className="hover:text-amber-500 transition-colors">Termos de Uso</Link></li>
+            <h3 className="text-slate-900 font-bold text-xs uppercase tracking-widest mb-4">Políticas</h3>
+            <ul className="space-y-2 text-xs text-slate-600">
+              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Trocas e Devoluções</Link></li>
+              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Prazos e Entregas</Link></li>
+              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Termos de Uso</Link></li>
             </ul>
           </div>
         </div>
-        <div className="container mx-auto px-4 md:px-6 mt-10 pt-6 border-t border-white/10 text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="container mx-auto px-4 md:px-6 mt-10 pt-6 border-t border-[#E5E0D8] text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
           <p>© {new Date().getFullYear()} Agnaldo Gomes Store. Todos os direitos reservados.</p>
           <div className="flex gap-4 opacity-70">
             <span>PIX</span>

@@ -8,44 +8,11 @@ import { useCartStore } from '@/store/cartStore';
 import { Star, Truck, ShieldCheck, ShoppingBag, ExternalLink } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
-// Mock
-const mockProdutos = [
-  {
-    id: '1',
-    type: 'AFFILIATE_ML',
-    nome: 'Secador Taiff Vulcan 2500W Profissional',
-    categoria: 'Ferramentas',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_841285-MLU74530026210_022024-F.webp',
-    price: 999.00,
-    rating: 5,
-    descricao: 'Secador profissional de alta performance com motor V12, garantindo mais secagem em menos tempo. Ideal para o uso intenso no salão de beleza.',
-    link: 'https://www.mercadolivre.com.br/'
-  },
-  {
-    id: '2',
-    type: 'LOCAL_STOCK',
-    nome: 'Kit Maison Visage Cauterização Capilar Completo',
-    categoria: 'Cosméticos',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_606277-MLB48011246991_102021-F.webp',
-    price: 289.90,
-    rating: 4,
-    descricao: 'O kit perfeito para reconstrução capilar. Repõe a queratina perdida e sela as cutículas, proporcionando um brilho espelhado que suas clientes vão amar.',
-  },
-  {
-    id: '3',
-    type: 'LOCAL_STOCK',
-    nome: 'Pomada Modeladora Mirra 150g Efeito Teia',
-    categoria: 'Barbearia',
-    imagem: 'https://http2.mlstatic.com/D_NQ_NP_2X_876939-MLU71790479165_092023-F.webp',
-    price: 45.00,
-    rating: 5,
-    descricao: 'Efeito matte (seco) com fixação extra forte. Mantém o penteado estruturado o dia inteiro sem deixar resíduos brancos.',
-  }
-];
+import { MOCK_PRODUCTS } from '@/lib/mockProducts';
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const produto = mockProdutos.find(p => p.id === params.id);
+  const produto = MOCK_PRODUCTS.find(p => p.id === params.id);
   const addItem = useCartStore(state => state.addItem);
   
   const [cep, setCep] = useState('');
@@ -58,9 +25,9 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     addItem({
       id: produto.id,
-      name: produto.nome,
+      name: produto.name,
       price: produto.price,
-      image_url: produto.imagem,
+      image_url: produto.image_url,
       quantity: 1
     });
     alert('Adicionado ao carrinho!');
@@ -82,9 +49,9 @@ export default function ProductDetailPage() {
       <nav className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-6 uppercase tracking-wider">
         <Link href="/loja" className="hover:text-amber-500 transition-colors">Home</Link>
         <span>/</span>
-        <Link href={`/loja?cat=${produto.categoria}`} className="hover:text-amber-500 transition-colors">{produto.categoria}</Link>
+        <Link href={`/loja?cat=${produto.category}`} className="hover:text-amber-500 transition-colors">{produto.category}</Link>
         <span>/</span>
-        <span className="text-slate-900 font-medium truncate max-w-[200px] sm:max-w-md">{produto.nome}</span>
+        <span className="text-slate-900 font-medium truncate max-w-[200px] sm:max-w-md">{produto.name}</span>
       </nav>
 
       <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
@@ -93,8 +60,8 @@ export default function ProductDetailPage() {
         <div className="w-full md:w-[45%] lg:w-[40%] shrink-0 flex flex-col gap-3">
           <div className="bg-white border border-slate-200 aspect-square relative flex items-center justify-center overflow-hidden rounded-sm shadow-sm">
             <Image 
-              src={produto.imagem} 
-              alt={produto.nome} 
+              src={produto.image_url} 
+              alt={produto.name} 
               fill 
               className="object-contain p-8"
             />
@@ -108,7 +75,7 @@ export default function ProductDetailPage() {
           <div className="grid grid-cols-4 gap-2">
              {[1,2,3,4].map((i) => (
                <div key={i} className={`bg-white aspect-square border ${i===1 ? 'border-amber-500 shadow-sm' : 'border-slate-200'} relative cursor-pointer hover:border-amber-500 transition-colors rounded-sm`}>
-                  <Image src={produto.imagem} alt="" fill className="object-contain p-2" />
+                  <Image src={produto.image_url} alt="" fill className="object-contain p-2" />
                </div>
              ))}
           </div>
@@ -116,13 +83,13 @@ export default function ProductDetailPage() {
 
         {/* Lado Direito - Info & Compra */}
         <div className="flex-1 flex flex-col">
-          <div className="text-[10px] text-amber-600 font-bold uppercase tracking-widest mb-1.5">{produto.categoria}</div>
-          <h1 className="text-xl md:text-2xl font-light text-slate-900 leading-snug mb-3">{produto.nome}</h1>
+          <div className="text-[10px] text-amber-600 font-bold uppercase tracking-widest mb-1.5">{produto.category}</div>
+          <h1 className="text-xl md:text-2xl font-light text-slate-900 leading-snug mb-3">{produto.name}</h1>
           
           <div className="flex items-center gap-2 mb-4">
             <div className="flex text-amber-400 gap-0.5">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} size={12} fill={i < produto.rating ? "currentColor" : "none"} className={i >= produto.rating ? "text-slate-200" : ""} />
+                <Star key={i} size={12} fill={i < (produto.rating || 5) ? "currentColor" : "none"} className={i >= (produto.rating || 5) ? "text-slate-200" : ""} />
               ))}
             </div>
             <span className="text-slate-500 text-[11px]">(12 avaliações)</span>
@@ -190,7 +157,7 @@ export default function ProductDetailPage() {
           <div className="border-t border-slate-200 pt-6 mt-2">
             <h3 className="text-sm font-bold text-slate-900 mb-2">Descrição do Produto</h3>
             <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-              {produto.descricao}
+              {produto.description}
             </p>
           </div>
 

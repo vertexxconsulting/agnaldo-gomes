@@ -18,6 +18,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     if (items.length === 0) {
       router.push('/loja/carrinho');
@@ -47,17 +48,24 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productId: items[0]?.id,
+          items: items.map(item => ({
+            id: item.id,
+            title: item.name,
+            quantity: item.quantity,
+            unit_price: item.price
+          })),
           cep,
           shippingMethod,
-          product: { nome: 'Pedido AG Store', price: getTotal() } 
         })
       });
       const data = await res.json();
-      if (data.paymentUrl) {
+      if (data.paymentUrl && !data.simulated) {
         window.location.href = data.paymentUrl;
+      } else if (data.simulated) {
+        alert('Modo Demonstração: Pagamento indisponível. Pedido não foi processado.');
       }
     } catch (err) {
+      console.error(err);
       alert('Erro ao gerar sessão de pagamento.');
     } finally {
       setIsProcessing(false);

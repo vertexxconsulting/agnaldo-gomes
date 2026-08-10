@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Documentos de construcao ficam LOCAIS (nunca sobem pro GitHub)
+/docs/
+/Base de Prompts/
+/DOCUMENTATION.md

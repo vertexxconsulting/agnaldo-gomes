@@ -132,7 +132,7 @@ export default function AdminLojaProdutos() {
                     {produto.type === 'AFFILIATE_ML' ? (
                       <span className="text-slate-400 text-sm">-</span>
                     ) : (
-                      <span className={`text-sm font-semibold ${produto.stock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      <span className={`text-sm font-semibold ${(produto.stock ?? 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {produto.stock} unid.
                       </span>
                     )}

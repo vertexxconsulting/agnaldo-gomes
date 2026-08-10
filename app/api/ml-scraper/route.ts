@@ -32,8 +32,8 @@ export async function GET(request: Request) {
     const priceMatch = html.match(/<meta itemprop="price" content="([^"]+)"/i);
 
     let title = titleMatch ? titleMatch[1] : '';
-    let image = imageMatch ? imageMatch[1] : '';
-    let price = priceMatch ? priceMatch[1] : '';
+    const image = imageMatch ? imageMatch[1] : '';
+    const price = priceMatch ? priceMatch[1] : '';
 
     // Limpar o " | MercadoLivre" do final do título, caso tenha
     if (title) {

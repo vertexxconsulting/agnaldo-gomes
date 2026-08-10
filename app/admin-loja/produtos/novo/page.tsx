@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, Link as LinkIcon, Box, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info } from 'lucide-react';
 
 export default function NovoProdutoPage() {
   const [productType, setProductType] = useState<'AFFILIATE_ML' | 'LOCAL_STOCK'>('AFFILIATE_ML');
@@ -68,7 +68,7 @@ export default function NovoProdutoPage() {
                   <input type="url" placeholder="https://produto.mercadolivre.com.br/..." className="flex-1 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
                   <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">Extrair Dados</button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Cole o link acima e clique em "Extrair" para puxar nome, preço e fotos automaticamente.</p>
+                <p className="text-xs text-slate-500 mt-1">Cole o link acima e clique em &quot;Extrair&quot; para puxar nome, preço e fotos automaticamente.</p>
               </div>
             )}
 
@@ -164,9 +164,10 @@ export default function NovoProdutoPage() {
               <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP (Máx: 2MB)</p>
             </div>
             {productType === 'AFFILIATE_ML' && (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md">
-                Ao extrair os dados do Mercado Livre, a imagem principal será preenchida automaticamente aqui!
-              </p>
+              <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-6 flex items-start gap-3">
+                <Info className="shrink-0 mt-0.5" size={18} />
+                <p>Ao salvar um link do Mercado Livre, o sistema buscará automaticamente o preço e o estoque se disponível. Produtos do Mercado Livre aparecem com o selo &quot;Afiliado&quot; na vitrine.</p>
+              </div>
             )}
           </div>
 

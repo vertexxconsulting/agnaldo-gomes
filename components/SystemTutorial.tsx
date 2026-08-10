@@ -29,7 +29,7 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
             <div className="glass p-5 rounded-xl border border-white/5">
               <CalendarDays className="text-primary mb-3" size={24} />
               <h4 className="font-bold mb-2">Agenda</h4>
-              <p className="text-sm text-foreground/70">Visualize todos os horários marcados. Os agendamentos feitos pelo site caem aqui com status "Pendente" aguardando sua aprovação.</p>
+              <p className="text-sm text-foreground/70">Visualize todos os horários marcados. Os agendamentos feitos pelo site caem aqui com status &quot;Pendente&quot; aguardando sua aprovação.</p>
             </div>
             <div className="glass p-5 rounded-xl border border-white/5">
               <Users className="text-primary mb-3" size={24} />
@@ -107,7 +107,7 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
         <div className="space-y-4">
           <h3 className="text-xl font-bold border-b border-white/10 pb-2">Como cadastrar um Novo Curso?</h3>
           <ul className="list-decimal list-inside space-y-3 text-foreground/80 text-sm bg-card/50 p-6 rounded-xl border border-white/5">
-            <li>Acesse a aba <strong className="text-white">Cursos</strong> e clique em "Novo Curso".</li>
+            <li>Acesse a aba <strong className="text-white">Cursos</strong> e clique em &quot;Novo Curso&quot;.</li>
             <li>Preencha Título, Descrição, Formato (Online/Presencial) e Valor.</li>
             <li>Adicione uma imagem de capa atrativa.</li>
             <li>Após criar o curso, entre nele e clique em <strong className="text-white">Novo Módulo</strong>.</li>
