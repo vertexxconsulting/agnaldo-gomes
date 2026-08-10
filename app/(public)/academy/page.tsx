@@ -123,7 +123,7 @@ export default function AcademyPage() {
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
           <p className="text-foreground/80 text-base leading-relaxed">
             <strong>Agnaldo Gomes</strong> — 30 anos de experiência, formado nas academias{" "}
-            <strong>Pivot Point, Toni & Guy e Llongueras</strong> e técnico <strong>Truss</strong>.{" "}
+            <strong>Pivot Point, Toni & Guy e Llongueras</strong>.{" "}
             Cursos presenciais e online que formam profissionais de elite e elevam o faturamento do seu salão.
           </p>
         </div>
@@ -196,8 +196,7 @@ export default function AcademyPage() {
             <p className="leading-relaxed max-w-2xl mx-auto">
               Especialista em cortes, coloração e mechas, formado nas academias{" "}
               <strong>Pivot Point, Toni &amp; Guy e Llongueras</strong>. Iniciou a carreira aos 13 anos,
-              com <strong>30 anos de experiência</strong>, e integra o time <strong>Truss</strong> há 7 anos
-              como técnico e <strong>Truss Lover</strong>.
+              com <strong>mais de 30 anos de experiência</strong>, sendo um educador apaixonado por repassar técnicas de elite.
             </p>
             <p className="flex items-center justify-center gap-2 text-sm text-foreground/60">
               <MapPin size={16} className="text-primary" /> Rua Prof.ª Otília Macedo Sikorski, 16 — Telêmaco Borba · PR

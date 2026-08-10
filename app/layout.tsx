@@ -14,8 +14,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'Agnaldo Gomes | Premium Studio & Academy',
-  description: 'Studio de beleza premium e Academy para profissionais por Agnaldo Gomes.',
+  title: 'Agnaldo Gomes | Cabeleireiro • Educador • Apaixonado pela Beleza',
+  description: 'Mais de 30 anos transformando vidas através da beleza. Agnaldo Gomes é cabeleireiro, educador e embaixador de marcas premium — Studio de Beleza e Academy em Telêmaco Borba/PR.',
 };
 
 /**

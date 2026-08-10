@@ -33,7 +33,7 @@ export function Footer() {
             </div>
           </Link>
           <p className="text-sm leading-relaxed max-w-xs">
-            Elevando o padrão da beleza através de um studio premium e uma academia focada em formar os melhores profissionais do mercado.
+            Mais de 30 anos transformando vidas pela beleza. Cabeleireiro, educador e apaixonado por compartilhar conhecimento com profissionais que sonham em crescer.
           </p>
           <div className="flex flex-col gap-2 mt-3">
             {/* Perfil pessoal */}
@@ -59,7 +59,7 @@ export function Footer() {
           <h4 className="font-semibold mb-6 uppercase tracking-widest text-sm">Navegação</h4>
           <ul className="flex flex-col gap-3 text-sm">
             <li><Link href="/" className="hover:text-primary transition-colors">Home</Link></li>
-            <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre Nós</Link></li>
+            <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre Agnaldo</Link></li>
             <li><Link href="/academy" className="hover:text-primary transition-colors">Academy</Link></li>
             <li><Link href="/studio" className="hover:text-primary transition-colors">Studio de Beleza</Link></li>
             <li><Link href="/aluno" className="hover:text-primary transition-colors">Área do Aluno</Link></li>

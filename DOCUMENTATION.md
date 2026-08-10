@@ -17,6 +17,13 @@ Rotas abertas para o público, envoltas pelo `app/(public)/layout.tsx` que injet
 *   **`/` (Home):** A página principal do estúdio, focada em conversão. Apresenta Hero animado, sobre o artista (com efeito Parallax), serviços do salão, carrossel de marcas parceiras (`CarouselBackground` com transição lateral) e depoimentos.
 *   **`/academy`:** A landing page de vendas dos cursos online. Focada em persuadir novos alunos a comprarem os módulos de formação (Visagismo, Coloração, etc.).
 
+### 🛍️ E-commerce (Loja Pública)
+A vitrine de produtos isolada em `app/(shop)/layout.tsx` para garantir que o layout da loja (tema claro, logo em destaque) não interfira no layout escuro do site institucional.
+*   **`/loja`:** A vitrine principal com carrossel de banners automáticos, grade de produtos de alta densidade e design sofisticado (Bege/Areia).
+*   **`/loja/p/[id]`:** Página de detalhes do produto, com botão de adicionar ao carrinho.
+*   **`/loja/carrinho`:** Tela de resumo das compras.
+*   **`/loja/checkout`:** Tela final preparada para integração com Mercado Pago e Melhor Envio.
+
 ### ⚙️ Sistema de Gestão (Admin)
 O painel administrativo exclusivo para a equipe do salão. Possui um layout próprio com Sidebar lateral e é separado do site institucional.
 
@@ -24,6 +31,14 @@ O painel administrativo exclusivo para a equipe do salão. Possui um layout pró
 *   **`/admin` (Dashboard):** Tela inicial da gestão com gráficos simulados, KPIs de faturamento e agendamentos recentes.
 *   **`/admin/sistema`:** Tela de configurações gerais da plataforma (integrações com WhatsApp, banco de dados, backups e temas).
 *   **`/admin/perfil`:** Gerenciamento dos dados pessoais e senha do administrador (acessado pelo botão de usuário no menu).
+
+### 📦 Gestão da Loja (Admin E-commerce)
+Painel exclusivo para controle do E-commerce em `app/admin-loja`, fisicamente separado da gestão do salão.
+*   **`/admin-loja` (Dashboard):** Visão geral de vendas, KPIs de receita e fila de pedidos recentes.
+*   **`/admin-loja/produtos`:** Inventário que diferencia claramente produtos de Estoque Local vs. Afiliados (Mercado Livre).
+*   **`/admin-loja/produtos/novo`:** Formulário inteligente que altera os campos requeridos dinamicamente (pede dimensões/peso para frete de estoque físico; pede apenas link e preço para itens do ML).
+*   **`/admin-loja/pedidos`:** Central de controle de envios (ex: Motoboy, Melhor Envio) e status de pagamento.
+*   **`/admin-loja/configuracoes`:** Tela segura para configuração dos Tokens do Mercado Pago (checkout) e Melhor Envio (frete).
 
 ### 🎓 Área do Aluno (Academy Members)
 Um ambiente restrito, desenhado no estilo "plataforma de streaming" (Netflix), focando na imersão e consumo das vídeo-aulas (padrão Dark Mode).
@@ -50,6 +65,12 @@ Uma pasta dedicada a abstrair a biblioteca `framer-motion`:
 *   `Reveal`: Faz o conteúdo surgir suavemente conforme o usuário dá scroll (Fade In / Slide Up).
 *   `Stagger` / `StaggerItem`: Exibe listas ou grupos de cards um de cada vez, criando um efeito de cascata lindo na interface.
 *   `ParallaxImage`: Usado na foto de perfil do Agnaldo na home, fazendo a imagem se deslocar em velocidade diferente do scroll da página.
+
+---
+
+## 4. Gerenciamento de Estado e Regras de Negócio E-commerce
+*   **Estado Global do Carrinho (`store/cartStore.ts`)**: Utilizamos a biblioteca **Zustand** combinada com `persist` para armazenar os itens do carrinho no `localStorage`. Isso impede a perda do carrinho no refresh da página. Adicionamos verificações estritas de estado `mounted` no cliente para evitar os temidos erros de *Hydration Mismatch* do Next.js.
+*   **Remote Patterns**: O arquivo `next.config.ts` foi instruído a baixar imagens dos servidores `http2.mlstatic.com` para permitir o rendering direto de fotos de produtos do Mercado Livre com o componente `<Image>` ultra otimizado.
 
 ---
 

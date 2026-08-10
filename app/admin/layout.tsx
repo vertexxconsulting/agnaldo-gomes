@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft, X, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft, X, BookOpen, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -18,6 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
+    { href: '/admin/loja', label: 'Gestão da Loja', icon: ShoppingBag },
     { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 

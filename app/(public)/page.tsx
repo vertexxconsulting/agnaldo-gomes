@@ -113,7 +113,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p variants={fadeUp} className="text-white/80 text-base md:text-lg max-w-lg font-light leading-relaxed mt-2">
-            Onde a arte encontra a técnica. Studio de beleza premium e Academy para formação de profissionais de elite.
+            Mais de 30 anos transformando vidas através das mãos de um artista. Cabeleireiro, Educador e Apaixonado pela Beleza.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
@@ -165,26 +165,35 @@ export default function Home() {
           <Stagger className="flex flex-col gap-6 lg:col-span-7">
             <StaggerItem>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-                30 anos <br />
-                <span className="text-gradient">refinando a arte capilar</span>
+                +30 anos <br />
+                <span className="text-gradient">transformando vidas pela beleza</span>
               </h2>
             </StaggerItem>
             <StaggerItem>
               <p className="text-foreground/80 text-base leading-relaxed">
-                Agnaldo Gomes é especialista em cortes, coloração e mechas, formado nas academias{" "}
-                <strong>Pivot Point, Toni &amp; Guy e Llongueras</strong>. Com 30 anos de experiência — iniciados aos 13 — ele transforma cada cliente na sua melhor versão.
+                Sou <strong>Agnaldo Gomes</strong> — cabeleireiro, educador, esposo da Ana Mary e pai do Gabriel e do Matheus. Minha história com a beleza começou aos 13 anos, e hoje, com mais de três décadas de experiência, descobri que minha missão vai muito além de transformar cabelos.
               </p>
             </StaggerItem>
             <StaggerItem>
               <p className="text-foreground/80 text-base leading-relaxed">
-                Integra o time <strong>Truss</strong> há 7 anos como técnico e <strong>Truss Lover</strong>, e sua academia já formou centenas de profissionais que hoje são referência no mercado.
+                Uma das minhas maiores paixões é <strong>ensinar</strong>. Amo dar aulas, compartilhar técnicas, dividir experiências e levar conhecimento para outros profissionais que também sonham em crescer na área da beleza.
               </p>
             </StaggerItem>
             <StaggerItem>
-              <div className="flex gap-4 mt-6">
+              <p className="text-foreground/80 italic text-sm border-l-2 border-primary pl-4 text-foreground/60">
+                ✨ Beleza transforma. Conhecimento multiplica.
+              </p>
+            </StaggerItem>
+            <StaggerItem>
+              <div className="flex gap-4 mt-2 flex-col sm:flex-row">
                 <Link href="/academy">
                   <Button variant="primary" size="lg" className="uppercase tracking-widest text-sm">
                     Conheça os Cursos
+                  </Button>
+                </Link>
+                <Link href="/sobre">
+                  <Button variant="outline" size="lg" className="uppercase tracking-widest text-sm">
+                    Minha História
                   </Button>
                 </Link>
               </div>
@@ -199,7 +208,7 @@ export default function Home() {
         <div className="container relative z-10 mx-auto px-6">
           <SectionTitle title="Artista das Marcas" subtitle="Embaixador técnico de referência" align="center" />
           <p className="text-center text-foreground/60 text-sm mb-12 max-w-2xl mx-auto">
-            Agnaldo Gomes atua como artista e embaixadora das marcas que impulsionam seu trabalho.
+            Agnaldo Gomes atua como artista e embaixador das marcas que impulsionam seu trabalho e sua missão de compartilhar beleza e conhecimento.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8">
             <a
@@ -312,24 +321,24 @@ export default function Home() {
           <Stagger className="flex flex-col items-center gap-6">
             <StaggerItem>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-                Pronto para <span className="text-gradient">transformar sua imagem?</span>
+                Seja muito <span className="text-gradient">bem-vindo!</span>
               </h2>
             </StaggerItem>
             <StaggerItem>
               <p className="text-foreground/70 text-base max-w-xl">
-                Agende seu horário no Studio ou reserve sua vaga na Academy. Comece hoje a sua melhor versão.
+                Este é um espaço para compartilhar trajetória, trabalhos, cursos, técnicas e tudo que aprendi em mais de três décadas dedicadas à profissão.
               </p>
             </StaggerItem>
             <StaggerItem>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <Link href="/agendamento">
                   <Button variant="primary" size="lg" className="uppercase tracking-widest text-sm w-full sm:w-auto">
-                    Agendar Agora
+                    Agendar no Studio
                   </Button>
                 </Link>
                 <Link href="/academy">
                   <Button variant="outline" size="lg" className="uppercase tracking-widest text-sm w-full sm:w-auto">
-                    Conhecer os Cursos
+                    Explorar a Academy
                   </Button>
                 </Link>
               </div>

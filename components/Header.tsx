@@ -11,6 +11,7 @@ const navLinks = [
   { name: 'Início', href: '/' },
   { name: 'Studio', href: '/studio' },
   { name: 'Academy', href: '/academy' },
+  { name: 'Sobre', href: '/sobre' },
 ];
 
 // Rotas dos sistemas — acessíveis apenas por URL direta (fora do menu público)
