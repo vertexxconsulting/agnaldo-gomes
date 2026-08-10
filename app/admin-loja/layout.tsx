@@ -89,11 +89,11 @@ export default function AdminLojaLayout({
         {/* Footer Area */}
         <div className="p-4 border-t border-white/10">
           <Link 
-            href="/admin" 
+            href="/loja" 
             className="flex items-center gap-3 px-4 py-3 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
           >
             <ArrowLeft size={18} />
-            <span>Voltar ao Salão</span>
+            <span>Voltar à Loja</span>
           </Link>
         </div>
       </aside>
