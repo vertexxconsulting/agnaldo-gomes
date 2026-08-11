@@ -17,13 +17,14 @@ function getCategoryNameFromSlug(slug: string): string {
   return map[slug] || slug.replace(/-/g, ' ');
 }
 
-export default async function CategoriaPage({ params }: { params: { slug: string } }) {
-  const categoryName = getCategoryNameFromSlug(params.slug);
+export default async function CategoriaPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const categoryName = getCategoryNameFromSlug(resolvedParams.slug);
   
   // Buscar produtos reais no Supabase
   let query = supabase.from('products').select('*').eq('active', true);
   
-  if (params.slug !== 'mais-vendidos' && params.slug !== 'recomendacoes') {
+  if (resolvedParams.slug !== 'mais-vendidos' && resolvedParams.slug !== 'recomendacoes') {
     query = query.eq('category', categoryName);
   }
   
