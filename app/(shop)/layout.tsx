@@ -153,16 +153,16 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       </main>
 
       {/* Footer Elegante */}
-      <footer className="bg-[#F4F1EA] text-slate-600 py-10 mt-16 border-t border-[#E5E0D8]">
-        <div className="container mx-auto px-4 md:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+      <footer className="bg-[#F4F1EA] text-slate-600 py-6 mt-8 border-t border-[#E5E0D8]">
+        <div className="container mx-auto px-4 md:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="col-span-1 sm:col-span-2">
-             <div className="flex items-center gap-3 mb-6">
+             <div className="flex items-center gap-3 mb-3">
                 <Image 
-                  src="/opt/logo.webp" 
+                  src="/logo.png" 
                   alt="Agnaldo Gomes Logo" 
-                  width={110} 
-                  height={110} 
-                  className="object-contain"
+                  width={140} 
+                  height={50} 
+                  className="object-contain h-10 w-auto"
                 />
              </div>
             <p className="text-xs leading-relaxed max-w-sm">A curadoria perfeita para profissionais da beleza. Produtos testados e aprovados pela experiência de Agnaldo Gomes.</p>
@@ -184,13 +184,13 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
             </ul>
           </div>
         </div>
-        <div className="container mx-auto px-4 md:px-6 mt-10 pt-6 border-t border-[#E5E0D8] text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="container mx-auto px-4 md:px-6 mt-6 pt-4 border-t border-[#E5E0D8] text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
           <p>© {new Date().getFullYear()} Agnaldo Gomes Store. Todos os direitos reservados.</p>
-          <div className="flex gap-4 opacity-70">
-            <span>PIX</span>
-            <span>MERCADO PAGO</span>
-            <span>VISA</span>
-            <span>MASTERCARD</span>
+          <div className="flex gap-3 opacity-60">
+            <Image src="/pagamentos/pix.svg" alt="Pix" width={24} height={24} className="h-4 w-auto grayscale" />
+            <Image src="/pagamentos/mercadopago.svg" alt="Mercado Pago" width={24} height={24} className="h-4 w-auto grayscale" />
+            <Image src="/pagamentos/visa.svg" alt="Visa" width={24} height={24} className="h-4 w-auto grayscale" />
+            <Image src="/pagamentos/mastercard.svg" alt="Mastercard" width={24} height={24} className="h-4 w-auto grayscale" />
           </div>
         </div>
       </footer>
