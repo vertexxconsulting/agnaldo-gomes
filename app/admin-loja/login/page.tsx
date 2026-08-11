@@ -14,6 +14,8 @@ export default function AdminLojaLoginPage() {
       cta="Acessar Loja"
       redirectTo="/admin-loja"
       hint="Digite o e-mail e senha cadastrados no Supabase para acessar o painel administrativo da loja."
+      backHref="/loja"
+      backLabel="Voltar à loja"
     />
   );
 }

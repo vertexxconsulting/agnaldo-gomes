@@ -40,6 +40,8 @@ interface SplitLoginProps {
   registerHref?: string;
   registerLabel?: string;
   hint?: string;
+  backHref?: string;
+  backLabel?: string;
 }
 
 /**
@@ -58,6 +60,8 @@ export function SplitLogin({
   registerHref,
   registerLabel = 'Criar conta',
   hint = 'Modo teste: use qualquer e-mail válido e senha com 6+ caracteres.',
+  backHref = '/',
+  backLabel = 'Voltar ao site',
 }: SplitLoginProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -272,8 +276,8 @@ export function SplitLogin({
             )}
 
             <motion.div className="text-center" variants={ITEM_VARIANTS}>
-              <Link href="/" className="inline-flex items-center gap-1 text-sm text-foreground/40 hover:text-foreground/70 transition-colors">
-                <ArrowLeft size={14} /> Voltar ao site
+              <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-foreground/40 hover:text-foreground/70 transition-colors">
+                <ArrowLeft size={14} /> {backLabel}
               </Link>
             </motion.div>
 
