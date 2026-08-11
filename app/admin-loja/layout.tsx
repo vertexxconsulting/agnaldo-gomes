@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, 
   Package, 
@@ -11,7 +12,8 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Store
+  Store,
+  LogOut
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -29,6 +31,18 @@ export default function AdminLojaLayout({
     { name: 'Pedidos', href: '/admin-loja/pedidos', icon: ShoppingCart },
     { name: 'Configurações', href: '/admin-loja/configuracoes', icon: Settings },
   ];
+
+  const router = useRouter();
+
+  if (pathname === '/admin-loja/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('ag-sessao');
+    router.push('/admin-loja/login');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -87,7 +101,7 @@ export default function AdminLojaLayout({
         </nav>
 
         {/* Footer Area */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
           <Link 
             href="/loja" 
             className="flex items-center gap-3 px-4 py-3 text-sm text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
@@ -95,6 +109,13 @@ export default function AdminLojaLayout({
             <ArrowLeft size={18} />
             <span>Voltar à Loja</span>
           </Link>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <LogOut size={18} />
+            <span>Sair do Sistema</span>
+          </button>
         </div>
       </aside>
 
