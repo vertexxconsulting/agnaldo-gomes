@@ -7,20 +7,37 @@ import { ShoppingBag, Star, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { MOCK_PRODUCTS } from '@/lib/mockProducts';
-const bannerImages = [
-  '/opt/produto1.png',
-  '/opt/produto2.png',
-  '/opt/produto3.png',
-  '/opt/produto4.png'
+const heroSlides = [
+  { type: 'video', src: '/opt/hero-loop.mp4' },
+  { type: 'image', src: '/opt/loja1.png' },
+  { type: 'image', src: '/opt/loja2.jpeg' },
+  { type: 'image', src: '/opt/loja3.jpeg' },
+  { type: 'image', src: '/opt/loja4.jpeg' },
+  { type: 'image', src: '/opt/loja5.jpeg' },
+  { type: 'image', src: '/opt/loja6.jpeg' },
+  { type: 'image', src: '/opt/loja7.jpeg' },
+  { type: 'image', src: '/opt/loja8.jpeg' },
+  { type: 'image', src: '/opt/loja9.jpeg' },
+  { type: 'image', src: '/opt/loja10.jpeg' },
+  { type: 'image', src: '/opt/loja11.jpeg' },
+  { type: 'image', src: '/opt/loja12.jpeg' },
 ];
 
 export default function LojaHome() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    if (videoRef.current) {
+    if (heroSlides[currentSlide].type === 'video' && videoRef.current) {
       videoRef.current.playbackRate = 0.8;
     }
+  }, [currentSlide]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000); // 5 seconds per slide (matches video loop length)
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -29,24 +46,47 @@ export default function LojaHome() {
       {/* Banner Principal Clean com Transição */}
       <section className="relative w-full h-[250px] md:h-[350px] bg-[#f8f9fa] flex items-center overflow-hidden border-b border-slate-200">
         
-        {/* Background Video */}
-        <div className="absolute inset-0 w-full h-full">
-           <video 
-             ref={videoRef}
-             src="/opt/hero-loop.mp4" 
-             autoPlay 
-             loop 
-             muted 
-             playsInline 
-             className="w-full h-full object-cover"
-           />
+        {/* Background Media */}
+        <div className="absolute inset-0 w-full h-full bg-slate-900">
+           <AnimatePresence mode="wait">
+             <motion.div
+                key={currentSlide}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1 }}
+                className="absolute inset-0 w-full h-full"
+             >
+                {heroSlides[currentSlide].type === 'video' ? (
+                  <video 
+                    ref={videoRef}
+                    src={heroSlides[currentSlide].src} 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image 
+                    src={heroSlides[currentSlide].src} 
+                    alt="Agnaldo Gomes Store" 
+                    fill 
+                    className="object-cover" 
+                    priority
+                  />
+                )}
+             </motion.div>
+           </AnimatePresence>
         </div>
         
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/50 to-transparent w-full md:w-[80%]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/70 to-transparent w-full md:w-[80%]" />
         
         <div className="container relative mx-auto px-4 md:px-6 z-10">
           <div className="max-w-lg">
-            <span className="uppercase tracking-widest text-amber-500 font-bold text-[10px] mb-2 block">Novidade</span>
+            {currentSlide === 0 && (
+              <span className="uppercase tracking-widest text-amber-500 font-bold text-[10px] mb-2 block">Novidade</span>
+            )}
             <h1 className="text-2xl md:text-4xl font-bold text-slate-900 mb-2 leading-tight">
               Kits de Tratamento <br/>com 20% OFF
             </h1>
