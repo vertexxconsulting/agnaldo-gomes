@@ -15,14 +15,6 @@ const bannerImages = [
 ];
 
 export default function LojaHome() {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % bannerImages.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="flex flex-col w-full pb-20">
@@ -30,26 +22,16 @@ export default function LojaHome() {
       {/* Banner Principal Clean com Transição */}
       <section className="relative w-full h-[250px] md:h-[350px] bg-[#f8f9fa] flex items-center overflow-hidden border-b border-slate-200">
         
-        {/* Background Images */}
-        <div className="absolute inset-0 flex items-center justify-end pr-10 md:pr-20">
-           <AnimatePresence mode="wait">
-             <motion.div
-                key={currentImageIndex}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.6 }}
-                className="relative w-[250px] h-[250px] md:w-[350px] md:h-[350px]"
-             >
-                <Image 
-                  src={bannerImages[currentImageIndex]} 
-                  alt="Banner Image" 
-                  fill 
-                  className="object-contain" 
-                  priority
-                />
-             </motion.div>
-           </AnimatePresence>
+        {/* Background Video */}
+        <div className="absolute inset-0 w-full h-full">
+           <video 
+             src="/opt/hero-loop.mp4" 
+             autoPlay 
+             loop 
+             muted 
+             playsInline 
+             className="w-full h-full object-cover"
+           />
         </div>
         
         <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/90 to-transparent" />
