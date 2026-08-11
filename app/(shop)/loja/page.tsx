@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag, Star, ArrowRight } from 'lucide-react';
@@ -15,6 +15,13 @@ const bannerImages = [
 ];
 
 export default function LojaHome() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = 0.8;
+    }
+  }, []);
 
   return (
     <div className="flex flex-col w-full pb-20">
@@ -25,6 +32,7 @@ export default function LojaHome() {
         {/* Background Video */}
         <div className="absolute inset-0 w-full h-full">
            <video 
+             ref={videoRef}
              src="/opt/hero-loop.mp4" 
              autoPlay 
              loop 
@@ -34,7 +42,7 @@ export default function LojaHome() {
            />
         </div>
         
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/90 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/50 to-transparent w-full md:w-[80%]" />
         
         <div className="container relative mx-auto px-4 md:px-6 z-10">
           <div className="max-w-lg">
