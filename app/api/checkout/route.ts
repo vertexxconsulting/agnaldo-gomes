@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { supabase } from '@/lib/supabase';
 
 // Configuração do Mercado Pago (Substitua por sua Access Token real no .env.local)
 // process.env.MP_ACCESS_TOKEN
@@ -54,6 +55,20 @@ export async function POST(request: Request) {
         }
       });
 
+      // Cria o registro do pedido no banco de dados
+      const { error: dbError } = await supabase.from('orders').insert({
+        id: Math.floor(Math.random() * 1000000).toString(),
+        customer_name: body.customerName || 'Cliente (Checkout)',
+        customer_email: body.customerEmail || '',
+        total: subtotal + shippingCost,
+        status: 'PENDING_PAYMENT',
+        items: items
+      });
+
+      if (dbError) {
+        console.error('Erro ao salvar pedido no DB:', dbError);
+      }
+
       // O Mercado Pago retorna a URL que devemos redirecionar o usuário
       return NextResponse.json({
         success: true,
@@ -65,6 +80,15 @@ export async function POST(request: Request) {
     } catch (mpError) {
       console.warn('Mercado Pago SDK bloqueou a request pois não há um token válido. Retornando link simulado.', mpError);
       
+      // Salva no banco também o pedido simulado
+      await supabase.from('orders').insert({
+        id: Math.floor(Math.random() * 1000000).toString(),
+        customer_name: body.customerName || 'Cliente Simulado',
+        total: subtotal + shippingCost,
+        status: 'PENDING_PAYMENT',
+        items: items
+      });
+
       // Fallback simulado para enquanto o Agnaldo não coloca o token real no .env
       const simulatedPaymentLink = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=SIMULADO-${crypto.randomUUID()}`;
       return NextResponse.json({
