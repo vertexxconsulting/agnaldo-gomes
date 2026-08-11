@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Variants inspirados no Clerk SignIn de https://examples.motion.dev/react/clerk-sign-in
@@ -43,7 +44,7 @@ interface SplitLoginProps {
 
 /**
  * Tela de login dividida: painel de marca (logo) à esquerda + formulário animado à direita.
- * Modo MOCK — aceita qualquer e-mail/senha válidos até o Supabase ser configurado.
+ * Realiza autenticação no Supabase via supabase.auth.signInWithPassword
  */
 export function SplitLogin({
   logoSrc,
@@ -86,10 +87,23 @@ export function SplitLogin({
     if (Object.keys(newErrors).length > 0) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
     setIsSubmitting(false);
-    localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
-    router.push(redirectTo);
+
+    if (error) {
+      setErrors({ form: 'E-mail ou senha incorretos.' });
+      return;
+    }
+
+    if (data.session) {
+      localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
+      router.push(redirectTo);
+    }
   };
 
   const darkSide = sideBg === 'dark';
@@ -225,6 +239,13 @@ export function SplitLogin({
               </div>
               {errors.password && <p className="text-[var(--color-danger)] text-xs mt-1.5" role="alert">{errors.password}</p>}
             </motion.div>
+            
+            {/* Exibição de Erro Geral */}
+            {errors.form && (
+              <motion.div variants={ITEM_VARIANTS} className="p-3 mb-6 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm text-center font-medium">
+                {errors.form}
+              </motion.div>
+            )}
 
             <motion.div variants={ITEM_VARIANTS}>
               <Button type="submit" variant="primary" size="lg" className="w-full mt-2" disabled={isSubmitting}>
