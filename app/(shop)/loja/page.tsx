@@ -97,24 +97,7 @@ export default function LojaHome() {
            </AnimatePresence>
         </div>
         
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-[#f8f9fa]/70 to-transparent w-full md:w-[80%]" />
-        
-        <div className="container relative mx-auto px-4 md:px-6 z-10">
-          <div className="max-w-lg">
-            {currentSlide === 0 && (
-              <span className="uppercase tracking-widest text-amber-500 font-bold text-[10px] mb-2 block">Novidade</span>
-            )}
-            <h1 className="text-2xl md:text-4xl font-bold text-slate-900 mb-2 leading-tight">
-              Kits de Tratamento <br/>com 20% OFF
-            </h1>
-            <p className="text-xs md:text-sm text-slate-600 mb-6">
-              A linha completa recomendada para salões de alta performance.
-            </p>
-            <Link href="#produtos" className="inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-amber-500 transition-colors">
-              Ver Ofertas <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
+
       </section>
 
       {/* Grid de Produtos (Alta Densidade) */}
