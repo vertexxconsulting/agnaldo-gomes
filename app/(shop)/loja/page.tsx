@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ShoppingBag, Star, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { MOCK_PRODUCTS } from '@/lib/mockProducts';
+import { supabase } from '@/lib/supabase';
 const heroSlides = [
   { type: 'video', src: '/opt/hero-loop.mp4' },
   { type: 'image', src: '/opt/loja1.png' },
@@ -26,6 +26,19 @@ const heroSlides = [
 export default function LojaHome() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      const { data, error } = await supabase.from('products').select('*').eq('active', true);
+      if (data) {
+        setProducts(data);
+      }
+      setLoading(false);
+    }
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     if (heroSlides[currentSlide].type === 'video' && videoRef.current) {
@@ -112,53 +125,57 @@ export default function LojaHome() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-            {MOCK_PRODUCTS.map((produto) => (
-              <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
-                
-                {/* Badges */}
-                <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                  {produto.isNew && (
-                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-sm shadow-sm">
-                      Recomendado
-                    </span>
-                  )}
-                </div>
+            {loading ? (
+              <div className="col-span-full py-20 flex justify-center items-center text-slate-500">
+                Carregando produtos oficiais...
+              </div>
+            ) : products.length === 0 ? (
+              <div className="col-span-full py-20 flex justify-center items-center text-slate-500">
+                A vitrine está sendo preparada. Volte em breve!
+              </div>
+            ) : (
+              products.map((produto) => (
+                <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
+                  
+                  {/* Badges */}
+                  <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                    {/* Recomendado / Novo - Podemos usar alguma logica futura baseada em data */}
+                  </div>
 
                 {/* Imagem */}
                 <div className="relative w-full pt-[100%] bg-white">
-                  <Image 
-                    src={produto.image_url} 
-                    alt={produto.name} 
-                    fill 
-                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-300" 
-                  />
+                  {produto.image_url ? (
+                    <Image 
+                      src={produto.image_url} 
+                      alt={produto.name} 
+                      fill 
+                      className="object-contain p-4 group-hover:scale-105 transition-transform duration-300" 
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
+                      <ShoppingBag size={48} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
                 <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
-                  <div className="flex text-amber-400 gap-0.5 mb-1.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={10} fill={i < (produto.rating || 5) ? "currentColor" : "none"} className={i >= (produto.rating || 5) ? "text-slate-300" : ""} />
-                    ))}
-                  </div>
-                  
-                  <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1">
+                  <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1 mt-2">
                     {produto.name}
                   </h3>
                   
                   <div className="mt-auto">
-                    <div className="text-[10px] text-slate-400 line-through mb-0.5">R$ {(produto.price * 1.2).toFixed(2)}</div>
                     <div className="text-lg font-bold text-slate-900 mb-3">
-                      R$ {produto.price.toFixed(2)}
+                      R$ {Number(produto.price || 0).toFixed(2)}
                     </div>
                     
                     <button className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm">
-                      <ShoppingBag size={14} /> Comprar
+                      <ShoppingBag size={14} /> Detalhes
                     </button>
                   </div>
                 </div>
               </Link>
-            ))}
+            )))}
           </div>
           
         </div>

@@ -104,15 +104,15 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
         {/* Categorias Desktop - Estilo Salles (Fundo Bege) */}
         <nav className="hidden lg:flex items-center justify-between h-14 bg-[#F4F1EA] border-t border-[#E5E0D8] text-[12px] font-medium text-slate-700 container mx-auto px-4 md:px-6">
           <div className="flex items-center gap-8">
-            <Link href="/loja" className="hover:text-amber-600 transition-colors flex items-center gap-1">Kits Promocionais <span className="text-[9px] opacity-50">▼</span></Link>
-            <Link href="/loja" className="hover:text-amber-600 transition-colors flex items-center gap-1">Tratamento <span className="text-[9px] opacity-50">▼</span></Link>
-            <Link href="/loja" className="hover:text-amber-600 transition-colors flex items-center gap-1">Finalizadores <span className="text-[9px] opacity-50">▼</span></Link>
-            <Link href="/loja" className="hover:text-amber-600 transition-colors flex items-center gap-1">Barbearia <span className="text-[9px] opacity-50">▼</span></Link>
-            <Link href="/loja" className="hover:text-amber-600 transition-colors flex items-center gap-1">Acessórios <span className="text-[9px] opacity-50">▼</span></Link>
+            <Link href="/loja/categoria/kits-promocionais" className="hover:text-amber-600 transition-colors flex items-center gap-1">Kits Promocionais <span className="text-[9px] opacity-50">▼</span></Link>
+            <Link href="/loja/categoria/tratamento" className="hover:text-amber-600 transition-colors flex items-center gap-1">Tratamento <span className="text-[9px] opacity-50">▼</span></Link>
+            <Link href="/loja/categoria/finalizadores" className="hover:text-amber-600 transition-colors flex items-center gap-1">Finalizadores <span className="text-[9px] opacity-50">▼</span></Link>
+            <Link href="/loja/categoria/barbearia" className="hover:text-amber-600 transition-colors flex items-center gap-1">Barbearia <span className="text-[9px] opacity-50">▼</span></Link>
+            <Link href="/loja/categoria/acessorios" className="hover:text-amber-600 transition-colors flex items-center gap-1">Acessórios <span className="text-[9px] opacity-50">▼</span></Link>
           </div>
           
           {/* Botão Destaque Substituindo o Verde da Salles */}
-          <Link href="/loja" className="bg-[#1A1A1A] text-white px-6 py-2.5 rounded-sm flex items-center gap-2 hover:bg-slate-800 transition-colors font-bold text-xs uppercase tracking-wider">
+          <Link href="/loja/categoria/recomendacoes" className="bg-[#1A1A1A] text-white px-6 py-2.5 rounded-sm flex items-center gap-2 hover:bg-slate-800 transition-colors font-bold text-xs uppercase tracking-wider">
             Recomendações <span className="text-[9px] opacity-50">▼</span>
           </Link>
         </nav>
@@ -136,11 +136,11 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
                 <button onClick={() => setIsMenuOpen(false)} className="text-slate-500"><X size={20}/></button>
               </div>
               <div className="p-4 flex flex-col gap-4 text-slate-700 text-sm font-medium tracking-wide">
-                <Link href="/loja" onClick={() => setIsMenuOpen(false)}>Mais Vendidos</Link>
-                <Link href="/loja" onClick={() => setIsMenuOpen(false)}>Kits Promocionais</Link>
-                <Link href="/loja" onClick={() => setIsMenuOpen(false)}>Tratamento</Link>
-                <Link href="/loja" onClick={() => setIsMenuOpen(false)}>Finalizadores</Link>
-                <Link href="/loja" onClick={() => setIsMenuOpen(false)} className="text-amber-600 font-bold">Recomendações</Link>
+                <Link href="/loja/categoria/mais-vendidos" onClick={() => setIsMenuOpen(false)}>Mais Vendidos</Link>
+                <Link href="/loja/categoria/kits-promocionais" onClick={() => setIsMenuOpen(false)}>Kits Promocionais</Link>
+                <Link href="/loja/categoria/tratamento" onClick={() => setIsMenuOpen(false)}>Tratamento</Link>
+                <Link href="/loja/categoria/finalizadores" onClick={() => setIsMenuOpen(false)}>Finalizadores</Link>
+                <Link href="/loja/categoria/recomendacoes" onClick={() => setIsMenuOpen(false)} className="text-amber-600 font-bold">Recomendações</Link>
               </div>
             </motion.div>
           </div>

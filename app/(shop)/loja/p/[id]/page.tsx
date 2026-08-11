@@ -8,15 +8,37 @@ import { useCartStore } from '@/store/cartStore';
 import { Star, Truck, ShieldCheck, ShoppingBag, ExternalLink } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
-import { MOCK_PRODUCTS } from '@/lib/mockProducts';
+import { supabase } from '@/lib/supabase';
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const produto = MOCK_PRODUCTS.find(p => p.id === params.id);
+  const id = typeof params.id === 'string' ? params.id : params.id?.[0];
   const addItem = useCartStore(state => state.addItem);
   
+  const [produto, setProduto] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [cep, setCep] = useState('');
   const [shippingMsg, setShippingMsg] = useState('');
+
+  useEffect(() => {
+    async function fetchProduct() {
+      if (!id) return;
+      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+      if (data) {
+        setProduto(data);
+      }
+      setLoading(false);
+    }
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex justify-center text-slate-500">
+        Carregando detalhes do produto...
+      </div>
+    );
+  }
 
   if (!produto) {
     return notFound();
@@ -96,9 +118,8 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="mb-6">
-            <div className="text-slate-400 text-sm line-through mb-1">R$ {(produto.price * 1.2).toFixed(2)}</div>
             <div className="text-3xl font-bold text-slate-900">
-              R$ {produto.price.toFixed(2)}
+              R$ {Number(produto.price || 0).toFixed(2)}
             </div>
             <div className="text-xs text-slate-500 mt-1 font-medium">em até 12x s/ juros no cartão</div>
           </div>
