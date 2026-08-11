@@ -154,7 +154,7 @@ export default function AgendamentoWizard() {
           
           {/* Barra de progresso subtil no topo (Clerk style loaders) */}
           {step < 7 && (
-            <div className="absolute top-0 left-0 h-[2px] bg-primary transition-all duration-500 ease-out z-20" style={{ width: `${(step / 6) * 100}%` }} />
+            <div className="absolute top-0 left-0 h-[2px] bg-primary transition-all duration-500 ease-out z-20" style={{ width: `${((step - 1) / 6) * 100}%` }} />
           )}
 
           <AnimatePresence mode="wait">

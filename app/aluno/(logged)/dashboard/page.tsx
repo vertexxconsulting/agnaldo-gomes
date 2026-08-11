@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MOCK_CURSOS, MOCK_PROGRESSO_ALUNO, MOCK_AULAS } from '@/lib/mock-data';
 
 export default function AlunoDashboardPage() {
-  const featuredCourse = MOCK_CURSOS[0];
+  const featuredCourse = MOCK_CURSOS.length > 0 ? MOCK_CURSOS[0] : null;
   
   // Encontrar onde o aluno parou (última aula assistida não concluída, ou a última assistida)
   const aulaParou = MOCK_PROGRESSO_ALUNO.find(p => !p.concluida) || MOCK_PROGRESSO_ALUNO[MOCK_PROGRESSO_ALUNO.length - 1];
@@ -22,7 +22,7 @@ export default function AlunoDashboardPage() {
         {/* Imagem de Fundo */}
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-60"
-          style={{ backgroundImage: `url(${featuredCourse.capaUrl})` }}
+          style={{ backgroundImage: `url(${featuredCourse?.capaUrl || ''})` }}
         />
         {/* Degradês para suavizar bordas */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
@@ -31,21 +31,21 @@ export default function AlunoDashboardPage() {
         {/* Conteúdo do Banner */}
         <div className="absolute bottom-0 left-0 w-full p-8 sm:p-16 flex flex-col justify-end">
           <h1 className="text-4xl sm:text-6xl font-black text-white mb-2 max-w-2xl drop-shadow-lg">
-            {featuredCourse.titulo}
+            {featuredCourse?.titulo || 'Bem-vindo'}
           </h1>
           <p className="text-white/80 text-sm sm:text-lg max-w-xl mb-6 drop-shadow-md line-clamp-3">
-            {featuredCourse.descricao}
+            {featuredCourse?.descricao || 'Explore nossos cursos disponíveis.'}
           </p>
           <div className="flex items-center gap-4">
             <Link 
-              href={`/aluno/cursos/${featuredCourse.id}/aulas/aula_1`}
+              href={`/aluno/cursos/${featuredCourse?.id || ''}/aulas/aula_1`}
               className="bg-white text-black hover:bg-white/80 flex items-center gap-2 px-6 py-2.5 rounded text-sm sm:text-base font-bold transition-colors"
             >
               <Play size={20} className="fill-black" />
               Assistir Agora
             </Link>
             <Link 
-              href={`/aluno/cursos/${featuredCourse.id}`}
+              href={`/aluno/cursos/${featuredCourse?.id || ''}`}
               className="bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-2.5 rounded text-sm sm:text-base font-bold transition-colors"
             >
               <Info size={20} />

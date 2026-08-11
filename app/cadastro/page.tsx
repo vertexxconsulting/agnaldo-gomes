@@ -87,14 +87,8 @@ export default function CadastroPage() {
     setIsSubmitting(false);
     setSuccess(true);
     
-    // Simula a integração: Cadastra no CRM do Salão também
-    MOCK_CLIENTES.unshift({
-      id: `c${Date.now()}`,
-      nome: formData.fullName,
-      email: formData.email,
-      telefone: formData.phone || '',
-      criado_em: new Date().toISOString()
-    });
+    // TODO: Integrar com Supabase para cadastro real de clientes
+    // await supabase.from('clientes').insert({ ... });
 
     // Redireciona para perfil após 2 segundos
     setTimeout(() => {

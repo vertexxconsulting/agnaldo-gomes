@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag, Star, ArrowRight } from 'lucide-react';
+import { ShoppingBag, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { supabase } from '@/lib/supabase';
@@ -28,11 +28,15 @@ export default function LojaHome() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
       const { data, error } = await supabase.from('products').select('*').eq('active', true);
-      if (data) {
+      if (error) {
+        console.error('Supabase error:', error.message);
+        setFetchError(error.message);
+      } else if (data) {
         setProducts(data);
       }
       setLoading(false);
@@ -119,7 +123,7 @@ export default function LojaHome() {
           
           <div className="flex justify-between items-center mb-6 pb-2 border-b border-slate-200">
             <h2 className="text-lg font-bold text-slate-900 uppercase tracking-widest">Mais Vendidos</h2>
-            <Link href="/loja/todos" className="text-[10px] text-amber-600 font-bold uppercase tracking-widest hover:text-amber-700 transition-colors flex items-center gap-1">
+            <Link href="/loja/categoria/mais-vendidos" className="text-[10px] text-amber-600 font-bold uppercase tracking-widest hover:text-amber-700 transition-colors flex items-center gap-1">
               Ver Todos <ArrowRight size={12} />
             </Link>
           </div>
@@ -128,6 +132,11 @@ export default function LojaHome() {
             {loading ? (
               <div className="col-span-full py-20 flex justify-center items-center text-slate-500">
                 Carregando produtos oficiais...
+              </div>
+            ) : fetchError ? (
+              <div className="col-span-full py-20 flex flex-col justify-center items-center text-red-500">
+                <p className="font-bold mb-1">Erro ao carregar produtos</p>
+                <p className="text-xs text-slate-400">Tente recarregar a página.</p>
               </div>
             ) : products.length === 0 ? (
               <div className="col-span-full py-20 flex justify-center items-center text-slate-500">

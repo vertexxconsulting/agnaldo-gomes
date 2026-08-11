@@ -1,51 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Eye, Filter, Download } from 'lucide-react';
-import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminLojaPedidos() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Dados mockados para visualização inicial
-  const mockOrders = [
-    {
-      id: 'PED-4921',
-      date: '10/08/2026 14:30',
-      customer: 'Maria Silva',
-      total: 289.90,
-      status: 'PENDING_PAYMENT',
-      items: 1,
-      shipping: 'Melhor Envio (Correios)'
-    },
-    {
-      id: 'PED-4920',
-      date: '10/08/2026 11:15',
-      customer: 'João Mendes',
-      total: 129.90,
-      status: 'PAID',
-      items: 1,
-      shipping: 'Motoboy'
-    },
-    {
-      id: 'PED-4919',
-      date: '09/08/2026 16:45',
-      customer: 'Ana Clara Souza',
-      total: 449.80,
-      status: 'SHIPPED',
-      items: 2,
-      shipping: 'Melhor Envio (Jadlog)'
-    },
-    {
-      id: 'PED-4918',
-      date: '08/08/2026 09:20',
-      customer: 'Carlos Eduardo',
-      total: 159.90,
-      status: 'DELIVERED',
-      items: 1,
-      shipping: 'Retirada no Local'
+  useEffect(() => {
+    async function fetchOrders() {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Erro ao buscar pedidos:', error.message);
+      }
+      setOrders(data || []);
+      setLoading(false);
     }
-  ];
+    fetchOrders();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -63,6 +40,15 @@ export default function AdminLojaPedidos() {
         return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-800">{status}</span>;
     }
   };
+
+  const filtered = orders.filter(o => {
+    const term = searchTerm.toLowerCase();
+    return (
+      o.id?.toString().includes(term) ||
+      o.customer_name?.toLowerCase().includes(term) ||
+      o.customer_email?.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -102,67 +88,64 @@ export default function AdminLojaPedidos() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <Filter size={16} />
-            <span>Filtros</span>
-          </button>
         </div>
 
         {/* Tabela */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white border-b border-slate-200">
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID do Pedido</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Frete</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {mockOrders.map((pedido) => (
-                <tr key={pedido.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="py-4 px-6">
-                    <span className="font-semibold text-slate-900">{pedido.id}</span>
-                  </td>
-                  <td className="py-4 px-6 text-sm text-slate-500">
-                    {pedido.date}
-                  </td>
-                  <td className="py-4 px-6">
-                    <p className="font-semibold text-slate-900 text-sm">{pedido.customer}</p>
-                    <p className="text-xs text-slate-500">{pedido.items} {pedido.items === 1 ? 'item' : 'itens'}</p>
-                  </td>
-                  <td className="py-4 px-6 text-sm font-bold text-slate-900">
-                    R$ {pedido.total.toFixed(2).replace('.', ',')}
-                  </td>
-                  <td className="py-4 px-6 text-sm text-slate-600">
-                    {pedido.shipping}
-                  </td>
-                  <td className="py-4 px-6">
-                    {getStatusBadge(pedido.status)}
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <button className="p-2 text-slate-400 hover:text-amber-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Ver Detalhes">
-                      <Eye size={16} />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="p-12 text-center text-slate-400">Carregando pedidos...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">
+              {searchTerm ? 'Nenhum pedido encontrado com esse filtro.' : 'Nenhum pedido registrado ainda. As vendas aparecerão aqui automaticamente.'}
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white border-b border-slate-200">
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID do Pedido</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((pedido) => (
+                  <tr key={pedido.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="py-4 px-6">
+                      <span className="font-semibold text-slate-900">#{pedido.id?.toString().slice(0, 8)}</span>
+                    </td>
+                    <td className="py-4 px-6 text-sm text-slate-500">
+                      {pedido.created_at ? new Date(pedido.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="font-semibold text-slate-900 text-sm">{pedido.customer_name || pedido.customer_email || '-'}</p>
+                    </td>
+                    <td className="py-4 px-6 text-sm font-bold text-slate-900">
+                      R$ {Number(pedido.total || 0).toFixed(2).replace('.', ',')}
+                    </td>
+                    <td className="py-4 px-6">
+                      {getStatusBadge(pedido.status)}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <button className="p-2 text-slate-400 hover:text-amber-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Ver Detalhes">
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         
         {/* Paginação */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm text-slate-500">
-          <span>Mostrando 1 a 4 de 24 pedidos</span>
-          <div className="flex gap-1">
-            <button className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Anterior</button>
-            <button className="px-3 py-1 border border-slate-300 rounded-md bg-white hover:bg-slate-50 disabled:opacity-50">Próximo</button>
+        {!loading && filtered.length > 0 && (
+          <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm text-slate-500">
+            <span>Mostrando {filtered.length} pedidos</span>
           </div>
-        </div>
+        )}
 
       </div>
     </div>

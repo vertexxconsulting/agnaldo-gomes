@@ -232,7 +232,7 @@ export default function ProfissionaisPage() {
                           <span className="text-xs text-foreground/40 uppercase tracking-wider">Serviços que executa</span>
                           <div className="flex flex-wrap gap-1.5 mt-1.5">
                             {servicos.length > 0 ? servicos.map(s => (
-                              <span key={s.id} className="px-2 py-0.5 rounded text-[10px] bg-foreground/5 text-foreground/70">{s.nome} ({s.duracao_min}min · R${s.preco})</span>
+                              <span key={s.id} className="px-2 py-0.5 rounded text-[10px] bg-foreground/5 text-foreground/70">{s.nome} ({s.duracao_min}min · R$ {Number(s.preco).toFixed(2)})</span>
                             )) : <span className="text-xs text-foreground/30">Nenhum vínculo</span>}
                           </div>
                         </div>

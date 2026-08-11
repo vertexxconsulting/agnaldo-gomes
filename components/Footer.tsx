@@ -23,7 +23,7 @@ export function Footer() {
           <Link href="/" className="inline-flex items-center justify-center mb-5 mt-2">
             <div className="bg-[#111111] py-3 px-6 rounded-2xl shadow-lg border border-white/5">
               <Image
-                src="/logo branca.png"
+                src="/opt/logo-branca.webp"
                 alt="Agnaldo Gomes"
                 width={300}
                 height={78}

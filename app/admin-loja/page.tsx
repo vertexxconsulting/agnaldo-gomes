@@ -1,22 +1,63 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Package, ShoppingBag, DollarSign, ArrowRight, TrendingUp, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminLojaDashboard() {
+  const [productCount, setProductCount] = useState(0);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      // Contar produtos ativos
+      const { count } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true);
+      setProductCount(count || 0);
+
+      // Buscar pedidos recentes (tabela orders, se existir)
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (ordersData) setOrders(ordersData);
+
+      setLoading(false);
+    }
+    fetchDashboardData();
+  }, []);
+
   const stats = [
-    { name: 'Vendas Totais', value: 'R$ 14.500,00', change: '+12%', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { name: 'Pedidos Pendentes', value: '12', change: '3 novos hoje', icon: ShoppingBag, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { name: 'Total de Produtos', value: '145', change: '+5 esta semana', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { name: 'Acessos na Loja', value: '2.450', change: '+18%', icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+    { name: 'Total de Produtos', value: loading ? '...' : String(productCount), icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { name: 'Pedidos Recentes', value: loading ? '...' : String(orders.length), icon: ShoppingBag, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   ];
 
-  const recentOrders = [
-    { id: '#1234', customer: 'Maria Silva', date: 'Hoje, 14:30', amount: 'R$ 299,90', status: 'Pendente' },
-    { id: '#1233', customer: 'João Mendes', date: 'Hoje, 11:15', amount: 'R$ 150,00', status: 'Pago' },
-    { id: '#1232', customer: 'Ana Clara', date: 'Ontem', amount: 'R$ 89,90', status: 'Enviado' },
-    { id: '#1231', customer: 'Carlos Eduardo', date: 'Ontem', amount: 'R$ 450,00', status: 'Entregue' },
-  ];
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PAID': return 'bg-emerald-100 text-emerald-800';
+      case 'PENDING_PAYMENT': return 'bg-amber-100 text-amber-800';
+      case 'SHIPPED': return 'bg-blue-100 text-blue-800';
+      case 'DELIVERED': return 'bg-purple-100 text-purple-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'PAID': return 'Pago';
+      case 'PENDING_PAYMENT': return 'Pendente';
+      case 'SHIPPED': return 'Enviado';
+      case 'DELIVERED': return 'Entregue';
+      case 'CANCELLED': return 'Cancelado';
+      default: return status;
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -40,10 +81,6 @@ export default function AdminLojaDashboard() {
                   <Icon className={stat.color} size={24} />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
-                <span className="text-emerald-500 font-medium">{stat.change}</span>
-                <span className="text-slate-400 ml-2">vs período anterior</span>
-              </div>
             </div>
           );
         })}
@@ -60,37 +97,36 @@ export default function AdminLojaDashboard() {
             </Link>
           </div>
           <div className="p-0 flex-1">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pedido</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6 text-sm font-medium text-slate-900">{order.id}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600">{order.customer}</td>
-                    <td className="py-4 px-6 text-sm text-slate-500">{order.date}</td>
-                    <td className="py-4 px-6 text-sm font-medium text-slate-900">{order.amount}</td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                        ${order.status === 'Pago' ? 'bg-emerald-100 text-emerald-800' : ''}
-                        ${order.status === 'Pendente' ? 'bg-amber-100 text-amber-800' : ''}
-                        ${order.status === 'Enviado' ? 'bg-blue-100 text-blue-800' : ''}
-                        ${order.status === 'Entregue' ? 'bg-purple-100 text-purple-800' : ''}
-                      `}>
-                        {order.status}
-                      </span>
-                    </td>
+            {loading ? (
+              <div className="p-6 text-center text-slate-400">Carregando...</div>
+            ) : orders.length === 0 ? (
+              <div className="p-6 text-center text-slate-400">Nenhum pedido registrado ainda.</div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100">
+                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pedido</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {orders.map((order) => (
+                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-6 text-sm font-medium text-slate-900">#{order.id?.toString().slice(0, 8)}</td>
+                      <td className="py-4 px-6 text-sm text-slate-600">{order.customer_name || order.customer_email || '-'}</td>
+                      <td className="py-4 px-6 text-sm font-medium text-slate-900">R$ {Number(order.total || 0).toFixed(2)}</td>
+                      <td className="py-4 px-6">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

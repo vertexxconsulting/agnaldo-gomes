@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -19,12 +19,16 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [cep, setCep] = useState('');
   const [shippingMsg, setShippingMsg] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProduct() {
       if (!id) return;
       const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
-      if (data) {
+      if (error) {
+        console.error('Supabase error:', error.message);
+        setFetchError(error.message);
+      } else if (data) {
         setProduto(data);
       }
       setLoading(false);
@@ -56,8 +60,12 @@ export default function ProductDetailPage() {
   };
 
   const handleCalcShipping = () => {
-    if (cep.length < 8) return;
-    if (cep.startsWith('8426')) {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length < 8) {
+      setShippingMsg('CEP inválido. Digite 8 números.');
+      return;
+    }
+    if (cleanCep.startsWith('8426')) {
       setShippingMsg('Motoboy (Entrega Hoje): R$ 15,00');
     } else {
       setShippingMsg('Correios PAC (3 a 7 dias): R$ 28,50');
@@ -156,7 +164,7 @@ export default function ProductDetailPage() {
                   type="text" 
                   placeholder="00000-000" 
                   value={cep}
-                  onChange={(e) => setCep(e.target.value)}
+                  onChange={(e) => setCep(e.target.value.replace(/\D/g, ''))}
                   maxLength={8}
                   className="flex-1 bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500 transition-colors rounded-sm" 
                 />
