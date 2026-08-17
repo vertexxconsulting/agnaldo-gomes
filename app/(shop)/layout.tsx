@@ -41,7 +41,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           {/* Logo (Esquerda) */}
           <Link href="/loja" className="flex-shrink-0 flex items-center justify-center lg:justify-start">
              <Image 
-               src="/opt/logo-branca.webp" 
+               src="/opt/logo-hero.webp" 
                alt="Agnaldo Gomes Logo" 
                width={100} 
                height={100} 
@@ -65,10 +65,10 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
 
           {/* Direita: Conta, Atendimento & Carrinho */}
           <div className="flex items-center justify-end gap-6 text-slate-700">
-            <Link href="/contato" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
+            <a href="https://wa.link/t02ox1" target="_blank" rel="noopener noreferrer" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
               <User size={20} />
               <span>Atendimento</span>
-            </Link>
+            </a>
             
             <Link href="/perfil" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
               <User size={20} />
@@ -78,8 +78,8 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
             <Link href="/loja/carrinho" className="relative hover:text-amber-600 transition-colors flex items-center gap-2 border-l border-[#E5E0D8] pl-6 ml-2">
               <ShoppingBag size={24} />
               {/* Badge do Carrinho */}
-              {mounted && itemCount >= 0 && (
-                <span className="absolute -top-1 -right-2 bg-[#1A1A1A] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+              {mounted && itemCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-[#1A1A1A] text-white text-[10px] font-bold min-w-[20px] h-5 px-0.5 rounded-full flex items-center justify-center shadow-md">
                   {itemCount}
                 </span>
               )}
@@ -178,10 +178,10 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           <div>
             <h3 className="text-slate-900 font-bold text-xs uppercase tracking-widest mb-4">Políticas</h3>
             <ul className="space-y-2 text-xs text-slate-600">
-              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Trocas e Devoluções</Link></li>
-              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Prazos e Entregas</Link></li>
-              <li><Link href="/politicas" className="hover:text-amber-600 transition-colors">Termos de Uso</Link></li>
-            </ul>
+                <li><Link href="/politica-de-privacidade" className="hover:text-amber-600 transition-colors">Política de Privacidade</Link></li>
+                <li><Link href="/termos-de-uso" className="hover:text-amber-600 transition-colors">Termos de Uso</Link></li>
+                <li><Link href="/proposta" className="hover:text-amber-600 transition-colors">Sobre os Preços</Link></li>
+              </ul>
           </div>
         </div>
         <div className="container mx-auto px-4 md:px-6 mt-6 pt-4 border-t border-[#E5E0D8] text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">

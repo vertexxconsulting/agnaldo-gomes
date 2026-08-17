@@ -115,3 +115,16 @@ export interface AgendamentoApp {
   email?: string | null;
   consentimento_lgpd: boolean;
 }
+
+/** Produto da loja (admin-loja) */
+export interface Produto {
+  id: UUID;
+  name: string;
+  category: string;
+  type: 'LOCAL_STOCK' | 'AFFILIATE_ML';
+  price: number;
+  stock?: number;
+  active: boolean;
+  image_url?: string;
+  link?: string;
+}

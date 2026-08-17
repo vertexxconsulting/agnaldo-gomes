@@ -1,32 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { Database, Download, Upload, AlertTriangle, FileJson, CheckCircle2, MessageSquare, Key, Link as LinkIcon, Power } from 'lucide-react';
-import { MOCK_SERVICOS, MOCK_PROFISSIONAIS, MOCK_PROF_SERVICO, MOCK_CLIENTES, MOCK_AGENDAMENTOS, MOCK_BLOQUEIOS } from '@/lib/mock-data';
+import { getServicos, getProfissionais, getClientes, getAgendamentos, getBloqueios, getProfissionalServico } from '@/lib/mock-data';
+import type { Servico, Profissional, Cliente, Agendamento, BloqueioAgenda, ProfissionalServico } from '@/lib/gestao-types';
 
 export default function SistemaPage() {
   const [importStatus, setImportStatus] = useState<{ tipo: 'idle' | 'sucesso' | 'erro', msg: string }>({ tipo: 'idle', msg: '' });
-  
+  const [dadosReais, setDadosReais] = useState<{
+    servicos: Servico[]; profissionais: Profissional[]; profissionais_servicos: ProfissionalServico[];
+    clientes: Cliente[]; agendamentos: Agendamento[]; bloqueios: BloqueioAgenda[];
+  } | null>(null);
+
   // Estado para Evolution API
   const [evoState, setEvoState] = useState<'not_created' | 'offline' | 'qr_generated' | 'online'>('not_created');
   const [instanceName, setInstanceName] = useState('');
 
+  // Carregar dados reais do Supabase (com fallback mock)
+  useEffect(() => {
+    const carregar = async () => {
+      const [s, p, ps, c, a, b] = await Promise.all([
+        getServicos(), getProfissionais(), getProfissionalServico(),
+        getClientes(), getAgendamentos(), getBloqueios()
+      ]);
+      setDadosReais({ servicos: s, profissionais: p, profissionais_servicos: ps, clientes: c, agendamentos: a, bloqueios: b });
+    };
+    carregar();
+  }, []);
+
   // Exportar backup
   const handleExport = () => {
-    const backupData = {
-      servicos: MOCK_SERVICOS,
-      profissionais: MOCK_PROFISSIONAIS,
-      profissionais_servicos: MOCK_PROF_SERVICO,
-      clientes: MOCK_CLIENTES,
-      agendamentos: MOCK_AGENDAMENTOS,
-      bloqueios: MOCK_BLOQUEIOS,
-      exportado_em: new Date().toISOString()
+    const backupData = dadosReais || {
+      servicos: [], profissionais: [], profissionais_servicos: [],
+      clientes: [], agendamentos: [], bloqueios: []
+    };
+    const backup = {
+      ...backupData,
+      exportado_em: new Date().toISOString(),
+      fonte: dadosReais ? 'supabase_realtime' : 'mock_fallback'
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", `agnaldo_gomes_backup_${new Date().toISOString().split('T')[0]}.json`);
@@ -287,7 +304,7 @@ export default function SistemaPage() {
             <div className="flex items-center gap-3 bg-[var(--background)] p-4 rounded-lg border border-[var(--border-subtle)]">
               <input type="checkbox" id="auto-send" className="w-5 h-5 accent-primary cursor-pointer" defaultChecked />
               <div>
-                <label htmlFor="auto-send" className="font-medium text-sm text-foreground cursor-pointer block">Disparo automático para status 'confirmado'</label>
+                <label htmlFor="auto-send" className="font-medium text-sm text-foreground cursor-pointer block">Disparo automático para status &lsquo;confirmado&rsquo;</label>
                 <p className="text-xs text-foreground/60">Se o agendamento já estiver confirmado, o sistema enviará um lembrete sozinho na antecedência escolhida.</p>
               </div>
             </div>

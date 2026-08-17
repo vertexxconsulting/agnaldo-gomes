@@ -288,46 +288,53 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
+
+-- 7.0. HELPER FUNCTIONS
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS text AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
+
 -- 7.1. PROFILES
 -- Cada usuário vê/edita apenas o próprio perfil. Admins veem todos.
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+  public.get_user_role() = 'ADMIN'
 );
 
 -- 7.2. COURSES, MODULES, LESSONS
 -- Todos veem cursos publicados. Admins gerenciam todos os cursos.
 CREATE POLICY "Published courses are visible to everyone" ON courses FOR SELECT USING (status = 'PUBLISHED');
-CREATE POLICY "Admins manage courses" ON courses FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage courses" ON courses FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 CREATE POLICY "Modules visible if course is published" ON modules FOR SELECT USING (
   EXISTS (SELECT 1 FROM courses WHERE courses.id = modules.course_id AND courses.status = 'PUBLISHED')
 );
-CREATE POLICY "Admins manage modules" ON modules FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage modules" ON modules FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 CREATE POLICY "Lessons visible if course is published" ON lessons FOR SELECT USING (
   EXISTS (SELECT 1 FROM modules JOIN courses ON courses.id = modules.course_id WHERE modules.id = lessons.module_id AND courses.status = 'PUBLISHED')
 );
-CREATE POLICY "Admins manage lessons" ON lessons FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage lessons" ON lessons FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 -- 7.3. ENROLLMENTS & PROGRESS
 -- Alunos veem as próprias compras/progresso.
 CREATE POLICY "Users view own enrollments" ON course_enrollments FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Users view own progress" ON lesson_progress FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "Users update own progress" ON lesson_progress FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Admins manage enrollments" ON course_enrollments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage enrollments" ON course_enrollments FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 -- 7.4. PRODUCTS
 -- Todos veem produtos ativos. Admins gerenciam.
 CREATE POLICY "Active products visible to everyone" ON products FOR SELECT USING (active = true);
-CREATE POLICY "Admins manage products" ON products FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage products" ON products FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 -- 7.5. ORDERS & ITEMS
 -- Usuários veem próprios pedidos. Admins gerenciam.
 CREATE POLICY "Users view own orders" ON orders FOR SELECT USING (customer_id = auth.uid());
 CREATE POLICY "Users insert own orders" ON orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins manage orders" ON orders FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
+CREATE POLICY "Admins manage orders" ON orders FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 CREATE POLICY "Users view own order items" ON order_items FOR SELECT USING (
   EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND orders.customer_id = auth.uid())
@@ -365,9 +372,9 @@ CREATE POLICY "Professionals view own blocks" ON salon_schedule_blocks FOR SELEC
 );
 
 -- Admins gerenciam tudo do Salão
-CREATE POLICY "Admins manage salon_customers" ON salon_customers FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));
-CREATE POLICY "Admins manage salon_services" ON salon_services FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
-CREATE POLICY "Admins manage salon_professionals" ON salon_professionals FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
-CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN'));
-CREATE POLICY "Admins manage salon_appointments" ON salon_appointments FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));
-CREATE POLICY "Admins manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'PROFESSIONAL')));
+CREATE POLICY "Admins manage salon_customers" ON salon_customers FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));
+CREATE POLICY "Admins manage salon_services" ON salon_services FOR ALL USING (public.get_user_role() = 'ADMIN');
+CREATE POLICY "Admins manage salon_professionals" ON salon_professionals FOR ALL USING (public.get_user_role() = 'ADMIN');
+CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services FOR ALL USING (public.get_user_role() = 'ADMIN');
+CREATE POLICY "Admins manage salon_appointments" ON salon_appointments FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));
+CREATE POLICY "Admins manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));

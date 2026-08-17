@@ -1,8 +1,46 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Save, ShieldCheck, Truck, CreditCard } from 'lucide-react';
 
+const CONFIG_STORAGE_KEY = 'loja-config';
+
+interface LojaConfig {
+  mpAccessToken: string;
+  melhorEnvioToken: string;
+  cepOrigem: string;
+  prazoManuseio: string;
+}
+
+const defaultConfig: LojaConfig = {
+  mpAccessToken: '',
+  melhorEnvioToken: '',
+  cepOrigem: '',
+  prazoManuseio: '1',
+};
+
 export default function AdminLojaConfiguracoes() {
+  const [config, setConfig] = useState<LojaConfig>(defaultConfig);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (saved) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setConfig({ ...defaultConfig, ...JSON.parse(saved) });
+      } catch {
+        // ignore parse error
+      } 
+    }
+  }, []);
+
+  const handleSave = () => {
+    setSaving(true);
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    setTimeout(() => setSaving(false), 500);
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
@@ -32,16 +70,21 @@ export default function AdminLojaConfiguracoes() {
                   type="password" 
                   placeholder="APP_USR-..." 
                   className="w-full border border-slate-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
-                  defaultValue="APP_USR-mock-token-123"
+                  value={config.mpAccessToken}
+                  onChange={(e) => setConfig({ ...config, mpAccessToken: e.target.value })}
                 />
                 <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               </div>
               <p className="text-xs text-slate-500 mt-1">Sua chave privada. Nunca compartilhe este token publicamente.</p>
             </div>
             <div className="pt-2 flex justify-end">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 text-sm">
+              <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+              >
                 <Save size={16} />
-                <span>Salvar Credenciais</span>
+                <span>{saving ? 'Salvando...' : 'Salvar Credenciais'}</span>
               </button>
             </div>
           </div>
@@ -66,6 +109,8 @@ export default function AdminLojaConfiguracoes() {
                   type="password" 
                   placeholder="eyJ0e..." 
                   className="w-full border border-slate-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
+                  value={config.melhorEnvioToken}
+                  onChange={(e) => setConfig({ ...config, melhorEnvioToken: e.target.value })}
                 />
                 <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               </div>
@@ -78,7 +123,8 @@ export default function AdminLojaConfiguracoes() {
                   type="text" 
                   placeholder="00000-000" 
                   className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
-                  defaultValue="13010-141"
+                  value={config.cepOrigem}
+                  onChange={(e) => setConfig({ ...config, cepOrigem: e.target.value })}
                 />
                 <p className="text-xs text-slate-500 mt-1">O CEP do estúdio de onde os pacotes sairão.</p>
               </div>
@@ -88,22 +134,33 @@ export default function AdminLojaConfiguracoes() {
                   type="number" 
                   placeholder="Ex: 1" 
                   className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
-                  defaultValue="1"
+                  value={config.prazoManuseio}
+                  onChange={(e) => setConfig({ ...config, prazoManuseio: e.target.value })}
                 />
                 <p className="text-xs text-slate-500 mt-1">Tempo necessário para você embalar e postar.</p>
               </div>
             </div>
 
             <div className="pt-2 flex justify-end">
-              <button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 text-sm">
+              <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+              >
                 <Save size={16} />
-                <span>Salvar Credenciais</span>
+                <span>{saving ? 'Salvando...' : 'Salvar Credenciais'}</span>
               </button>
             </div>
           </div>
         </div>
 
       </div>
+
+      {saving && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+          Configurações salvas com sucesso!
+        </div>
+      )}
     </div>
   );
 }

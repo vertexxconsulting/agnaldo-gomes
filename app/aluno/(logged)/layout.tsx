@@ -29,7 +29,7 @@ export default function AlunoLoggedLayout({ children }: { children: React.ReactN
             {/* Logo */}
             <Link href="/aluno/dashboard" className="flex items-center gap-3">
               <div className="w-14 h-14 relative">
-                <Image src="/opt/logo-branca.webp" alt="Studio Logo" fill className="object-contain" />
+                <Image src="/logo-agnaldo.png" alt="Studio Logo" fill className="object-contain" />
               </div>
               <span className="text-2xl font-serif font-bold text-primary tracking-wider">
                 Academy
@@ -67,7 +67,7 @@ export default function AlunoLoggedLayout({ children }: { children: React.ReactN
                   <Settings size={16} /> Minha Conta
                 </Link>
                 <div className="h-px bg-white/10 my-2" />
-                <Link href="/aluno" className="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10">
+                <Link href="/academy/login" className="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10">
                   <LogOut size={16} /> Sair
                 </Link>
               </div>

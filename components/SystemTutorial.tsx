@@ -1,7 +1,7 @@
-import { 
-  BookOpen, CalendarDays, Users, Scissors, UserCircle, LayoutDashboard, 
-  PlaySquare, CheckCircle, GraduationCap, MessagesSquare, Award, MonitorPlay, 
-  CreditCard, ShieldCheck 
+import {
+  BookOpen, CalendarDays, Users, Scissors, UserCircle,
+  PlaySquare, GraduationCap, MessagesSquare, Award, MonitorPlay,
+  CreditCard, ShieldCheck
 } from 'lucide-react';
 
 interface SystemTutorialProps {

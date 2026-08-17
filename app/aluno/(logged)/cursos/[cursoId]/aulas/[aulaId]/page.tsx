@@ -1,33 +1,103 @@
 'use client';
 
-import { use, useState } from 'react';
-import { MOCK_CURSOS, MOCK_MODULOS, MOCK_AULAS, MOCK_PROGRESSO_ALUNO } from '@/lib/mock-data';
+import { useState, useEffect } from 'react';
+import { use } from 'react';
+import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
+import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Download, FileText, ChevronRight, ListVideo } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { supabase } from '@/lib/supabase';
 
 export default function EpisodioPage({ params }: { params: Promise<{ cursoId: string; aulaId: string }> }) {
   const { cursoId, aulaId } = use(params);
+  const [curso, setCurso] = useState<Curso | null>(null);
+  const [aulaAtual, setAulaAtual] = useState<Aula | null>(null);
+  const [moduloAtual, setModuloAtual] = useState<Modulo | null>(null);
+  const [aulasDoModulo, setAulasDoModulo] = useState<Aula[]>([]);
+  const [progressoAluno, setProgressoAluno] = useState<Progresso[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const curso = MOCK_CURSOS.find(c => c.id === cursoId);
-  const aulaAtual = MOCK_AULAS.find(a => a.id === aulaId);
-  
-  const [concluida, setConcluida] = useState(() => {
-    return MOCK_PROGRESSO_ALUNO.some(p => p.aula_id === aulaId && p.concluida);
-  });
-
+  // Estado local para marcar concluída
+  const [concluida, setConcluida] = useState(false);
+  const [notaAluno, setNotaAluno] = useState('');
   const [activeTab, setActiveTab] = useState<'desc' | 'mat' | 'anot'>('desc');
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      try {
+        const [cursosData, modulosData, aulasData, progressoData] = await Promise.all([
+          getCursos(),
+          getModulos(),
+          getAulas(),
+          getProgressoAluno(),
+        ]);
+
+        const c = cursosData.find(c => c.id === cursoId);
+        setCurso(c ?? null);
+
+        const aula = aulasData.find(a => a.id === aulaId);
+        setAulaAtual(aula ?? null);
+
+        if (aula) {
+          const mod = modulosData.find(m => m.id === aula.modulo_id);
+          setModuloAtual(mod ?? null);
+
+          const aulasMod = aulasData.filter(a => a.modulo_id === aula.modulo_id).sort((a, b) => a.ordem - b.ordem);
+          setAulasDoModulo(aulasMod);
+        }
+
+        setProgressoAluno(progressoData);
+
+        // Inicializa estado de concluida a partir do progresso
+        const p = progressoData.find(p => p.aula_id === aulaId);
+        setConcluida(p?.concluida ?? false);
+
+        // Carrega notas do Supabase
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: notaData } = await supabase
+              .from('anotacoes_aula')
+              .select('conteudo')
+              .eq('user_id', user.id)
+              .eq('aula_id', aulaId)
+              .single();
+            if (notaData?.conteudo) {
+              setNotaAluno(notaData.conteudo);
+            }
+          }
+        } catch {
+          // Silently ignore errors
+        }
+      } catch {
+        setCurso(null);
+        setAulaAtual(null);
+      }
+      setLoading(false);
+    };
+    carregarDados();
+  }, [cursoId, aulaId]);
+
+  // Próxima aula (dentro do mesmo módulo por simplificação)
+  const idxAtual = aulasDoModulo.findIndex(a => a.id === aulaId);
+  const proximaAula = idxAtual >= 0 && idxAtual < aulasDoModulo.length - 1 ? aulasDoModulo[idxAtual + 1] : null;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#0a0a0a]">
+        <div className="flex items-center justify-between p-4 bg-black border-b border-white/10">
+          <div className="h-5 bg-white/10 rounded w-48 animate-pulse" />
+        </div>
+        <div className="w-full aspect-video bg-black animate-pulse" />
+      </div>
+    );
+  }
 
   if (!curso || !aulaAtual) {
     return <div className="text-white p-20 text-center">Aula não encontrada.</div>;
   }
-
-  const moduloAtual = MOCK_MODULOS.find(m => m.id === aulaAtual.modulo_id);
-  const aulasDoModulo = MOCK_AULAS.filter(a => a.modulo_id === aulaAtual.modulo_id).sort((a,b) => a.ordem - b.ordem);
-  
-  // Próxima aula (dentro do mesmo módulo por simplificação)
-  const idxAtual = aulasDoModulo.findIndex(a => a.id === aulaAtual.id);
-  const proximaAula = idxAtual >= 0 && idxAtual < aulasDoModulo.length - 1 ? aulasDoModulo[idxAtual + 1] : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0a0a0a]">
@@ -44,17 +114,16 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1">
-        
         {/* Lado Esquerdo - Player e Conteúdo */}
         <div className="flex-1 flex flex-col">
           {/* Player de Vídeo (Simulado) */}
           <div className="w-full aspect-video bg-black relative flex items-center justify-center border-b border-white/10 shadow-2xl">
             {/* O ideal na vida real seria usar a tag video com HLS ou Iframe */}
-            <video 
-               controls 
+            <video
+               controls
                className="w-full h-full object-contain"
                poster={curso.capaUrl}
-               src={aulaAtual.videoUrl} 
+               src={aulaAtual.videoUrl}
             />
           </div>
 
@@ -67,8 +136,24 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
               </div>
 
               <div className="flex flex-col gap-3 min-w-[200px]">
-                <button 
-                  onClick={() => setConcluida(!concluida)}
+                <button
+                  onClick={async () => {
+                    const novaConcluida = !concluida;
+                    setConcluida(novaConcluida);
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        await supabase.from('progresso_aluno').upsert({
+                          user_id: user.id,
+                          aula_id: aulaId,
+                          concluida: novaConcluida,
+                          assistido_segundos: novaConcluida ? 0 : 0,
+                        }, { onConflict: 'user_id,aula_id' });
+                      }
+                    } catch (err) {
+                      console.error('Erro ao salvar progresso:', err);
+                    }
+                  }}
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded font-bold transition-all ${
                     concluida ? 'bg-green-500/20 text-green-500 border border-green-500/30 hover:bg-green-500/30' : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
                   }`}
@@ -76,9 +161,9 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                   <CheckCircle2 size={18} />
                   {concluida ? 'Aula Concluída' : 'Marcar como Concluída'}
                 </button>
-                
+
                 {proximaAula && (
-                  <Link 
+                  <Link
                     href={`/aluno/cursos/${cursoId}/aulas/${proximaAula.id}`}
                     className="flex items-center justify-between px-4 py-2 bg-primary text-black font-bold rounded hover:bg-primary/90 transition-colors"
                   >
@@ -92,13 +177,13 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
             {/* Abas */}
             <div className="flex flex-col mt-4 mb-20">
               <div className="flex border-b border-white/10 gap-6">
-                <button 
+                <button
                   onClick={() => setActiveTab('desc')}
                   className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'desc' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
                   Descrição
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('mat')}
                   className={`pb-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'mat' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
@@ -107,7 +192,7 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                     <span className="bg-white/10 text-white/70 text-[10px] px-1.5 py-0.5 rounded-full">{aulaAtual.materiais.length}</span>
                   )}
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('anot')}
                   className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'anot' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
@@ -121,7 +206,7 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                     {aulaAtual.descricao || 'Nenhuma descrição fornecida para esta aula.'}
                   </p>
                 )}
-                
+
                 {activeTab === 'mat' && (
                   <div className="flex flex-col gap-3 max-w-2xl">
                     {aulaAtual.materiais && aulaAtual.materiais.length > 0 ? (
@@ -139,15 +224,34 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                     )}
                   </div>
                 )}
-                
+
                 {activeTab === 'anot' && (
                   <div className="flex flex-col gap-4 max-w-2xl">
-                    <textarea 
+                    <textarea
                       className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-sm text-white focus:outline-none focus:border-primary resize-none custom-scrollbar placeholder:text-white/30"
                       placeholder="Faça suas anotações aqui. Elas são privadas e ficam salvas neste episódio..."
+                      value={notaAluno}
+                      onChange={(e) => setNotaAluno(e.target.value)}
                     ></textarea>
                     <div className="flex justify-end">
-                      <Button variant="primary" size="sm" onClick={() => alert("Anotação salva!")}>Salvar Anotação</Button>
+                      <Button variant="primary" size="sm" onClick={async () => {
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (user) {
+                            await supabase.from('anotacoes_aula').upsert({
+                              user_id: user.id,
+                              aula_id: aulaId,
+                              conteudo: notaAluno,
+                            }, { onConflict: 'user_id,aula_id' });
+                            alert('Anotação salva com sucesso!');
+                          } else {
+                            alert('Faça login para salvar anotações.');
+                          }
+                        } catch (err) {
+                          console.error('Erro ao salvar anotação:', err);
+                          alert('Erro ao salvar anotação.');
+                        }
+                      }}>Salvar Anotação</Button>
                     </div>
                   </div>
                 )}
@@ -165,11 +269,11 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
           <div className="flex flex-col">
             {aulasDoModulo.map(aula => {
               const isActive = aula.id === aulaId;
-              const isDone = MOCK_PROGRESSO_ALUNO.some(p => p.aula_id === aula.id && p.concluida) || (isActive && concluida);
+              const isDone = progressoAluno.some(p => p.aula_id === aula.id && p.concluida) || (isActive && concluida);
 
               return (
-                <Link 
-                  key={aula.id} 
+                <Link
+                  key={aula.id}
                   href={`/aluno/cursos/${cursoId}/aulas/${aula.id}`}
                   className={`flex flex-col gap-1 p-4 border-b border-white/5 transition-colors ${
                     isActive ? 'bg-white/10 border-l-4 border-l-primary' : 'hover:bg-white/5 border-l-4 border-l-transparent'

@@ -14,9 +14,6 @@ const navLinks = [
   { name: 'Sobre', href: '/sobre' },
 ];
 
-// Rotas dos sistemas — acessíveis apenas por URL direta (fora do menu público)
-export const sistemaRotas = ['/agendamento', '/aluno', '/admin'];
-
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,18 +29,18 @@ export function Header() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-3',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4',
         isScrolled ? 'glass' : 'bg-transparent'
       )}
     >
       <div className="container mx-auto px-6 md:px-12 flex items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="Agnaldo Gomes — Início">
           <Image
-            src="/opt/logo-branca.webp"
+            src="/logo-agnaldo.png"
             alt="Logo Agnaldo Gomes"
-            width={56}
-            height={56}
-            className="rounded-full ring-2 ring-primary/40 ring-offset-2 ring-offset-background shadow-lg"
+            width={280}
+            height={80}
+            className="object-contain h-20 w-auto mix-blend-multiply dark:mix-blend-screen"
             priority
           />
         </Link>
@@ -63,6 +60,9 @@ export function Header() {
             <Button variant="outline" size="sm" className="uppercase tracking-widest text-xs">
               Agendar meu Horário
             </Button>
+          </Link>
+          <Link href="/academy/login" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">
+            Área do Aluno
           </Link>
         </nav>
 
@@ -92,6 +92,9 @@ export function Header() {
             <Button variant="outline" className="w-full mt-4 uppercase tracking-widest text-sm">
               Agendar meu Horário
             </Button>
+          </Link>
+          <Link href="/academy/login" onClick={() => setMobileMenuOpen(false)} className="text-lg font-medium text-foreground hover:text-primary transition-colors">
+            Área do Aluno
           </Link>
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, type Transition } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { supabase } from '@/lib/supabase';
+import { getUserRole, AREA_LABELS, type Role } from '@/lib/auth';
 
 /**
  * Variants inspirados no Clerk SignIn de https://examples.motion.dev/react/clerk-sign-in
@@ -42,6 +43,9 @@ interface SplitLoginProps {
   hint?: string;
   backHref?: string;
   backLabel?: string;
+  titleClassName?: string;
+  /** Papel exigido para entrar nesta área. Se o usuário não tiver esse papel, o acesso é negado. */
+  requiredRole?: Role;
 }
 
 /**
@@ -59,15 +63,36 @@ export function SplitLogin({
   cta = 'Entrar',
   registerHref,
   registerLabel = 'Criar conta',
-  hint = 'Modo teste: use qualquer e-mail válido e senha com 6+ caracteres.',
+  hint,
   backHref = '/',
   backLabel = 'Voltar ao site',
+  titleClassName,
+  requiredRole,
 }: SplitLoginProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Se já houver sessão: redireciona para a área se o papel for o correto,
+  // ou encerra a sessão se for de outra área (evita acesso cruzado).
+  useEffect(() => {
+    if (!requiredRole) return;
+    supabase.auth.getUser().then(({ data }) => {
+      const role = getUserRole(data.user);
+      if (role === requiredRole) {
+        router.replace(redirectTo);
+      } else if (role) {
+        supabase.auth.signOut();
+      }
+    });
+  }, [requiredRole, redirectTo, router]);
+
+  const senhaMensagens = {
+    obrigatoria: 'A senha é obrigatória.',
+    minimo: 'A senha deve ter pelo menos 6 caracteres.',
+  };
 
   const validateForm = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
@@ -77,9 +102,9 @@ export function SplitLogin({
       newErrors.email = 'E-mail inválido.';
     }
     if (!formData.password) {
-      newErrors.password = 'A senha é obrigatória.';
+      newErrors.password = senhaMensagens.obrigatoria;
     } else if (formData.password.length < 6) {
-      newErrors.password = 'A senha deve ter pelo menos 6 caracteres.';
+      newErrors.password = senhaMensagens.minimo;
     }
     return newErrors;
   };
@@ -101,6 +126,18 @@ export function SplitLogin({
 
     if (error) {
       setErrors({ form: 'E-mail ou senha incorretos.' });
+      return;
+    }
+
+    // Valida se a conta tem permissão para esta área (login dedicado)
+    const role = getUserRole(data.user);
+    if (requiredRole && role !== requiredRole) {
+      await supabase.auth.signOut();
+      setErrors({
+        form: role
+          ? `Acesso negado: esta conta pertence à área ${AREA_LABELS[role]}. Use o login da sua área.`
+          : 'Acesso negado: esta conta não tem permissão para esta área. Contate o administrador.',
+      });
       return;
     }
 
@@ -135,12 +172,11 @@ export function SplitLogin({
             width={220}
             height={220}
             priority
-            className="rounded-full"
           />
         </div>
         <div>
           <motion.h1
-            className={`text-3xl font-bold tracking-tight text-center ${darkSide ? 'text-white' : 'text-gray-900'}`}
+            className={`text-3xl font-bold tracking-tight text-center ${titleClassName ? titleClassName : (darkSide ? 'text-white' : 'text-gray-900')}`}
             variants={TEXT_VARIANTS}
             initial="initial"
             animate="animate"
@@ -173,9 +209,9 @@ export function SplitLogin({
             className="lg:hidden flex flex-col items-center gap-4 mb-10"
             variants={ITEM_VARIANTS}
           >
-            <Image src={logoSrc} alt={title} width={100} height={100} className="rounded-full" />
+            <Image src={logoSrc} alt={title} width={100} height={100} />
             <motion.h1
-              className="text-2xl font-bold text-center text-foreground"
+              className={`text-2xl font-bold text-center ${titleClassName ? titleClassName : 'text-foreground'}`}
               variants={TEXT_VARIANTS}
             >
               {title}
@@ -281,9 +317,11 @@ export function SplitLogin({
               </Link>
             </motion.div>
 
-            <motion.p className="text-center text-xs text-foreground/40 pt-2 leading-relaxed" variants={ITEM_VARIANTS}>
-              {hint}
-            </motion.p>
+            {hint && (
+              <motion.p className="text-center text-xs text-foreground/40 pt-2 leading-relaxed" variants={ITEM_VARIANTS}>
+                {hint}
+              </motion.p>
+            )}
           </form>
         </motion.div>
       </div>

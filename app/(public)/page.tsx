@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { Scissors, GraduationCap, User, Sparkles, Droplets, Award, Star, Globe } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
-import { ParallaxImage } from '@/components/ParallaxImage';
 import { BentoGrid } from '@/components/BentoGrid';
 import { LogoMarquee } from '@/components/LogoMarquee';
 import { FaqSection } from '@/components/FaqSection';
@@ -146,13 +145,11 @@ export default function Home() {
       <section className="py-24 overflow-hidden">
         <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <Reveal className="relative aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl lg:col-span-5 max-w-md mx-auto w-full">
-            <ParallaxImage
-              src="/perfil.jpg"
+            <Image
+              src="/agnaldo4.webp"
               alt="Agnaldo Gomes"
-              className="w-full h-full"
-              imgClassName="rounded-3xl"
-              scaleHeight={110}
-              offset={5}
+              fill
+              className="object-cover object-[center_20%]"
               sizes="(max-width: 1024px) 100vw, 40vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />

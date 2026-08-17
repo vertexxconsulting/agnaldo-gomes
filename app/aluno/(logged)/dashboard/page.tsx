@@ -1,33 +1,86 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Play, Info } from 'lucide-react';
 import Link from 'next/link';
-import { MOCK_CURSOS, MOCK_PROGRESSO_ALUNO, MOCK_AULAS } from '@/lib/mock-data';
+import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
+import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
 
 export default function AlunoDashboardPage() {
-  const featuredCourse = MOCK_CURSOS.length > 0 ? MOCK_CURSOS[0] : null;
-  
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [progressoAluno, setProgressoAluno] = useState<Progresso[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [cursosData, progressoData] = await Promise.all([
+        getCursos(),
+        getProgressoAluno(),
+      ]);
+      setCursos(cursosData);
+      setProgressoAluno(progressoData);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
+
+  const featuredCourse = cursos.length > 0 ? cursos[0] : null;
+
   // Encontrar onde o aluno parou (última aula assistida não concluída, ou a última assistida)
-  const aulaParou = MOCK_PROGRESSO_ALUNO.find(p => !p.concluida) || MOCK_PROGRESSO_ALUNO[MOCK_PROGRESSO_ALUNO.length - 1];
-  const aulaAtualInfo = aulaParou ? MOCK_AULAS.find(a => a.id === aulaParou.aula_id) : null;
-  const cursoAtualInfo = aulaAtualInfo ? MOCK_CURSOS.find(c => c.id === 'course_1') : null; // Simplificação mockada
+  const aulaParou = progressoAluno.find(p => !p.concluida) || progressoAluno[progressoAluno.length - 1];
+
+  // Mapear aulas e módulos para lookup
+  const [aulasMap, setAulasMap] = useState<Record<string, Aula>>({});
+  const [modulosMap, setModulosMap] = useState<Record<string, Modulo>>({});
+
+  useEffect(() => {
+    const carregarLookups = async () => {
+      const [aulasData, modulosData] = await Promise.all([getAulas(), getModulos()]);
+      setAulasMap(Object.fromEntries(aulasData.map(a => [a.id, a])));
+      setModulosMap(Object.fromEntries(modulosData.map(m => [m.id, m])));
+    };
+    carregarLookups();
+  }, []);
+
+  const aulaAtualInfo = aulaParou ? aulasMap[aulaParou.aula_id] : null;
+  const cursoAtualInfo = aulaAtualInfo ? cursos.find(c => {
+    const mod = modulosMap[aulaAtualInfo.modulo_id];
+    return mod ? c.id === mod.curso_id : false;
+  }) : null;
 
   // Progressão da última aula assistida
   const progressPercent = aulaParou && aulaAtualInfo ? Math.round((aulaParou.assistidoSegundos / (aulaAtualInfo.duracaoMinutos * 60)) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#141414] pb-20">
+        <div className="relative w-full h-[60vh] sm:h-[75vh] bg-black animate-pulse" />
+        <div className="flex flex-col gap-10 px-4 sm:px-8 lg:px-16 -mt-10 relative z-10">
+          <div className="h-6 bg-white/10 rounded w-48 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-48 bg-white/10 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#141414] pb-20">
       {/* Banner Principal Estilo Netflix */}
       <div className="relative w-full h-[60vh] sm:h-[75vh] bg-black">
         {/* Imagem de Fundo */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center opacity-60"
           style={{ backgroundImage: `url(${featuredCourse?.capaUrl || ''})` }}
         />
         {/* Degradês para suavizar bordas */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/50 to-transparent" />
-        
+
         {/* Conteúdo do Banner */}
         <div className="absolute bottom-0 left-0 w-full p-8 sm:p-16 flex flex-col justify-end">
           <h1 className="text-4xl sm:text-6xl font-black text-white mb-2 max-w-2xl drop-shadow-lg">
@@ -37,14 +90,14 @@ export default function AlunoDashboardPage() {
             {featuredCourse?.descricao || 'Explore nossos cursos disponíveis.'}
           </p>
           <div className="flex items-center gap-4">
-            <Link 
-              href={`/aluno/cursos/${featuredCourse?.id || ''}/aulas/aula_1`}
+            <Link
+              href={`/aluno/cursos/${featuredCourse?.id || ''}/aulas/${aulaParou?.aula_id || 'aula_1'}`}
               className="bg-white text-black hover:bg-white/80 flex items-center gap-2 px-6 py-2.5 rounded text-sm sm:text-base font-bold transition-colors"
             >
               <Play size={20} className="fill-black" />
               Assistir Agora
             </Link>
-            <Link 
+            <Link
               href={`/aluno/cursos/${featuredCourse?.id || ''}`}
               className="bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm flex items-center gap-2 px-6 py-2.5 rounded text-sm sm:text-base font-bold transition-colors"
             >
@@ -57,7 +110,7 @@ export default function AlunoDashboardPage() {
 
       {/* Trilhas / Carrosséis */}
       <div className="flex flex-col gap-10 px-4 sm:px-8 lg:px-16 -mt-10 relative z-10">
-        
+
         {/* Continue Assistindo */}
         {aulaAtualInfo && cursoAtualInfo && (
           <section>
@@ -75,7 +128,7 @@ export default function AlunoDashboardPage() {
                 <div className="p-4">
                   <h3 className="font-bold text-sm text-white line-clamp-1">{aulaAtualInfo.titulo}</h3>
                   <p className="text-xs text-white/50 mb-3 line-clamp-1">{cursoAtualInfo.titulo}</p>
-                  
+
                   {/* Barra de Progresso */}
                   <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-primary h-full" style={{ width: `${progressPercent}%` }} />
@@ -91,16 +144,16 @@ export default function AlunoDashboardPage() {
         <section>
           <h2 className="text-xl font-bold text-white mb-4">Meus Cursos (Catálogo)</h2>
           <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x">
-            {MOCK_CURSOS.map((curso) => (
-              <Link 
-                key={curso.id} 
+            {cursos.map((curso) => (
+              <Link
+                key={curso.id}
                 href={`/aluno/cursos/${curso.id}`}
                 className="flex-none w-[280px] sm:w-[320px] group relative rounded-md overflow-hidden snap-start hover:scale-105 transition-transform duration-300 shadow-xl border border-white/5 hover:border-white/20"
               >
                 <div className="aspect-video relative bg-black">
                   <div className="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundImage: `url(${curso.capaUrl})` }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#141414] to-transparent opacity-90" />
-                  
+
                   <div className="absolute bottom-0 left-0 p-4 w-full">
                     <div className="text-[10px] font-bold text-primary mb-1 uppercase tracking-wider">{curso.nivel}</div>
                     <h3 className="font-bold text-sm sm:text-base text-white line-clamp-1">{curso.titulo}</h3>
@@ -114,26 +167,26 @@ export default function AlunoDashboardPage() {
             ))}
           </div>
         </section>
-        
+
         {/* Recomendados para Você */}
         <section className="mb-10">
           <h2 className="text-xl font-bold text-white mb-4">Recomendados para Você</h2>
           <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x">
-             {MOCK_CURSOS.slice().reverse().map((curso) => (
-              <Link 
-                key={curso.id + '_rec'} 
+            {cursos.slice().reverse().map((curso) => (
+              <Link
+                key={curso.id + '_rec'}
                 href={`/aluno/cursos/${curso.id}`}
                 className="flex-none w-[280px] sm:w-[320px] group relative rounded-md overflow-hidden snap-start hover:scale-105 transition-transform duration-300 shadow-xl border border-white/5 hover:border-white/20"
               >
                 <div className="aspect-video relative bg-black">
                   <div className="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity" style={{ backgroundImage: `url(${curso.capaUrl})` }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#141414] to-transparent opacity-90" />
-                  
+
                   <div className="absolute bottom-0 left-0 p-4 w-full flex items-center justify-between">
-                     <div>
-                       <h3 className="font-bold text-sm sm:text-base text-white line-clamp-1">{curso.titulo}</h3>
-                       <div className="text-xs text-white/60 line-clamp-1">{curso.professor}</div>
-                     </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-white line-clamp-1">{curso.titulo}</h3>
+                      <div className="text-xs text-white/60 line-clamp-1">{curso.professor}</div>
+                    </div>
                   </div>
                 </div>
               </Link>

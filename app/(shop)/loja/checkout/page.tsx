@@ -25,8 +25,14 @@ export default function CheckoutPage() {
     }
   }, [items, router]);
 
+  // Form state for customer details
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+
   const handleCalcShipping = () => {
-    if (cep.length < 8) return;
+    // Remove non-numeric characters before checking length
+    const numericCep = cep.replace(/\D/g, '');
+    if (numericCep.length < 8) return;
     setIsCalculating(true);
     setTimeout(() => {
       setIsCalculating(false);
@@ -54,6 +60,8 @@ export default function CheckoutPage() {
             quantity: item.quantity,
             unit_price: item.price
           })),
+          customerName,
+          customerEmail,
           cep,
           shippingMethod,
         })
@@ -95,7 +103,7 @@ export default function CheckoutPage() {
                 placeholder="CEP (ex: 00000-000)" 
                 value={cep}
                 onChange={(e) => setCep(e.target.value)}
-                maxLength={8}
+                maxLength={9}
                 className="w-48 bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
               />
               <button 
@@ -104,6 +112,25 @@ export default function CheckoutPage() {
               >
                 {isCalculating ? 'Buscando...' : 'Buscar'}
               </button>
+            </div>
+
+            {/* Customer details */}
+            <div className="mb-4">
+              <input 
+                type="text" 
+                placeholder="Nome Completo" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                required
+                className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm mb-2"
+              />
+              <input 
+                type="email" 
+                placeholder="E-mail" 
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
+              />
             </div>
 
             {shippingMethod && (

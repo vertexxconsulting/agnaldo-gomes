@@ -22,6 +22,10 @@ export default function AdminAcademyConfiguracoes() {
       .catch(console.error);
   }, []);
 
+  const logErroStatusWhatsApp = (err: unknown) => {
+    console.error('Erro ao buscar status do WhatsApp:', err);
+  };
+
   useEffect(() => {
     if (activeTab !== 'notificacoes') return;
     if (!envStatus.evolutionApi) return;
@@ -41,7 +45,7 @@ export default function AdminAcademyConfiguracoes() {
           setInstanceState('not_found');
         }
       } catch (e) {
-        console.error(e);
+        logErroStatusWhatsApp(e);
       }
     };
 

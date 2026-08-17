@@ -63,7 +63,7 @@ export function ParallaxImage({
           fill
           priority={priority}
           sizes={sizes}
-          className={`object-cover ${imgClassName ?? ''}`}
+          className={`object-cover object-top ${imgClassName ?? ''}`}
         />
       </motion.div>
     </motion.div>

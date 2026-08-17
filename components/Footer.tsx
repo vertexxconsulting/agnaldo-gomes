@@ -19,23 +19,19 @@ export function Footer() {
       <div className="container mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
 
         {/* Brand */}
-        <div className="flex flex-col items-center text-center">
-          <Link href="/" className="inline-flex items-center justify-center mb-5 mt-2">
-            <div className="bg-[#111111] py-3 px-6 rounded-2xl shadow-lg border border-white/5">
-              <Image
-                src="/opt/logo-branca.webp"
-                alt="Agnaldo Gomes"
-                width={300}
-                height={78}
-                className="object-contain drop-shadow-md"
-                priority
-              />
-            </div>
+        <div className="flex flex-col items-start text-left">
+          <Link href="/" className="inline-flex items-start mb-6">
+            <Image
+              src="/logo-agnaldo.png"
+              alt="Agnaldo Gomes"
+              width={360}
+              height={100}
+              className="object-contain h-24 w-auto"
+              priority
+            />
           </Link>
-          <p className="text-sm leading-relaxed max-w-xs">
-            Mais de 30 anos transformando vidas pela beleza. Cabeleireiro, educador e apaixonado por compartilhar conhecimento com profissionais que sonham em crescer.
-          </p>
-          <div className="flex flex-col gap-2 mt-3">
+          <h4 className="font-semibold mb-4 uppercase tracking-widest text-sm">Siga-nos</h4>
+          <div className="flex flex-col gap-3">
             {/* Perfil pessoal */}
             <a href="https://instagram.com/agnaldogomes_hairstyle" target="_blank" rel="noopener noreferrer" aria-label="Instagram de Agnaldo Gomes" className="inline-flex items-center gap-2 text-sm text-foreground/70 hover:text-primary transition-colors">
               <span className="text-primary"><InstagramIcon /></span>

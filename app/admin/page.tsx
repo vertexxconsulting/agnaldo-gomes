@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
   PieChart, Pie, Cell, CartesianGrid, Legend,
@@ -11,23 +11,43 @@ import {
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { MOCK_AGENDAMENTOS, MOCK_CLIENTES, MOCK_SERVICOS, getServicoNome, getClienteNome } from '@/lib/mock-data';
+import { getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome } from '@/lib/mock-data';
+import type { Cliente, Agendamento, Servico } from '@/lib/mock-data';
 
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
 const CORES_PIE = ['#d4af37', '#10B981', '#0ea5e9', '#EF4444', '#8b5cf6', '#f59e0b'];
 
 export default function AdminDashboardPage() {
+  const [clientesData, setClientesData] = useState<Cliente[]>([]);
+  const [agendamentosData, setAgendamentosData] = useState<Agendamento[]>([]);
+  const [servicosData, setServicosData] = useState<Servico[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [clientes, agendamentos, servicos] = await Promise.all([
+        getClientes(),
+        getAgendamentos(),
+        getServicos(),
+      ]);
+      setClientesData(clientes);
+      setAgendamentosData(agendamentos);
+      setServicosData(servicos);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
+
   const hoje = new Date().toISOString().split('T')[0];
-  const mesAtual = hoje.slice(0, 7); // YYYY-MM
+  const mesAtual = hoje.slice(0, 7);
   const anoAtual = hoje.slice(0, 4);
 
   const kpis = useMemo(() => {
+    const valorServico = (id: string) => servicosData.find(s => s.id === id)?.preco ?? 0;
     // Apenas concluídos para faturamento
-    const concluidos = MOCK_AGENDAMENTOS.filter(a => a.status === 'concluido');
-    // Para contar valor, cruzamos com mock-data (preços)
-    const valorServico = (id: string) => MOCK_SERVICOS.find(s => s.id === id)?.preco ?? 0;
-
+    const concluidos = agendamentosData.filter(a => a.status === 'concluido');
     const faturamentos = concluidos.map(a => ({ ...a, valor: valorServico(a.servico_id) }));
     
     const hojeV = faturamentos.filter(a => a.data === hoje).reduce((s, a) => s + a.valor, 0);
@@ -35,7 +55,7 @@ export default function AdminDashboardPage() {
     const anoV = faturamentos.filter(a => a.data.slice(0, 4) === anoAtual).reduce((s, a) => s + a.valor, 0);
 
     // Agendamentos hoje (todos)
-    const agendadosHoje = MOCK_AGENDAMENTOS.filter(a => a.data === hoje);
+    const agendadosHoje = agendamentosData.filter(a => a.data === hoje);
     const concluidosHoje = agendadosHoje.filter(a => a.status === 'concluido').length;
     const canceladosHoje = agendadosHoje.filter(a => a.status === 'cancelado' || a.status === 'no_show').length;
 
@@ -55,11 +75,11 @@ export default function AdminDashboardPage() {
     });
     const porServico = [...porServicoMap.entries()].map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 6);
 
-    return { hojeV, mesV, anoV, porMes, porServico, agendadosHoje: agendadosHoje.length, concluidosHoje, canceladosHoje };
-  }, [hoje, mesAtual, anoAtual]);
+    return { hojeV, mesV, anoV, porMes, porServico, agendadosHoje: agendadosHoje.length, concluidosHoje, canceladosHoje, clientesCount: clientesData.length };
+  }, [agendamentosData, clientesData, servicosData, hoje, mesAtual, anoAtual]);
 
   // Lógica para Notificações do WhatsApp (Simulação)
-  const agendamentosDoDia = useMemo(() => MOCK_AGENDAMENTOS.filter(a => a.data === hoje), [hoje]);
+  const agendamentosDoDia = useMemo(() => agendamentosData.filter(a => a.data === hoje), [agendamentosData, hoje]);
   const automáticos = agendamentosDoDia.filter(a => a.status === 'confirmado');
   const [pendentesManuais, setPendentesManuais] = useState(() => 
     agendamentosDoDia.filter(a => a.status === 'pendente').map(a => ({
@@ -78,12 +98,16 @@ export default function AdminDashboardPage() {
     { label: 'Faturamento hoje', valor: `R$ ${kpis.hojeV}`, icon: Wallet, cor: '#d4af37' },
     { label: 'Faturamento do mês', valor: `R$ ${kpis.mesV}`, icon: TrendingUp, cor: '#10B981' },
     { label: 'Agendamentos (hoje)', valor: `${kpis.agendadosHoje}`, icon: CalendarDays, cor: '#0ea5e9' },
-    { label: 'Clientes cadastrados', valor: `${MOCK_CLIENTES.length}`, icon: Users, cor: '#8b5cf6' },
+    { label: 'Clientes cadastrados', valor: `${kpis.clientesCount}`, icon: Users, cor: '#8b5cf6' },
   ];
 
   return (
     <div className="flex flex-col w-full py-4">
       <SectionTitle title="Dashboard" subtitle="Visão geral do seu negócio" align="left" size="sm" />
+
+      {loading && (
+        <div className="text-center py-8 text-foreground/50">Carregando dados do painel...</div>
+      )}
 
       {/* Cards KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
@@ -120,7 +144,7 @@ export default function AdminDashboardPage() {
         <CardGlass className="flex items-center justify-between p-3 bg-sky-500/5 border-sky-500/20">
           <div>
             <span className="text-[9px] text-sky-500 font-bold uppercase tracking-wider">Ticket Médio (Mês)</span>
-            <div className="text-lg font-bold mt-0.5">R$ {kpis.mesV > 0 && MOCK_AGENDAMENTOS.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length > 0 ? Math.round(kpis.mesV / MOCK_AGENDAMENTOS.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length) : 0}</div>
+            <div className="text-4xl font-bold text-sky-500 mb-1">R$ {kpis.mesV > 0 && agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length > 0 ? Math.round(kpis.mesV / agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length) : 0}</div>
           </div>
           <BarChart3 size={20} className="text-sky-500/50" />
         </CardGlass>

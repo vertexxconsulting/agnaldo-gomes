@@ -1,27 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Edit2, Copy, Trash2, Eye, MoreVertical } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ExternalLink, Package } from 'lucide-react';
 import { Button } from '@/components/Button';
-import { MOCK_CURSOS } from '@/lib/mock-data';
+import { getCursos } from '@/lib/mock-data';
+import type { Curso } from '@/lib/mock-data';
 
 export default function AdminCursosPage() {
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredCursos = MOCK_CURSOS.filter(curso => 
+  useEffect(() => {
+    const carregar = async () => {
+      setLoading(true);
+      const data = await getCursos();
+      setCursos(data);
+      setLoading(false);
+    };
+    carregar();
+  }, []);
+
+  const filteredCursos = cursos.filter(curso =>
     curso.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (loading) {
+    return (
+      <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="h-7 bg-white/10 rounded w-48 animate-pulse mb-1" />
+            <div className="h-5 bg-white/10 rounded w-72 animate-pulse" />
+          </div>
+          <div className="h-10 bg-white/10 rounded w-40 animate-pulse" />
+        </div>
+        <div className="h-12 bg-white/10 rounded mb-6 animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden animate-pulse">
+              <div className="aspect-video bg-white/10" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-white/10 rounded" />
+                <div className="h-4 bg-white/10 rounded w-5/6" />
+                <div className="h-4 bg-white/10 rounded w-3/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
-      
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Cursos (Academy)</h1>
           <p className="text-sm text-foreground/60">Gerencie o catálogo de cursos e os conteúdos gravados.</p>
         </div>
-        
+
         <Button variant="primary" className="flex items-center gap-2">
           <Plus size={18} /> Novo Curso
         </Button>
@@ -31,8 +71,8 @@ export default function AdminCursosPage() {
       <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-4 mb-6 flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Buscar cursos por título..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -45,14 +85,14 @@ export default function AdminCursosPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredCursos.map(curso => (
           <div key={curso.id} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden flex flex-col group hover:border-primary/50 transition-colors">
-            
+
             {/* Capa */}
             <div className="aspect-video relative bg-black border-b border-[var(--border-subtle)]">
-              <div 
-                className="absolute inset-0 bg-cover bg-center opacity-80" 
-                style={{ backgroundImage: `url(${curso.capaUrl})` }} 
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-80"
+                style={{ backgroundImage: `url(${curso.capaUrl})` }}
               />
-              
+
               <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Link href={`/admin-academy/cursos/${curso.id}`}>
                   <button className="bg-black/60 backdrop-blur border border-white/20 p-1.5 rounded text-white hover:text-primary transition-colors">
@@ -64,7 +104,7 @@ export default function AdminCursosPage() {
                 </button>
               </div>
             </div>
-            
+
             {/* Infos */}
             <div className="p-4 flex flex-col flex-1">
               <div className="flex items-center justify-between mb-2">
@@ -73,11 +113,11 @@ export default function AdminCursosPage() {
                   Rascunho
                 </span>
               </div>
-              
+
               <h3 className="font-bold text-foreground text-base mb-1 line-clamp-1" title={curso.titulo}>
                 {curso.titulo}
               </h3>
-              
+
               <div className="flex items-center justify-between text-xs text-foreground/50 mt-auto pt-4 border-t border-[var(--border-subtle)]">
                 <span>{curso.totalAulas} Aulas</span>
                 <span>{curso.duracaoHoras} Horas</span>

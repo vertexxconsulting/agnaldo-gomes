@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { ShoppingBag, MessageCircle, CreditCard, Award, ArrowRight, CheckCircle2, Globe, Mail } from 'lucide-react';
+import { ShoppingBag, MessageCircle, CreditCard, Award, CheckCircle2, Globe, Mail } from 'lucide-react';
 
 export default function PropostaVertexPage() {
   return (
@@ -11,10 +11,10 @@ export default function PropostaVertexPage() {
             {/* Logo da Vertex */}
             <div className="relative w-56 h-16">
               {/* O usuário deve salvar a logo em public/opt/vertex-logo.png ou .jpg */}
-              <Image 
-                src="/opt/vertex-logo.png" 
-                alt="Vertex Consulting" 
-                fill 
+              <Image
+                src="/opt/vertex-logo.png"
+                alt="Vertex Consulting"
+                fill
                 className="object-contain object-left"
                 priority
               />
@@ -30,7 +30,7 @@ export default function PropostaVertexPage() {
       <section className="pt-24 pb-16 px-6 relative overflow-hidden">
         {/* Glow de fundo */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#d4af37]/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
-        
+
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-[#d4af37] font-semibold tracking-widest uppercase mb-4 text-sm">Fase 2 — Inovação & Escala</h2>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight text-white">
@@ -49,16 +49,16 @@ export default function PropostaVertexPage() {
       <section className="py-8 px-6">
         <div className="container mx-auto max-w-4xl bg-[#d4af37]/10 border border-[#d4af37]/30 rounded-2xl p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4af37]/5 rounded-bl-full -mr-16 -mt-16 pointer-events-none" />
-          
+
           <div className="flex flex-col md:flex-row items-start gap-6 relative z-10">
             <Globe className="text-[#d4af37] shrink-0 mt-1" size={32} />
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-white mb-2">Excelente Notícia: O Domínio Perfeito está Disponível!</h2>
               <p className="text-white/80 mb-6 leading-relaxed">
-                Acabamos de verificar e o domínio <strong className="text-[#d4af37]">agnaldogomes.com.br</strong> está livre para registro! 
+                Acabamos de verificar e o domínio <strong className="text-[#d4af37]">agnaldogomes.com.br</strong> está livre para registro!
                 Isso é raríssimo e de enorme valor para a marca. Sugerimos registrar imediatamente para garantir a exclusividade.
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Opção 1: Registro.br */}
                 <div className="bg-black/40 border border-white/10 rounded-xl p-5">
@@ -82,8 +82,8 @@ export default function PropostaVertexPage() {
                 <div>
                   <h4 className="font-bold text-white">Bônus de Autoridade: E-mail Profissional</h4>
                   <p className="text-sm text-white/60 mt-1 leading-relaxed">
-                    Para transmitir total confiança aos alunos e clientes, recomendamos adquirir também o pacote de e-mail 
-                    (ex: <strong className="text-[#d4af37]">contato@agnaldogomes.com.br</strong>) por apenas <strong>R$ 3,49/mês</strong>. 
+                    Para transmitir total confiança aos alunos e clientes, recomendamos adquirir também o pacote de e-mail
+                    (ex: <strong className="text-[#d4af37]">contato@agnaldogomes.com.br</strong>) por apenas <strong>R$ 3,49/mês</strong>.
                   </p>
                 </div>
               </div>
@@ -104,7 +104,7 @@ export default function PropostaVertexPage() {
       {/* PROPOSTAS - CARDS */}
       <section className="py-12 px-6">
         <div className="container mx-auto max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* Card 1 */}
           <div className="group bg-white/[0.02] border border-white/5 hover:border-[#d4af37]/50 transition-all duration-500 rounded-2xl p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#d4af37]/10 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
@@ -144,7 +144,7 @@ export default function PropostaVertexPage() {
               </li>
               <li className="flex items-start gap-3 text-sm text-white/70">
                 <CheckCircle2 className="text-[#d4af37] shrink-0 mt-0.5" size={16} />
-                <span><strong>Retenção Ativa:</strong> Na tela do link, a cliente só pode <strong className="text-white">Confirmar</strong> ou solicitar <strong className="text-white">Remarcar</strong> (informando o motivo). A opção de cancelamento direto é ocultada para proteger sua agenda.</span>
+                <span><strong>Retenção Ativa:</strong> Na tela do link, a cliente só pode <strong className="text-white">Confirmar</strong> ou solicitar <strong className="text-white">Remarcar</strong> (informando o motivo). A opção de cancelamento direto é oculta para proteger sua agenda.</span>
               </li>
             </ul>
           </div>
@@ -219,7 +219,7 @@ export default function PropostaVertexPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-16 pt-8 border-t border-white/10 flex flex-col items-center">
             <p className="text-white/40 italic font-serif mb-2">Transformando visões em sistemas inteligentes.</p>
             <p className="text-[#d4af37] font-semibold tracking-widest uppercase text-xs">Vertex Consulting</p>

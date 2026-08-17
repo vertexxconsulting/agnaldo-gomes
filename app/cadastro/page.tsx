@@ -7,8 +7,7 @@ import { Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { CardGlass } from '@/components/CardGlass';
 import { SectionTitle } from '@/components/SectionTitle';
-import { MOCK_CLIENTES } from '@/lib/mock-data';
-
+import { supabase } from '@/lib/supabase';
 export default function CadastroPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -23,6 +22,13 @@ export default function CadastroPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const senhaMensagens = {
+    obrigatoria: 'Senha é obrigatória.',
+    minimo: 'A senha deve ter pelo menos 6 caracteres.',
+    confirmacaoObrigatoria: 'Confirmação de senha é obrigatória.',
+    naoConferem: 'As senhas não coincidem.',
+  };
 
   const validateForm = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
@@ -44,15 +50,15 @@ export default function CadastroPage() {
     }
 
     if (!formData.password) {
-      newErrors.password = 'Senha é obrigatória.';
+      newErrors.password = senhaMensagens.obrigatoria;
     } else if (formData.password.length < 6) {
-      newErrors.password = 'A senha deve ter pelo menos 6 caracteres.';
+      newErrors.password = senhaMensagens.minimo;
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirmação de senha é obrigatória.';
+      newErrors.confirmPassword = senhaMensagens.confirmacaoObrigatoria;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'As senhas não coincidem.';
+      newErrors.confirmPassword = senhaMensagens.naoConferem;
     }
 
     return newErrors;
@@ -81,19 +87,41 @@ export default function CadastroPage() {
 
     setIsSubmitting(true);
 
-    // Simulação de envio (mock sem Supabase)
-    await new Promise(resolve => setTimeout(resolve, 1800));
+    // Registro real no Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.fullName,
+          phone: formData.phone,
+          role: 'aluno',
+        },
+      },
+    });
 
     setIsSubmitting(false);
-    setSuccess(true);
-    
-    // TODO: Integrar com Supabase para cadastro real de clientes
-    // await supabase.from('clientes').insert({ ... });
 
-    // Redireciona para perfil após 2 segundos
-    setTimeout(() => {
-      router.push('/perfil');
-    }, 2000);
+    if (error) {
+      setErrors({ form: error.message });
+      return;
+    }
+
+    if (data.user) {
+      // Salva dados complementares no localStorage para uso no perfil
+      localStorage.setItem('ag-user', JSON.stringify({
+        email: formData.email,
+        nome: formData.fullName,
+        telefone: formData.phone,
+        created: new Date().toISOString(),
+      }));
+      setSuccess(true);
+
+      // Redireciona para perfil após 2 segundos
+      setTimeout(() => {
+        router.push('/perfil');
+      }, 2000);
+    }
   };
 
   if (success) {

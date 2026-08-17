@@ -1,18 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, Calendar, User2, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar } from 'lucide-react';
+import Image from 'next/image';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { MOCK_PROFISSIONAIS, MOCK_PROF_SERVICO, MOCK_SERVICOS, MOCK_AGENDAMENTOS } from '@/lib/mock-data';
-import type { Profissional, JornadaSemanal } from '@/lib/gestao-types';
+import { getProfissionais, getServicos, getProfissionalServico, getServicoPreco } from '@/lib/mock-data';
+import type { Profissional, JornadaSemanal, Servico, ProfissionalServico } from '@/lib/gestao-types';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function ProfissionaisPage() {
-  const [profissionais, setProfissionais] = useState<Profissional[]>(MOCK_PROFISSIONAIS);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [servicosCache, setServicosCache] = useState<Servico[]>([]);
+  const [profServCache, setProfServCache] = useState<ProfissionalServico[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -20,26 +24,42 @@ export default function ProfissionaisPage() {
   const [fotoLocal, setFotoLocal] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<string>('grid');
 
+  // Carregar dados do Supabase (com fallback para mock)
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [profData, servicosData, psData] = await Promise.all([
+        getProfissionais(),
+        getServicos(),
+        getProfissionalServico(),
+      ]);
+      setProfissionais(profData);
+      setServicosCache(servicosData);
+      setProfServCache(psData);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
+
   const filtrados = profissionais.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
     (p.especialidades ?? []).some(e => e.toLowerCase().includes(busca.toLowerCase()))
   );
 
-  const servicosDoProfissional = (profId: string) => {
-    const ids = MOCK_PROF_SERVICO.filter(ps => ps.profissional_id === profId).map(ps => ps.servico_id);
-    return MOCK_SERVICOS.filter(s => ids.includes(s.id));
+  const servicosDoProfissional = (profId: string): Servico[] => {
+    const ids = profServCache.filter(ps => ps.profissional_id === profId).map(ps => ps.servico_id);
+    return servicosCache.filter(s => ids.includes(s.id));
   };
 
   const statsProfissional = (profId: string) => {
-    const agendamentos = MOCK_AGENDAMENTOS.filter(a => a.profissional_id === profId);
-    const concluidos = agendamentos.filter(a => a.status === 'concluido');
-    const noShows = agendamentos.filter(a => a.status === 'no_show');
+    // Usa getServicoPreco do mock-data (que faz lookup no estado ou mock)
+    const profs = profServCache.filter(ps => ps.profissional_id === profId);
+    const servicoIds = profs.map(ps => ps.servico_id);
+    const servicosRelacionados = servicosCache.filter(s => servicoIds.includes(s.id));
+    const totalValor = servicosRelacionados.reduce((sum, s) => sum + s.preco, 0);
     return {
-      total: agendamentos.length,
-      concluidos: concluidos.length,
-      noShows: noShows.length,
-      taxaConclusao: agendamentos.length > 0
-        ? Math.round((concluidos.length / agendamentos.length) * 100) : 0,
+      totalServicos: servicosRelacionados.length,
+      totalValor,
     };
   };
 
@@ -118,8 +138,8 @@ export default function ProfissionaisPage() {
               placeholder="Buscar por nome ou especialidade..."
             />
           </div>
-          
-          <ViewToggle 
+
+          <ViewToggle
             options={[
               { id: 'grid', label: 'Grade' },
               { id: 'list', label: 'Lista' }
@@ -133,6 +153,10 @@ export default function ProfissionaisPage() {
             <Plus size={18} className="mr-2" /> Novo Profissional
           </Button>
         </div>
+
+        {loading && (
+          <div className="text-center py-8 text-foreground/50">Carregando profissionais...</div>
+        )}
 
         {/* Form */}
         {showForm && (
@@ -194,7 +218,7 @@ export default function ProfissionaisPage() {
                   {/* Avatar */}
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden">
                     {prof.foto_url ? (
-                      <img src={prof.foto_url} alt={prof.nome} className="w-full h-full object-cover" />
+                      <Image src={prof.foto_url} alt={prof.nome} fill className="object-cover" />
                     ) : (
                       <User2 size={24} />
                     )}
@@ -220,8 +244,8 @@ export default function ProfissionaisPage() {
 
                     {/* Stats */}
                     <div className="flex gap-4 text-xs text-foreground/60">
-                      <span className="flex items-center gap-1"><Calendar size={12} /> {stats.total} agendamentos</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-400" /> {stats.taxaConclusao}% concluídos</span>
+                      <span className="flex items-center gap-1"><Calendar size={12} /> {stats.totalServicos} serviços</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-400" /> R$ {stats.totalValor.toFixed(2)}</span>
                     </div>
 
                     {/* Expandido */}

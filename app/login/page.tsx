@@ -1,6 +1,7 @@
 'use client';
 
 import { SplitLogin } from '@/components/SplitLogin';
+import { ROLES } from '@/lib/auth';
 
 /**
  * Login do APP DO SALÃO — split: logo à esquerda, formulário à direita.
@@ -9,7 +10,7 @@ import { SplitLogin } from '@/components/SplitLogin';
 export default function LoginPage() {
   return (
     <SplitLogin
-      logoSrc="/opt/logo-branca.webp"
+      logoSrc="/logo-agnaldo.png"
       sideBg="light"
       title="Agnaldo Gomes"
       subtitle="Painel do Studio · Gestão de agenda, clientes e faturamento"
@@ -17,9 +18,7 @@ export default function LoginPage() {
       formSubtitle="Acesse o painel de gestão do salão"
       cta="Acessar Painel"
       redirectTo="/admin"
-      registerHref="/cadastro"
-      registerLabel="Solicitar acesso"
-      hint="Modo TESTE: use qualquer e-mail válido e senha com 6+ caracteres. O acesso via Supabase será configurado em seguida."
+      requiredRole={ROLES.STUDIO_ADMIN}
     />
   );
 }

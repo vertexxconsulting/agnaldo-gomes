@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
 import { CardGlass } from "@/components/CardGlass";
-import { LogOut, Calendar, Clock, Scissors, User, Camera, Upload, Trash2, Smartphone } from "lucide-react";
+import { LogOut, Calendar, Clock, User, Camera, Trash2 } from "lucide-react";
 import { MOCK_CLIENTES, MOCK_SERVICOS, MOCK_PROFISSIONAIS } from '@/lib/mock-data';
 import type { Cliente } from '@/lib/gestao-types';
 import Image from 'next/image';
@@ -18,7 +17,7 @@ export default function PerfilClientePage() {
   const [cliente, setCliente] = useState<Partial<Cliente> | null>(null);
   const [fotoLocal, setFotoLocal] = useState<string | null>(null);
   
-  const [agendamentos, setAgendamentos] = useState<any[]>([]);
+  const [agendamentos, setAgendamentos] = useState<{ id: string; data: string; servico: string; servico_id?: string; profissional: string; profissional_id?: string; status: string; hora_inicio?: string }[]>([]);
 
   // Carrega dados salvos no localStorage (simulando auth)
   useEffect(() => {
@@ -86,8 +85,10 @@ export default function PerfilClientePage() {
       <div className="flex flex-col w-full py-12 md:py-20 bg-[var(--background)] min-h-[80vh] items-center justify-center">
         <div className="container mx-auto px-4 sm:px-6 max-w-md">
           <CardGlass className="p-8 animate-in zoom-in duration-300">
-            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><Smartphone className="text-primary"/> Acesso Rápido</h2>
-            <p className="text-foreground/70 mb-8">Informe seu telefone para acessar seus agendamentos.</p>
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><User className="text-primary"/> Acesso Rápido</h2>
+            <p className="text-foreground/70 mb-8">
+              Acesse com seu WhatsApp para visualizar agendamentos (modo demonstração).
+            </p>
             
             <form onSubmit={handleLogin}>
               <label className="block text-sm font-medium text-foreground/80 mb-2">Seu WhatsApp</label>

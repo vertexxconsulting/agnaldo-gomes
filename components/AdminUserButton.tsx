@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, User, Settings, X } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export function AdminUserButton({ 
   isCollapsed,
@@ -18,6 +20,7 @@ export function AdminUserButton({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Close when clicking outside
   useEffect(() => {
@@ -29,6 +32,20 @@ export function AdminUserButton({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleLogout = async () => {
+    setIsOpen(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao fazer logout:', err);
+    }
+    // Remove sessão do localstorage (usado em modo teste)
+    localStorage.removeItem('ag-sessao');
+    
+    // Redireciona com hard reload para limpar estados em memória e forçar o middleware
+    window.location.href = logoutHref;
+  };
 
   return (
     <div className="relative z-50 flex items-center justify-center w-full" ref={containerRef}>
@@ -104,13 +121,14 @@ export function AdminUserButton({
               </Link>
             </div>
             
-            <div className="p-2 border-t border-[var(--border-subtle)]">
-              <Link href={logoutHref} onClick={() => setIsOpen(false)}>
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer font-medium">
-                  <LogOut size={16} />
-                  Sair da Conta
-                </div>
-              </Link>
+              <div className="p-2 border-t border-[var(--border-subtle)]">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer font-medium w-full text-left"
+              >
+                <LogOut size={16} />
+                Sair da Conta
+              </button>
             </div>
           </motion.div>
         </AnimatePresence>

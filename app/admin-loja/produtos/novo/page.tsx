@@ -2,10 +2,47 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function NovoProdutoPage() {
   const [productType, setProductType] = useState<'AFFILIATE_ML' | 'LOCAL_STOCK'>('AFFILIATE_ML');
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    price: '',
+    link: '',
+    stock: '',
+    image_url: '',
+    active: true,
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('products').insert({
+        name: formData.name,
+        category: formData.category,
+        type: productType,
+        price: parseFloat(formData.price) || 0,
+        stock: productType === 'LOCAL_STOCK' ? parseInt(formData.stock) || 0 : 0,
+        active: formData.active,
+        image_url: formData.image_url || null,
+        link: formData.link || null,
+      });
+      if (error) throw error;
+      router.push('/admin-loja/produtos');
+    } catch (err) {
+      console.error('Erro ao salvar produto:', err);
+      alert('Erro ao salvar produto. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -20,9 +57,13 @@ export default function NovoProdutoPage() {
             <p className="text-sm text-slate-500 mt-1">Adicione um novo item à sua loja.</p>
           </div>
         </div>
-        <button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+        >
           <Save size={18} />
-          <span>Salvar Produto</span>
+          <span>{saving ? 'Salvando...' : 'Salvar Produto'}</span>
         </button>
       </div>
 
@@ -65,7 +106,11 @@ export default function NovoProdutoPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Link do Mercado Livre *</label>
                 <div className="flex gap-2">
-                  <input type="url" placeholder="https://produto.mercadolivre.com.br/..." className="flex-1 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                  <input type="url" 
+                  placeholder="https://produto.mercadolivre.com.br/..." 
+                  value={formData.link}
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                  className="flex-1 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
                   <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">Extrair Dados</button>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Cole o link acima e clique em &quot;Extrair&quot; para puxar nome, preço e fotos automaticamente.</p>
@@ -74,13 +119,19 @@ export default function NovoProdutoPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Produto *</label>
-              <input type="text" className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+              <input type="text" 
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoria *</label>
-                <select className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white">
+                <select 
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white">
                   <option value="">Selecione...</option>
                   <option value="alisamento">Alisamento</option>
                   <option value="coloracao">Coloração</option>
@@ -90,7 +141,10 @@ export default function NovoProdutoPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Preço de Venda (R$) *</label>
-                <input type="number" step="0.01" placeholder="0,00" className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                <input type="number" step="0.01" placeholder="0,00" 
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
               </div>
             </div>
 
@@ -111,7 +165,10 @@ export default function NovoProdutoPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Inicial (unidades)</label>
-                  <input type="number" placeholder="0" className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                  <input type="number" placeholder="0" 
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />  
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Peso (kg)</label>
@@ -146,7 +203,11 @@ export default function NovoProdutoPage() {
             <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Status</h2>
             <div>
               <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-5 h-5 text-amber-500 border-slate-300 rounded focus:ring-amber-500" defaultChecked />
+                <input type="checkbox" 
+                checked={formData.active}
+                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                className="w-5 h-5 text-amber-500 border-slate-300 rounded focus:ring-amber-500" 
+              />
                 <span className="text-sm font-medium text-slate-700">Produto Ativo na Loja</span>
               </label>
               <p className="text-xs text-slate-500 mt-2 ml-8">Desmarque para ocultar o produto sem deletá-lo.</p>

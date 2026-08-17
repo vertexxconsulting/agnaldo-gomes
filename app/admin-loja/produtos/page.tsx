@@ -5,31 +5,51 @@ import Link from 'next/link';
 import { Plus, Search, Edit2, Trash2, ExternalLink, Package } from 'lucide-react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import type { Produto } from '@/lib/gestao-types';
+
+// Mock fallback para produtos (usado quando Supabase não tem dados)
+const MOCK_PRODUTOS: Produto[] = [
+  { id: '1', name: 'Shampoo Premium Nutritivo', category: 'Shampoo', type: 'LOCAL_STOCK', price: 89.90, stock: 24, active: true, image_url: '/placeholder.svg', link: undefined },
+  { id: '2', name: 'Condicionador Bril & Proteção', category: 'Condicionador', type: 'LOCAL_STOCK', price: 79.90, stock: 18, active: true, image_url: '/placeholder.svg', link: undefined },
+  { id: '3', name: 'Kit Progressiva 3 Passos', category: 'Kit', type: 'AFFILIATE_ML', price: 0, stock: 0, active: true, image_url: '/placeholder.svg', link: 'https://produto.mercadolivre.com.br/MLB-123456789' },
+];
 
 export default function AdminLojaProdutos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
+    const carregarProdutos = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) {
+          console.error('Erro ao buscar produtos:', error.message);
+          setProducts(MOCK_PRODUTOS);
+        } else {
+          setProducts(data?.length > 0 ? data : MOCK_PRODUTOS);
+        }
+      } catch {
+        // Supabase não disponível — usa fallback
+        setProducts(MOCK_PRODUTOS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    carregarProdutos();
   }, []);
 
-  async function fetchProducts() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Erro ao buscar produtos:', error.message);
-    }
-    setProducts(data || []);
-    setLoading(false);
-  }
-
   async function handleDelete(id: string) {
+    const isMock = products.some(p => p.id.startsWith('mock_') || (!['1', '2', '3'].includes(p.id)));
+    if (isMock) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+      return;
+    }
     if (!confirm('Tem certeza que deseja excluir este produto?')) return;
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
@@ -54,8 +74,8 @@ export default function AdminLojaProdutos() {
           <h1 className="text-2xl font-bold text-slate-900">Produtos</h1>
           <p className="text-slate-500 mt-1">Gerencie seu estoque físico e links de afiliados.</p>
         </div>
-        <Link 
-          href="/admin-loja/produtos/novo" 
+        <Link
+          href="/admin-loja/produtos/novo"
           className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
         >
           <Plus size={20} />
@@ -65,13 +85,13 @@ export default function AdminLojaProdutos() {
 
       {/* Tabela e Filtros */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-        
+
         {/* Barra de Busca */}
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
-            <input 
-              type="text" 
-              placeholder="Buscar por nome ou categoria..." 
+            <input
+              type="text"
+              placeholder="Buscar por nome ou categoria..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
@@ -79,7 +99,7 @@ export default function AdminLojaProdutos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           </div>
           <div className="flex gap-2">
-            <select 
+            <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="border border-slate-300 rounded-lg text-sm px-3 py-2 text-slate-700 bg-white focus:outline-none focus:border-amber-500"
@@ -177,7 +197,7 @@ export default function AdminLojaProdutos() {
             </table>
           )}
         </div>
-        
+
         {/* Paginação */}
         {!loading && filtered.length > 0 && (
           <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm text-slate-500">

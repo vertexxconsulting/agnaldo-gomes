@@ -1,19 +1,39 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, DollarSign, Eye, EyeOff, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, Clock, DollarSign, Eye, EyeOff } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { MOCK_SERVICOS, MOCK_PROF_SERVICO, MOCK_PROFISSIONAIS, getCategorias } from '@/lib/mock-data';
-import type { Servico } from '@/lib/gestao-types';
+import { getServicos, getProfissionalServico, getProfissionais, getCategorias } from '@/lib/mock-data';
+import type { Servico, Profissional, ProfissionalServico } from '@/lib/gestao-types';
 
 export default function ServicosPage() {
-  const [servicos, setServicos] = useState<Servico[]>(MOCK_SERVICOS);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [profisiconalServicoData, setProfisiconalServicoData] = useState<ProfissionalServico[]>([]);
+  const [profissionaisData, setProfissionaisData] = useState<Profissional[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [catFiltro, setCatFiltro] = useState<string>('todas');
   const [editando, setEditando] = useState<Servico | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  // Carregar dados do Supabase (com fallback para mock)
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [servicosData, psData, profData] = await Promise.all([
+        getServicos(),
+        getProfissionalServico(),
+        getProfissionais(),
+      ]);
+      setServicos(servicosData);
+      setProfisiconalServicoData(psData);
+      setProfissionaisData(profData);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
 
   const categorias = getCategorias();
 
@@ -23,9 +43,9 @@ export default function ServicosPage() {
     return matchBusca && matchCat;
   });
 
-  const profsPorServico = (servicoId: string) => {
-    const ids = MOCK_PROF_SERVICO.filter(ps => ps.servico_id === servicoId).map(ps => ps.profissional_id);
-    return MOCK_PROFISSIONAIS.filter(p => ids.includes(p.id)).map(p => p.nome);
+  const profsPorServico = (servicoId: string): string[] => {
+    const ids = profisiconalServicoData.filter(ps => ps.servico_id === servicoId).map(ps => ps.profissional_id);
+    return profissionaisData.filter(p => ids.includes(p.id)).map(p => p.nome);
   };
 
   const toggleAtivo = (id: string) => {
@@ -88,6 +108,10 @@ export default function ServicosPage() {
           </Button>
         </div>
 
+        {loading && (
+          <div className="text-center py-8 text-foreground/50">Carregando serviços...</div>
+        )}
+
         {/* Form inline */}
         {showForm && (
           <CardGlass className="mb-8">
@@ -140,10 +164,10 @@ export default function ServicosPage() {
                   <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
                   <td className="py-3 pr-4 text-primary font-semibold"><DollarSign size={13} className="inline" />R$ {Number(s.preco).toFixed(2)}</td>
                   <td className="py-3 pr-4 text-foreground/60 text-xs">
-                    {profsPorServico(s.id).length > 0
-                      ? profsPorServico(s.id).join(', ')
-                      : <span className="text-foreground/30">Nenhum</span>
-                    }
+                    {(() => {
+                      const profs = profsPorServico(s.id);
+                      return profs.length > 0 ? profs.join(', ') : <span className="text-foreground/30">Nenhum</span>;
+                    })()}
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex gap-2">

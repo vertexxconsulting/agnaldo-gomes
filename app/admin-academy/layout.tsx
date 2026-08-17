@@ -22,6 +22,11 @@ export default function AdminAcademyLayout({ children }: { children: React.React
     { href: '/admin-academy/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 
+  // Página de login não usa sidebar
+  if (pathname === '/admin-academy/login') {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex h-screen bg-white overflow-hidden">
       {/* Sidebar Desktop */}
@@ -45,7 +50,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
                 {!isCollapsed ? (
                   <motion.div key="logo-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
                     <div className="w-8 h-8 relative">
-                      <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" priority />
+                      <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes Studio" fill className="object-contain" priority />
                     </div>
                     <span className="text-xl font-serif font-bold text-primary tracking-wider">
                       Academy
@@ -53,7 +58,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
                   </motion.div>
                 ) : (
                   <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-8 h-8 relative">
-                    <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" priority />
+                    <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes Studio" fill className="object-contain" priority />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -105,11 +110,11 @@ export default function AdminAcademyLayout({ children }: { children: React.React
         
         <div className="p-4 border-t border-[var(--border-subtle)]">
           {/* Botão de Perfil */}
-          <AdminUserButton 
-            isCollapsed={isCollapsed} 
+          <AdminUserButton
+            isCollapsed={isCollapsed}
             profileHref="/admin-academy/perfil"
-            settingsHref="/admin-academy/configuracao"
-            logoutHref="/academy/login"
+            settingsHref="/admin-academy/configuracoes"
+            logoutHref="/admin-academy/login"
           />
         </div>
         {!isCollapsed && (
@@ -130,7 +135,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
             <Link href="/">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 relative">
-                  <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain" />
+                  <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes Studio" fill className="object-contain" />
                 </div>
                 <span className="text-lg font-serif font-bold text-primary tracking-wider">
                   Academy
@@ -139,11 +144,11 @@ export default function AdminAcademyLayout({ children }: { children: React.React
             </Link>
           </div>
           <div className="w-10">
-            <AdminUserButton 
-              isCollapsed={true} 
+            <AdminUserButton
+              isCollapsed={true}
               profileHref="/admin-academy/perfil"
-              settingsHref="/admin-academy/configuracao"
-              logoutHref="/academy/login"
+              settingsHref="/admin-academy/configuracoes"
+              logoutHref="/admin-academy/login"
             />
           </div>
         </header>

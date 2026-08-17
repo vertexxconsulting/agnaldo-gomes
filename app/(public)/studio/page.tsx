@@ -1,7 +1,107 @@
+'use client';
+
 import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
-import { Scissors, Sparkles, Droplets, Hand, Baby, User, Clock } from "lucide-react";
+import { Scissors, Sparkles, Droplets, Hand, Baby, User, Clock, ChevronRight } from "lucide-react";
+
+const studioImages = [
+  '/agnaldo1.webp',
+  '/agnaldo2.webp',
+  '/agnaldo5.webp',
+  '/agnaldo6.webp',
+  '/agnaldo7.webp',
+];
+
+function StudioCarouselHero() {
+  return (
+    <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
+      {/* Carrossel de fundo — imagens verticais (retrato) transicionando lateralmente */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0 flex">
+        <motion.div
+          className="flex h-full items-stretch"
+          style={{ width: 'fit-content' }}
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ ease: 'linear', duration: 32, repeat: Infinity }}
+        >
+          {[...studioImages, ...studioImages].map((src, i) => (
+            <div
+              key={i}
+              className="relative flex-shrink-0 h-full"
+              style={{ width: '22vw', minWidth: 180 }}
+            >
+              <Image
+                src={src}
+                alt="Studio Agnaldo Gomes"
+                fill
+                className="object-cover object-top"
+                sizes="22vw"
+                priority={i < 3}
+              />
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Overlay gradientes luxury */}
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
+      </div>
+
+      {/* Conteúdo do Hero */}
+      <motion.div
+        className="container relative z-10 mx-auto px-6 lg:px-12 flex flex-col items-start text-left gap-5 mt-16"
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: {},
+          show: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } },
+        }}
+      >
+        <motion.span
+          variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+          className="text-primary font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs"
+        >
+          Studio de Beleza
+        </motion.span>
+
+        <motion.h1
+          variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+          className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight max-w-3xl leading-[1.1]"
+        >
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/30">
+            Excelência em{' '}
+          </span>
+          <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#D4AF37] to-[#AA8529] font-bold italic font-serif">
+            Transformar sua Beleza
+          </span>
+        </motion.h1>
+
+        <motion.p
+          variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+          className="text-white/80 text-base md:text-lg max-w-lg font-light leading-relaxed mt-2"
+        >
+          Técnicas exclusivas, produtos premium e a expertise de +30 anos
+          para revelar a sua melhor versão.
+        </motion.p>
+
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+          className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto"
+        >
+          <Link href="/agendamento">
+            <Button variant="primary" className="w-full sm:w-auto uppercase tracking-widest text-xs py-3 px-8 shadow-lg shadow-primary/30 flex items-center gap-2">
+              Agendar Horário <ChevronRight size={14} />
+            </Button>
+          </Link>
+        </motion.div>
+      </motion.div>
+    </section>
+  );
+}
 
 export default function StudioPage() {
   const servicos = [
@@ -56,9 +156,13 @@ export default function StudioPage() {
   ];
 
   return (
-    <div className="flex flex-col w-full py-20">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Studio de Beleza" subtitle="Excelência em transformar sua beleza" align="center" />
+    <div className="flex flex-col w-full">
+      {/* ===== HERO COM CARROSSEL ===== */}
+      <StudioCarouselHero />
+
+      {/* ===== CONTEÚDO ===== */}
+      <div className="container mx-auto px-6 py-20">
+        <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
           <p className="text-foreground/80 text-base leading-relaxed">

@@ -3,8 +3,25 @@ import { NextResponse } from 'next/server';
 const API_URL = process.env.EVOLUTION_API_URL;
 const API_KEY = process.env.EVOLUTION_API_KEY;
 
+// Chave opcional de proteção para evitar uso não autorizado
+const PROTECTION_KEY = process.env.WHATSAPP_WEBHOOK_KEY;
+
+function checkAuth(request: Request) {
+  // Se PROTECTION_KEY estiver configurada, requer header x-api-key
+  if (PROTECTION_KEY) {
+    const provided = request.headers.get('x-api-key');
+    if (provided !== PROTECTION_KEY) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
+    const authError = checkAuth(request);
+    if (authError) return authError;
+
     if (!API_URL || !API_KEY) {
       return NextResponse.json({ error: 'Evolution API não configurada no .env' }, { status: 500 });
     }
@@ -43,6 +60,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const authError = checkAuth(request);
+    if (authError) return authError;
+
     if (!API_URL || !API_KEY) {
       return NextResponse.json({ error: 'Evolution API não configurada no .env' }, { status: 500 });
     }

@@ -62,7 +62,7 @@ export default function AlunoPage() {
               />
             </div>
             
-            <Link href="/aluno/dashboard" className="w-full mt-4">
+            <Link href="/academy/login" className="w-full mt-4">
               <Button type="button" variant="primary" size="lg" className="w-full">
                 <LogIn className="mr-2" size={18} /> Entrar
               </Button>
@@ -94,7 +94,7 @@ export default function AlunoPage() {
           <Reveal>
             <div className="glass p-8 rounded-2xl border-l-4 border-primary">
               <p className="text-lg font-medium text-foreground italic leading-relaxed mb-4">
-                "A técnica refinada é o que separa um bom profissional de um artista de excelência. Bem-vindo ao próximo nível da sua carreira."
+                &quot;A técnica refinada é o que separa um bom profissional de um artista de excelência. Bem-vindo ao próximo nível da sua carreira.&quot;
               </p>
               <div>
                 <h4 className="font-bold text-primary">Agnaldo Gomes</h4>

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, LogOut, Database, ChevronLeft, ChevronRight, Menu, ArrowLeft, X, BookOpen, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, ChevronLeft, ChevronRight, Menu, ArrowLeft, X, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -18,7 +18,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
     { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
     { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
-    { href: '/admin-loja', label: 'Gestão da Loja', icon: ShoppingBag },
     { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
   ];
 
@@ -44,11 +43,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <AnimatePresence mode="wait">
                 {!isCollapsed ? (
                   <motion.div key="logo-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-32 h-10 relative">
-                    <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
+                    <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
                   </motion.div>
                 ) : (
                   <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-10 h-10 relative">
-                    <Image src="/opt/logo-branca.webp" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
+                    <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes Studio" fill className="object-contain drop-shadow-sm" priority />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -117,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/">
               <div className="w-24 h-8 relative cursor-pointer">
                 <Image 
-                  src="/opt/logo-branca.webp" 
+                  src="/logo-agnaldo.png" 
                   alt="Agnaldo Gomes Studio" 
                   fill 
                   className="object-contain drop-shadow-md" 

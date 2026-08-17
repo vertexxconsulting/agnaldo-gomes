@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
-import { MOCK_CLIENTES, MOCK_AGENDAMENTOS, getServicoPreco, STATUS_LABELS } from '@/lib/mock-data';
+import { getClientes, getAgendamentos, getServicoPreco, STATUS_LABELS } from '@/lib/mock-data';
 import type { Cliente } from '@/lib/gestao-types';
+import type { Agendamento } from '@/lib/gestao-types';
+import type { Servico } from '@/lib/gestao-types';
 
 export default function ClienteModule() {
-  const [clientes, setClientes] = useState<Cliente[]>(MOCK_CLIENTES);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
   
@@ -17,10 +21,25 @@ export default function ClienteModule() {
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Cliente | null>(null);
 
+  // Carregar dados do Supabase (com fallback para mock)
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [clientesData, agendamentosData] = await Promise.all([
+        getClientes(),
+        getAgendamentos(),
+      ]);
+      setClientes(clientesData);
+      setAgendamentos(agendamentosData);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
+
   // Calcula estatísticas do CRM (Ticket Médio, Visitas, Faturamento Total, Última Visita)
   const statsCliente = (clienteId: string) => {
-    const ags = MOCK_AGENDAMENTOS.filter(a => a.cliente_id === clienteId && a.status === 'concluido');
-    const todosAgs = MOCK_AGENDAMENTOS.filter(a => a.cliente_id === clienteId);
+    const ags = agendamentos.filter(a => a.cliente_id === clienteId && a.status === 'concluido');
+    const todosAgs = agendamentos.filter(a => a.cliente_id === clienteId);
     
     // Sort desc por data
     todosAgs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
@@ -91,6 +110,10 @@ export default function ClienteModule() {
           <UserPlus size={18} className="mr-2" /> Novo Cliente
         </Button>
       </div>
+
+      {loading && (
+        <div className="text-center py-8 text-foreground/50">Carregando clientes...</div>
+      )}
 
       {/* Formulário de Criação/Edição */}
       {showForm && (

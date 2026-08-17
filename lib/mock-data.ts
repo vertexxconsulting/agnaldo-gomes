@@ -9,6 +9,14 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento,
 } from './gestao-types';
 
+// Re-exportar tipos para consumers que importam do mock-data
+export type { Cliente, Profissional, Servico, ProfissionalServico, Agendamento, BloqueioAgenda, StatusAgendamento };
+import { supabase } from './supabase';
+import {
+  fetchClientes, fetchProfissionais, fetchServicos,
+  fetchProfissionalServico, fetchAgendamentos, fetchBloqueios,
+} from './supabase-queries';
+
 // ────────────────────────────────────────────
 // SERVIÇOS
 // ────────────────────────────────────────────
@@ -171,6 +179,57 @@ export function getProfissionaisPorServico(servicoId: string): Profissional[] {
 }
 
 // ────────────────────────────────────────────
+// ADAPTER LAYER: fallback para Supabase real
+// ────────────────────────────────────────────
+// Estas funções tentam buscar dados do Supabase primeiro. Se falhar
+// (credenciais não configuradas, tabelas não criadas, etc.),
+// caem automaticamente no mock. Ideal para desenvolvimento incremental.
+
+export async function getClientes(): Promise<Cliente[]> {
+  const real = await fetchClientes();
+  return real.length > 0 ? real : MOCK_CLIENTES;
+}
+
+export async function getProfissionais(): Promise<Profissional[]> {
+  const real = await fetchProfissionais();
+  return real.length > 0 ? real : MOCK_PROFISSIONAIS;
+}
+
+export async function getServicos(ativoOnly = false): Promise<Servico[]> {
+  const real = await fetchServicos(ativoOnly);
+  const fallback = ativoOnly ? MOCK_SERVICOS.filter(s => s.ativo) : MOCK_SERVICOS;
+  return real.length > 0 ? real : fallback;
+}
+
+export async function getProfissionalServico(): Promise<ProfissionalServico[]> {
+  const real = await fetchProfissionalServico();
+  return real.length > 0 ? real : MOCK_PROF_SERVICO;
+}
+
+export async function getAgendamentos(filtro?: {
+  data?: string;
+  profissional_id?: string;
+  status?: string;
+}): Promise<Agendamento[]> {
+  const real = await fetchAgendamentos(filtro);
+  if (real.length > 0) return real;
+  // Fallback mock com filtro básico
+  let result = MOCK_AGENDAMENTOS;
+  if (filtro?.data) result = result.filter(a => a.data === filtro.data);
+  if (filtro?.profissional_id) result = result.filter(a => a.profissional_id === filtro.profissional_id);
+  if (filtro?.status) result = result.filter(a => a.status === filtro.status);
+  return result;
+}
+
+export async function getBloqueios(data?: string): Promise<BloqueioAgenda[]> {
+  const real = await fetchBloqueios(data);
+  if (real.length > 0) return real;
+  // Fallback mock com filtro básico por data
+  if (data) return MOCK_BLOQUEIOS.filter(b => b.data_inicio.startsWith(data));
+  return MOCK_BLOQUEIOS;
+}
+
+// ────────────────────────────────────────────
 // PLATAFORMA DE CURSOS (ÁREA DE MEMBROS - NETFLIX STYLE)
 // ────────────────────────────────────────────
 
@@ -292,3 +351,74 @@ export const MOCK_PROGRESSO_ALUNO: Progresso[] = [
   { aula_id: 'aula_2', concluida: true, assistidoSegundos: 1320 },
   { aula_id: 'aula_3', concluida: false, assistidoSegundos: 450 }, // Parou na metade
 ];
+
+// ────────────────────────────────────────────
+// ADAPTERS ASSYNC PARA CURSOS (fallback automático)
+// ────────────────────────────────────────────
+export async function getCursos(): Promise<Curso[]> {
+  const real = await fetchCursos();
+  return real.length > 0 ? real : MOCK_CURSOS;
+}
+
+export async function getModulos(cursoId?: string): Promise<Modulo[]> {
+  const real = await fetchModulos();
+  if (real.length > 0) {
+    return cursoId ? real.filter(m => m.curso_id === cursoId) : real;
+  }
+  const fallback = MOCK_MODULOS;
+  return cursoId ? fallback.filter(m => m.curso_id === cursoId) : fallback;
+}
+
+export async function getAulas(moduloId?: string): Promise<Aula[]> {
+  const real = await fetchAulas();
+  if (real.length > 0) {
+    return moduloId ? real.filter(a => a.modulo_id === moduloId) : real;
+  }
+  const fallback = MOCK_AULAS;
+  return moduloId ? fallback.filter(a => a.modulo_id === moduloId) : fallback;
+}
+
+export async function getProgressoAluno(): Promise<Progresso[]> {
+  const real = await fetchProgressoAluno();
+  return real.length > 0 ? real : MOCK_PROGRESSO_ALUNO;
+}
+
+// ────────────────────────────────────────────
+// FETCH REAL (Supabase) — cai em mock se não configurado
+// ────────────────────────────────────────────
+async function fetchCursos(): Promise<Curso[]> {
+  try {
+    const { data, error } = await supabase.from('cursos').select('*').order('titulo');
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
+}
+
+async function fetchModulos(): Promise<Modulo[]> {
+  try {
+    const { data, error } = await supabase.from('modulos').select('*').order('curso_id, ordem');
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
+}
+
+async function fetchAulas(): Promise<Aula[]> {
+  try {
+    const { data, error } = await supabase.from('aulas').select('*').order('modulo_id, ordem');
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
+}
+
+async function fetchProgressoAluno(): Promise<Progresso[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('progresso_aluno')
+      .select('*')
+      .eq('user_id', user.id);
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
+}

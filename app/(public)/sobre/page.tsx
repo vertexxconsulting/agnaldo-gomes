@@ -1,6 +1,7 @@
-import { SectionTitle } from "@/components/SectionTitle";
 import Image from "next/image";
+import Link from "next/link";
 import { Heart, BookOpen, Scissors, Users } from "lucide-react";
+import { Button } from "@/components/Button";
 
 export const metadata = {
   title: 'Sobre Agnaldo Gomes | Cabeleireiro • Educador • Apaixonado pela Beleza',
@@ -34,75 +35,96 @@ export default function SobrePage() {
   return (
     <div className="flex flex-col w-full">
 
-      {/* ===== HERO SOBRE ===== */}
-      <section className="py-24 bg-card/30">
-        <div className="container mx-auto px-6">
-          <SectionTitle title="Sobre Agnaldo Gomes" subtitle="Cabeleireiro • Educador • Apaixonado pela Beleza" align="center" />
+      {/* ===== HERO COM FOTO ===== */}
+      <section className="relative w-full min-h-[75vh] flex items-end overflow-hidden">
+        {/* Foto de fundo */}
+        <Image
+          src="/agnaldo9.webp"
+          alt="Agnaldo Gomes"
+          fill
+          className="object-cover object-[center_10%]"
+          priority
+          sizes="100vw"
+        />
+        {/* Overlays */}
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
+
+        {/* Conteúdo sobre a foto */}
+        <div className="relative z-10 container mx-auto px-6 lg:px-12 pb-16 pt-32 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-white/80 font-bold tracking-[0.3em] uppercase text-xs ml-1">
+              Sobre
+            </span>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold italic font-serif text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#D4AF37] to-[#AA8529] max-w-3xl leading-tight">
+              Agnaldo Gomes
+            </h1>
+          </div>
+          
+          <span className="text-primary font-medium tracking-[0.1em] uppercase text-xs">
+            Cabeleireiro • Educador • Apaixonado pela Beleza
+          </span>
+
+          <p className="text-white/75 text-base md:text-lg max-w-xl font-light leading-relaxed mt-2">
+            Mais de 30 anos transformando vidas através da arte, do ensino e da paixão pela beleza.
+          </p>
+
+          {/* Badge +30 anos */}
+          <div className="mt-2 inline-flex items-center gap-3 glass border border-primary/40 rounded-2xl px-6 py-3 w-fit">
+            <span className="text-3xl font-bold text-primary">+30</span>
+            <span className="text-xs text-white/70 uppercase tracking-widest leading-tight">anos de<br/>experiência</span>
+          </div>
         </div>
       </section>
 
       {/* ===== HISTÓRIA PRINCIPAL ===== */}
       <section className="py-20">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
-
-            {/* Imagem */}
-            <div className="lg:col-span-4 relative">
-              <div className="relative aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl max-w-sm mx-auto">
-                <Image
-                  src="/perfil.jpg"
-                  alt="Agnaldo Gomes — Cabeleireiro e Educador"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 33vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/10 to-transparent pointer-events-none" />
-                <div className="absolute bottom-6 left-6 right-6">
-                  <h3 className="text-2xl font-bold text-white mb-1">Agnaldo Gomes</h3>
-                  <p className="text-primary font-medium text-sm">Cabeleireiro • Educador • Profissional da Beleza</p>
-                </div>
-              </div>
-
-              {/* Badge de anos de experiência */}
-              <div className="absolute -bottom-6 -right-4 lg:right-0 glass border border-primary/30 rounded-2xl px-6 py-4 text-center shadow-xl hidden sm:block">
-                <p className="text-4xl font-bold text-primary">+30</p>
-                <p className="text-xs text-foreground/70 uppercase tracking-widest mt-1">anos de<br/>experiência</p>
-              </div>
+        <div className="container mx-auto px-6 max-w-4xl">
+          <div className="flex flex-col gap-7">
+            <div>
+              <p className="text-primary font-bold tracking-[0.2em] uppercase text-xs mb-4">Minha História</p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-6">
+                Uma vida dedicada à<br />
+                <span className="text-gradient">arte e ao ensino</span>
+              </h2>
             </div>
 
-            {/* Texto da história */}
-            <div className="lg:col-span-8 flex flex-col gap-7">
-              <div>
-                <p className="text-primary font-bold tracking-[0.2em] uppercase text-xs mb-4">Minha História</p>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-6">
-                  Uma vida dedicada à<br />
-                  <span className="text-gradient">arte e ao ensino</span>
-                </h2>
-              </div>
+            <p className="text-foreground/80 text-base leading-relaxed">
+              Minha história com a beleza começou muito cedo. Aos <strong>13 anos</strong>, dei meus primeiros passos na profissão de cabeleireiro. Hoje, são mais de <strong>30 anos de experiência</strong>, aprendizado, desafios e muitas histórias transformadas através das minhas mãos.
+            </p>
 
-              <p className="text-foreground/80 text-base leading-relaxed">
-                Minha história com a beleza começou muito cedo. Aos <strong>13 anos</strong>, dei meus primeiros passos na profissão de cabeleireiro. Hoje, são mais de <strong>30 anos de experiência</strong>, aprendizado, desafios e muitas histórias transformadas através das minhas mãos.
+            <p className="text-foreground/80 text-base leading-relaxed">
+              Sou <strong>Agnaldo Gomes</strong> — cabeleireiro, educador, esposo da <strong>Ana Mary</strong> e pai de dois filhos, <strong>Gabriel e Matheus</strong>. Minha família é uma parte essencial da minha caminhada e de tudo o que construí.
+            </p>
+
+            <p className="text-foreground/80 text-base leading-relaxed">
+              Ao longo desses anos, descobri que minha missão vai muito além de transformar cabelos. Uma das minhas maiores paixões é <strong>ensinar</strong>. Amo dar aulas, compartilhar técnicas, dividir experiências e levar conhecimento para outros profissionais que também sonham em crescer na área da beleza.
+            </p>
+
+            <p className="text-foreground/80 text-base leading-relaxed">
+              Acredito que <strong>conhecimento compartilhado transforma vidas e fortalece profissionais</strong>. Por isso, esta página é um espaço para compartilhar minha trajetória, meus trabalhos, cursos, técnicas, experiências e tudo aquilo que aprendi durante mais de três décadas dedicadas à profissão.
+            </p>
+
+            {/* Frase marcante */}
+            <div className="border-l-4 border-primary pl-6 py-2 mt-2">
+              <p className="text-foreground/90 italic text-lg font-light leading-relaxed">
+                "✨ Beleza transforma. Conhecimento multiplica."
               </p>
+              <p className="text-foreground/50 text-sm mt-2 font-medium">— Agnaldo Gomes</p>
+            </div>
 
-              <p className="text-foreground/80 text-base leading-relaxed">
-                Sou <strong>Agnaldo Gomes</strong> — cabeleireiro, educador, esposo da <strong>Ana Mary</strong> e pai de dois filhos, <strong>Gabriel e Matheus</strong>. Minha família é uma parte essencial da minha caminhada e de tudo o que construí.
-              </p>
-
-              <p className="text-foreground/80 text-base leading-relaxed">
-                Ao longo desses anos, descobri que minha missão vai muito além de transformar cabelos. Uma das minhas maiores paixões é <strong>ensinar</strong>. Amo dar aulas, compartilhar técnicas, dividir experiências e levar conhecimento para outros profissionais que também sonham em crescer na área da beleza.
-              </p>
-
-              <p className="text-foreground/80 text-base leading-relaxed">
-                Acredito que <strong>conhecimento compartilhado transforma vidas e fortalece profissionais</strong>. Por isso, esta página é um espaço para compartilhar minha trajetória, meus trabalhos, cursos, técnicas, experiências e tudo aquilo que aprendi durante mais de três décadas dedicadas à profissão.
-              </p>
-
-              {/* Frase marcante */}
-              <div className="border-l-4 border-primary pl-6 py-2 mt-2">
-                <p className="text-foreground/90 italic text-lg font-light leading-relaxed">
-                  "✨ Beleza transforma. Conhecimento multiplica."
-                </p>
-                <p className="text-foreground/50 text-sm mt-2 font-medium">— Agnaldo Gomes</p>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-4 mt-2">
+              <Link href="/academy">
+                <Button variant="primary" size="lg" className="uppercase tracking-widest text-sm w-full sm:w-auto">
+                  Conheça os Cursos
+                </Button>
+              </Link>
+              <Link href="/studio">
+                <Button variant="outline" size="lg" className="uppercase tracking-widest text-sm w-full sm:w-auto">
+                  Visite o Studio
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -111,8 +133,11 @@ export default function SobrePage() {
       {/* ===== VALORES ===== */}
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-6">
-          <SectionTitle title="Meus Pilares" subtitle="O que guia minha trajetória" align="center" />
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="text-center mb-14">
+            <p className="text-primary font-bold tracking-[0.2em] uppercase text-xs mb-3">O que guia minha trajetória</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Meus Pilares</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {valores.map((v, i) => {
               const Icon = v.icon;
               return (

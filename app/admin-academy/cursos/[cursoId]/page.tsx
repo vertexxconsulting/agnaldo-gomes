@@ -1,24 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText } from 'lucide-react';
 import { Button } from '@/components/Button';
-import { MOCK_CURSOS, MOCK_MODULOS, MOCK_AULAS } from '@/lib/mock-data';
-import type { Modulo, Aula } from '@/lib/mock-data';
+import { getCursos, getModulos, getAulas, MOCK_CURSOS, MOCK_MODULOS, MOCK_AULAS } from '@/lib/mock-data';
+import type { Curso, Modulo, Aula } from '@/lib/mock-data';
 
 export default function AdminEdicaoCursoPage() {
   const { cursoId } = useParams();
-  const curso = MOCK_CURSOS.find(c => c.id === cursoId);
-  const modulos: (Modulo & { aulas: Aula[] })[] = MOCK_MODULOS
-    .filter(m => m.curso_id === cursoId)
-    .map(m => ({
-      ...m,
-      aulas: MOCK_AULAS.filter(a => a.modulo_id === m.id)
-    }));
-
+  const [curso, setCurso] = useState<Curso | null>(null);
+  const [modulos, setModulos] = useState<(Modulo & { aulas: Aula[] })[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'detalhes' | 'modulos'>('detalhes');
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [cursosData, modulosData, aulasData] = await Promise.all([
+        getCursos(), getModulos(), getAulas()
+      ]);
+
+      const cursoEncontrado = cursosData.find(c => c.id === cursoId) || MOCK_CURSOS.find(c => c.id === cursoId);
+      setCurso(cursoEncontrado || null);
+
+      const mods: (Modulo & { aulas: Aula[] })[] = (modulosData.length > 0 ? modulosData : MOCK_MODULOS)
+        .filter(m => m.curso_id === cursoId)
+        .map(m => ({
+          ...m,
+          aulas: (aulasData.length > 0 ? aulasData : MOCK_AULAS).filter(a => a.modulo_id === m.id)
+        }));
+      setModulos(mods);
+      setLoading(false);
+    };
+    carregarDados();
+  }, [cursoId]);
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="h-6 bg-white/10 rounded w-48 animate-pulse mb-2" />
+        <div className="h-5 bg-white/10 rounded w-64 animate-pulse" />
+      </div>
+    );
+  }
 
   if (!curso) {
     return <div className="p-8 text-foreground">Curso não encontrado.</div>;
@@ -26,7 +52,7 @@ export default function AdminEdicaoCursoPage() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-[var(--background)]">
-      
+
       {/* Header Fixo */}
       <div className="sticky top-0 z-10 bg-[var(--background)]/80 backdrop-blur-md border-b border-[var(--border-subtle)] px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -38,7 +64,7 @@ export default function AdminEdicaoCursoPage() {
             <p className="text-sm text-foreground/60">{curso.titulo}</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <Button variant="outline">Cancelar</Button>
           <Button variant="primary" className="flex items-center gap-2">
@@ -50,14 +76,14 @@ export default function AdminEdicaoCursoPage() {
       <div className="p-8 max-w-5xl mx-auto">
         {/* Tabs */}
         <div className="flex border-b border-[var(--border-subtle)] mb-8">
-          <button 
+          <button
             className={`px-6 py-3 font-medium text-sm transition-colors relative ${activeTab === 'detalhes' ? 'text-primary' : 'text-foreground/60 hover:text-foreground'}`}
             onClick={() => setActiveTab('detalhes')}
           >
             Detalhes do Curso
             {activeTab === 'detalhes' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
           </button>
-          <button 
+          <button
             className={`px-6 py-3 font-medium text-sm transition-colors relative ${activeTab === 'modulos' ? 'text-primary' : 'text-foreground/60 hover:text-foreground'}`}
             onClick={() => setActiveTab('modulos')}
           >
@@ -72,7 +98,7 @@ export default function AdminEdicaoCursoPage() {
             <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] p-6 rounded-xl">
               <h2 className="text-lg font-bold text-foreground mb-4">Informações Básicas</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground/70 mb-1">Título do Curso</label>
@@ -88,7 +114,7 @@ export default function AdminEdicaoCursoPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground/70 mb-1">Descrição</label>
-                    <textarea defaultValue={curso.descricao} rows={4} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors" />
+                    <textarea defaultValue={curso.descricao} rows={4} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors resize-none" />
                   </div>
                 </div>
 
@@ -111,7 +137,7 @@ export default function AdminEdicaoCursoPage() {
         {/* Tab Módulos */}
         {activeTab === 'modulos' && (
           <div className="space-y-6">
-            
+
             <div className="flex justify-end">
               <Button variant="outline" className="flex items-center gap-2">
                 <Plus size={16} /> Novo Módulo
@@ -121,7 +147,7 @@ export default function AdminEdicaoCursoPage() {
             <div className="space-y-4">
               {modulos.map((modulo, mIndex) => (
                 <div key={modulo.id} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
-                  
+
                   {/* Cabeçalho do Módulo */}
                   <div className="bg-[var(--background)]/50 p-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
                     <div className="flex items-center gap-3">
@@ -155,7 +181,7 @@ export default function AdminEdicaoCursoPage() {
                         </div>
                       </div>
                     ))}
-                    
+
                     <button className="w-full mt-2 py-3 border border-dashed border-[var(--border-subtle)] rounded-lg text-sm font-medium text-foreground/50 hover:text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-2">
                       <Plus size={16} /> Adicionar Aula
                     </button>
