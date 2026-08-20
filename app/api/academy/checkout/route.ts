@@ -8,7 +8,19 @@ import { getStripeConfig } from '@/lib/pagamentos-academy';
  * Nunca expõe a secret key ao navegador.
  */
 export async function POST(req: Request) {
-  const cfg = getStripeConfig();
+  let cfg = await getStripeConfig();
+  if (!cfg || !cfg.secretKey) {
+    try {
+      // Fallback: tenta ler as credenciais salvas no Supabase (server-side)
+      const { getPaymentSettings } = await import('@/lib/payment-settings');
+      const settings = await getPaymentSettings('stripe');
+      if (settings.secret_key) {
+        cfg = { publicKey: settings.publishable_key || '', secretKey: settings.secret_key, ativo: true };
+      }
+    } catch {
+      /* mantém o cfg original */
+    }
+  }
   if (!cfg || !cfg.secretKey) {
     return NextResponse.json(
       { error: 'Stripe Secret Key não configurada. Configure em /admin-academy/pagamentos.' },

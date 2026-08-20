@@ -333,10 +333,11 @@ function PagamentoModal({
   const [comprovante, setComprovante] = useState<string | null>(null);
   const [fileInput, setFileInput] = useState<HTMLInputElement | null>(null);
 
-  const gerarPix = () => {
+  const gerarPix = async () => {
     const descricao = `Sinal ${ag.nome_noiva} - ${pacote.nome}`;
     // Se o Mercado Pago estiver configurado, gera o PIX real (QR Code + copia-e-cola oficiais)
-    if (isMPAtivo()) {
+    const mpAtivo = await isMPAtivo();
+    if (mpAtivo) {
       criarPixMercadoPago(valor, descricao)
         .then(res => {
           // No modal de noivas armazenamos o código copia-e-cola real e o QR Code

@@ -13,17 +13,20 @@ export default function AdminPagamentosAcademy() {
   const [mostrar, setMostrar] = useState(false);
   const [salvo, setSalvo] = useState(false);
   const [erro, setErro] = useState('');
-  const [mounted, setMounted] = useState(false);
+  const [ativoReal, setAtivoReal] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const cfg = getStripeConfig();
-    setPublicKey(cfg.publicKey);
-    setSecretKey(cfg.secretKey);
-    setAtivo(cfg.ativo);
+    getStripeConfig()
+      .then(cfg => {
+        setPublicKey(cfg.publicKey);
+        setSecretKey(cfg.secretKey);
+        setAtivo(cfg.ativo);
+        setAtivoReal(cfg.ativo);
+      })
+      .catch(() => undefined);
   }, []);
 
-  const salvar = () => {
+  const salvar = async () => {
     const validacao = validarChavesStripe(publicKey, secretKey);
     if (!validacao.ok) {
       setErro(validacao.msg);
@@ -32,13 +35,12 @@ export default function AdminPagamentosAcademy() {
     setErro('');
     const valor = publicKey.trim();
     const cfg = { publicKey: valor, secretKey: secretKey.trim(), ativo: valor.length > 0 };
-    saveStripeConfig(cfg);
+    await saveStripeConfig(cfg);
     setAtivo(valor.length > 0);
+    setAtivoReal(valor.length > 0);
     setSalvo(true);
     setTimeout(() => setSalvo(false), 3000);
   };
-
-  if (!mounted) return null;
 
   return (
     <div className="space-y-6">
@@ -54,22 +56,22 @@ export default function AdminPagamentosAcademy() {
       {/* Status atual */}
       <div
         className={`rounded-lg border p-4 flex items-start gap-3 ${
-          isStripeAtivo()
+          ativoReal
             ? 'bg-emerald-50 border-emerald-200'
             : 'bg-amber-50 border-amber-200'
         }`}
       >
-        {isStripeAtivo() ? (
+        {ativoReal ? (
           <CheckCircle2 size={20} className="text-emerald-600 mt-0.5 shrink-0" />
         ) : (
           <AlertTriangle size={20} className="text-amber-600 mt-0.5 shrink-0" />
         )}
         <div className="text-sm">
           <p className="font-semibold text-slate-900">
-            {isStripeAtivo() ? 'Stripe ATIVO' : 'Stripe em modo demonstração'}
+            {ativoReal ? 'Stripe ATIVO' : 'Stripe em modo demonstração'}
           </p>
           <p className="text-slate-600 mt-0.5">
-            {isStripeAtivo()
+            {ativoReal
               ? 'As matrículas na Academy são direcionadas ao checkout seguro do Stripe (cartão ou PIX), com cobrança real.'
               : 'Insira as chaves abaixo para ativar o pagamento real. Enquanto isso, as inscrições são registradas localmente (demonstração).'}
           </p>

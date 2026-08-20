@@ -19,7 +19,25 @@ const LS_KEY = 'studio-mp-config';
 export const ENV_TOKEN =
   (typeof process !== 'undefined' && process.env?.MP_ACCESS_TOKEN) || '';
 
-export function getMPConfig(): ConfiguracaoMP {
+/** Cache das credenciais vindas do Supabase (30s) */
+let mpConfigCache: ConfiguracaoMP | null = null;
+let mpConfigUpdatedAt = 0;
+
+export async function getMPConfig(): Promise<ConfiguracaoMP> {
+  if (mpConfigCache && Date.now() - mpConfigUpdatedAt < 30_000) return mpConfigCache;
+
+  try {
+    const { getPaymentSettings, isPaymentActive } = await import('./payment-settings');
+    const settings = await getPaymentSettings('mercado_pago');
+    const token = settings.access_token || ENV_TOKEN;
+    const ativo = (isPaymentActive(settings) && Boolean(token)) || ENV_TOKEN.length > 0;
+    const cfg: ConfiguracaoMP = { accessToken: token, ativo };
+    mpConfigCache = cfg;
+    mpConfigUpdatedAt = Date.now();
+    return cfg;
+  } catch {
+    /* fallback localStorage */
+  }
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
@@ -33,14 +51,25 @@ export function getMPConfig(): ConfiguracaoMP {
   return { accessToken: ENV_TOKEN, ativo: ENV_TOKEN.length > 0 };
 }
 
-export function saveMPConfig(cfg: ConfiguracaoMP) {
+export async function saveMPConfig(cfg: ConfiguracaoMP) {
   try {
+    const { savePaymentSettings } = await import('./payment-settings');
+    await savePaymentSettings('mercado_pago', {
+      access_token: cfg.accessToken || null,
+      enabled: cfg.ativo,
+    });
+    // Mantém o localStorage em sincronia para quem ainda o lê
     localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-  } catch {}
+    mpConfigCache = null; // invalida o cache
+  } catch {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    } catch {}
+  }
 }
 
-export function isMPAtivo(): boolean {
-  const cfg = getMPConfig();
+export async function isMPAtivo(): Promise<boolean> {
+  const cfg = await getMPConfig();
   return cfg.ativo;
 }
 
@@ -59,8 +88,8 @@ export async function criarPixMercadoPago(
   valor: number,
   descricao: string
 ): Promise<PixMPResult> {
-  const cfg = getMPConfig();
-  if (!isMPAtivo() || !cfg.accessToken) {
+  const cfg = await getMPConfig();
+  if (!cfg.ativo || !cfg.accessToken) {
     throw new Error('Mercado Pago não configurado');
   }
 
@@ -103,8 +132,8 @@ export async function criarPixMercadoPago(
 
 /** Consulta o status de um pagamento no Mercado Pago */
 export async function consultarPagamentoMP(paymentId: string): Promise<{ status: string; }> {
-  const cfg = getMPConfig();
-  if (!isMPAtivo()) return { status: 'unknown' };
+  const cfg = await getMPConfig();
+  if (!cfg.ativo) return { status: 'unknown' };
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${cfg.accessToken}` },
   });

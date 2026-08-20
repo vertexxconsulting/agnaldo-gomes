@@ -11,20 +11,24 @@ export default function AdminPagamentosStudio() {
   const [salvo, setSalvo] = useState(false);
   const [testando, setTestando] = useState(false);
   const [testeStatus, setTesteStatus] = useState<'ok' | 'erro' | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [ativoReal, setAtivoReal] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const cfg = getMPConfig();
-    setAccessToken(cfg.accessToken);
-    setAtivo(cfg.ativo);
+    getMPConfig()
+      .then(cfg => {
+        setAccessToken(cfg.accessToken);
+        setAtivo(cfg.ativo);
+        setAtivoReal(cfg.ativo);
+      })
+      .catch(() => undefined);
   }, []);
 
-  const salvar = () => {
+  const salvar = async () => {
     const valor = accessToken.trim();
     const cfg = { accessToken: valor, ativo: valor.length > 0 };
-    saveMPConfig(cfg);
+    await saveMPConfig(cfg);
     setAtivo(cfg.ativo);
+    setAtivoReal(cfg.ativo);
     setSalvo(true);
     setTesteStatus(null);
     setTimeout(() => setSalvo(false), 3000);
@@ -40,8 +44,9 @@ export default function AdminPagamentosStudio() {
       if (res.ok) {
         setTesteStatus('ok');
         const valor = accessToken.trim();
-        saveMPConfig({ accessToken: valor, ativo: true });
+        await saveMPConfig({ accessToken: valor, ativo: true });
         setAtivo(true);
+        setAtivoReal(true);
       } else {
         setTesteStatus('erro');
       }
@@ -51,8 +56,6 @@ export default function AdminPagamentosStudio() {
       setTestando(false);
     }
   };
-
-  if (!mounted) return null;
 
   return (
     <div className="space-y-6">
@@ -68,22 +71,22 @@ export default function AdminPagamentosStudio() {
       {/* Status atual */}
       <div
         className={`rounded-lg border p-4 flex items-start gap-3 ${
-          isMPAtivo()
+          ativoReal
             ? 'bg-emerald-50 border-emerald-200'
             : 'bg-amber-50 border-amber-200'
         }`}
       >
-        {isMPAtivo() ? (
+        {ativoReal ? (
           <CheckCircle2 size={20} className="text-emerald-600 mt-0.5 shrink-0" />
         ) : (
           <AlertTriangle size={20} className="text-amber-600 mt-0.5 shrink-0" />
         )}
         <div className="text-sm">
           <p className="font-semibold text-slate-900">
-            {isMPAtivo() ? 'Mercado Pago ATIVO' : 'Mercado Pago em modo demonstração'}
+            {ativoReal ? 'Mercado Pago ATIVO' : 'Mercado Pago em modo demonstração'}
           </p>
           <p className="text-slate-600 mt-0.5">
-            {isMPAtivo()
+            {ativoReal
               ? 'Os PIX gerados nos pagamentos do Studio (Noiva e agenda) são reais, com QR Code e código copia-e-cola do Mercado Pago.'
               : 'Insira o Access Token abaixo para ativar pagamentos reais. Enquanto isso, os códigos PIX gerados são simulados (demonstração).'}
           </p>

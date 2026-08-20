@@ -24,7 +24,27 @@ export interface ConfiguracaoStripe {
 
 const LS_KEY = 'academy-stripe-config';
 
-export function getStripeConfig(): ConfiguracaoStripe {
+/** Cache das credenciais vindas do Supabase (30s) */
+let stripeConfigCache: ConfiguracaoStripe | null = null;
+let stripeConfigUpdatedAt = 0;
+
+export async function getStripeConfig(): Promise<ConfiguracaoStripe> {
+  if (stripeConfigCache && Date.now() - stripeConfigUpdatedAt < 30_000) return stripeConfigCache;
+
+  try {
+    const { getPaymentSettings, isPaymentActive } = await import('./payment-settings');
+    const settings = await getPaymentSettings('stripe');
+    const cfg: ConfiguracaoStripe = {
+      publicKey: settings.publishable_key || '',
+      secretKey: settings.secret_key || '',
+      ativo: isPaymentActive(settings),
+    };
+    stripeConfigCache = cfg;
+    stripeConfigUpdatedAt = Date.now();
+    return cfg;
+  } catch {
+    /* fallback localStorage */
+  }
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
@@ -39,14 +59,26 @@ export function getStripeConfig(): ConfiguracaoStripe {
   return { publicKey: '', secretKey: '', ativo: false };
 }
 
-export function saveStripeConfig(cfg: ConfiguracaoStripe) {
+export async function saveStripeConfig(cfg: ConfiguracaoStripe) {
   try {
+    const { savePaymentSettings } = await import('./payment-settings');
+    await savePaymentSettings('stripe', {
+      publishable_key: cfg.publicKey || null,
+      secret_key: cfg.secretKey || null,
+      enabled: cfg.ativo,
+    });
+    // Mantém o localStorage em sincronia para quem ainda o lê
     localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-  } catch {}
+    stripeConfigCache = null; // invalida o cache
+  } catch {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+    } catch {}
+  }
 }
 
-export function isStripeAtivo(): boolean {
-  const cfg = getStripeConfig();
+export async function isStripeAtivo(): Promise<boolean> {
+  const cfg = await getStripeConfig();
   return cfg.ativo;
 }
 
@@ -68,8 +100,8 @@ export function validarChavesStripe(publicKey: string, secretKey: string): { ok:
 export async function criarCheckoutStripe(
   params: { descricao: string; valorBRL: number; nomeAluno: string; emailAluno: string; cursoId?: string }
 ): Promise<{ url: string; real: boolean }> {
-  const cfg = getStripeConfig();
-  if (!isStripeAtivo()) {
+  const cfg = await getStripeConfig();
+  if (!cfg.ativo) {
     throw new Error('Stripe não configurado');
   }
 

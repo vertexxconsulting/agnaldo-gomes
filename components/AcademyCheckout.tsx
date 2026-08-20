@@ -34,10 +34,16 @@ export function AcademyCheckout({
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [registrado, setRegistrado] = useState(false);
+  const [stripeAtivo, setStripeAtivo] = useState(false);
 
   const valorNumerico = Number(
     (plano?.valor ?? '0').replace(/[^\d,]/g, '').replace(',', '.')
   );
+
+  // Verifica o status do Stripe (Supabase primeiro, depois localStorage)
+  useState(() => {
+    isStripeAtivo().then(setStripeAtivo).catch(() => undefined);
+  });
 
   const confirmar = async () => {
     setErro('');
@@ -53,7 +59,10 @@ export function AcademyCheckout({
 
     setLoading(true);
     try {
-      if (isStripeAtivo()) {
+      // Reconfirma no momento do pagamento (chaves podem ter sido salvas agora)
+      const ativoNoMomento = await isStripeAtivo().catch(() => false);
+      setStripeAtivo(ativoNoMomento);
+      if (ativoNoMomento) {
         const res = await criarCheckoutStripe({
           descricao: `Matrícula Academy AG — ${curso} (${plano.label})`,
           valorBRL: valorNumerico,
@@ -95,7 +104,7 @@ export function AcademyCheckout({
             Matricular-se — {curso}
           </h3>
           <p className="text-xs text-foreground/60 mt-1">
-            {isStripeAtivo()
+            {stripeAtivo
               ? 'Pagamento seguro pelo Stripe (cartão ou PIX).'
               : 'Demonstração — configure o Stripe no painel para pagamento real.'}
           </p>
@@ -107,7 +116,7 @@ export function AcademyCheckout({
             <p className="font-bold">Matrícula registrada!</p>
             <p className="text-sm text-foreground/70">
               No modo demonstração, sua inscrição ficou salva localmente.
-              {isStripeAtivo() ? '' : ' Ao configurar o Stripe, novas matrículas serão direcionadas ao checkout com pagamento real.'}
+              {stripeAtivo ? '' : ' Ao configurar o Stripe, novas matrículas serão direcionadas ao checkout com pagamento real.'}
             </p>
             <button
               onClick={onClose}
@@ -179,7 +188,7 @@ export function AcademyCheckout({
                 {loading ? (
                   <><Loader2 size={14} className="animate-spin" /> Abrindo pagamento...</>
                 ) : (
-                  <>{isStripeAtivo() ? <><ExternalLink size={14} /> Pagar {formatBRL(valorNumerico)}</> : 'Confirmar matrícula'}</>
+                  <>{stripeAtivo ? <><ExternalLink size={14} /> Pagar {formatBRL(valorNumerico)}</> : 'Confirmar matrícula'}</>
                 )}
               </button>
             </div>
