@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, ShoppingBag, DollarSign, ArrowRight, TrendingUp, Settings } from 'lucide-react';
+import { Package, ShoppingBag, DollarSign, ArrowRight, TrendingUp, Settings, Sparkles, Users, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
@@ -59,8 +59,35 @@ export default function AdminLojaDashboard() {
     }
   };
 
+  // Banner do ecossistema — acesso rápido aos demais módulos
+  const ecossistema = [
+    { href: '/hub', label: 'Command Center', desc: 'Gerencie tudo em um só lugar', icon: Sparkles, cor: 'text-amber-500', bg: 'bg-amber-500/10', hover: 'hover:border-amber-500/50 hover:bg-amber-50' },
+    { href: '/admin', label: 'Studio / Agenda', desc: 'Agendamentos e clientes', icon: CalendarDays, cor: 'text-slate-700', bg: 'bg-slate-100', hover: 'hover:border-slate-400 hover:bg-slate-50' },
+    { href: '/admin-academy', label: 'Academy', desc: 'Cursos e alunos', icon: Users, cor: 'text-purple-500', bg: 'bg-purple-500/10', hover: 'hover:border-purple-400 hover:bg-purple-50' },
+  ];
+
   return (
     <div className="space-y-8">
+      {/* Banner do ecossistema — acesso rápido aos demais módulos */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {ecossistema.map((e) => {
+          const Icon = e.icon;
+          return (
+            <Link key={e.href} href={e.href}>
+              <div className={`group rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3 transition-all hover:shadow-md ${e.hover}`}>
+                <div className={`w-10 h-10 rounded-lg ${e.bg} flex items-center justify-center shrink-0`}>
+                  <Icon size={18} className={e.cor} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{e.label}</p>
+                  <p className="text-[11px] text-slate-500">{e.desc}</p>
+                </div>
+                <ArrowRight size={14} className="ml-auto text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="text-slate-500 mt-1">Visão geral do desempenho da sua loja.</p>

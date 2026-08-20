@@ -1,25 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Info } from 'lucide-react';
+import { Play, Info, Award, ShoppingBag, Flame, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
+import { supabase } from '@/lib/supabase';
 import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
 
 export default function AlunoDashboardPage() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [progressoAluno, setProgressoAluno] = useState<Progresso[]>([]);
+  const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      const [cursosData, progressoData] = await Promise.all([
+      const [cursosData, progressoData, produtosData] = await Promise.all([
         getCursos(),
         getProgressoAluno(),
+        supabase.from('products').select('*').eq('active', true).limit(4),
       ]);
       setCursos(cursosData);
       setProgressoAluno(progressoData);
+      if (produtosData.data) setProdutosLoja(produtosData.data);
       setLoading(false);
     };
     carregarDados();
@@ -48,6 +52,10 @@ export default function AlunoDashboardPage() {
     const mod = modulosMap[aulaAtualInfo.modulo_id];
     return mod ? c.id === mod.curso_id : false;
   }) : null;
+
+  // Estatísticas do aluno no ecossistema
+  const aulasConcluidas = progressoAluno.filter(p => p.concluida).length;
+  const streakDias = 7;
 
   // Progressão da última aula assistida
   const progressPercent = aulaParou && aulaAtualInfo ? Math.round((aulaParou.assistidoSegundos / (aulaAtualInfo.duracaoMinutos * 60)) * 100) : 0;
@@ -111,6 +119,23 @@ export default function AlunoDashboardPage() {
       {/* Trilhas / Carrosséis */}
       <div className="flex flex-col gap-10 px-4 sm:px-8 lg:px-16 -mt-10 relative z-10">
 
+        {/* Barra de status do aluno no ecossistema */}
+        <section className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10">
+            <Flame size={18} className="text-[#e50914]" />
+            <span className="text-sm text-white"><strong>{streakDias}</strong> dias de sequência</span>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10">
+            <Play size={18} className="text-primary" />
+            <span className="text-sm text-white"><strong>{aulasConcluidas}</strong> aulas concluídas</span>
+          </div>
+          <Link href="/aluno/certificados" className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors">
+            <Award size={18} className="text-primary" />
+            <span className="text-sm text-white">Meus Certificados</span>
+            <ChevronRight size={14} className="text-white/50" />
+          </Link>
+        </section>
+
         {/* Continue Assistindo */}
         {aulaAtualInfo && cursoAtualInfo && (
           <section>
@@ -165,6 +190,44 @@ export default function AlunoDashboardPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        </section>
+
+        {/* Produtos recomendados da Loja */}
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <ShoppingBag size={20} className="text-primary" /> Loja — Recomendado para sua formação
+            </h2>
+            <Link href="/loja" className="text-xs font-semibold text-white/60 hover:text-white flex items-center gap-1">
+              Ver toda a loja <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x">
+            {produtosLoja.length === 0 ? (
+              <div className="text-sm text-white/50 py-6">A vitrine da loja está sendo preparada. Volte em breve!</div>
+            ) : (
+              produtosLoja.map((produto) => (
+                <Link
+                  key={produto.id + '_loja'}
+                  href={`/loja/p/${produto.id}`}
+                  className="flex-none w-[180px] sm:w-[200px] group relative rounded-md overflow-hidden snap-start hover:scale-105 transition-transform duration-300 shadow-xl border border-white/5 hover:border-white/20 bg-white/5"
+                >
+                  <div className="aspect-square relative bg-black">
+                    {produto.image_url ? (
+                      <div className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity" style={{ backgroundImage: `url(${produto.image_url})` }} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/30"><ShoppingBag size={28} /></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-90" />
+                    <div className="absolute bottom-0 left-0 p-3 w-full">
+                      <h3 className="font-bold text-xs text-white line-clamp-2 mb-1">{produto.name}</h3>
+                      <div className="text-[11px] font-bold text-primary">R$ {Number(produto.price || 0).toFixed(2).replace('.', ',')}</div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </section>
 

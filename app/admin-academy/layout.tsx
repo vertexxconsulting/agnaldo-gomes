@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, ArrowLeft, ChevronLeft, ChevronRight, Menu, X, BookOpen, Award } from 'lucide-react';
+import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, ArrowLeft, ChevronLeft, ChevronRight, Menu, X, BookOpen, Award, Command } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -13,6 +13,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const links = [
+    { href: '/hub', label: 'Command Center', icon: Command, hub: true },
     { href: '/admin-academy', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin-academy/cursos', label: 'Gestão de Cursos', icon: PlayCircle },
     { href: '/admin-academy/alunos', label: 'Gestão de Alunos', icon: GraduationCap },
@@ -102,6 +103,9 @@ export default function AdminAcademyLayout({ children }: { children: React.React
                       </motion.span>
                     )}
                   </AnimatePresence>
+                  {!isCollapsed && link.hub && (
+                    <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/15 text-primary">Unificado</span>
+                  )}
                 </div>
               </Link>
             );

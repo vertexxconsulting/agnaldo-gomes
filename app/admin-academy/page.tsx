@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, PlayCircle, Star, TrendingUp, Clock } from 'lucide-react';
+import { Users, PlayCircle, Star, TrendingUp, Clock, CalendarDays, ShoppingBag, Sparkles } from 'lucide-react';
 import { MOCK_CURSOS } from '@/lib/mock-data';
 import { Button } from '@/components/Button';
 import Link from 'next/link';
@@ -16,11 +16,36 @@ export default function AdminAcademyDashboard() {
   return (
     <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Painel Academy</h1>
           <p className="text-sm text-foreground/60">Bem-vindo à gestão exclusiva dos seus cursos e alunos online.</p>
         </div>
+      </div>
+
+      {/* Banner do ecossistema — acesso rápido aos demais módulos */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        {[
+          { href: '/hub', label: 'Command Center', desc: 'Gerencie tudo em um só lugar', icon: Sparkles, grad: 'from-[#a8862a]/15 to-[#a8862a]/5', ico: 'text-primary' },
+          { href: '/admin', label: 'Studio / Agenda', desc: 'Agendamentos e clientes', icon: CalendarDays, grad: 'from-sky-500/15 to-sky-500/5', ico: 'text-sky-600' },
+          { href: '/admin-loja', label: 'Loja', desc: 'Produtos e pedidos', icon: ShoppingBag, grad: 'from-[#10B981]/15 to-[#10B981]/5', ico: 'text-[#10B981]' },
+        ].map((e) => {
+          const Icon = e.icon;
+          return (
+            <Link key={e.href} href={e.href}>
+              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${e.grad} p-3.5 flex items-center gap-3 transition-all hover:shadow-md`}>
+                <div className="w-10 h-10 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                  <Icon size={18} className={e.ico} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{e.label}</p>
+                  <p className="text-[11px] text-foreground/50">{e.desc}</p>
+                </div>
+                <Sparkles size={14} className="ml-auto text-foreground/20 group-hover:text-primary transition-all shrink-0" />
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

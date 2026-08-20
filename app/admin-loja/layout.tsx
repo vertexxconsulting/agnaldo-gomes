@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   Store,
-  LogOut
+  LogOut,
+  Command
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -26,6 +27,7 @@ export default function AdminLojaLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const menuItems = [
+    { name: 'Command Center', href: '/hub', icon: Command, hub: true },
     { name: 'Dashboard', href: '/admin-loja', icon: LayoutDashboard },
     { name: 'Produtos', href: '/admin-loja/produtos', icon: Package },
     { name: 'Pedidos', href: '/admin-loja/pedidos', icon: ShoppingCart },
@@ -95,6 +97,9 @@ export default function AdminLojaLayout({
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
+                {item.hub && (
+                  <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500">Unificado</span>
+                )}
               </Link>
             );
           })}

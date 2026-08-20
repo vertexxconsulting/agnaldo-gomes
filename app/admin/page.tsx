@@ -6,8 +6,10 @@ import {
   PieChart, Pie, Cell, CartesianGrid, Legend,
 } from 'recharts';
 import {
-  Users, Wallet, BarChart3, TrendingUp, CalendarDays, CheckCircle2, XCircle, MessageSquare
+  Users, Wallet, BarChart3, TrendingUp, CalendarDays, CheckCircle2, XCircle, MessageSquare,
+  GraduationCap, ShoppingBag, Sparkles, ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -101,8 +103,40 @@ export default function AdminDashboardPage() {
     { label: 'Clientes cadastrados', valor: `${kpis.clientesCount}`, icon: Users, cor: '#8b5cf6' },
   ];
 
+  const ecossistema = [
+    { href: '/hub', label: 'Command Center', desc: 'Gerencie tudo em um só lugar', icon: Sparkles, cor: 'primary' },
+    { href: '/admin-academy', label: 'Academy', desc: 'Cursos e alunos', icon: GraduationCap, cor: 'purple' },
+    { href: '/admin-loja', label: 'Loja', desc: 'Produtos e pedidos', icon: ShoppingBag, cor: 'green' },
+  ];
+
   return (
     <div className="flex flex-col w-full py-4">
+      {/* Banner do ecossistema — acesso rápido aos demais módulos */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        {ecossistema.map((e) => {
+          const Icon = e.icon;
+          const cores: Record<string, string> = {
+            primary: 'from-[#a8862a]/15 to-[#a8862a]/5 hover:border-[#a8862a]/60',
+            purple: 'from-[#8b5cf6]/15 to-[#8b5cf6]/5 hover:border-[#8b5cf6]/60',
+            green: 'from-[#10B981]/15 to-[#10B981]/5 hover:border-[#10B981]/60',
+          };
+          const icoCores: Record<string, string> = { primary: 'text-primary', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
+          return (
+            <Link key={e.href} href={e.href}>
+              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3.5 flex items-center gap-3 transition-all hover:shadow-md`}>
+                <div className="w-10 h-10 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                  <Icon size={18} className={icoCores[e.cor]} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{e.label}</p>
+                  <p className="text-[11px] text-foreground/50">{e.desc}</p>
+                </div>
+                <ChevronRight size={16} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
       <SectionTitle title="Dashboard" subtitle="Visão geral do seu negócio" align="left" size="sm" />
 
       {loading && (

@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Scissors, GraduationCap, User, Sparkles, Droplets, Award, Star, Globe } from 'lucide-react';
+import { Scissors, GraduationCap, User, Sparkles, Droplets, Award, Star, Globe, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
 import { BentoGrid } from '@/components/BentoGrid';
@@ -30,6 +30,15 @@ const pillars = [
     icon: GraduationCap,
     href: '/academy',
     cta: 'Ver Cursos',
+    highlight: true,
+  },
+  {
+    title: 'Loja Oficial',
+    description:
+      'Produtos profissionais das marcas que Agnaldo usa e recomenda no dia a dia do salão — com entrega para todo o Brasil e pagamento seguro.',
+    icon: ShoppingBag,
+    href: '/loja',
+    cta: 'Ver Produtos',
     highlight: true,
   },
   {

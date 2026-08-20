@@ -29,7 +29,6 @@ const PUBLIC_ROUTES = [
   '/loja',
   '/agendamento',
   '/perfil',
-  '/aluno',
   '/api/',
 ];
 
@@ -51,9 +50,22 @@ export async function proxy(request: NextRequest) {
   // Client Supabase server-side que lê/renova a sessão nos cookies
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  // Modo demonstração (sem credenciais): client no-op para não travar.
+  let supabase: ReturnType<typeof createServerClient>;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const noop = () => Promise.resolve({ data: null, error: null });
+    const chain = new Proxy({}, { get: () => chain });
+    supabase = new Proxy(
+      { auth: { getSession: noop, getUser: noop, signInWithPassword: noop, signOut: noop } },
+      { get(_target, prop) { if (typeof prop === 'string' && prop.startsWith('_')) return undefined; return () => chain; } }
+    ) as unknown as ReturnType<typeof createServerClient>;
+  } else {
+    supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -65,11 +77,10 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
-        },
+                },
       },
-    }
-  );
-
+    });
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
