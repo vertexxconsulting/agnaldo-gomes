@@ -21,6 +21,8 @@ import {
   getProfissionalNome, getCursos, getProgressoAluno, MOCK_PROFISSIONAIS,
 } from '@/lib/mock-data';
 import type { Cliente, Agendamento, Servico, Curso, Progresso } from '@/lib/mock-data';
+import { supabase } from '@/lib/supabase';
+import { ROLES, getHubModules, type HubModule } from '@/lib/auth';
 
 const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
@@ -29,9 +31,9 @@ const CORES = ['#d4af37', '#10B981', '#0ea5e9', '#EF4444', '#8b5cf6', '#f59e0b']
 // ─────────────────────────────────────────────
 // Módulos do sistema (dados de exemplo)
 // ─────────────────────────────────────────────
-const MODULOS = [
+const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; href: string; icon: typeof Scissors; bg: string; border: string; stat: string }> = [
   {
-    id: 'salao',
+    id: 'studio',
     nome: 'Studio de Beleza',
     descricao: 'Gestão completa do salão: agenda, clientes (CRM), profissionais e serviços.',
     href: '/admin',
@@ -83,6 +85,20 @@ export default function HubCentralPage() {
   const [servicosData, setServicosData] = useState<Servico[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [progresso, setProgresso] = useState<Progresso[]>([]);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Detecta o papel do usuário logado para filtrar os módulos visíveis
+    supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
+      const meta = data?.user?.user_metadata;
+      if (meta && typeof meta.role === 'string') setRole(meta.role);
+      else setRole(null);
+    });
+  }, []);
+
+  const modulosVisiveis = getHubModules(role ? { user_metadata: { role } } : null);
+
+  const temModulo = (m: HubModule) => modulosVisiveis.includes(m);
 
   useEffect(() => {
     (async () => {
@@ -149,7 +165,11 @@ export default function HubCentralPage() {
             </div>
           </Link>
           <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
-            {NAVEGACAO_RAPIDA.map((item) => {
+            {NAVEGACAO_RAPIDA.filter((item) => {
+              if (item.href.startsWith('/admin-academy')) return temModulo('academy');
+              if (item.href.startsWith('/admin-loja')) return temModulo('loja');
+              return true;
+            }).map((item) => {
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href}>
@@ -177,13 +197,15 @@ export default function HubCentralPage() {
             Olá, Agnaldo. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
           </h1>
           <p className="text-foreground/60 mt-2 max-w-2xl">
-            Gerencie o Studio, a Academy e a Loja em um único lugar — com visão em tempo real do que acontece em cada frente do negócio.
+            {role === ROLES.STUDIO_SECRETARIA
+              ? 'Painel da secretaria do Studio: agenda, clientes, profissionais e serviços do salão.'
+              : 'Gerencie o Studio, a Academy e a Loja em um único lugar — com visão em tempo real do que acontece em cada frente do negócio.'}
           </p>
         </motion.div>
 
-        {/* Cards dos Módulos */}
+        {/* Cards dos Módulos (filtrados pelo papel do usuário) */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {MODULOS.map((mod, i) => {
+          {MODULOS.filter((mod) => modulosVisiveis.includes(mod.id as HubModule)).map((mod, i) => {
             const Icon = mod.icon;
             return (
               <motion.div
@@ -282,7 +304,8 @@ export default function HubCentralPage() {
             )}
           </section>
 
-          {/* Progresso Academy + Cursos */}
+          {/* Progresso Academy + Cursos (somente para quem tem acesso à Academy) */}
+          {temModulo('academy') ? (
           <section>
             <div className="flex items-center justify-between mb-3">
               <SectionTitle title="Academy" subtitle="Seu progresso como aluno" align="left" size="sm" />
@@ -338,9 +361,10 @@ export default function HubCentralPage() {
               ))}
             </div>
           </section>
+          ) : null}
         </div>
 
-        {/* Faturamento mensal */}
+        {/* Faturamento mensal (somente para quem tem acesso à Academy... exibe quando há módulo Studio) */}
         <section>
           <SectionTitle title="Faturamento do Salão" subtitle="Acompanhe a evolução mês a mês" align="left" size="sm" />
           {!loading && kpis.porMes.some(p => p.valor > 0) ? (
@@ -400,7 +424,8 @@ export default function HubCentralPage() {
           </div>
         </section>
 
-        {/* CTA Loja */}
+        {/* CTA Loja (somente para quem tem acesso à Loja) */}
+        {temModulo('loja') ? (
         <section>
           <Link href="/admin-loja">
             <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-[#10B981]/15 via-transparent to-[#a8862a]/15 p-8 flex flex-col md:flex-row items-center gap-6 hover:border-[#10B981]/50 transition-colors">
@@ -419,6 +444,7 @@ export default function HubCentralPage() {
             </div>
           </Link>
         </section>
+        ) : null}
 
         <footer className="pt-8 pb-4 text-center">
           <p className="text-[10px] text-foreground/30">

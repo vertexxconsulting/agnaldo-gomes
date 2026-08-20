@@ -7,6 +7,7 @@ import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Download, FileText, ChevronRight, ListVideo } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { LessonPlayer } from '@/components/LessonPlayer';
 import { supabase } from '@/lib/supabase';
 
 export default function EpisodioPage({ params }: { params: Promise<{ cursoId: string; aulaId: string }> }) {
@@ -117,13 +118,12 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
         {/* Lado Esquerdo - Player e Conteúdo */}
         <div className="flex-1 flex flex-col">
           {/* Player de Vídeo (Simulado) */}
-          <div className="w-full aspect-video bg-black relative flex items-center justify-center border-b border-white/10 shadow-2xl">
-            {/* O ideal na vida real seria usar a tag video com HLS ou Iframe */}
-            <video
-               controls
-               className="w-full h-full object-contain"
-               poster={curso.capaUrl}
-               src={aulaAtual.videoUrl}
+          <div className="w-full border-b border-white/10 shadow-2xl">
+            <LessonPlayer
+              videoUrl={aulaAtual.videoUrl}
+              poster={curso.capaUrl}
+              title={aulaAtual.titulo}
+              className="w-full"
             />
           </div>
 

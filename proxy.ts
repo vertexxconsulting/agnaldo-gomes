@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { getArea, getUserRole, LOGIN_BY_AREA, AREA_ROLES } from '@/lib/auth';
+import { getArea, getUserRole, LOGIN_BY_AREA, AREA_ROLES, ROLES, Role } from '@/lib/auth';
 
 /**
  * Proxy de proteção de rotas (Next.js 16 — antigo middleware).
@@ -18,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/academy/login',
   '/admin-academy/login',
   '/admin-loja/login',
+  '/admin-secretaria/login',
   '/cadastro',
   '/contato',
   '/sobre',
@@ -97,7 +98,11 @@ export async function proxy(request: NextRequest) {
   const requiredRole = AREA_ROLES[area];
   const role = getUserRole(user);
 
-  if (!user || role !== requiredRole) {
+  // /hub aceita tanto o admin quanto a secretária do Studio (o hub filtra módulos por papel)
+  const allowedHubRoles =
+    area === '/hub' ? [ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA] : null;
+
+  if (!user || (allowedHubRoles ? !(allowedHubRoles as Role[]).includes(role as Role) : role !== requiredRole)) {
     const url = request.nextUrl.clone();
     url.pathname = LOGIN_BY_AREA[area];
     url.search = '';

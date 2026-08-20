@@ -316,32 +316,32 @@ export const MOCK_MODULOS: Modulo[] = [
 ];
 
 export const MOCK_AULAS: Aula[] = [
-  // Aulas Modulo 1
+  // Aulas Modulo 1 (demonstração: player público do Vimeo)
   {
     id: 'aula_1', modulo_id: 'mod_1', titulo: 'O que é colorimetria?', ordem: 1, duracaoMinutos: 15,
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    videoUrl: 'https://vimeo.com/347119375',
     descricao: 'Nesta aula vamos entender a ciência por trás das cores e como elas se comportam nos fios.',
     materiais: [{ titulo: 'Apostila Modulo 1 (PDF)', url: '#', tipo: 'pdf' }]
   },
   {
     id: 'aula_2', modulo_id: 'mod_1', titulo: 'Cores Primárias e Secundárias', ordem: 2, duracaoMinutos: 22,
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    videoUrl: 'https://vimeo.com/76979871',
     descricao: 'A base da criação de qualquer cor.',
   },
   {
     id: 'aula_3', modulo_id: 'mod_1', titulo: 'Fundo de Clareamento', ordem: 3, duracaoMinutos: 30,
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    videoUrl: 'https://vimeo.com/880821222',
     descricao: 'Entendendo a base do cabelo e os tons subjacentes.',
   },
   // Aulas Modulo 2
   {
     id: 'aula_4', modulo_id: 'mod_2', titulo: 'Neutralização de Cores Indesejadas', ordem: 1, duracaoMinutos: 28,
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    videoUrl: 'https://vimeo.com/347119375',
     descricao: 'Como usar a estrela de Oswald para neutralizar tons alaranjados e amarelados.',
   },
   {
     id: 'aula_5', modulo_id: 'mod_2', titulo: 'Criando Cores Frias', ordem: 2, duracaoMinutos: 25,
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    videoUrl: 'https://vimeo.com/76979871',
     descricao: 'Dicas práticas de coloração.',
   },
 ];

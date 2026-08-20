@@ -29,24 +29,24 @@ function createDummyClient(): any {
     return chain;
   }
 
-  return new Proxy(
-    {
-      auth: {
-        getSession: () => Promise.resolve(resolvedValue),
-        getUser: () => Promise.resolve(resolvedValue),
-        signInWithPassword: () => Promise.resolve(resolvedValue),
-        signOut: () => Promise.resolve(resolvedValue),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
-      },
-      from: (_table: string) => makeChain(),
+  const authClient = {
+    getSession: () => Promise.resolve(resolvedValue),
+    getUser: () => Promise.resolve(resolvedValue),
+    signInWithPassword: () => Promise.resolve(resolvedValue),
+    signOut: () => Promise.resolve(resolvedValue),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+  };
+
+  const client: any = {
+    auth: authClient,
+    from: (_table: string) => makeChain(),
+  };
+  return new Proxy(client, {
+    get(target, prop) {
+      if (typeof prop === 'string' && prop.startsWith('_')) return undefined;
+      return Reflect.get(target, prop, target);
     },
-    {
-      get(target, prop) {
-        if (typeof prop === 'string' && prop.startsWith('_')) return undefined;
-        return Reflect.get(target, prop, target);
-      },
-    }
-  );
+  });
 }
 
 const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
