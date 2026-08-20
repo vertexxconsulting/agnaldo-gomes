@@ -5,7 +5,8 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
-import { Scissors, Sparkles, Droplets, Hand, Baby, User, Clock, ChevronRight } from "lucide-react";
+import { Scissors, Sparkles, Droplets, Hand, Baby, User, Clock, ChevronRight, Crown, Heart, Star, Camera, Users, ShieldCheck } from "lucide-react";
+import { NOIVA_PACOTES, formatBRL, NOIVA_SINAL_MIN_PCT } from "@/lib/noivas";
 
 const studioImages = [
   '/agnaldo1.webp',
@@ -15,50 +16,40 @@ const studioImages = [
   '/agnaldo7.webp',
 ];
 
-const studioKeyframes = `
-@keyframes studioFade {
-  0%, 16% { opacity: 1; }
-  20%, 96% { opacity: 0; }
-  100% { opacity: 1; }
-}
-`;
-if (typeof document !== 'undefined' && !document.getElementById('studio-fade-keyframes')) {
-  const style = document.createElement('style');
-  style.id = 'studio-fade-keyframes';
-  style.textContent = studioKeyframes;
-  document.head.appendChild(style);
-}
-
 function StudioCarouselHero() {
   return (
     <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
-      {/* Hero em fade — uma imagem por vez, transição suave */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
-        {studioImages.map((src, i) => (
-          <div
-            key={src}
-            className="absolute inset-0"
-            style={{
-              animation: `studioFade 30s infinite`,
-              animationDelay: `${i * 6}s`,
-            }}
-          >
-            <Image
-              src={src}
-              alt="Studio Agnaldo Gomes"
-              fill
-              className="object-cover object-top"
-              sizes="100vw"
-              priority={i === 0}
-            />
-          </div>
-        ))}
-
-        {/* Overlay gradientes luxury */}
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
+      {/* Carrossel de fundo — colunas verticais (retrato) transicionando lateralmente */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0 flex">
+        <motion.div
+          className="flex h-full items-stretch"
+          style={{ width: 'fit-content' }}
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ ease: 'linear', duration: 40, repeat: Infinity }}
+        >
+          {[...studioImages, ...studioImages].map((src, i) => (
+            <div
+              key={i}
+              className="relative flex-shrink-0 h-full"
+              style={{ width: '20vw', minWidth: 200 }}
+            >
+              <Image
+                src={src}
+                alt="Studio Agnaldo Gomes"
+                fill
+                className="object-cover object-center"
+                sizes="20vw"
+                priority={i < 3}
+              />
+            </div>
+          ))}
+        </motion.div>
       </div>
+
+      {/* Overlay gradientes luxury */}
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
 
       {/* Conteúdo do Hero */}
       <motion.div
@@ -193,6 +184,58 @@ export default function StudioPage() {
               <p className="text-foreground/70 text-sm">{s.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* ===== DIA DA NOIVA ===== */}
+        <div className="mb-20">
+          <SectionTitle title="Dia da Noiva" subtitle="O grande dia merece um cuidado exclusivo" align="center" />
+          <div className="text-center max-w-3xl mx-auto mt-8 mb-10">
+            <p className="text-foreground/80 text-base leading-relaxed">
+              Pacotes exclusivos de penteado, makeup e acompanhamento completo para o seu casamento.
+              <br />
+              <span className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-primary">
+                <ShieldCheck size={16} />
+                Reserva de agenda garantida com sinal mínimo de {NOIVA_SINAL_MIN_PCT}% — sua data fica protegida e bloqueada exclusivamente para você.
+              </span>
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {NOIVA_PACOTES.map((p) => {
+              const Icon = p.id === 'noiva-vip' ? Crown : p.id === 'noiva-dia-completo' ? Heart : p.id === 'noiva-prova' ? Camera : p.id === 'noiva-penteado' ? Star : Users;
+              return (
+                <div key={p.id} className="relative glass rounded-2xl p-6 flex flex-col gap-3 hover:bg-primary/5 transition-colors border border-primary/15 hover:border-primary/40">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Icon size={22} />
+                    </div>
+                    <span className="text-2xl font-serif font-bold text-primary">{formatBRL(p.preco)}</span>
+                  </div>
+                  <h3 className="text-lg font-bold">{p.nome}</h3>
+                  <p className="text-foreground/70 text-sm leading-relaxed">{p.descricao}</p>
+                  <ul className="flex flex-col gap-1.5">
+                    {p.itens.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-foreground/70">
+                        <span className="w-1 h-1 rounded-full bg-primary shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-foreground/50">
+                    <span>Duração aprox. {Math.floor(p.duracao_min / 60)}h{p.duracao_min % 60 > 0 ? `${String(p.duracao_min % 60).padStart(2, '0')}` : ''}</span>
+                    <span className="font-semibold text-primary">Sinal {NOIVA_SINAL_MIN_PCT}%: {formatBRL((p.preco * NOIVA_SINAL_MIN_PCT) / 100)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/agendamento">
+              <Button variant="primary" size="md" className="px-10 uppercase tracking-widest">
+                Agendar Dia da Noiva
+              </Button>
+            </Link>
+            <p className="text-foreground/50 text-xs mt-3">Após a solicitação, nossa equipe entrará em contato para confirmar a data e o sinal.</p>
+          </div>
         </div>
 
         {/* Horários de Atendimento */}

@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, BookOpen, Command, GitMerge, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, BookOpen, Command, GitMerge, ShieldCheck, Heart } from 'lucide-react';
 import { AdminSidebar, AdminShell } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -9,6 +9,7 @@ const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
+  { href: '/admin/noivas', label: 'Dia da Noiva', icon: Heart },
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },

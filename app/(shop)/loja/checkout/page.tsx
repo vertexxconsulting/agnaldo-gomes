@@ -31,6 +31,16 @@ export default function CheckoutPage() {
   const [neighborhood, setNeighborhood] = useState('');
   const [city, setCity] = useState('');
 
+  // Regras de frete definidas na admin da loja (frete grátis / acima de valor / valores custom)
+  const getStoreConfig = () => {
+    try {
+      const raw = localStorage.getItem('loja-config');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
@@ -51,6 +61,24 @@ export default function CheckoutPage() {
     return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   };
 
+  const calcShippingValues = (numericCep: string) => {
+    const cfg = getStoreConfig();
+    const isLocal = numericCep.startsWith('8426');
+    const metodo = isLocal ? 'MOTOBOY' : 'CORREIOS';
+    const valorBase = isLocal
+      ? parseFloat(String(cfg?.valorMotoboy ?? '15.00')) || 15.0
+      : parseFloat(String(cfg?.valorCorreios ?? '28.50')) || 28.5;
+    const gratisLigado = cfg?.freteGratis;
+    const acimaDe = parseFloat(String(cfg?.freteGratisAcimaDe)) || 0;
+    const gratis = Boolean(gratisLigado) || (acimaDe > 0 && subtotal >= acimaDe);
+    return {
+      metodo,
+      custo: gratis ? 0 : valorBase,
+      gratis,
+      regiao: isLocal ? 'Região de Campo Mourão/PR' : 'Todo o Brasil',
+    };
+  };
+
   const handleCalcShipping = () => {
     const numericCep = cep.replace(/\D/g, '');
     if (numericCep.length < 8) return;
@@ -58,14 +86,10 @@ export default function CheckoutPage() {
     setShippingMethod('');
     setTimeout(() => {
       setIsCalculating(false);
-      if (numericCep.startsWith('8426')) {
-        setShippingMethod('MOTOBOY');
-        setShippingCost(15.00);
-      } else {
-        setShippingMethod('CORREIOS');
-        setShippingCost(28.50);
-      }
-      setCity(numericCep.startsWith('8426') ? 'Região de Campo Mourão/PR' : 'Todo o Brasil');
+      const { metodo, custo, gratis, regiao } = calcShippingValues(numericCep);
+      setShippingMethod(gratis ? `${metodo} (GRÁTIS)` : metodo);
+      setShippingCost(custo);
+      setCity(regiao);
     }, 1200);
   };
 
@@ -77,9 +101,10 @@ export default function CheckoutPage() {
     setCep(formatted);
     const numericCep = formatted.replace(/\D/g, '');
     if (numericCep.length === 8 && !shippingMethod) {
-      setShippingMethod(numericCep.startsWith('8426') ? 'MOTOBOY' : 'CORREIOS');
-      setShippingCost(numericCep.startsWith('8426') ? 15.0 : 28.5);
-      setCity(numericCep.startsWith('8426') ? 'Região de Campo Mourão/PR' : 'Todo o Brasil');
+      const { metodo, custo, gratis, regiao } = calcShippingValues(numericCep);
+      setShippingMethod(gratis ? `${metodo} (GRÁTIS)` : metodo);
+      setShippingCost(custo);
+      setCity(regiao);
     }
   };
 
@@ -259,11 +284,12 @@ export default function CheckoutPage() {
                     {shippingMethod && (
                       <div className="p-3 bg-amber-50 border border-amber-200 flex flex-col gap-1.5 rounded-sm mb-4">
                         <div className="flex items-center gap-2 text-amber-700 font-bold text-[11px] uppercase tracking-wider mb-1">
-                          <Truck size={14} /> {shippingMethod === 'MOTOBOY' ? 'Entrega Local (Motoboy)' : 'Envio Nacional (Correios)'}
+                          <Truck size={14} /> {shippingMethod === 'MOTOBOY' || shippingMethod.startsWith('MOTOBOY') ? 'Entrega Local (Motoboy)' : 'Envio Nacional (Correios)'}
+                          {shippingCost === 0 && <span className="ml-auto bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm">FRETE GRÁTIS</span>}
                         </div>
                         <div className="flex justify-between items-center text-xs text-amber-900/80">
                           <span>Prazo estimado:</span>
-                          <span className="font-bold text-amber-900">{shippingMethod === 'MOTOBOY' ? 'Hoje mesmo' : '3 a 7 dias úteis'}</span>
+                          <span className="font-bold text-amber-900">{shippingMethod.startsWith('MOTOBOY') ? 'Hoje mesmo' : '3 a 7 dias úteis'}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs text-amber-900/80">
                           <span>Região:</span>

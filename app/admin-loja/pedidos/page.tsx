@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Eye, Filter, Download } from 'lucide-react';
+import { Search, Eye, Filter, Download, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { gerarEtiquetaPDF, ENVIO_DEFAULT, ConfiguracaoEnvio } from '@/lib/envios';
 
 export default function AdminLojaPedidos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [printId, setPrintId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -49,6 +51,39 @@ export default function AdminLojaPedidos() {
       o.customer_email?.toLowerCase().includes(term)
     );
   });
+
+  const getConfigEnvio = (): ConfiguracaoEnvio => {
+    try {
+      const raw = localStorage.getItem('loja-config');
+      if (!raw) return ENVIO_DEFAULT;
+      const cfg = JSON.parse(raw);
+      return {
+        ...ENVIO_DEFAULT,
+        melhorEnvioToken: cfg?.melhorEnvioToken ?? '',
+        cepRemetente: cfg?.cepOrigem || ENVIO_DEFAULT.cepRemetente,
+      };
+    } catch {
+      return ENVIO_DEFAULT;
+    }
+  };
+
+  const handlePrintLabel = async (pedido: any) => {
+    setPrintId(pedido.id);
+    try {
+      const blob = await gerarEtiquetaPDF(pedido, getConfigEnvio());
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `etiqueta-pedido-${pedido.id.toString().slice(0, 8).toUpperCase()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao gerar etiqueta:', err);
+      alert('Não foi possível gerar a etiqueta. Tente novamente.');
+    } finally {
+      setPrintId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -107,6 +142,7 @@ export default function AdminLojaPedidos() {
                   <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
                   <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
                   <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Etiqueta</th>
                   <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                 </tr>
               </thead>
@@ -127,6 +163,23 @@ export default function AdminLojaPedidos() {
                     </td>
                     <td className="py-4 px-6">
                       {getStatusBadge(pedido.status)}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <button
+                        onClick={() => handlePrintLabel(pedido)}
+                        disabled={['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(pedido.status)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
+                        title="Baixar etiqueta de envio (PDF)"
+                      >
+                        {printId === pedido.id ? (
+                          'Gerando...'
+                        ) : (
+                          <>
+                            <Printer size={13} />
+                            <span>{['PENDING_PAYMENT'].includes(pedido.status) ? 'Após pagar' : 'Etiqueta'}</span>
+                          </>
+                        )}
+                      </button>
                     </td>
                     <td className="py-4 px-6 text-right">
                       <button className="p-2 text-slate-400 hover:text-amber-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Ver Detalhes">

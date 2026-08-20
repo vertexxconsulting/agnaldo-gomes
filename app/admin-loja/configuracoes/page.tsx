@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, ShieldCheck, Truck, CreditCard } from 'lucide-react';
+import { Save, ShieldCheck, Truck, CreditCard, Gift } from 'lucide-react';
 
 const CONFIG_STORAGE_KEY = 'loja-config';
 
@@ -10,6 +10,10 @@ interface LojaConfig {
   melhorEnvioToken: string;
   cepOrigem: string;
   prazoManuseio: string;
+  freteGratis: boolean;
+  freteGratisAcimaDe: string;
+  valorMotoboy: string;
+  valorCorreios: string;
 }
 
 const defaultConfig: LojaConfig = {
@@ -17,6 +21,10 @@ const defaultConfig: LojaConfig = {
   melhorEnvioToken: '',
   cepOrigem: '',
   prazoManuseio: '1',
+  freteGratis: false,
+  freteGratisAcimaDe: '',
+  valorMotoboy: '15.00',
+  valorCorreios: '28.50',
 };
 
 export default function AdminLojaConfiguracoes() {
@@ -116,6 +124,64 @@ export default function AdminLojaConfiguracoes() {
               </div>
             </div>
             
+            {/* Regra de frete: grátis ou pago pelo cliente */}
+            <div className="border border-amber-200 rounded-lg p-4 space-y-4 bg-amber-50/40">
+              <div className="flex items-center gap-2">
+                <Gift className="text-amber-600" size={16} />
+                <h3 className="text-sm font-bold text-slate-900">Regra de Frete</h3>
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={config.freteGratis}
+                  onChange={(e) => setConfig({ ...config, freteGratis: e.target.checked })}
+                  className="w-4 h-4 mt-0.5 accent-amber-500"
+                />
+                <span className="text-sm text-slate-700">
+                  <b>Frete grátis para todos os pedidos</b> — a loja absorve o custo do envio (o cliente paga R$ 0 de frete).
+                </span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Frete grátis acima de (R$)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    step="0.01"
+                    placeholder="Ex: 200 (deixe 0 para desativar)" 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
+                    value={config.freteGratisAcimaDe}
+                    onChange={(e) => setConfig({ ...config, freteGratisAcimaDe: e.target.value })}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Acima deste valor o frete sai de graça; abaixo, o cliente paga.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Valores quando o frete é pago</label>
+                  <div className="space-y-2">
+                    <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      placeholder="Motoboy (R$)" 
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
+                      value={config.valorMotoboy}
+                      onChange={(e) => setConfig({ ...config, valorMotoboy: e.target.value })}
+                    />
+                    <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      placeholder="Correios PAC (R$)" 
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" 
+                      value={config.valorCorreios}
+                      onChange={(e) => setConfig({ ...config, valorCorreios: e.target.value })}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Valores cobrados do cliente quando o frete não é grátis.</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">CEP de Origem *</label>
