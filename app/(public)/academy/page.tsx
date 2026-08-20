@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
 import { Scissors, Palette, Sparkles, UserRound, Droplets, Briefcase, Award, Clock, MapPin, BadgeCheck } from "lucide-react";
@@ -116,17 +117,51 @@ const cursos: Curso[] = [
 
 export default function AcademyPage() {
   return (
-    <div className="flex flex-col w-full py-14 bg-background">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Academy AG" subtitle="Formação e Educação de Elite" align="center" />
-
-        <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
-          <p className="text-foreground/80 text-base leading-relaxed">
+    <div className="flex flex-col w-full bg-background">
+      {/* Hero */}
+      <section className="relative w-full min-h-[56vh] flex items-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/agnaldo3.webp"
+            alt="Agnaldo Gomes — Academy"
+            fill
+            className="object-cover object-top"
+            sizes="100vw"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-background" />
+        </div>
+        <div className="container relative z-10 mx-auto px-6 text-center py-24">
+          <p className="text-primary font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs">
+            Formação e Educação de Elite
+          </p>
+          <h1 className="mt-4 font-serif font-bold text-4xl md:text-6xl text-white tracking-tight">
+            Academy <span className="italic text-primary">AG</span>
+          </h1>
+          <p className="mt-5 max-w-2xl mx-auto text-white/80 text-base leading-relaxed">
             <strong>Agnaldo Gomes</strong> — 30 anos de experiência, formado nas academias{" "}
-            <strong>Pivot Point, Toni & Guy e Llongueras</strong>.{" "}
+            <strong>Pivot Point, Toni &amp; Guy e Llongueras</strong>.{" "}
             Cursos presenciais e online que formam profissionais de elite e elevam o faturamento do seu salão.
           </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/academy/login">
+              <Button variant="primary" className="uppercase tracking-widest text-xs px-8">
+                Quero me Inscrever
+              </Button>
+            </Link>
+            <Link href="/sobre">
+              <Button variant="outline" className="uppercase tracking-widest text-xs px-8 border-white/30 text-white hover:bg-white/10 hover:border-white/60">
+                Conhecer o Formador
+              </Button>
+            </Link>
+          </div>
         </div>
+      </section>
+
+      {/* Catálogo de cursos */}
+      <div className="container mx-auto px-6 pt-14">
+        <SectionTitle title="Catálogo de Cursos" subtitle="Formação e Educação de Elite" align="center" />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           {cursos.map((c, i) => (

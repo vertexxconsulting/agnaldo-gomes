@@ -15,34 +15,44 @@ const studioImages = [
   '/agnaldo7.webp',
 ];
 
+const studioKeyframes = `
+@keyframes studioFade {
+  0%, 16% { opacity: 1; }
+  20%, 96% { opacity: 0; }
+  100% { opacity: 1; }
+}
+`;
+if (typeof document !== 'undefined' && !document.getElementById('studio-fade-keyframes')) {
+  const style = document.createElement('style');
+  style.id = 'studio-fade-keyframes';
+  style.textContent = studioKeyframes;
+  document.head.appendChild(style);
+}
+
 function StudioCarouselHero() {
   return (
     <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
-      {/* Carrossel de fundo — imagens verticais (retrato) transicionando lateralmente */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0 flex">
-        <motion.div
-          className="flex h-full items-stretch"
-          style={{ width: 'fit-content' }}
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ ease: 'linear', duration: 32, repeat: Infinity }}
-        >
-          {[...studioImages, ...studioImages].map((src, i) => (
-            <div
-              key={i}
-              className="relative flex-shrink-0 h-full"
-              style={{ width: '22vw', minWidth: 180 }}
-            >
-              <Image
-                src={src}
-                alt="Studio Agnaldo Gomes"
-                fill
-                className="object-cover object-top"
-                sizes="22vw"
-                priority={i < 3}
-              />
-            </div>
-          ))}
-        </motion.div>
+      {/* Hero em fade — uma imagem por vez, transição suave */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
+        {studioImages.map((src, i) => (
+          <div
+            key={src}
+            className="absolute inset-0"
+            style={{
+              animation: `studioFade 30s infinite`,
+              animationDelay: `${i * 6}s`,
+            }}
+          >
+            <Image
+              src={src}
+              alt="Studio Agnaldo Gomes"
+              fill
+              className="object-cover object-top"
+              sizes="100vw"
+              priority={i === 0}
+            />
+          </div>
+        ))}
 
         {/* Overlay gradientes luxury */}
         <div className="absolute inset-0 bg-black/50" />

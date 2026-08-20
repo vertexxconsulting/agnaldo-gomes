@@ -158,34 +158,48 @@ export function SplitLogin({
     >
       {/* Painel esquerdo — marca/logo */}
       <motion.div
-        className={`hidden lg:flex w-1/2 flex-col items-center justify-center gap-8 p-12 ${
-          darkSide ? 'bg-[#0a0a0c]' : 'bg-white'
+        className={`hidden lg:flex w-1/2 flex-col items-center justify-center gap-8 p-12 relative overflow-hidden ${
+          darkSide
+            ? 'bg-gradient-to-br from-[#111114] via-[#0c0c0f] to-[#171410] text-white'
+            : 'bg-white text-gray-900'
         }`}
         initial={{ x: -40, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={SPRING}
       >
-        <div className={darkSide ? 'p-10 rounded-3xl bg-white/5 border border-primary/20' : ''}>
+        {/* Brilho dourado decorativo */}
+        <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-primary/8 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+        <div className="relative p-12 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-primary/25 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]">
           <Image
-            src={logoSrc}
+            src={darkSide ? '/logo-branca.png' : logoSrc}
             alt={title}
-            width={220}
-            height={220}
+            width={darkSide ? 240 : 220}
+            height={darkSide ? 240 : 220}
             priority
+            className={darkSide ? 'drop-shadow-[0_8px_24px_rgba(212,175,55,0.35)]' : ''}
           />
         </div>
         <div>
           <motion.h1
-            className={`text-3xl font-bold tracking-tight text-center ${titleClassName ? titleClassName : (darkSide ? 'text-white' : 'text-gray-900')}`}
+            className={`text-3xl font-serif font-bold tracking-tight text-center ${titleClassName ?? (darkSide ? 'text-white' : 'text-gray-900')}`}
             variants={TEXT_VARIANTS}
             initial="initial"
             animate="animate"
           >
             {title}
           </motion.h1>
+          <motion.div
+            className="mx-auto mt-4 mb-5 h-px w-16 bg-primary/50"
+            variants={ITEM_VARIANTS}
+            initial="initial"
+            animate="animate"
+          />
           {subtitle && (
             <motion.p
-              className={`text-lg max-w-md text-center ${darkSide ? 'text-white/60' : 'text-gray-500'}`}
+              className={`text-lg max-w-md text-center leading-relaxed ${darkSide ? 'text-white/60' : 'text-gray-500'}`}
               variants={TEXT_VARIANTS}
               initial="initial"
               animate="animate"
@@ -194,6 +208,14 @@ export function SplitLogin({
             </motion.p>
           )}
         </div>
+        <motion.p
+          className="mt-6 text-[11px] uppercase tracking-[0.3em] text-primary/70 font-semibold"
+          variants={ITEM_VARIANTS}
+          initial="initial"
+          animate="animate"
+        >
+          Agnaldo Gomes · Ecossistema Digital
+        </motion.p>
       </motion.div>
 
       {/* Painel direito — formulário animado */}
@@ -209,9 +231,11 @@ export function SplitLogin({
             className="lg:hidden flex flex-col items-center gap-4 mb-10"
             variants={ITEM_VARIANTS}
           >
-            <Image src={logoSrc} alt={title} width={100} height={100} />
+            <div className="p-6 rounded-2xl bg-gradient-to-b from-primary/15 to-primary/5 border border-primary/25">
+              <Image src="/logo-branca.png" alt={title} width={120} height={120} />
+            </div>
             <motion.h1
-              className={`text-2xl font-bold text-center ${titleClassName ? titleClassName : 'text-foreground'}`}
+              className={`text-2xl font-serif font-bold text-center ${titleClassName ?? 'text-foreground'}`}
               variants={TEXT_VARIANTS}
             >
               {title}

@@ -58,27 +58,25 @@ export function AdminSidebar({
   const renderLinkItem = (link: SidebarLink) => {
     const Icon = link.icon;
     const active = link.href === '/hub' ? false : pathname === link.href || (link.href !== '/hub' && pathname.startsWith(link.href));
+    const base = `flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap group ${
+      active
+        ? 'bg-primary/10 text-primary'
+        : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground'
+    }`;
     return (
-      <div
-        className={`flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap group ${
-            active
-              ? 'bg-primary/10 text-primary'
-              : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground'
-          }`}
-          title={isCollapsed ? link.label : undefined}
-        >
-          <Icon size={17} className="shrink-0" />
-          {!isCollapsed && (
-            <>
-              <span className="truncate">{link.label}</span>
-              {link.hub && (
-                <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">
-                  Hub
-                </span>
-              )}
-            </>
-          )}
-        </div>
+      <Link key={link.href} href={link.href} className={base} title={isCollapsed ? link.label : undefined}>
+        <Icon size={17} className="shrink-0" />
+        {!isCollapsed && (
+          <>
+            <span className="truncate">{link.label}</span>
+            {link.hub && (
+              <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">
+                Hub
+              </span>
+            )}
+          </>
+        )}
+      </Link>
     );
   };
 
