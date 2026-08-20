@@ -39,7 +39,7 @@ export default function AdminEdicaoCursoPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="p-6">
         <div className="h-6 bg-white/10 rounded w-48 animate-pulse mb-2" />
         <div className="h-5 bg-white/10 rounded w-64 animate-pulse" />
       </div>
@@ -47,7 +47,7 @@ export default function AdminEdicaoCursoPage() {
   }
 
   if (!curso) {
-    return <div className="p-8 text-foreground">Curso não encontrado.</div>;
+    return <div className="p-6 text-foreground">Curso não encontrado.</div>;
   }
 
   return (
@@ -73,9 +73,9 @@ export default function AdminEdicaoCursoPage() {
         </div>
       </div>
 
-      <div className="p-8 max-w-5xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto">
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border-subtle)] mb-8">
+        <div className="flex border-b border-[var(--border-subtle)] mb-6">
           <button
             className={`px-6 py-3 font-medium text-sm transition-colors relative ${activeTab === 'detalhes' ? 'text-primary' : 'text-foreground/60 hover:text-foreground'}`}
             onClick={() => setActiveTab('detalhes')}

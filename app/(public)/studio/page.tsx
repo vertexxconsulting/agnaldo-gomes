@@ -161,7 +161,7 @@ export default function StudioPage() {
       <StudioCarouselHero />
 
       {/* ===== CONTEÚDO ===== */}
-      <div className="container mx-auto px-6 py-20">
+      <div className="container mx-auto px-6 py-14">
         <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">

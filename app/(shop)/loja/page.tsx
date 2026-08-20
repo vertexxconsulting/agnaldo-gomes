@@ -236,7 +236,7 @@ export default function LojaHome() {
 
       {/* Seção Destaques */}
       {featured.length > 0 && !selectedCategory && !search && (
-        <section className="pt-10">
+        <section className="pt-8">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base md:text-lg font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function LojaHome() {
       )}
 
       {/* Grid de Produtos */}
-      <section id="produtos" className="pt-10">
+      <section id="produtos" className="pt-8">
         <div className="container mx-auto px-4 md:px-6">
 
           <div className="flex justify-between items-center mb-5 pb-2 border-b border-slate-200">
@@ -297,8 +297,8 @@ export default function LojaHome() {
       </section>
 
       {/* Faixa de confiança */}
-      <section className="mt-14 border-t border-slate-200 bg-slate-50">
-        <div className="container mx-auto px-4 md:px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="mt-10 border-t border-slate-200 bg-slate-50">
+        <div className="container mx-auto px-4 md:px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-5">
           {[
             { icon: Truck, title: 'Entrega Garantida', desc: 'Motoboy local no mesmo dia ou Correios para todo Brasil' },
             { icon: ShieldCheck, title: 'Compra Segura', desc: 'Pagamento processado em ambiente criptografado' },

@@ -82,7 +82,7 @@ export default function ServicosPage() {
   };
 
   return (
-    <div className="py-12">
+    <div className="py-8">
       <div className="container mx-auto px-6">
         <SectionTitle title="Serviços" subtitle="Cadastro · Categorias · Duração · Preço" align="left" />
 
@@ -109,12 +109,12 @@ export default function ServicosPage() {
         </div>
 
         {loading && (
-          <div className="text-center py-8 text-foreground/50">Carregando serviços...</div>
+          <div className="text-center py-6 text-foreground/50">Carregando serviços...</div>
         )}
 
         {/* Form inline */}
         {showForm && (
-          <CardGlass className="mb-8">
+          <CardGlass className="mb-6">
             <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Serviço' : 'Novo Serviço'}</h3>
             <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
@@ -190,7 +190,7 @@ export default function ServicosPage() {
                 </tr>
               ))}
               {filtrados.length === 0 && (
-                <tr><td colSpan={7} className="py-10 text-center text-foreground/50">Nenhum serviço encontrado.</td></tr>
+                <tr><td colSpan={7} className="py-8 text-center text-foreground/50">Nenhum serviço encontrado.</td></tr>
               )}
             </tbody>
           </table>

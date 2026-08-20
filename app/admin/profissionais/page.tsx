@@ -124,7 +124,7 @@ export default function ProfissionaisPage() {
   };
 
   return (
-    <div className="py-12">
+    <div className="py-8">
       <div className="container mx-auto px-6">
         <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Comissão · Agenda" align="left" />
 
@@ -155,12 +155,12 @@ export default function ProfissionaisPage() {
         </div>
 
         {loading && (
-          <div className="text-center py-8 text-foreground/50">Carregando profissionais...</div>
+          <div className="text-center py-6 text-foreground/50">Carregando profissionais...</div>
         )}
 
         {/* Form */}
         {showForm && (
-          <CardGlass className="mb-8">
+          <CardGlass className="mb-6">
             <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Profissional' : 'Novo Profissional'}</h3>
             <form onSubmit={salvar} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -293,7 +293,7 @@ export default function ProfissionaisPage() {
         </div>
 
         {filtrados.length === 0 && (
-          <CardGlass className="text-center py-12 mt-6">
+          <CardGlass className="text-center py-8 mt-6">
             <p className="text-foreground/50">Nenhum profissional encontrado.</p>
           </CardGlass>
         )}

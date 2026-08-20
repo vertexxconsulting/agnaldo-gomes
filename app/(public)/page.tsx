@@ -143,7 +143,7 @@ export default function Home() {
       <div className="scale-[0.93] xl:scale-[0.95] 2xl:scale-100 transform-origin-top">
 
       {/* ===== BENTO GRID: pilares ===== */}
-      <section className="py-24 bg-card/30">
+      <section className="py-16 bg-card/30">
         <div className="container mx-auto px-6">
           <SectionTitle title="Nossos Pilares" subtitle="A essência da marca" align="center" />
           <BentoGrid cards={pillars} />
@@ -151,8 +151,8 @@ export default function Home() {
       </section>
 
       {/* ===== AUTORIDADE COM PARALLAX ===== */}
-      <section className="py-24 overflow-hidden">
-        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      <section className="py-16 overflow-hidden">
+        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <Reveal className="relative aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl lg:col-span-5 max-w-md mx-auto w-full">
             <Image
               src="/agnaldo4.webp"
@@ -209,11 +209,11 @@ export default function Home() {
       </section>
 
 {/* ===== ARTISTA DAS MARCAS ===== */}
-      <section id="artista-das-marcas" className="relative py-24 overflow-hidden border-y border-[var(--border-subtle)]">
+      <section id="artista-das-marcas" className="relative py-16 overflow-hidden border-y border-[var(--border-subtle)]">
         <CarouselBackground />
         <div className="container relative z-10 mx-auto px-6">
           <SectionTitle title="Artista das Marcas" subtitle="Embaixador técnico de referência" align="center" />
-          <p className="text-center text-foreground/60 text-sm mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-foreground/60 text-sm mb-10 max-w-2xl mx-auto">
             Agnaldo Gomes atua como artista e embaixador das marcas que impulsionam seu trabalho e sua missão de compartilhar beleza e conhecimento.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8">
@@ -260,20 +260,20 @@ export default function Home() {
       </section>
 
       {/* ===== SERVIÇOS ===== */}
-      <section className="py-24 bg-card/50">
+      <section className="py-16 bg-card/50">
         <div className="container mx-auto px-6">
           <SectionTitle title="O que oferecemos" subtitle="Excelência em cada detalhe" align="center" />
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {services.map((s, i) => {
               const Icon = s.icon;
               return (
                 <div key={i} className="md:col-span-1">
-                  <div className="glass p-8 rounded-2xl flex flex-col gap-4 text-center items-center hover:bg-primary/5 transition-colors h-full">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
-                      <Icon size={32} />
+                  <div className="glass p-6 rounded-2xl flex flex-col gap-3 text-center items-center hover:bg-primary/5 transition-colors h-full">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Icon size={22} />
                     </div>
-                    <h3 className="text-xl font-bold text-foreground">{s.name}</h3>
-                    <p className="text-sm text-foreground/70">{s.desc}</p>
+                    <h3 className="text-base font-serif font-bold tracking-tight text-foreground">{s.name}</h3>
+                    <p className="text-[12.5px] text-foreground/65">{s.desc}</p>
                   </div>
                 </div>
               );
@@ -283,27 +283,27 @@ export default function Home() {
       </section>
 
       {/* ===== DEPOIMENTOS ===== */}
-      <section className="py-24">
+      <section className="py-16">
         <div className="container mx-auto px-6">
           <Reveal>
             <SectionTitle title="O que dizem" subtitle="Prova Social" align="center" />
           </Reveal>
-          <Stagger className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" amount={0.2}>
+          <Stagger className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" amount={0.2}>
             {[
               { name: 'Marina S.', city: 'São Paulo, SP', text: 'A experiência no studio é surreal. O atendimento, a técnica e o resultado superaram todas as minhas expectativas. Recomendo de olhos fechados!' },
               { name: 'Carlos E.', city: 'Santos, SP', text: 'Fiz o curso de visagismo na Academy e foi transformador. Saí preparado para atender com confiança e técnica de elite.' },
               { name: 'Juliana R.', city: 'Campinas, SP', text: 'O Agnaldo entende de rosto e essência. Cada corte valorizou aquilo que eu nem sabia que tinha. Simplesmente impecável.' },
             ].map((t, i) => (
               <StaggerItem key={i}>
-                <div className="glass p-8 rounded-2xl flex flex-col gap-6 h-full">
-                  <div className="flex text-primary gap-1">
+                <div className="glass p-6 rounded-2xl flex flex-col gap-4 h-full">
+                  <div className="flex text-primary gap-0.5">
                     {[...Array(5)].map((_, j) => (
                       <Star key={j} size={18} fill="currentColor" />
                     ))}
                   </div>
                   <p className="text-foreground/80 italic leading-relaxed">“{t.text}”</p>
                   <div className="flex items-center gap-4 mt-auto pt-4 border-t border-white/5">
-                    <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold">
+                    <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">
                       {t.name[0]}
                     </div>
                     <div>
@@ -322,7 +322,7 @@ export default function Home() {
       <FaqSection />
 
       {/* ===== CTA final ===== */}
-      <section className="py-24 bg-card/30">
+      <section className="py-16 bg-card/30">
         <div className="container mx-auto px-6 max-w-3xl text-center">
           <Stagger className="flex flex-col items-center gap-6">
             <StaggerItem>

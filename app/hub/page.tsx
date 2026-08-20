@@ -3,19 +3,17 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Scissors, GraduationCap, ShoppingBag, LayoutDashboard,
+  Scissors, GraduationCap, ShoppingBag,
   CalendarDays, Users, UserCircle, TrendingUp, Wallet,
-  PlayCircle, FileText, Award, ChevronRight, Sparkles,
-  BarChart3, Clock, Star, CheckCircle2, PlusCircle, Package,
-  ArrowUpRight, ExternalLink
+  PlayCircle, Award, ChevronRight,
+  BarChart3, Package, ArrowUpRight, ExternalLink
 } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
-import { SectionTitle } from '@/components/SectionTitle';
-import { CardGlass } from '@/components/CardGlass';
+import { Panel, StatCard, SectionHeader } from '@/components/ui/Panel';
 import {
   getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome,
   getProfissionalNome, getCursos, getProgressoAluno, MOCK_PROFISSIONAIS,
@@ -23,24 +21,20 @@ import {
 import type { Cliente, Agendamento, Servico, Curso, Progresso } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
 import { ROLES, getHubModules, type HubModule } from '@/lib/auth';
+import { StatusBadge } from '@/components/ui/Panel';
 
 const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
-const CORES = ['#d4af37', '#10B981', '#0ea5e9', '#EF4444', '#8b5cf6', '#f59e0b'];
+const CORES = ['#d4af37', '#c9a84c', '#b5952f', '#a8862a', '#d4af37', '#c9a84c'];
 
-// ─────────────────────────────────────────────
-// Módulos do sistema (dados de exemplo)
-// ─────────────────────────────────────────────
-const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; href: string; icon: typeof Scissors; bg: string; border: string; stat: string }> = [
+const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; href: string; icon: typeof Scissors; stat: string }> = [
   {
     id: 'studio',
     nome: 'Studio de Beleza',
     descricao: 'Gestão completa do salão: agenda, clientes (CRM), profissionais e serviços.',
     href: '/admin',
     icon: Scissors,
-    bg: 'from-[#a8862a]/20 to-[#a8862a]/5',
-    border: 'hover:border-[#a8862a]/60',
-    stat: 'Gerencie agendamentos e o atendimento premium',
+    stat: 'Agendamentos e atendimento premium',
   },
   {
     id: 'academy',
@@ -48,9 +42,7 @@ const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; 
     descricao: 'Plataforma de cursos estilo streaming: aulas, módulos, certificados e comunidade.',
     href: '/admin-academy',
     icon: GraduationCap,
-    bg: 'from-[#8b5cf6]/20 to-[#8b5cf6]/5',
-    border: 'hover:border-[#8b5cf6]/60',
-    stat: 'Cursos, alunos e certificados em um só lugar',
+    stat: 'Cursos, alunos e certificados',
   },
   {
     id: 'loja',
@@ -58,9 +50,7 @@ const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; 
     descricao: 'Catálogo, pedidos, estoque e pagamentos integrados ao Mercado Pago.',
     href: '/admin-loja',
     icon: ShoppingBag,
-    bg: 'from-[#10B981]/20 to-[#10B981]/5',
-    border: 'hover:border-[#10B981]/60',
-    stat: 'Vendas de produtos profissionais e afiliados',
+    stat: 'Vendas de produtos profissionais',
   },
 ];
 
@@ -88,7 +78,6 @@ export default function HubCentralPage() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // Detecta o papel do usuário logado para filtrar os módulos visíveis
     supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
       const meta = data?.user?.user_metadata;
       if (meta && typeof meta.role === 'string') setRole(meta.role);
@@ -97,7 +86,6 @@ export default function HubCentralPage() {
   }, []);
 
   const modulosVisiveis = getHubModules(role ? { user_metadata: { role } } : null);
-
   const temModulo = (m: HubModule) => modulosVisiveis.includes(m);
 
   useEffect(() => {
@@ -131,11 +119,9 @@ export default function HubCentralPage() {
       return { label: mesNome(i), valor };
     });
     const agendadosHoje = agendamentosData.filter(a => a.data === hoje).length;
-    const pendentes = agendamentosData.filter(a => a.data === hoje && a.status === 'pendente').length;
-    // Progresso academy
     const concluidas = progresso.filter(p => p.concluida).length;
     const totalAulas = progresso.length;
-    return { hojeV, mesV, porMes, agendadosHoje, pendentes, concluidas, totalAulas, clientesCount: clientesData.length };
+    return { hojeV, mesV, porMes, agendadosHoje, concluidas, totalAulas, clientesCount: clientesData.length };
   }, [agendamentosData, clientesData, servicosData, progresso, hoje, mesAtual, anoAtual]);
 
   const proximosAgendamentos = useMemo(() => {
@@ -154,17 +140,17 @@ export default function HubCentralPage() {
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header do Hub */}
       <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--glass-bg)] backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 relative">
-              <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" sizes="36px" />
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 relative">
+              <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" sizes="32px" />
             </div>
-            <div className="hidden sm:block">
-              <p className="text-sm font-serif font-bold text-primary leading-none">Command Center</p>
-              <p className="text-[10px] text-foreground/50 uppercase tracking-widest">Painel Unificado</p>
+            <div className="hidden sm:block leading-tight">
+              <p className="text-sm font-serif font-bold text-primary">Command Center</p>
+              <p className="text-[9px] text-foreground/45 uppercase tracking-[0.18em]">Painel Unificado</p>
             </div>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+          <div className="flex items-center gap-1 overflow-x-auto">
             {NAVEGACAO_RAPIDA.filter((item) => {
               if (item.href.startsWith('/admin-academy')) return temModulo('academy');
               if (item.href.startsWith('/admin-loja')) return temModulo('loja');
@@ -173,7 +159,7 @@ export default function HubCentralPage() {
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href}>
-                  <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium text-foreground/60 hover:text-foreground hover:bg-foreground/5 whitespace-nowrap transition-colors">
+                  <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium text-foreground/55 hover:text-primary hover:bg-primary/5 whitespace-nowrap transition-colors">
                     <Icon size={13} className="shrink-0" />
                     <span className="hidden lg:inline">{item.label}</span>
                   </span>
@@ -182,49 +168,51 @@ export default function HubCentralPage() {
             })}
           </div>
           <Link href="/">
-            <span className="flex items-center gap-1 text-[11px] text-foreground/50 hover:text-primary shrink-0">
-              <ExternalLink size={12} /> Site Público
+            <span className="flex items-center gap-1 text-[11px] text-foreground/45 hover:text-primary shrink-0 transition-colors">
+              <ExternalLink size={11} /> Site Público
             </span>
           </Link>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-10">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-7">
         {/* Boas-vindas */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-primary font-semibold mb-2">Agnaldo Gomes • Ecossistema Digital</p>
-          <h1 className="text-3xl md:text-4xl font-serif font-bold">
-            Olá, Agnaldo. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
-          </h1>
-          <p className="text-foreground/60 mt-2 max-w-2xl">
-            {role === ROLES.STUDIO_SECRETARIA
-              ? 'Painel da secretaria do Studio: agenda, clientes, profissionais e serviços do salão.'
-              : 'Gerencie o Studio, a Academy e a Loja em um único lugar — com visão em tempo real do que acontece em cada frente do negócio.'}
-          </p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-primary font-bold mb-1.5">Agnaldo Gomes • Ecossistema Digital</p>
+            <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">
+              Olá, Agnaldo. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
+            </h1>
+            <p className="text-sm text-foreground/55 mt-1.5 max-w-2xl">
+              {role === ROLES.STUDIO_SECRETARIA
+                ? 'Painel da secretaria do Studio: agenda, clientes, profissionais e serviços do salão.'
+                : 'Gerencie o Studio, a Academy e a Loja em um único lugar — com visão em tempo real de cada frente do negócio.'}
+            </p>
+          </div>
         </motion.div>
 
-        {/* Cards dos Módulos (filtrados pelo papel do usuário) */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Módulos */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {MODULOS.filter((mod) => modulosVisiveis.includes(mod.id as HubModule)).map((mod, i) => {
             const Icon = mod.icon;
             return (
               <motion.div
                 key={mod.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: i * 0.1 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
               >
                 <Link href={mod.href}>
-                  <div className={`group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br ${mod.bg} ${mod.border} p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-full`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shadow-sm">
-                        <Icon size={22} className="text-primary" />
+                  <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-primary/8 to-primary/[0.03] hover:border-primary/50 p-5 h-full transition-all duration-300 hover:shadow-[0_8px_24px_rgba(168,134,42,0.12)] hover:-translate-y-0.5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shadow-sm">
+                        <Icon size={18} className="text-primary" />
                       </div>
-                      <ChevronRight size={20} className="text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <ChevronRight size={16} className="text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                     </div>
-                    <h3 className="text-lg font-serif font-bold mb-1">{mod.nome}</h3>
-                    <p className="text-xs text-foreground/60 mb-3">{mod.descricao}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-foreground/40">{mod.stat}</p>
+                    <h3 className="text-base font-serif font-bold tracking-tight">{mod.nome}</h3>
+                    <p className="text-xs text-foreground/55 mt-1 leading-relaxed">{mod.descricao}</p>
+                    <p className="text-[9.5px] uppercase tracking-[0.14em] text-foreground/35 mt-2 font-semibold">{mod.stat}</p>
                   </div>
                 </Link>
               </motion.div>
@@ -232,223 +220,217 @@ export default function HubCentralPage() {
           })}
         </section>
 
-        {/* KPIs gerais */}
+        {/* KPIs em linha */}
         <section>
-          <SectionTitle title="Visão Geral do Negócio" subtitle="Indicadores consolidados dos três módulos" align="left" size="sm" />
+          <SectionHeader eyebrow="Indicadores consolidados" title="Visão Geral do Negócio" />
           {loading ? (
-            <div className="text-center py-10 text-foreground/50">Carregando visão geral...</div>
+            <div className="text-center py-8 text-foreground/50 text-sm">Carregando visão geral...</div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-4">
-              {[
-                { label: 'Faturamento hoje', valor: formatPrice(kpis.hojeV), icon: Wallet, cor: '#d4af37' },
-                { label: 'Faturamento do mês', valor: formatPrice(kpis.mesV), icon: TrendingUp, cor: '#10B981' },
-                { label: 'Agendamentos hoje', valor: `${kpis.agendadosHoje}`, icon: CalendarDays, cor: '#0ea5e9' },
-                { label: 'Clientes cadastrados', valor: `${kpis.clientesCount}`, icon: Users, cor: '#8b5cf6' },
-                { label: 'Aulas concluídas', valor: `${kpis.concluidas}/${kpis.totalAulas}`, icon: PlayCircle, cor: '#f59e0b' },
-              ].map((c, i) => {
-                const Icon = c.icon;
-                return (
-                  <CardGlass key={i} className="flex flex-col gap-1 p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon size={15} style={{ color: c.cor }} />
-                      <span className="text-[10px] text-foreground/60 font-semibold uppercase tracking-wider">{c.label}</span>
-                    </div>
-                    <span className="text-xl font-bold">{c.valor}</span>
-                  </CardGlass>
-                );
-              })}
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              <StatCard label="Faturamento hoje" value={formatPrice(kpis.hojeV)} icon={Wallet} tone="primary" />
+              <StatCard label="Faturamento do mês" value={formatPrice(kpis.mesV)} icon={TrendingUp} tone="success" />
+              <StatCard label="Agendamentos hoje" value={`${kpis.agendadosHoje}`} icon={CalendarDays} />
+              <StatCard label="Clientes cadastrados" value={`${kpis.clientesCount}`} icon={Users} />
+              <StatCard label="Aulas concluídas" value={`${kpis.concluidas}/${kpis.totalAulas}`} icon={PlayCircle} tone="warning" />
             </div>
           )}
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Agenda de hoje */}
           <section className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-3">
-              <SectionTitle title="Agenda de Hoje" subtitle="Próximos atendimentos no Studio" align="left" size="sm" />
-              <Link href="/admin/agenda">
-                <span className="flex items-center gap-1 text-xs text-primary hover:underline">Ver agenda completa <ArrowUpRight size={12} /></span>
-              </Link>
-            </div>
+            <SectionHeader
+              eyebrow="Próximos atendimentos no Studio"
+              title="Agenda de Hoje"
+              action={
+                <Link href="/admin/agenda">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Ver agenda completa <ArrowUpRight size={12} /></span>
+                </Link>
+              }
+            />
             {loading ? (
-              <div className="py-10 text-foreground/50 text-sm">Carregando agenda...</div>
+              <Panel className="py-10 text-center text-sm text-foreground/50">Carregando agenda...</Panel>
             ) : proximosAgendamentos.length === 0 ? (
-              <CardGlass className="p-8 text-center text-sm text-foreground/50">
+              <Panel className="py-8 text-center text-sm text-foreground/50">
                 Nenhum agendamento para hoje.{' '}
                 <Link href="/admin/agenda" className="text-primary font-medium hover:underline">Organizar a semana</Link>
-              </CardGlass>
+              </Panel>
             ) : (
               <div className="space-y-2">
                 {proximosAgendamentos.map((a) => (
-                  <CardGlass key={a.id} className="flex items-center gap-4 p-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <UserCircle size={20} className="text-primary" />
+                  <Panel key={a.id} className="flex items-center gap-3 py-3 px-4">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <UserCircle size={18} className="text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{a.cliente}</p>
-                      <p className="text-xs text-foreground/50 truncate">{a.servico} • com {a.profissional}</p>
+                      <p className="text-[13px] font-semibold truncate">{a.cliente}</p>
+                      <p className="text-[11px] text-foreground/45 truncate">{a.servico} • com {a.profissional}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-primary">{a.hora_inicio}</p>
-                      <span className={`inline-block text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 ${
-                        a.status === 'confirmado' ? 'bg-success/15 text-success' :
-                        a.status === 'concluido' ? 'bg-primary/15 text-primary' :
-                        'bg-warning/15 text-warning'
-                      }`}>
-                        {a.status}
-                      </span>
+                      <p className="text-[13px] font-bold text-primary">{a.hora_inicio.slice(0, 5)}</p>
+                      <StatusBadge status={a.status} />
                     </div>
-                  </CardGlass>
+                  </Panel>
                 ))}
               </div>
             )}
           </section>
 
-          {/* Progresso Academy + Cursos (somente para quem tem acesso à Academy) */}
-          {temModulo('academy') ? (
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <SectionTitle title="Academy" subtitle="Seu progresso como aluno" align="left" size="sm" />
-              <Link href="/admin-academy">
-                <span className="flex items-center gap-1 text-xs text-primary hover:underline">Admin <ArrowUpRight size={12} /></span>
-              </Link>
-            </div>
-            <CardGlass className="p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[#8b5cf6]/15 flex items-center justify-center">
-                  <GraduationCap size={18} className="text-[#8b5cf6]" />
+          {/* Progresso Academy */}
+          {temModulo('academy') && (
+            <section>
+              <SectionHeader
+                eyebrow="Seu progresso como aluno"
+                title="Academy"
+                action={
+                  <Link href="/admin-academy">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Admin <ArrowUpRight size={12} /></span>
+                  </Link>
+                }
+              />
+              <Panel className="mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <GraduationCap size={16} className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold">Taxa de conclusão</p>
+                    <p className="text-[10px] text-foreground/45">{kpis.concluidas} de {kpis.totalAulas} aulas</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Taxa de conclusão</p>
-                  <p className="text-[11px] text-foreground/50">{kpis.concluidas} de {kpis.totalAulas} aulas</p>
+                <div className="w-full h-1.5 rounded-full bg-foreground/8 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${kpis.totalAulas ? Math.round((kpis.concluidas / kpis.totalAulas) * 100) : 0}%` }}
+                    transition={{ duration: 1, delay: 0.3 }}
+                    className="h-full bg-gradient-to-r from-[#a8862a] to-[#d4af37]"
+                  />
                 </div>
-              </div>
-              <div className="w-full h-2 rounded-full bg-foreground/10 overflow-hidden mb-4">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${kpis.totalAulas ? Math.round((kpis.concluidas / kpis.totalAulas) * 100) : 0}%` }}
-                  transition={{ duration: 1, delay: 0.4 }}
-                  className="h-full bg-gradient-to-r from-[#a8862a] to-[#d4af37]"
-                />
-              </div>
-              <Link href="/aluno/dashboard">
-                <div className="flex items-center gap-2 text-xs text-primary font-medium hover:underline">
-                  <PlayCircle size={14} /> Continuar assistindo na Área do Aluno
-                </div>
-              </Link>
-            </CardGlass>
-
-            <div className="flex items-center justify-between mb-3 mt-6">
-              <SectionTitle title="Cursos ativos" subtitle="" align="left" size="sm" />
-              <Link href="/admin-academy/cursos">
-                <span className="flex items-center gap-1 text-xs text-primary hover:underline">Gerenciar <ArrowUpRight size={12} /></span>
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {cursos.slice(0, 3).map((c) => (
-                <Link key={c.id} href={`/admin-academy/cursos/${c.id}`}>
-                  <CardGlass className="flex items-center gap-3 p-3 hover:border-primary/50 transition-colors">
-                    <div className="w-14 h-10 rounded-md overflow-hidden relative shrink-0 bg-foreground/5">
-                      <Image src={c.capaUrl} alt={c.titulo} fill className="object-cover" sizes="56px" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold truncate">{c.titulo}</p>
-                      <p className="text-[10px] text-foreground/50">{c.duracaoHoras}h • {c.totalAulas} aulas • {c.nivel}</p>
-                    </div>
-                    <ChevronRight size={14} className="ml-auto text-foreground/30 shrink-0" />
-                  </CardGlass>
+                <Link href="/aluno/dashboard">
+                  <div className="flex items-center gap-2 text-[11px] text-primary font-semibold hover:underline mt-3">
+                    <PlayCircle size={13} /> Continuar assistindo na Área do Aluno
+                  </div>
                 </Link>
-              ))}
-            </div>
-          </section>
-          ) : null}
+              </Panel>
+
+              <SectionHeader
+                eyebrow=""
+                title="Cursos ativos"
+                className="mt-5"
+                action={
+                  <Link href="/admin-academy/cursos">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Gerenciar <ArrowUpRight size={12} /></span>
+                  </Link>
+                }
+              />
+              <div className="space-y-2">
+                {cursos.slice(0, 3).map((c) => (
+                  <Link key={c.id} href={`/admin-academy/cursos/${c.id}`}>
+                    <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-card)] p-3 hover:border-primary/50 hover:shadow-sm transition-all">
+                      <div className="w-12 h-10 rounded-lg overflow-hidden relative shrink-0 bg-foreground/5">
+                        <Image src={c.capaUrl} alt={c.titulo} fill className="object-cover" sizes="48px" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold truncate">{c.titulo}</p>
+                        <p className="text-[10px] text-foreground/45">{c.duracaoHoras}h • {c.totalAulas} aulas • {c.nivel}</p>
+                      </div>
+                      <ChevronRight size={13} className="ml-auto text-foreground/25 shrink-0" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
-        {/* Faturamento mensal (somente para quem tem acesso à Academy... exibe quando há módulo Studio) */}
+        {/* Faturamento mensal */}
         <section>
-          <SectionTitle title="Faturamento do Salão" subtitle="Acompanhe a evolução mês a mês" align="left" size="sm" />
+          <SectionHeader eyebrow="Acompanhe a evolução mês a mês" title="Faturamento do Salão" />
           {!loading && kpis.porMes.some(p => p.valor > 0) ? (
-            <CardGlass className="p-5 mt-4">
-              <ResponsiveContainer width="100%" height={240}>
+            <Panel className="mt-0">
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={kpis.porMes}>
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.7} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.7} width={45} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} width={45} />
                   <Tooltip
                     formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
                     contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }}
                   />
-                  <Bar dataKey="valor" radius={[6, 6, 0, 0]}>
+                  <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
                     {kpis.porMes.map((_, i) => (
                       <Cell key={i} fill={CORES[i % CORES.length]} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </CardGlass>
+            </Panel>
           ) : (
-            <CardGlass className="p-6 mt-4 text-center text-sm text-foreground/50">
+            <Panel className="py-8 text-center text-sm text-foreground/50">
               Ainda não há faturamento registrado. Os valores aparecem aqui automaticamente quando agendamentos concluídos
               são marcados no módulo <Link href="/admin/agenda" className="text-primary font-medium hover:underline">Agenda</Link>.
-            </CardGlass>
+            </Panel>
           )}
         </section>
 
         {/* Equipe */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <SectionTitle title="Equipe do Studio" subtitle="Seus profissionais e especialidades" align="left" size="sm" />
-            <Link href="/admin/profissionais">
-              <span className="flex items-center gap-1 text-xs text-primary hover:underline">Gerenciar equipe <ArrowUpRight size={12} /></span>
-            </Link>
-          </div>
+          <SectionHeader
+            eyebrow="Seus profissionais e especialidades"
+            title="Equipe do Studio"
+            action={
+              <Link href="/admin/profissionais">
+                <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Gerenciar equipe <ArrowUpRight size={12} /></span>
+              </Link>
+            }
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {MOCK_PROFISSIONAIS.map((p) => (
-              <CardGlass key={p.id} className="p-4 text-center">
-                <div className="w-16 h-16 rounded-full mx-auto mb-3 overflow-hidden relative bg-secondary">
+              <Panel key={p.id} className="text-center py-4">
+                <div className="w-14 h-14 rounded-full mx-auto mb-2.5 overflow-hidden relative bg-secondary">
                   {p.foto_url ? (
-                    <Image src={p.foto_url} alt={p.nome} fill className="object-cover" sizes="64px" />
+                    <Image src={p.foto_url} alt={p.nome} fill className="object-cover" sizes="56px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <UserCircle size={32} className="text-primary/50" />
+                      <UserCircle size={28} className="text-primary/50" />
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-semibold">{p.nome}</p>
+                <p className="text-[13px] font-semibold">{p.nome}</p>
                 <div className="flex flex-wrap justify-center gap-1 mt-2">
                   {(p.especialidades ?? []).slice(0, 3).map((e) => (
-                    <span key={e} className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{e}</span>
+                    <span key={e} className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{e}</span>
                   ))}
                 </div>
-              </CardGlass>
+              </Panel>
             ))}
           </div>
         </section>
 
-        {/* CTA Loja (somente para quem tem acesso à Loja) */}
-        {temModulo('loja') ? (
-        <section>
-          <Link href="/admin-loja">
-            <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-[#10B981]/15 via-transparent to-[#a8862a]/15 p-8 flex flex-col md:flex-row items-center gap-6 hover:border-[#10B981]/50 transition-colors">
-              <div className="w-14 h-14 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-                <ShoppingBag size={26} className="text-[#10B981]" />
+        {/* CTA Loja */}
+        {temModulo('loja') && (
+          <section>
+            <Link href="/admin-loja">
+              <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-primary/8 via-transparent to-primary/[0.05] px-5 py-4 flex flex-col sm:flex-row items-center gap-4 hover:border-primary/50 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                  <ShoppingBag size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 text-center sm:text-left min-w-0">
+                  <h3 className="text-sm font-serif font-bold">Loja de Produtos</h3>
+                  <p className="text-xs text-foreground/50 mt-0.5 truncate sm:whitespace-normal">
+                    Acompanhe pedidos, estoque e vendas de produtos profissionais e afiliados.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-primary group-hover:gap-2.5 transition-all shrink-0">
+                  Abrir gestão da loja <ChevronRight size={14} />
+                </div>
               </div>
-              <div className="flex-1 text-center md:text-left">
-                <h3 className="text-lg font-serif font-bold">Loja de Produtos</h3>
-                <p className="text-sm text-foreground/60 mt-1">
-                  Acompanhe pedidos, estoque e vendas de produtos profissionais e afiliados — da vitrine ao pós-venda.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-[#10B981] group-hover:gap-3 transition-all">
-                Abrir gestão da loja <ChevronRight size={16} />
-              </div>
-            </div>
-          </Link>
-        </section>
-        ) : null}
+            </Link>
+          </section>
+        )}
 
-        <footer className="pt-8 pb-4 text-center">
+        <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] text-foreground/30">
-            Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy & Loja
+            Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy &amp; Loja
           </p>
         </footer>
       </main>

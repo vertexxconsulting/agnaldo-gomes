@@ -29,7 +29,7 @@ export function Header() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-2.5',
         isScrolled ? 'glass' : 'bg-transparent'
       )}
     >
@@ -38,40 +38,40 @@ export function Header() {
           <Image
             src="/logo-agnaldo.png"
             alt="Logo Agnaldo Gomes"
-            width={280}
-            height={80}
-            className="object-contain h-20 w-auto mix-blend-multiply dark:mix-blend-screen"
+            width={190}
+            height={54}
+            className="object-contain h-12 w-auto mix-blend-multiply dark:mix-blend-screen"
             priority
           />
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               href={link.href}
-              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors uppercase tracking-widest"
+              className="text-[12px] font-medium text-foreground/75 hover:text-primary transition-colors uppercase tracking-[0.14em]"
             >
               {link.name}
             </Link>
           ))}
           <Link href="/agendamento">
-            <Button variant="outline" size="sm" className="uppercase tracking-widest text-xs">
+            <Button variant="outline" size="sm" className="uppercase tracking-[0.14em] text-[11px] px-3.5 py-1.5">
               Agendar meu Horário
             </Button>
           </Link>
-          <Link href="/academy/login" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">
+          <Link href="/academy/login" className="text-[12px] font-medium text-foreground/75 hover:text-primary transition-colors">
             Área do Aluno
           </Link>
         </nav>
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden text-foreground"
+            className="md:hidden text-foreground"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 

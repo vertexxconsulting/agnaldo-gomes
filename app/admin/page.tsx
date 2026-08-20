@@ -10,8 +10,7 @@ import {
   GraduationCap, ShoppingBag, Sparkles, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
-import { SectionTitle } from '@/components/SectionTitle';
-import { CardGlass } from '@/components/CardGlass';
+import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 import { getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome } from '@/lib/mock-data';
 import type { Cliente, Agendamento, Servico } from '@/lib/mock-data';
@@ -110,9 +109,9 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="flex flex-col w-full py-4">
+    <div className="flex flex-col w-full space-y-7 py-2">
       {/* Banner do ecossistema — acesso rápido aos demais módulos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {ecossistema.map((e) => {
           const Icon = e.icon;
           const cores: Record<string, string> = {
@@ -123,72 +122,51 @@ export default function AdminDashboardPage() {
           const icoCores: Record<string, string> = { primary: 'text-primary', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
           return (
             <Link key={e.href} href={e.href}>
-              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3.5 flex items-center gap-3 transition-all hover:shadow-md`}>
-                <div className="w-10 h-10 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-                  <Icon size={18} className={icoCores[e.cor]} />
+              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                  <Icon size={17} className={icoCores[e.cor]} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{e.label}</p>
+                  <p className="text-[13px] font-semibold truncate">{e.label}</p>
                   <p className="text-[11px] text-foreground/50">{e.desc}</p>
                 </div>
-                <ChevronRight size={16} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             </Link>
           );
         })}
       </div>
-      <SectionTitle title="Dashboard" subtitle="Visão geral do seu negócio" align="left" size="sm" />
+      <SectionHeader eyebrow="Visão geral do negócio" title="Dashboard" />
 
       {loading && (
         <div className="text-center py-8 text-foreground/50">Carregando dados do painel...</div>
       )}
 
       {/* Cards KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {cards.map((c, i) => {
           const Icon = c.icon;
           return (
-            <CardGlass key={i} className="flex flex-col gap-1 p-3">
-              <div className="flex items-center gap-2 mb-0.5">
-                <Icon size={14} style={{ color: c.cor }} />
-                <span className="text-[9px] text-foreground/60 font-semibold uppercase tracking-wider">{c.label}</span>
-              </div>
-              <span className="text-xl font-bold text-foreground">{c.valor}</span>
-            </CardGlass>
+            <StatCard key={i} label={c.label} value={c.valor} icon={Icon} tone={i === 0 ? 'primary' : 'default'} />
           );
         })}
       </div>
 
       {/* Status do dia */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-        <CardGlass className="flex items-center justify-between p-3 bg-emerald-500/5 border-emerald-500/20">
-          <div>
-            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wider">Concluídos Hoje</span>
-            <div className="text-lg font-bold mt-0.5">{kpis.concluidosHoje}</div>
-          </div>
-          <CheckCircle2 size={20} className="text-emerald-500/50" />
-        </CardGlass>
-        <CardGlass className="flex items-center justify-between p-3 bg-red-500/5 border-red-500/20">
-          <div>
-            <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Cancelados / No-show</span>
-            <div className="text-lg font-bold mt-0.5">{kpis.canceladosHoje}</div>
-          </div>
-          <XCircle size={20} className="text-red-500/50" />
-        </CardGlass>
-        <CardGlass className="flex items-center justify-between p-3 bg-sky-500/5 border-sky-500/20">
-          <div>
-            <span className="text-[9px] text-sky-500 font-bold uppercase tracking-wider">Ticket Médio (Mês)</span>
-            <div className="text-4xl font-bold text-sky-500 mb-1">R$ {kpis.mesV > 0 && agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length > 0 ? Math.round(kpis.mesV / agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length) : 0}</div>
-          </div>
-          <BarChart3 size={20} className="text-sky-500/50" />
-        </CardGlass>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+        <StatCard tone="success" label="Concluídos hoje" value={kpis.concluidosHoje} icon={CheckCircle2} />
+        <StatCard tone="danger" label="Cancelados / No-show" value={kpis.canceladosHoje} icon={XCircle} />
+        <StatCard tone="primary" label="Ticket médio (mês)" value={
+          kpis.mesV > 0 && agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length > 0
+            ? `R$ ${Math.round(kpis.mesV / agendamentosData.filter(a=>a.data.slice(0,7) === mesAtual && a.status === 'concluido').length)}`
+            : 'R$ 0'
+        } icon={BarChart3} />
       </div>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <CardGlass className="p-4">
-          <h4 className="text-sm font-bold mb-4 flex items-center gap-2"><BarChart3 size={14} className="text-primary" /> Faturamento Anual ({anoAtual})</h4>
-          <ResponsiveContainer width="100%" height={220}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Panel title={`Faturamento Anual (${anoAtual})`}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={kpis.porMes}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
               <XAxis dataKey="label" stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
@@ -197,10 +175,9 @@ export default function AdminDashboardPage() {
               <Bar dataKey="valor" fill="#d4af37" radius={[4, 4, 0, 0]} maxBarSize={32} />
             </BarChart>
           </ResponsiveContainer>
-        </CardGlass>
+        </Panel>
 
-        <CardGlass className="p-4">
-          <h4 className="text-sm font-bold mb-4 flex items-center gap-2"><TrendingUp size={14} className="text-primary" /> Top Serviços do Mês (Faturamento)</h4>
+        <Panel title="Top Serviços do Mês (Faturamento)">
           {kpis.porServico.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -212,18 +189,15 @@ export default function AdminDashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-             <div className="h-[220px] flex items-center justify-center text-foreground/50 text-xs">Sem dados neste mês.</div>
+             <div className="h-[200px] flex items-center justify-center text-foreground/50 text-xs">Sem dados neste mês.</div>
           )}
-        </CardGlass>
+        </Panel>
       </div>
 
       {/* Notificações WhatsApp */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Lembretes Pendentes (Manuais) */}
-        <CardGlass className="lg:col-span-2 p-4 border-amber-500/20">
-          <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-amber-500">
-            <MessageSquare size={16} /> Disparos Manuais Pendentes (WhatsApp)
-          </h4>
+        <Panel className="lg:col-span-2" title="Disparos Manuais Pendentes (WhatsApp)">
           {pendentesManuais.length === 0 ? (
             <div className="text-center py-6 text-foreground/40 text-sm">
               Todos os clientes pendentes já foram notificados!
@@ -243,19 +217,17 @@ export default function AdminDashboardPage() {
               ))}
             </div>
           )}
-        </CardGlass>
+        </Panel>
 
         {/* Disparos Automáticos */}
-        <CardGlass className="p-4 bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center items-center text-center">
-          <h4 className="text-sm font-bold mb-2 flex items-center gap-2 text-emerald-500">
-            <CheckCircle2 size={16} /> Disparos Automáticos
-          </h4>
-          <p className="text-xs text-foreground/60 mb-4">
+        <Panel className="flex flex-col justify-center items-center text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-success mb-1.5">Disparos Automáticos</p>
+          <p className="text-[12px] text-foreground/60 mb-4">
             Clientes já confirmados recebem alerta automático via Evolution API.
           </p>
-          <div className="text-4xl font-black text-emerald-400 mb-1">{automáticos.length}</div>
-          <div className="text-xs uppercase tracking-wider text-emerald-500/60 font-bold">Mensagens Enviadas</div>
-        </CardGlass>
+          <div className="text-3xl font-black text-success mb-1">{automáticos.length}</div>
+          <div className="text-[10px] uppercase tracking-wider text-success/70 font-bold">Mensagens Enviadas</div>
+        </Panel>
       </div>
     </div>
   );

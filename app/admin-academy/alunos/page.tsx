@@ -79,8 +79,8 @@ export default function AdminAlunosPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Alunos (Academy)</h1>
             <p className="text-sm text-foreground/60">Gerencie os acessos e matrículas dos seus alunos.</p>
@@ -120,9 +120,9 @@ export default function AdminAlunosPage() {
   }
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
+    <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Alunos (Academy)</h1>
           <p className="text-sm text-foreground/60">Gerencie os acessos e matrículas dos seus alunos.</p>

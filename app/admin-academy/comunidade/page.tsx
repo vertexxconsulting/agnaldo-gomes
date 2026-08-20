@@ -92,8 +92,8 @@ export default function AdminAcademyComunidade() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <div className="h-7 bg-white/10 rounded w-56 animate-pulse mb-1" />
             <div className="h-5 bg-white/10 rounded w-72 animate-pulse" />
@@ -126,9 +126,9 @@ export default function AdminAcademyComunidade() {
   }
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-[var(--background)]">
+    <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Comunidade e Dúvidas</h1>
           <p className="text-sm text-foreground/60">Modere os comentários e responda as dúvidas dos alunos.</p>

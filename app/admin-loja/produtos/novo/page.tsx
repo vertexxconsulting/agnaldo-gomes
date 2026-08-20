@@ -217,7 +217,7 @@ export default function NovoProdutoPage() {
           {/* Imagem Principal */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
             <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Imagem Principal</h2>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-amber-500 transition-colors cursor-pointer group bg-slate-50">
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-amber-500 transition-colors cursor-pointer group bg-slate-50">
               <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:bg-amber-50 transition-colors text-slate-400 group-hover:text-amber-500">
                 <Upload size={24} />
               </div>

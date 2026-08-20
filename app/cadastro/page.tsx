@@ -142,7 +142,7 @@ export default function CadastroPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-20">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-14">
       <CardGlass className="w-full max-w-md">
         <SectionTitle title="Criar Conta" subtitle="Junte-se ao Studio" align="center" />
 

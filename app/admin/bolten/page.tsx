@@ -197,7 +197,7 @@ export default function BoltenCRMPage() {
             </div>
           </CardGlass>
         ) : (
-          <CardGlass className="p-8 text-center">
+          <CardGlass className="p-6 text-center">
             <GitMerge size={36} className="mx-auto text-primary/40 mb-3" />
             <p className="text-sm text-foreground/60">Integração ainda não configurada.</p>
             <p className="text-xs text-foreground/40 mt-1">Clique em “Configurar” para conectar sua conta Bolten. Enquanto isso, você vê dados de demonstração abaixo.</p>

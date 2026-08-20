@@ -100,7 +100,7 @@ export default function AgendaPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-foreground/50">Carregando agenda...</div>
+        <div className="text-center py-8 text-foreground/50">Carregando agenda...</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Painel lateral: Resumo do dia */}
@@ -132,7 +132,7 @@ export default function AgendaPage() {
           {/* Lista de Horários */}
           <div className="lg:col-span-3 flex flex-col gap-3">
             {agendamentosFiltrados.length === 0 && bloqueiosFiltrados.length === 0 ? (
-              <CardGlass className="py-12 text-center text-foreground/50 flex flex-col items-center">
+              <CardGlass className="py-8 text-center text-foreground/50 flex flex-col items-center">
                 <CalendarDays size={40} className="mb-3 opacity-20" />
                 Nenhum agendamento ou bloqueio para esta data.
               </CardGlass>

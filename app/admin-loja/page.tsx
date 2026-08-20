@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Package, ShoppingBag, DollarSign, ArrowRight, TrendingUp, Settings, Sparkles, Users, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 
 export default function AdminLojaDashboard() {
   const [productCount, setProductCount] = useState(0);
@@ -67,123 +68,104 @@ export default function AdminLojaDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col w-full space-y-7 py-2">
+      <SectionHeader eyebrow="Vendas, produtos e pedidos" title="Dashboard da Loja" />
+
       {/* Banner do ecossistema — acesso rápido aos demais módulos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {ecossistema.map((e) => {
           const Icon = e.icon;
           return (
             <Link key={e.href} href={e.href}>
-              <div className={`group rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3 transition-all hover:shadow-md ${e.hover}`}>
-                <div className={`w-10 h-10 rounded-lg ${e.bg} flex items-center justify-center shrink-0`}>
-                  <Icon size={18} className={e.cor} />
+              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r from-primary/5 to-transparent p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                  <Icon size={17} className={e.cor} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{e.label}</p>
-                  <p className="text-[11px] text-slate-500">{e.desc}</p>
+                  <p className="text-[13px] font-semibold text-foreground truncate">{e.label}</p>
+                  <p className="text-[11px] text-foreground/50">{e.desc}</p>
                 </div>
-                <ArrowRight size={14} className="ml-auto text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight size={14} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             </Link>
           );
         })}
       </div>
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Visão geral do desempenho da sua loja.</p>
-      </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.name} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">{stat.name}</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-2">{stat.value}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${stat.bg}`}>
-                  <Icon className={stat.color} size={24} />
-                </div>
-              </div>
-            </div>
+            <StatCard key={stat.name} label={stat.name} value={stat.value} icon={Icon} />
           );
         })}
       </div>
 
       {/* Quick Actions & Recent Orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Recent Orders */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Pedidos Recentes</h2>
-            <Link href="/admin-loja/pedidos" className="text-sm font-medium text-amber-600 hover:text-amber-700 flex items-center gap-1">
-              Ver todos <ArrowRight size={16} />
-            </Link>
-          </div>
-          <div className="p-0 flex-1">
-            {loading ? (
-              <div className="p-6 text-center text-slate-400">Carregando...</div>
-            ) : orders.length === 0 ? (
-              <div className="p-6 text-center text-slate-400">Nenhum pedido registrado ainda.</div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-100">
-                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pedido</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+        <Panel className="lg:col-span-2" title="Pedidos Recentes" action={
+          <Link href="/admin-loja/pedidos" className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1">
+            Ver todos <ArrowRight size={13} />
+          </Link>
+        }>
+          {loading ? (
+            <div className="py-6 text-center text-foreground/40">Carregando...</div>
+          ) : orders.length === 0 ? (
+            <div className="py-6 text-center text-foreground/40">Nenhum pedido registrado ainda.</div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--border-subtle)]">
+                  <th className="py-2.5 px-3 text-[10px] font-semibold text-foreground/45 uppercase tracking-wider">Pedido</th>
+                  <th className="py-2.5 px-3 text-[10px] font-semibold text-foreground/45 uppercase tracking-wider">Cliente</th>
+                  <th className="py-2.5 px-3 text-[10px] font-semibold text-foreground/45 uppercase tracking-wider">Valor</th>
+                  <th className="py-2.5 px-3 text-[10px] font-semibold text-foreground/45 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-foreground/[0.02] transition-colors">
+                    <td className="py-3 px-3 text-[12px] font-medium text-foreground">#{order.id?.toString().slice(0, 8)}</td>
+                    <td className="py-3 px-3 text-[12px] text-foreground/60">{order.customer_name || order.customer_email || '-'}</td>
+                    <td className="py-3 px-3 text-[12px] font-medium text-foreground">R$ {Number(order.total || 0).toFixed(2)}</td>
+                    <td className="py-3 px-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusColor(order.status)}`}>
+                        {getStatusLabel(order.status)}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-4 px-6 text-sm font-medium text-slate-900">#{order.id?.toString().slice(0, 8)}</td>
-                      <td className="py-4 px-6 text-sm text-slate-600">{order.customer_name || order.customer_email || '-'}</td>
-                      <td className="py-4 px-6 text-sm font-medium text-slate-900">R$ {Number(order.total || 0).toFixed(2)}</td>
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-lg font-bold text-slate-900">Ações Rápidas</h2>
-          </div>
-          <div className="p-6 space-y-4">
-            <Link href="/admin-loja/produtos/novo" className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-colors group">
-              <div className="p-3 bg-amber-100 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                <Package size={20} />
+        <Panel title="Ações Rápidas">
+          <div className="space-y-2.5">
+            <Link href="/admin-loja/produtos/novo" className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] hover:border-primary/40 hover:bg-primary/5 transition-colors group">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-background transition-colors">
+                <Package size={17} />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900">Novo Produto</h3>
-                <p className="text-sm text-slate-500">Cadastrar item do ML ou Estoque</p>
+                <h3 className="text-[13px] font-semibold text-foreground">Novo Produto</h3>
+                <p className="text-[11px] text-foreground/50">Cadastrar item do ML ou Estoque</p>
               </div>
             </Link>
 
-            <Link href="/admin-loja/configuracoes" className="flex items-center gap-4 p-4 rounded-lg border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors group">
-              <div className="p-3 bg-slate-100 text-slate-600 rounded-lg group-hover:bg-slate-800 group-hover:text-white transition-colors">
-                <Settings size={20} />
+            <Link href="/admin-loja/configuracoes" className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] hover:border-foreground/20 hover:bg-foreground/[0.03] transition-colors group">
+              <div className="p-2.5 bg-foreground/5 text-foreground/60 rounded-lg group-hover:bg-foreground group-hover:text-background transition-colors">
+                <Settings size={17} />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900">Configurar Frete</h3>
-                <p className="text-sm text-slate-500">Ajustar Melhor Envio e Correios</p>
+                <h3 className="text-[13px] font-semibold text-foreground">Configurar Frete</h3>
+                <p className="text-[11px] text-foreground/50">Ajustar Melhor Envio e Correios</p>
               </div>
             </Link>
           </div>
-        </div>
+        </Panel>
       </div>
     </div>
   );

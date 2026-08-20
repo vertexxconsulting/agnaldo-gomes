@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-20 flex justify-center text-slate-500">
+      <div className="container mx-auto px-4 py-8 flex justify-center text-slate-500">
         Carregando detalhes do produto...
       </div>
     );
@@ -145,7 +145,7 @@ export default function ProductDetailPage() {
         <span className="text-slate-900 font-medium truncate max-w-[200px] sm:max-w-md">{produto.name}</span>
       </nav>
 
-      <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+      <div className="flex flex-col md:flex-row gap-6 lg:gap-6">
 
         {/* Galeria */}
         <div className="w-full md:w-[45%] lg:w-[40%] shrink-0 flex flex-col gap-3">

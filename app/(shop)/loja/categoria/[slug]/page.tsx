@@ -33,7 +33,7 @@ export default async function CategoriaPage({ params }: { params: Promise<{ slug
   return (
     <div className="flex flex-col w-full min-h-screen bg-[#f8f9fa] pb-20">
       {/* Header da Categoria */}
-      <section className="bg-white border-b border-slate-200 py-8 md:py-12">
+      <section className="bg-white border-b border-slate-200 py-8 md:py-8">
         <div className="container mx-auto px-4 md:px-6">
           <Link href="/loja" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 transition-colors mb-4">
             <ArrowLeft size={16} /> Voltar para Loja
@@ -58,7 +58,7 @@ export default async function CategoriaPage({ params }: { params: Promise<{ slug
           )}
 
           {!products || products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                 <ShoppingBag size={24} className="text-slate-300" />
               </div>

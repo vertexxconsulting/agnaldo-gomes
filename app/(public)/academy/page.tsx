@@ -116,7 +116,7 @@ const cursos: Curso[] = [
 
 export default function AcademyPage() {
   return (
-    <div className="flex flex-col w-full py-20 bg-background">
+    <div className="flex flex-col w-full py-14 bg-background">
       <div className="container mx-auto px-6">
         <SectionTitle title="Academy AG" subtitle="Formação e Educação de Elite" align="center" />
 

@@ -17,8 +17,8 @@ export default function CertificadosAdminPage() {
   const [signatureUploaded, setSignatureUploaded] = useState(false);
 
   return (
-    <div className="p-6 md:p-8 animate-fade-in max-w-6xl mx-auto pb-24">
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="p-6 md:p-6 animate-fade-in max-w-6xl mx-auto pb-24">
+      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Gestão de Certificados</h1>
           <p className="text-foreground/60 mt-1 max-w-xl">
@@ -45,7 +45,7 @@ export default function CertificadosAdminPage() {
               <p className="text-sm text-foreground/60 mb-4">Faça upload da arte do certificado sem o nome do aluno ou assinatura. (Formato A4, PNG ou PDF).</p>
               
               {!templateUploaded ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
                   <Upload className="mx-auto text-foreground/40 mb-3" size={32} />
                   <p className="font-medium text-foreground/80 mb-1">Clique para enviar o arquivo</p>
                   <p className="text-xs text-foreground/50">PNG, JPG ou PDF (Máx 5MB)</p>
@@ -80,7 +80,7 @@ export default function CertificadosAdminPage() {
               <p className="text-sm text-foreground/60 mb-4">Faça upload da sua assinatura realizada em fundo transparente para o sistema inserir automaticamente.</p>
               
               {!signatureUploaded ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
                   <Upload className="mx-auto text-foreground/40 mb-3" size={32} />
                   <p className="font-medium text-foreground/80 mb-1">Clique para enviar assinatura</p>
                   <p className="text-xs text-foreground/50">PNG com Fundo Transparente</p>

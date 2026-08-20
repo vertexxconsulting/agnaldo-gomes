@@ -79,7 +79,7 @@ export default function SobrePage() {
       </section>
 
       {/* ===== HISTÓRIA PRINCIPAL ===== */}
-      <section className="py-20">
+      <section className="py-14">
         <div className="container mx-auto px-6 max-w-4xl">
           <div className="flex flex-col gap-7">
             <div>
@@ -131,7 +131,7 @@ export default function SobrePage() {
       </section>
 
       {/* ===== VALORES ===== */}
-      <section className="py-20 bg-card/30">
+      <section className="py-14 bg-card/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-14">
             <p className="text-primary font-bold tracking-[0.2em] uppercase text-xs mb-3">O que guia minha trajetória</p>
@@ -155,7 +155,7 @@ export default function SobrePage() {
       </section>
 
       {/* ===== MISSÃO ===== */}
-      <section className="py-20">
+      <section className="py-14">
         <div className="container mx-auto px-6 max-w-4xl">
           <div className="glass border border-primary/20 rounded-3xl p-10 md:p-14 text-center">
             <p className="text-primary font-bold tracking-[0.2em] uppercase text-xs mb-4">Bem-vindo!</p>

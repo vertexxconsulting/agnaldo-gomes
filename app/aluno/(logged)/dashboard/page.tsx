@@ -63,8 +63,8 @@ export default function AlunoDashboardPage() {
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-[#141414] pb-20">
-        <div className="relative w-full h-[60vh] sm:h-[75vh] bg-black animate-pulse" />
-        <div className="flex flex-col gap-10 px-4 sm:px-8 lg:px-16 -mt-10 relative z-10">
+        <div className="relative w-full h-[55vh] sm:h-[68vh] bg-black animate-pulse" />
+        <div className="flex flex-col gap-7 px-4 sm:px-6 lg:px-14 -mt-10 relative z-10">
           <div className="h-6 bg-white/10 rounded w-48 animate-pulse" />
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
@@ -79,7 +79,7 @@ export default function AlunoDashboardPage() {
   return (
     <div className="flex flex-col min-h-screen bg-[#141414] pb-20">
       {/* Banner Principal Estilo Netflix */}
-      <div className="relative w-full h-[60vh] sm:h-[75vh] bg-black">
+      <div className="relative w-full h-[55vh] sm:h-[68vh] bg-black">
         {/* Imagem de Fundo */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-60"
@@ -90,7 +90,7 @@ export default function AlunoDashboardPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/50 to-transparent" />
 
         {/* Conteúdo do Banner */}
-        <div className="absolute bottom-0 left-0 w-full p-8 sm:p-16 flex flex-col justify-end">
+        <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col justify-end">
           <h1 className="text-4xl sm:text-6xl font-black text-white mb-2 max-w-2xl drop-shadow-lg">
             {featuredCourse?.titulo || 'Bem-vindo'}
           </h1>
@@ -117,7 +117,7 @@ export default function AlunoDashboardPage() {
       </div>
 
       {/* Trilhas / Carrosséis */}
-      <div className="flex flex-col gap-10 px-4 sm:px-8 lg:px-16 -mt-10 relative z-10">
+      <div className="flex flex-col gap-7 px-4 sm:px-6 lg:px-14 -mt-10 relative z-10">
 
         {/* Barra de status do aluno no ecossistema */}
         <section className="flex flex-wrap items-center gap-3">
@@ -194,7 +194,7 @@ export default function AlunoDashboardPage() {
         </section>
 
         {/* Produtos recomendados da Loja */}
-        <section className="mb-10">
+        <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <ShoppingBag size={20} className="text-primary" /> Loja — Recomendado para sua formação
@@ -232,7 +232,7 @@ export default function AlunoDashboardPage() {
         </section>
 
         {/* Recomendados para Você */}
-        <section className="mb-10">
+        <section className="mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Recomendados para Você</h2>
           <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x">
             {cursos.slice().reverse().map((curso) => (

@@ -112,12 +112,12 @@ export default function ClienteModule() {
       </div>
 
       {loading && (
-        <div className="text-center py-8 text-foreground/50">Carregando clientes...</div>
+        <div className="text-center py-6 text-foreground/50">Carregando clientes...</div>
       )}
 
       {/* Formulário de Criação/Edição */}
       {showForm && (
-        <CardGlass className="mb-8 p-6">
+        <CardGlass className="mb-6 p-6">
           <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Cliente' : 'Novo Cliente'}</h3>
           <form onSubmit={salvar} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -153,7 +153,7 @@ export default function ClienteModule() {
       {/* Lista Expandível */}
       <div className="flex flex-col gap-3">
         {clientesFiltrados.length === 0 ? (
-          <CardGlass className="py-12 text-center text-foreground/50">
+          <CardGlass className="py-8 text-center text-foreground/50">
             {busca ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}
           </CardGlass>
         ) : (

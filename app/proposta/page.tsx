@@ -193,7 +193,7 @@ export default function PropostaVertexPage() {
       </section>
 
       {/* CALL TO ACTION */}
-      <section className="py-20 px-6 text-center">
+      <section className="py-14 px-6 text-center">
         <div className="container mx-auto max-w-3xl">
           <h2 className="text-3xl font-bold mb-8 text-white">Próximos Passos</h2>
           <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 md:p-12 text-left space-y-6">
