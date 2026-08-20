@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, BookOpen, Award, Command } from 'lucide-react';
+import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, BookOpen, Award, Command, CreditCard } from 'lucide-react';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -13,6 +13,7 @@ const links = [
   { href: '/admin-academy/comunidade', label: 'Comunidade', icon: Users },
   { href: '/admin-academy/certificados', label: 'Certificados', icon: Award },
   { href: '/admin-academy/configuracoes', label: 'Configurações', icon: Settings },
+  { href: '/admin-academy/pagamentos', label: 'Pagamentos', icon: CreditCard },
   { href: '/admin-academy/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
 

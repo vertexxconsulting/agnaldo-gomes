@@ -1,8 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import Link from "next/link";
 import Image from "next/image";
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
 import { Scissors, Palette, Sparkles, UserRound, Droplets, Briefcase, Award, Clock, MapPin, BadgeCheck } from "lucide-react";
+import { AcademyCheckout } from "@/components/AcademyCheckout";
 
 interface Curso {
   titulo: string;
@@ -116,6 +120,13 @@ const cursos: Curso[] = [
 ];
 
 export default function AcademyPage() {
+  const [checkoutCurso, setCheckoutCurso] = useState<string | null>(null);
+
+  const abrirMatricula = (titulo: string) => {
+    const c = cursos.find(x => x.titulo === titulo);
+    if (c) setCheckoutCurso(titulo);
+  };
+
   return (
     <div className="flex flex-col w-full bg-background">
       {/* Hero */}
@@ -145,11 +156,12 @@ export default function AcademyPage() {
             Cursos presenciais e online que formam profissionais de elite e elevam o faturamento do seu salão.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/academy/login">
-              <Button variant="primary" className="uppercase tracking-widest text-xs px-8">
-                Quero me Inscrever
-              </Button>
-            </Link>
+            <button
+              onClick={() => setCheckoutCurso(cursos.find(c => c.destaque)?.titulo ?? cursos[0].titulo)}
+              className="inline-flex items-center justify-center bg-primary text-background px-8 py-3 rounded-lg uppercase tracking-widest text-xs font-bold hover:opacity-90 transition-opacity"
+            >
+              Quero me Inscrever
+            </button>
             <Link href="/sobre">
               <Button variant="outline" className="uppercase tracking-widest text-xs px-8 border-white/30 text-white hover:bg-white/10 hover:border-white/60">
                 Conhecer o Formador
@@ -218,6 +230,13 @@ export default function AcademyPage() {
                   ))}
                 </div>
               )}
+
+              <button
+                onClick={() => abrirMatricula(c.titulo)}
+                className="mt-1 w-full bg-primary text-background px-5 py-3 rounded-lg text-sm font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Matricular-me neste curso
+              </button>
             </div>
           ))}
         </div>
@@ -251,6 +270,14 @@ export default function AcademyPage() {
           </Link>
         </div>
       </div>
+
+      {checkoutCurso && (
+        <AcademyCheckout
+          curso={checkoutCurso}
+          planos={cursos.find(c => c.titulo === checkoutCurso)?.investimento ?? []}
+          onClose={() => setCheckoutCurso(null)}
+        />
+      )}
     </div>
   );
 }

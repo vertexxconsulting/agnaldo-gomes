@@ -15,11 +15,12 @@
     "framer-motion": "^12.43.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.28.0",
-    "mercadopago": "^3.3.0",
+    "mercadopago": "^3.4.0",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
+    "stripe": "^22.5.0",
     "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },

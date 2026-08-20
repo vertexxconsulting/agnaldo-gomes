@@ -15,6 +15,7 @@ import {
   NOIVA_STATUS_LABEL, NOIVA_STATUS_COLOR,
   type AgendamentoNoiva, type StatusAgendamentoNoiva,
 } from '@/lib/noivas';
+import { isMPAtivo, criarPixMercadoPago } from '@/lib/pagamentos-studio';
 
 const PENDING_AGENDAMENTOS_LS = 'ag_noivas_pending_list';
 
@@ -328,12 +329,33 @@ function PagamentoModal({
   const [forma, setForma] = useState<'pix' | 'cartao' | 'dinheiro' | 'transferencia'>('pix');
   const [valor, setValor] = useState<number>(pago === 0 ? sinalAlvo : pacote.preco - pago);
   const [pixGerado, setPixGerado] = useState<string | null>(null);
+  const [qrBase64, setQrBase64] = useState<string | null>(null);
   const [comprovante, setComprovante] = useState<string | null>(null);
   const [fileInput, setFileInput] = useState<HTMLInputElement | null>(null);
 
   const gerarPix = () => {
     const descricao = `Sinal ${ag.nome_noiva} - ${pacote.nome}`;
-    setPixGerado(gerarPixCopiaCola(valor, descricao));
+    // Se o Mercado Pago estiver configurado, gera o PIX real (QR Code + copia-e-cola oficiais)
+    if (isMPAtivo()) {
+      criarPixMercadoPago(valor, descricao)
+        .then(res => {
+          // No modal de noivas armazenamos o código copia-e-cola real e o QR Code
+          onRegistrar({
+            agendamento_id: ag.id,
+            tipo,
+            valor,
+            forma: 'pix',
+            pixCopiaCola: res.copia_e_cola,
+          });
+          setQrBase64(res.qrcode_base64);
+        })
+        .catch(() => {
+          // Fallback: mantém o código PIX de demonstração
+          setPixGerado(gerarPixCopiaCola(valor, descricao));
+        });
+    } else {
+      setPixGerado(gerarPixCopiaCola(valor, descricao));
+    }
   };
 
   const handleFile = (f: File) => {
@@ -434,15 +456,29 @@ function PagamentoModal({
           {/* PIX copia e cola */}
           {forma === 'pix' && (
             <div className="flex flex-col gap-2">
-              {pixGerado ? (
+              {(pixGerado || qrBase64) ? (
                 <div className="bg-slate-900 text-white rounded-lg p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-wider text-white/60 font-bold">PIX Copia e Cola</span>
-                    <button onClick={() => copiarPix(pixGerado)} className="inline-flex items-center gap-1.5 bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-white/90">
-                      {copiado ? <Check size={12} /> : <Copy size={12} />} {copiado ? 'Copiado!' : 'Copiar'}
-                    </button>
-                  </div>
-                  <p className="text-[11px] font-mono break-all text-white/80">{pixGerado}</p>
+                  {qrBase64 ? (
+                    <div className="flex flex-col items-center gap-2 bg-white rounded-lg p-3 self-center">
+                      <img src={`data:image/png;base64,${qrBase64}`} alt="QR Code PIX Mercado Pago" className="w-40 h-40 object-contain" />
+                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">PIX oficial — Mercado Pago</span>
+                    </div>
+                  ) : null}
+                  {pixGerado ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-wider text-white/60 font-bold">PIX Copia e Cola</span>
+                        <button onClick={() => copiarPix(pixGerado)} className="inline-flex items-center gap-1.5 bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-white/90">
+                          {copiado ? <Check size={12} /> : <Copy size={12} />} {copiado ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+                      <p className="text-[11px] font-mono break-all text-white/80">{pixGerado}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-emerald-300 font-bold flex items-center gap-2">
+                      <CheckCircle2 size={14} /> Pagamento PIX criado no Mercado Pago — o código copia-e-cola foi registrado.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <button type="button" onClick={gerarPix} className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white rounded-lg px-4 py-3 text-sm font-bold hover:bg-slate-800 transition-colors">

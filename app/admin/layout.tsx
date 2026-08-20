@@ -14,6 +14,7 @@ const links = [
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
   { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge },
+  { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
 
