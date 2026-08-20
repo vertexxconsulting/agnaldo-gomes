@@ -63,7 +63,7 @@ export default function AdminAcademyComunidade() {
           setComentarios(MOCK_COMMENTS);
         } else {
           // Mapear dados reais com nome genérico (perfil carregado separadamente)
-          const mapped: Comentario[] = data.map(c => ({
+          const mapped: Comentario[] = data.map((c: any) => ({
             id: c.id,
             student: c.user_id ? `Aluno #${c.user_id.substring(0, 8)}` : 'Aluno',
             course: 'Curso',

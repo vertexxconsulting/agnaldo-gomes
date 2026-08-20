@@ -69,7 +69,7 @@ export default async function CategoriaPage({ params }: { params: Promise<{ slug
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-              {products.map((produto) => (
+              {products.map((produto: any) => (
                 <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
                   
                   {/* Imagem */}

@@ -56,15 +56,15 @@ export default function ComunidadePage() {
 
         if (!postError && postData && postData.length > 0) {
           // Carregar perfis separadamente para evitar problemas de tipagem
-          const userIds = [...new Set(postData.map(p => p.user_id).filter(Boolean))];
+          const userIds = [...new Set(postData.map((p: { user_id: string }) => p.user_id).filter(Boolean))];
           const { data: perfisData } = await supabase
             .from('perfis')
             .select('user_id, nome, avatar_url, role')
             .in('user_id', userIds as string[]);
 
-          const perfisMap = Object.fromEntries((perfisData || []).map(p => [p.user_id, p]));
+          const perfisMap = Object.fromEntries((perfisData || []).map((p: { user_id: string }) => [p.user_id, p]));
 
-          const mappedPosts: Post[] = postData.map(p => {
+          const mappedPosts: Post[] = postData.map((p: { id: string; conteudo: string; likes: number; comentarios_count: number; created_at: string; user_id: string }) => {
             const perfil = perfisMap[p.user_id];
             return {
               id: p.id,

@@ -52,13 +52,13 @@ export default function AdminAlunosPage() {
           setAlunos(MOCK_ALUNOS);
         } else {
           // Mapear dados reais
-          const mapped: Aluno[] = data.map(a => ({
+          const mapped: Aluno[] = data.map((a: any) => ({
             id: a.id,
             user_id: a.user_id,
             nome: a.nome,
             email: a.email,
-            cursos: a.user_curso_acessos?.map(aca => aca.curso_id) || [],
-            progresso: Math.max(...(a.user_curso_acessos?.map(aca => aca.progresso_percentual) || [0]), 0),
+            cursos: a.user_curso_acessos?.map((aca: any) => aca.curso_id) || [],
+            progresso: Math.max(...(a.user_curso_acessos?.map((aca: any) => aca.progresso_percentual) || [0]), 0),
             status: a.status as Aluno['status']
           }));
           setAlunos(mapped);

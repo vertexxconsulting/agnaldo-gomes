@@ -79,7 +79,7 @@ export function SplitLogin({
   // ou encerra a sessão se for de outra área (evita acesso cruzado).
   useEffect(() => {
     if (!requiredRole) return;
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: { data: { user: any } }) => {
       const role = getUserRole(data.user);
       if (role === requiredRole) {
         router.replace(redirectTo);

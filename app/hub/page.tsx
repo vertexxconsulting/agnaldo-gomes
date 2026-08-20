@@ -350,7 +350,7 @@ export default function HubCentralPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.7} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.7} width={45} />
                   <Tooltip
-                    formatter={(v: number) => [formatPrice(v), 'Faturamento']}
+                    formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
                     contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }}
                   />
                   <Bar dataKey="valor" radius={[6, 6, 0, 0]}>
@@ -391,7 +391,7 @@ export default function HubCentralPage() {
                 </div>
                 <p className="text-sm font-semibold">{p.nome}</p>
                 <div className="flex flex-wrap justify-center gap-1 mt-2">
-                  {p.especialidades.slice(0, 3).map((e) => (
+                  {(p.especialidades ?? []).slice(0, 3).map((e) => (
                     <span key={e} className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{e}</span>
                   ))}
                 </div>
