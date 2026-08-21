@@ -20,7 +20,8 @@ export interface LessonPlayerProps {
 }
 
 function extractVimeoId(url: string): string | null {
-  const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  // Suporta: vimeo.com/123456789, player.vimeo.com/video/123456789, ou apenas o ID
+  const m = url.match(/(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/|^)(\d+)/);
   return m ? m[1] : null;
 }
 
