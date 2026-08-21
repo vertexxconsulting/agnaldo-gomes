@@ -82,16 +82,20 @@ export default function AdminDashboardPage() {
   // Lógica para Notificações do WhatsApp (Simulação)
   const agendamentosDoDia = useMemo(() => agendamentosData.filter(a => a.data === hoje), [agendamentosData, hoje]);
   const automáticos = agendamentosDoDia.filter(a => a.status === 'confirmado');
-  const [pendentesManuais, setPendentesManuais] = useState(() => 
-    agendamentosDoDia.filter(a => a.status === 'pendente').map(a => ({
-      ...a,
-      clienteNome: getClienteNome(a.cliente_id),
-      servicoNome: getServicoNome(a.servico_id)
-    }))
-  );
+  const [pendentesManuais, setPendentesManuais] = useState<any[]>([]);
+  
+  useEffect(() => {
+    setPendentesManuais(
+      agendamentosDoDia.filter(a => a.status === 'pendente').map(a => ({
+        ...a,
+        clienteNome: getClienteNome(a.cliente_id),
+        servicoNome: getServicoNome(a.servico_id)
+      }))
+    );
+  }, [agendamentosDoDia]);
 
   const handleDisparoManual = (id: string) => {
-    alert("Mensagem enviada com sucesso pela Evolution API!");
+    alert("Mensagem enviada via WhatsApp!");
     setPendentesManuais(prev => prev.filter(a => a.id !== id));
   };
 
@@ -194,41 +198,17 @@ export default function AdminDashboardPage() {
         </Panel>
       </div>
 
-      {/* Notificações WhatsApp */}
+      {/* Notificações WhatsApp - Ocultado conforme solicitado */}
+      {/* 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Lembretes Pendentes (Manuais) */}
         <Panel className="lg:col-span-2" title="Disparos Manuais Pendentes (WhatsApp)">
-          {pendentesManuais.length === 0 ? (
-            <div className="text-center py-6 text-foreground/40 text-sm">
-              Todos os clientes pendentes já foram notificados!
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
-              {pendentesManuais.map(a => (
-                <div key={a.id} className="flex justify-between items-center p-3 rounded-lg bg-[var(--background)] border border-[var(--border-subtle)]">
-                  <div>
-                    <div className="font-bold text-sm text-foreground">{a.clienteNome}</div>
-                    <div className="text-xs text-foreground/60">{a.hora_inicio} — {a.servicoNome}</div>
-                  </div>
-                  <Button variant="outline" size="sm" className="text-xs py-1.5 h-auto text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10" onClick={() => handleDisparoManual(a.id)}>
-                    Disparar Lembrete
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+          ...
         </Panel>
-
-        {/* Disparos Automáticos */}
         <Panel className="flex flex-col justify-center items-center text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-success mb-1.5">Disparos Automáticos</p>
-          <p className="text-[12px] text-foreground/60 mb-4">
-            Clientes já confirmados recebem alerta automático via Evolution API.
-          </p>
-          <div className="text-3xl font-black text-success mb-1">{automáticos.length}</div>
-          <div className="text-[10px] uppercase tracking-wider text-success/70 font-bold">Mensagens Enviadas</div>
+          ...
         </Panel>
-      </div>
+      </div> 
+      */}
     </div>
   );
 }
