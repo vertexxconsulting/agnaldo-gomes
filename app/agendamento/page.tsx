@@ -115,13 +115,36 @@ export default function AgendamentoPage() {
     if (idx > 0) setStep(steps[idx - 1]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 'confirmacao') {
-      alert('Agendamento confirmado! (Simulação — checkout pago em desenvolvimento)');
-      router.push('/');
-    } else {
+    if (step !== 'confirmacao') {
       nextStep();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Persistir no CRM Interno (Supabase) via API Route
+      const res = await fetch('/api/agendamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Erro ao salvar agendamento');
+      }
+
+      const { whatsappUrl } = await res.json();
+
+      // 2. Redirecionar para o WhatsApp do Studio com a trava de confirmação
+      // Usamos window.location.href para garantir o redirecionamento externo
+      window.location.href = whatsappUrl;
+    } catch (err: any) {
+      console.error('Erro no agendamento:', err);
+      alert(`Erro: ${err.message || 'Ocorreu um erro ao processar seu agendamento. Tente novamente.'}`);
+      setLoading(false);
     }
   };
 

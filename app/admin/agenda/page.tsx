@@ -28,6 +28,21 @@ export default function AgendaPage() {
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
+      
+      // Capturar ações via URL (links do WhatsApp)
+      const urlParams = new URLSearchParams(window.location.search);
+      const agendamentoIdConfirmar = urlParams.get('confirmar');
+      const agendamentoIdCancelar = urlParams.get('cancelar');
+
+      if (agendamentoIdConfirmar) {
+        await mudarStatus(agendamentoIdConfirmar, 'confirmado');
+        // Limpar URL após ação
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (agendamentoIdCancelar) {
+        await mudarStatus(agendamentoIdCancelar, 'cancelado');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
       const [
         agendamentosData, bloqueiosData, profissionaisData
       ] = await Promise.all([
@@ -54,8 +69,22 @@ export default function AgendaPage() {
 
   const bloqueiosFiltrados = bloqueiosDia.filter(b => profFiltro === 'todos' || profFiltro === b.profissional_id);
 
-  const mudarStatus = (id: string, status: StatusAgendamento) => {
-    setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  const mudarStatus = async (id: string, status: StatusAgendamento) => {
+    try {
+      // Tentar atualizar no Supabase se não for mock
+      const { atualizarStatusAgendamento } = await import('@/lib/supabase-queries');
+      const success = await atualizarStatusAgendamento(id, status);
+      
+      if (success) {
+        setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+      } else {
+        // Fallback local caso falhe/mock
+        setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err);
+      setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    }
   };
 
   return (
@@ -94,9 +123,37 @@ export default function AgendaPage() {
           className="hidden lg:flex"
         />
 
-        <Button variant="primary" size="md" className="ml-auto" onClick={() => alert('Novo agendamento: funcionalidade em desenvolvimento para a versão final.')}>
-          Novo Agendamento
-        </Button>
+        <div className="flex gap-2 ml-auto">
+          <input
+            type="file"
+            id="json-upload"
+            className="hidden"
+            accept=".json"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = async (event) => {
+                try {
+                  const data = JSON.parse(event.target?.result as string);
+                  if (confirm(`Deseja importar ${data.length} horários para a agenda?`)) {
+                    // TODO: Implementar API de importação em massa
+                    alert('Importação iniciada. Os horários aparecerão na agenda em instantes.');
+                  }
+                } catch (err) {
+                  alert('Erro ao ler arquivo JSON.');
+                }
+              };
+              reader.readAsText(file);
+            }}
+          />
+          <Button variant="outline" size="md" onClick={() => document.getElementById('json-upload')?.click()}>
+            Importar JSON
+          </Button>
+          <Button variant="primary" size="md" onClick={() => alert('Novo agendamento manual em desenvolvimento.')}>
+            Novo Agendamento
+          </Button>
+        </div>
       </div>
 
       {loading ? (

@@ -70,13 +70,64 @@ export default function PerfilClientePage() {
     }
   };
 
-  const cancelarAgendamento = (id: string) => {
-    if (confirm('Tem certeza que deseja cancelar este horário?')) {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState<any>(null);
+  const [motivoCancelamento, setMotivoCancelamento] = useState('');
+  const [loadingAction, setLoadingAction] = useState(false);
+
+  const handleCancelClick = (agendamento: any) => {
+    const agora = new Date();
+    const dataAgendamento = new Date(`${agendamento.data}T${agendamento.hora_inicio || '09:00'}:00`);
+    const diffMs = dataAgendamento.getTime() - agora.getTime();
+    const diffHoras = diffMs / (1000 * 60 * 60);
+
+    if (diffHoras < 2) {
+      alert('O cancelamento online só é permitido com até 2 horas de antecedência. Por favor, entre em contato diretamente com o Studio via WhatsApp para solicitar o reagendamento.');
+      window.location.href = `https://wa.me/5544999999999?text=Olá, gostaria de solicitar o reagendamento do meu horário de ${agendamento.servico} no dia ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora_inicio}.`;
+      return;
+    }
+
+    setAgendamentoParaCancelar(agendamento);
+    setShowCancelModal(true);
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!motivoCancelamento) {
+      alert('Por favor, informe o motivo do cancelamento.');
+      return;
+    }
+
+    setLoadingAction(true);
+    try {
+      const res = await fetch('/api/agendamento/cancelar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: agendamentoParaCancelar.id,
+          motivo: motivoCancelamento,
+          reagendamentoRecusado: true
+        }),
+      });
+
+      if (!res.ok) throw new Error('Erro ao cancelar');
+
+      const { whatsappUrl } = await res.json();
+      
+      // Atualizar localmente também para o modo demo
       const novaLista = agendamentos.map(a => 
-        a.id === id ? { ...a, status: 'cancelado' } : a
+        a.id === agendamentoParaCancelar.id ? { ...a, status: 'cancelado' } : a
       );
       setAgendamentos(novaLista);
       localStorage.setItem('agendamentos_app', JSON.stringify(novaLista));
+
+      alert('Agendamento cancelado no sistema. Avisando o Studio via WhatsApp...');
+      window.location.href = whatsappUrl;
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao processar cancelamento.');
+    } finally {
+      setLoadingAction(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -186,7 +237,7 @@ export default function PerfilClientePage() {
                       </div>
                       
                       <div className="flex gap-2 mt-2 pt-4 border-t border-[var(--border-subtle)]">
-                        <Button variant="outline" size="sm" onClick={() => cancelarAgendamento(ag.id)} className="flex-1 text-red-500 hover:border-red-500 hover:bg-red-500/10">
+                        <Button variant="outline" size="sm" onClick={() => handleCancelClick(ag)} className="flex-1 text-red-500 hover:border-red-500 hover:bg-red-500/10">
                           <Trash2 size={14} className="mr-2"/> Cancelar
                         </Button>
                         <Button variant="primary" size="sm" onClick={() => router.push('/agendamento')} className="flex-1">
@@ -230,6 +281,45 @@ export default function PerfilClientePage() {
 
         </div>
       </div>
+
+      {/* Modal de Cancelamento */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <CardGlass className="w-full max-w-md p-6 animate-in zoom-in duration-200">
+            <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-400">
+              <Trash2 size={20} /> Cancelar Agendamento
+            </h3>
+            <p className="text-sm text-foreground/70 mb-6">
+              Você está cancelando o serviço de <strong>{agendamentoParaCancelar?.servico}</strong> no dia {agendamentoParaCancelar?.data.split('-').reverse().join('/')}.
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-foreground/80 mb-2">Por que você deseja cancelar? *</label>
+              <textarea
+                value={motivoCancelamento}
+                onChange={e => setMotivoCancelamento(e.target.value)}
+                placeholder="Ex: Tive um imprevisto de trabalho..."
+                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-red-500 h-24 resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="ghost" className="flex-1" onClick={() => setShowCancelModal(false)}>
+                Voltar
+              </Button>
+              <Button 
+                variant="primary" 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-none"
+                onClick={confirmarCancelamento}
+                disabled={loadingAction}
+              >
+                {loadingAction ? 'Processando...' : 'Confirmar Cancelamento'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
     </div>
   );
 }

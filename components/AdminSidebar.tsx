@@ -13,6 +13,7 @@ export interface SidebarLink {
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   hub?: boolean;
+  adminOnly?: boolean;
 }
 
 interface AdminSidebarProps {
@@ -56,6 +57,13 @@ export function AdminSidebar({
   };
 
   const renderLinkItem = (link: SidebarLink) => {
+    // Verificar papel do usuário para links restritos
+    // No modo demo/deslogado, permitimos ver tudo para visualização
+    const userRole = typeof window !== 'undefined' ? localStorage.getItem('ag-user-role') : null;
+    if (link.adminOnly && userRole && userRole !== 'studio_admin') {
+      return null;
+    }
+
     const Icon = link.icon;
     const active = link.href === '/hub' ? false : pathname === link.href || (link.href !== '/hub' && pathname.startsWith(link.href));
     const base = `flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap group ${
