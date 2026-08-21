@@ -14,7 +14,7 @@ const links = [
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
-  { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge },
+  // { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge }, // Ocultado conforme solicitado
   { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
