@@ -6,11 +6,11 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
 import {
-  getAgendamentos, getProfissionais, getBloqueios,
+  getAgendamentos, getProfissionais, getBloqueios, getClientes, getServicos,
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
-import type { Agendamento, BloqueioAgenda, StatusAgendamento } from '@/lib/gestao-types';
+import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
 import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -21,8 +21,19 @@ export default function AgendaPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [bloqueiosDia, setBloqueiosDia] = useState<BloqueioAgenda[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<string>('dia');
+  const [showForm, setShowForm] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    cliente_id: '',
+    profissional_id: '',
+    servico_id: '',
+    data: hoje,
+    hora_inicio: '09:00',
+  });
 
   // Carregar dados do Supabase (com fallback para mock)
   useEffect(() => {
@@ -44,15 +55,19 @@ export default function AgendaPage() {
       }
 
       const [
-        agendamentosData, bloqueiosData, profissionaisData
+        agendamentosData, bloqueiosData, profissionaisData, clientesData, servicosData
       ] = await Promise.all([
         getAgendamentos({ data: dataSelecionada }),
         getBloqueios(dataSelecionada),
         getProfissionais(),
+        getClientes(),
+        getServicos()
       ]);
       setAgendamentos(agendamentosData);
       setBloqueiosDia(bloqueiosData);
       setProfissionais(profissionaisData.filter(p => p.ativo));
+      setClientes(clientesData);
+      setServicos(servicosData);
       setLoading(false);
     };
     carregarDados();
@@ -85,6 +100,27 @@ export default function AgendaPage() {
       console.error('Erro ao atualizar status:', err);
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     }
+  };
+
+  const handleSalvarAgendamento = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.cliente_id || !formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
+      alert('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    const novoAgendamento: Agendamento = {
+      id: Math.random().toString(36).substring(7),
+      cliente_id: formData.cliente_id,
+      profissional_id: formData.profissional_id,
+      servico_id: formData.servico_id,
+      data: formData.data,
+      hora_inicio: formData.hora_inicio,
+      status: 'confirmado',
+      canal: 'manual'
+    };
+    setAgendamentos(prev => [...prev, novoAgendamento]);
+    setShowForm(false);
+    setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00' });
   };
 
   return (
@@ -150,7 +186,7 @@ export default function AgendaPage() {
           <Button variant="outline" size="md" onClick={() => document.getElementById('json-upload')?.click()}>
             Importar JSON
           </Button>
-          <Button variant="primary" size="md" onClick={() => alert('Novo agendamento manual em desenvolvimento.')}>
+          <Button variant="primary" size="md" onClick={() => setShowForm(true)}>
             Novo Agendamento
           </Button>
         </div>
@@ -213,11 +249,11 @@ export default function AgendaPage() {
 
                 {/* Render Agendamentos */}
                 {agendamentosFiltrados.map(a => {
-                  const cliente = getClienteNome(a.cliente_id);
-                  const servico = getServicoNome(a.servico_id);
-                  const duracao = getServicoDuracao(a.servico_id);
-                  const prof = getProfissionalNome(a.profissional_id);
-                  const valor = getServicoPreco(a.servico_id);
+                  const cliente = getClienteNome(a.cliente_id) || clientes.find(c => c.id === a.cliente_id)?.nome;
+                  const servico = getServicoNome(a.servico_id) || servicos.find(s => s.id === a.servico_id)?.nome;
+                  const duracao = getServicoDuracao(a.servico_id) || servicos.find(s => s.id === a.servico_id)?.duracao_min;
+                  const prof = getProfissionalNome(a.profissional_id) || profissionais.find(p => p.id === a.profissional_id)?.nome;
+                  const valor = getServicoPreco(a.servico_id) || servicos.find(s => s.id === a.servico_id)?.preco;
                   const isCancelado = a.status === 'cancelado' || a.status === 'no_show';
 
                   return (
@@ -270,6 +306,95 @@ export default function AgendaPage() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Modal de Novo Agendamento */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-lg p-6 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold font-serif">Novo Agendamento</h3>
+              <button onClick={() => setShowForm(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSalvarAgendamento} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">Cliente *</label>
+                <select 
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm"
+                  value={formData.cliente_id}
+                  onChange={e => setFormData(f => ({ ...f, cliente_id: e.target.value }))}
+                  required
+                >
+                  <option value="">Selecione o cliente</option>
+                  {clientes.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome} ({c.telefone})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">Serviço *</label>
+                <select 
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm"
+                  value={formData.servico_id}
+                  onChange={e => setFormData(f => ({ ...f, servico_id: e.target.value }))}
+                  required
+                >
+                  <option value="">Selecione o serviço</option>
+                  {servicos.map(s => (
+                    <option key={s.id} value={s.id}>{s.nome} - R$ {s.preco}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">Profissional *</label>
+                <select 
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm"
+                  value={formData.profissional_id}
+                  onChange={e => setFormData(f => ({ ...f, profissional_id: e.target.value }))}
+                  required
+                >
+                  <option value="">Selecione o profissional</option>
+                  {profissionais.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground/70 mb-1">Data *</label>
+                  <input 
+                    type="date"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm [color-scheme:dark]"
+                    value={formData.data}
+                    onChange={e => setFormData(f => ({ ...f, data: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground/70 mb-1">Hora *</label>
+                  <input 
+                    type="time"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm [color-scheme:dark]"
+                    value={formData.hora_inicio}
+                    onChange={e => setFormData(f => ({ ...f, hora_inicio: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" variant="primary" className="flex-1">Salvar Agendamento</Button>
+                <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancelar</Button>
+              </div>
+            </form>
+          </CardGlass>
         </div>
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
 import { Panel, StatCard, SectionHeader } from '@/components/ui/Panel';
+import { AdminSidebar, AdminShell } from '@/components/AdminSidebar';
 import {
   getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome,
   getProfissionalNome, getCursos, getProgressoAluno, MOCK_PROFISSIONAIS,
@@ -22,6 +23,7 @@ import type { Cliente, Agendamento, Servico, Curso, Progresso } from '@/lib/mock
 import { supabase } from '@/lib/supabase';
 import { ROLES, getHubModules, type HubModule } from '@/lib/auth';
 import { StatusBadge } from '@/components/ui/Panel';
+import { Command } from 'lucide-react';
 
 const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
@@ -136,46 +138,24 @@ export default function HubCentralPage() {
 
   const formatPrice = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 });
 
-  return (
-    <div className="min-h-screen bg-[var(--background)]">
-      {/* Header do Hub */}
-      <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--glass-bg)] backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 relative">
-              <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" sizes="32px" />
-            </div>
-            <div className="hidden sm:block leading-tight">
-              <p className="text-sm font-serif font-bold text-primary">Command Center</p>
-              <p className="text-[9px] text-foreground/45 uppercase tracking-[0.18em]">Painel Unificado</p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {NAVEGACAO_RAPIDA.filter((item) => {
-              if (item.href.startsWith('/admin-academy')) return temModulo('academy');
-              if (item.href.startsWith('/admin-loja')) return temModulo('loja');
-              return true;
-            }).map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.href} href={item.href}>
-                  <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium text-foreground/55 hover:text-primary hover:bg-primary/5 whitespace-nowrap transition-colors">
-                    <Icon size={13} className="shrink-0" />
-                    <span className="hidden lg:inline">{item.label}</span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-          <Link href="/">
-            <span className="flex items-center gap-1 text-[11px] text-foreground/45 hover:text-primary shrink-0 transition-colors">
-              <ExternalLink size={11} /> Site Público
-            </span>
-          </Link>
-        </div>
-      </header>
+  const sidebarLinks = NAVEGACAO_RAPIDA.filter((item) => {
+    if (item.href.startsWith('/admin-academy')) return temModulo('academy');
+    if (item.href.startsWith('/admin-loja')) return temModulo('loja');
+    return true;
+  });
 
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-7">
+  return (
+    <AdminShell
+      sidebar={
+        <AdminSidebar
+          links={sidebarLinks}
+          backLabel="Voltar ao Site Público"
+          backHref="/"
+          brand={{ icon: Command, text: 'Command Center' }}
+        />
+      }
+    >
+      <div className="space-y-7">
         {/* Boas-vindas */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -433,7 +413,7 @@ export default function HubCentralPage() {
             Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy &amp; Loja
           </p>
         </footer>
-      </main>
-    </div>
+      </div>
+    </AdminShell>
   );
 }

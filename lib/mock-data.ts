@@ -38,93 +38,56 @@ export const MOCK_SERVICOS: Servico[] = [
 // ────────────────────────────────────────────
 // PROFISSIONAIS
 // ────────────────────────────────────────────
-export const MOCK_PROFISSIONAIS: Profissional[] = [
-  {
-    id: 'p1', nome: 'Agnaldo Gomes', foto_url: '/perfil.jpg',
-    especialidades: ['Visagismo', 'Coloração', 'Corte'],
-    ativo: true,
-    jornada_semanal: { 1: { inicio: '09:00', fim: '19:00' }, 2: { inicio: '09:00', fim: '19:00' }, 3: { inicio: '09:00', fim: '19:00' }, 4: { inicio: '09:00', fim: '19:00' }, 5: { inicio: '09:00', fim: '19:00' }, 6: { inicio: '08:00', fim: '17:00' } },
-    criado_em: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 'p2', nome: 'Camila Ferreira', foto_url: null,
-    especialidades: ['Coloração', 'Tratamento Capilar'],
-    ativo: true,
-    jornada_semanal: { 1: { inicio: '09:00', fim: '18:00' }, 2: { inicio: '09:00', fim: '18:00' }, 3: { inicio: '09:00', fim: '18:00' }, 4: { inicio: '09:00', fim: '18:00' }, 5: { inicio: '09:00', fim: '18:00' } },
-    criado_em: '2024-03-10T00:00:00Z',
-  },
-  {
-    id: 'p3', nome: 'Lucas Oliveira', foto_url: null,
-    especialidades: ['Corte Masculino', 'Barba'],
-    ativo: true,
-    jornada_semanal: { 1: { inicio: '10:00', fim: '20:00' }, 2: { inicio: '10:00', fim: '20:00' }, 3: { inicio: '10:00', fim: '20:00' }, 4: { inicio: '10:00', fim: '20:00' }, 5: { inicio: '10:00', fim: '20:00' }, 6: { inicio: '09:00', fim: '16:00' } },
-    criado_em: '2024-05-20T00:00:00Z',
-  },
-  {
-    id: 'p4', nome: 'Juliana Santos', foto_url: null,
-    especialidades: ['Unhas', 'Estética'],
-    ativo: true,
-    jornada_semanal: { 1: { inicio: '08:00', fim: '17:00' }, 2: { inicio: '08:00', fim: '17:00' }, 3: { inicio: '08:00', fim: '17:00' }, 4: { inicio: '08:00', fim: '17:00' }, 5: { inicio: '08:00', fim: '17:00' } },
-    criado_em: '2024-06-01T00:00:00Z',
-  },
-];
+export const MOCK_PROFISSIONAIS: Profissional[] = [];
+
+export function upsertMockProfissional(prof: Profissional) {
+  const idx = MOCK_PROFISSIONAIS.findIndex(p => p.id === prof.id);
+  if (idx >= 0) {
+    MOCK_PROFISSIONAIS[idx] = prof;
+  } else {
+    MOCK_PROFISSIONAIS.push(prof);
+  }
+}
+
+export function deleteMockProfissional(id: string) {
+  const idx = MOCK_PROFISSIONAIS.findIndex(p => p.id === id);
+  if (idx >= 0) MOCK_PROFISSIONAIS.splice(idx, 1);
+}
 
 // ────────────────────────────────────────────
 // VÍNCULO PROFISSIONAL ↔ SERVIÇO
 // ────────────────────────────────────────────
-export const MOCK_PROF_SERVICO: ProfissionalServico[] = [
-  // Agnaldo: cortes + coloração + tratamento
-  { profissional_id: 'p1', servico_id: 's1' }, { profissional_id: 'p1', servico_id: 's2' },
-  { profissional_id: 'p1', servico_id: 's4' }, { profissional_id: 'p1', servico_id: 's5' },
-  { profissional_id: 'p1', servico_id: 's6' }, { profissional_id: 'p1', servico_id: 's7' },
-  // Camila: coloração + tratamento
-  { profissional_id: 'p2', servico_id: 's4' }, { profissional_id: 'p2', servico_id: 's5' },
-  { profissional_id: 'p2', servico_id: 's6' }, { profissional_id: 'p2', servico_id: 's7' },
-  { profissional_id: 'p2', servico_id: 's8' },
-  // Lucas: corte masc + barba
-  { profissional_id: 'p3', servico_id: 's2' }, { profissional_id: 'p3', servico_id: 's3' },
-  { profissional_id: 'p3', servico_id: 's12' },
-  // Juliana: unhas + estética
-  { profissional_id: 'p4', servico_id: 's9' }, { profissional_id: 'p4', servico_id: 's10' },
-  { profissional_id: 'p4', servico_id: 's11' },
-];
+export const MOCK_PROF_SERVICO: ProfissionalServico[] = [];
+
+export function updateMockProfissionalServicos(profissionalId: string, servicoIds: string[]) {
+  // Remove antigos
+  let i = MOCK_PROF_SERVICO.length;
+  while (i--) {
+    if (MOCK_PROF_SERVICO[i].profissional_id === profissionalId) {
+      MOCK_PROF_SERVICO.splice(i, 1);
+    }
+  }
+  // Adiciona novos
+  servicoIds.forEach(servico_id => {
+    MOCK_PROF_SERVICO.push({ profissional_id: profissionalId, servico_id });
+  });
+}
 
 // ────────────────────────────────────────────
 // CLIENTES
 // ────────────────────────────────────────────
-export const MOCK_CLIENTES: Cliente[] = [
-  { id: 'c1', nome: 'Maria Silva', telefone: '42998112233', email: 'maria@email.com', nascimento: '1988-03-22', observacoes: 'Alergia a amônia', criado_em: '2024-06-15T10:00:00Z' },
-  { id: 'c2', nome: 'João Pereira', telefone: '42999441100', email: 'joao@email.com', nascimento: '1995-11-10', criado_em: '2024-07-01T14:00:00Z' },
-  { id: 'c3', nome: 'Ana Costa', telefone: '42997778899', email: 'ana@email.com', nascimento: '1992-08-05', criado_em: '2024-07-20T09:00:00Z' },
-  { id: 'c4', nome: 'Carlos Souza', telefone: '42996665544', email: 'carlos@email.com', nascimento: '1985-01-30', criado_em: '2024-08-10T11:00:00Z' },
-  { id: 'c5', nome: 'Beatriz Lima', telefone: '42995553322', email: 'bia@email.com', nascimento: '2000-12-18', observacoes: 'Prefere Camila para coloração', criado_em: '2024-09-05T16:00:00Z' },
-  { id: 'c6', nome: 'Fernanda Alves', telefone: '42993332211', email: 'fe@email.com', nascimento: '1990-06-27', criado_em: '2024-10-12T13:00:00Z' },
-];
+export const MOCK_CLIENTES: Cliente[] = [];
 
 // ────────────────────────────────────────────
 // AGENDAMENTOS
 // ────────────────────────────────────────────
 const hoje = new Date().toISOString().split('T')[0];
-export const MOCK_AGENDAMENTOS: Agendamento[] = [
-  { id: 'ag1', cliente_id: 'c1', profissional_id: 'p1', servico_id: 's5', data: hoje, hora_inicio: '09:00', hora_fim: '11:30', status: 'confirmado', canal: 'online', criado_em: '2026-08-01T10:00:00Z' },
-  { id: 'ag2', cliente_id: 'c2', profissional_id: 'p3', servico_id: 's2', data: hoje, hora_inicio: '10:00', hora_fim: '10:30', status: 'em_atendimento', canal: 'recepcao', criado_em: '2026-08-02T14:00:00Z' },
-  { id: 'ag3', cliente_id: 'c3', profissional_id: 'p2', servico_id: 's6', data: hoje, hora_inicio: '14:00', hora_fim: '17:00', status: 'pendente', canal: 'online', criado_em: '2026-08-03T16:00:00Z' },
-  { id: 'ag4', cliente_id: 'c4', profissional_id: 'p3', servico_id: 's12', data: hoje, hora_inicio: '11:00', hora_fim: '11:20', status: 'concluido', canal: 'recepcao', criado_em: '2026-08-04T09:00:00Z' },
-  { id: 'ag5', cliente_id: 'c5', profissional_id: 'p2', servico_id: 's7', data: hoje, hora_inicio: '09:00', hora_fim: '10:00', status: 'concluido', canal: 'online', criado_em: '2026-08-05T11:00:00Z' },
-  { id: 'ag6', cliente_id: 'c6', profissional_id: 'p4', servico_id: 's9', data: hoje, hora_inicio: '08:00', hora_fim: '08:40', status: 'cancelado', canal: 'online', criado_em: '2026-08-06T08:00:00Z' },
-  { id: 'ag7', cliente_id: 'c1', profissional_id: 'p1', servico_id: 's1', data: '2026-07-20', hora_inicio: '10:00', hora_fim: '10:45', status: 'concluido', canal: 'recepcao', criado_em: '2026-07-20T10:00:00Z' },
-  { id: 'ag8', cliente_id: 'c3', profissional_id: 'p1', servico_id: 's4', data: '2026-07-15', hora_inicio: '14:00', hora_fim: '16:00', status: 'concluido', canal: 'online', criado_em: '2026-07-15T14:00:00Z' },
-  { id: 'ag9', cliente_id: 'c2', profissional_id: 'p3', servico_id: 's2', data: '2026-07-10', hora_inicio: '15:00', hora_fim: '15:30', status: 'no_show', canal: 'online', criado_em: '2026-07-10T15:00:00Z' },
-];
+export const MOCK_AGENDAMENTOS: Agendamento[] = [];
 
 // ────────────────────────────────────────────
 // BLOQUEIOS DE AGENDA
 // ────────────────────────────────────────────
-export const MOCK_BLOQUEIOS: BloqueioAgenda[] = [
-  { id: 'b1', profissional_id: 'p1', data_inicio: `${hoje}T12:00`, data_fim: `${hoje}T13:00`, motivo: 'Almoço', criado_em: hoje },
-  { id: 'b2', profissional_id: 'p2', data_inicio: `${hoje}T12:00`, data_fim: `${hoje}T13:30`, motivo: 'Almoço', criado_em: hoje },
-  { id: 'b3', profissional_id: 'p3', data_inicio: `${hoje}T12:30`, data_fim: `${hoje}T13:30`, motivo: 'Almoço', criado_em: hoje },
-];
+export const MOCK_BLOQUEIOS: BloqueioAgenda[] = [];
 
 // ────────────────────────────────────────────
 // HELPERS

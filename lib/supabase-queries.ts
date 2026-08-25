@@ -197,3 +197,93 @@ export async function atualizarStatusAgendamento(id: string, status: string): Pr
   }
   return true;
 }
+
+// ── PROFISSIONAIS MUTATIONS ──────────────────────────────
+
+export async function criarProfissional(payload: {
+  nome: string;
+  foto_url?: string | null;
+  especialidades?: string[];
+  ativo?: boolean;
+  jornada_semanal?: Record<number, { inicio: string; fim: string }>;
+  profile_id?: string | null;
+}): Promise<{ id: string } | null> {
+  const { data, error } = await supabase.from('profissionais').insert({
+    nome: payload.nome,
+    foto_url: payload.foto_url ?? null,
+    especialidades: payload.especialidades ?? [],
+    ativo: payload.ativo ?? true,
+    jornada_semanal: payload.jornada_semanal ?? {},
+    profile_id: payload.profile_id ?? null,
+  }).select('id').single();
+
+  if (error) {
+    logSupabaseError('[supabase] criarProfissional error:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function atualizarProfissional(id: string, payload: Partial<{
+  nome: string;
+  foto_url: string | null;
+  especialidades: string[];
+  ativo: boolean;
+  jornada_semanal: Record<number, { inicio: string; fim: string }>;
+}>): Promise<boolean> {
+  const { error } = await supabase
+    .from('profissionais')
+    .update(payload)
+    .eq('id', id);
+
+  if (error) {
+    logSupabaseError(`[supabase] atualizarProfissional(${id}) error:`, error);
+    return false;
+  }
+  return true;
+}
+
+export async function excluirProfissional(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('profissionais')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    logSupabaseError(`[supabase] excluirProfissional(${id}) error:`, error);
+    return false;
+  }
+  return true;
+}
+
+export async function vincularProfissionalServicos(profissionalId: string, servicoIds: string[]): Promise<boolean> {
+  // Remove antigos vínculos
+  const { error: deleteError } = await supabase
+    .from('profissional_servicos')
+    .delete()
+    .eq('profissional_id', profissionalId);
+
+  if (deleteError) {
+    logSupabaseError(`[supabase] vincularProfissionalServicos delete error:`, deleteError);
+    return false;
+  }
+
+  // Adiciona novos vínculos
+  if (servicoIds.length > 0) {
+    const vinculos = servicoIds.map(servico_id => ({
+      profissional_id: profissionalId,
+      servico_id,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('profissional_servicos')
+      .insert(vinculos);
+
+    if (insertError) {
+      logSupabaseError(`[supabase] vincularProfissionalServicos insert error:`, insertError);
+      return false;
+    }
+  }
+
+  return true;
+}
