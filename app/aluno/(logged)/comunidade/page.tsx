@@ -50,33 +50,33 @@ export default function ComunidadePage() {
         }
 
         const { data: postData, error: postError } = await supabase
-          .from('comunidade_posts')
-          .select('id, conteudo, likes, comentarios_count, created_at, user_id')
+          .from('community_posts')
+          .select('id, content, likes, created_at, user_id')
           .order('created_at', { ascending: false });
 
         if (!postError && postData && postData.length > 0) {
           // Carregar perfis separadamente para evitar problemas de tipagem
           const userIds = [...new Set(postData.map((p: { user_id: string }) => p.user_id).filter(Boolean))];
           const { data: perfisData } = await supabase
-            .from('perfis')
-            .select('user_id, nome, avatar_url, role')
-            .in('user_id', userIds as string[]);
+            .from('profiles')
+            .select('id, full_name, avatar_url, role')
+            .in('id', userIds as string[]);
 
-          const perfisMap = Object.fromEntries((perfisData || []).map((p: { user_id: string }) => [p.user_id, p]));
+          const perfisMap = Object.fromEntries((perfisData || []).map((p: { id: string }) => [p.id, p]));
 
-          const mappedPosts: Post[] = postData.map((p: { id: string; conteudo: string; likes: number; comentarios_count: number; created_at: string; user_id: string }) => {
+          const mappedPosts: Post[] = postData.map((p: { id: string; content: string; likes: number; created_at: string; user_id: string }) => {
             const perfil = perfisMap[p.user_id];
             return {
               id: p.id,
               author: {
-                name: perfil?.nome || 'Usuário',
-                avatar: perfil?.avatar_url || 'https://i.pravatar.cc/150',
-                role: perfil?.role || 'Aluno',
-                isProfessor: perfil?.role === 'professor'
+                name: (perfil?.full_name as string) || 'Usuário',
+                avatar: (perfil?.avatar_url as string) || 'https://i.pravatar.cc/150',
+                role: perfil?.role === 'ADMIN' ? 'Professor' : 'Aluno',
+                isProfessor: perfil?.role === 'ADMIN'
               },
-              content: p.conteudo,
+              content: p.content,
               likes: p.likes,
-              comments: p.comentarios_count,
+              comments: 0,
               time: new Date(p.created_at).toLocaleDateString('pt-BR', {
                 hour: '2-digit', minute: '2-digit'
               })
@@ -101,12 +101,10 @@ export default function ComunidadePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data, error } = await supabase
-          .from('comunidade_posts')
+          .from('community_posts')
           .insert({
             user_id: user.id,
-            conteudo: newPost,
-            likes: 0,
-            comentarios_count: 0
+            content: newPost,
           })
           .select()
           .single();
@@ -162,7 +160,7 @@ export default function ComunidadePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase
-          .from('comunidade_posts')
+          .from('community_posts')
           .update({ likes: currentLikes + 1 })
           .eq('id', postId);
       }

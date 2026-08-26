@@ -60,13 +60,13 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: notaData } = await supabase
-              .from('anotacoes_aula')
-              .select('conteudo')
+              .from('lesson_notes')
+              .select('content')
               .eq('user_id', user.id)
-              .eq('aula_id', aulaId)
-              .single();
-            if (notaData?.conteudo) {
-              setNotaAluno(notaData.conteudo);
+              .eq('lesson_id', aulaId)
+              .maybeSingle();
+            if (notaData?.content) {
+              setNotaAluno(notaData.content);
             }
           }
         } catch {
@@ -141,15 +141,8 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                     const novaConcluida = !concluida;
                     setConcluida(novaConcluida);
                     try {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (user) {
-                        await supabase.from('progresso_aluno').upsert({
-                          user_id: user.id,
-                          aula_id: aulaId,
-                          concluida: novaConcluida,
-                          assistido_segundos: novaConcluida ? 0 : 0,
-                        }, { onConflict: 'user_id,aula_id' });
-                      }
+                      const { salvarProgressoAula } = await import('@/lib/mock-data');
+                      await salvarProgressoAula(aulaId, novaConcluida);
                     } catch (err) {
                       console.error('Erro ao salvar progresso:', err);
                     }
@@ -238,11 +231,14 @@ export default function EpisodioPage({ params }: { params: Promise<{ cursoId: st
                         try {
                           const { data: { user } } = await supabase.auth.getUser();
                           if (user) {
-                            await supabase.from('anotacoes_aula').upsert({
+                            // lesson_notes tem UNIQUE(user_id, lesson_id) — upsert direto
+                            const { error } = await supabase.from('lesson_notes').upsert({
                               user_id: user.id,
-                              aula_id: aulaId,
-                              conteudo: notaAluno,
-                            }, { onConflict: 'user_id,aula_id' });
+                              lesson_id: aulaId,
+                              content: notaAluno,
+                              updated_at: new Date().toISOString(),
+                            }, { onConflict: 'user_id,lesson_id' });
+                            if (error) throw error;
                             alert('Anotação salva com sucesso!');
                           } else {
                             alert('Faça login para salvar anotações.');

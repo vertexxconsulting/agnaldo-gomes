@@ -55,8 +55,8 @@ export default function AdminAcademyComunidade() {
         }
 
         const { data, error } = await supabase
-          .from('comunidade_comentarios_admin')
-          .select('id, conteudo, status, created_at, user_id')
+          .from('community_comments')
+          .select('id, content, status, created_at, user_id')
           .order('created_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
@@ -68,7 +68,7 @@ export default function AdminAcademyComunidade() {
             student: c.user_id ? `Aluno #${c.user_id.substring(0, 8)}` : 'Aluno',
             course: 'Curso',
             lesson: 'Aula',
-            content: c.conteudo || c.conteudo,
+            content: c.content || '',
             date: new Date(c.created_at).toLocaleDateString('pt-BR', {
               hour: '2-digit', minute: '2-digit'
             }),

@@ -348,28 +348,75 @@ export async function getProgressoAluno(): Promise<Progresso[]> {
 
 // ────────────────────────────────────────────
 // FETCH REAL (Supabase) — cai em mock se não configurado
+// O banco real usa o schema full: courses/modules/lessons/lesson_progress.
+// Os mappers traduzem para os tipos do app (Curso/Modulo/Aula/Progresso).
 // ────────────────────────────────────────────
+type Row = Record<string, any>;
+
+function mapCurso(r: Row): Curso {
+  return {
+    id: r.id,
+    titulo: r.title ?? '',
+    descricao: r.description ?? '',
+    professor: 'Agnaldo Gomes',
+    capaUrl: r.thumbnail_url ?? '',
+    duracaoHoras: 0,
+    totalAulas: 0,
+    nivel: 'Iniciante',
+    tags: [],
+  };
+}
+
+function mapModulo(r: Row): Modulo {
+  return {
+    id: r.id,
+    curso_id: r.course_id,
+    titulo: r.title ?? '',
+    ordem: r.order_index ?? 1,
+  };
+}
+
+function mapAula(r: Row): Aula {
+  return {
+    id: r.id,
+    modulo_id: r.module_id,
+    titulo: r.title ?? '',
+    ordem: r.order_index ?? 1,
+    duracaoMinutos: r.duration_minutes ?? 0,
+    videoUrl: r.video_url ?? '',
+    descricao: '',
+  };
+}
+
+function mapProgresso(r: Row): Progresso {
+  return {
+    aula_id: r.lesson_id,
+    concluida: r.completed ?? false,
+    assistidoSegundos: 0,
+  };
+}
+
 async function fetchCursos(): Promise<Curso[]> {
   try {
-    const { data, error } = await supabase.from('cursos').select('*').order('titulo');
+    const { data, error } = await supabase.from('courses').select('*').order('title');
     if (error) return [];
-    return data || [];
+    return (data || []).map(mapCurso);
   } catch { return []; }
 }
 
 async function fetchModulos(): Promise<Modulo[]> {
   try {
-    const { data, error } = await supabase.from('modulos').select('*').order('curso_id, ordem');
+    const { data, error } = await supabase.from('modules').select('*').order('course_id, order_index');
     if (error) return [];
-    return data || [];
+    return (data || []).map(mapModulo);
   } catch { return []; }
 }
 
 async function fetchAulas(): Promise<Aula[]> {
   try {
-    const { data, error } = await supabase.from('aulas').select('*').order('modulo_id, ordem');
+    const { data, error } = await supabase.from('lessons').select('*').order('module_id, order_index');
     if (error) return [];
-    return data || [];
+    return (data || []).map(mapAula);
   } catch { return []; }
 }
 
@@ -378,10 +425,45 @@ async function fetchProgressoAluno(): Promise<Progresso[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     const { data, error } = await supabase
-      .from('progresso_aluno')
+      .from('lesson_progress')
       .select('*')
       .eq('user_id', user.id);
     if (error) return [];
-    return data || [];
+    return (data || []).map(mapProgresso);
   } catch { return []; }
+}
+
+/**
+ * Marca/desmarca uma aula como concluída para o aluno logado.
+ * lesson_progress não tem constraint única — faz select→update|insert.
+ */
+export async function salvarProgressoAula(aulaId: string, concluida: boolean): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { data: existente } = await supabase
+      .from('lesson_progress')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('lesson_id', aulaId)
+      .maybeSingle();
+    if (existente?.id) {
+      const { error } = await supabase
+        .from('lesson_progress')
+        .update({ completed: concluida, completed_at: concluida ? new Date().toISOString() : null })
+        .eq('id', existente.id);
+      return !error;
+    }
+    const { error } = await supabase
+      .from('lesson_progress')
+      .insert({
+        user_id: user.id,
+        lesson_id: aulaId,
+        completed: concluida,
+        completed_at: concluida ? new Date().toISOString() : null,
+      });
+    return !error;
+  } catch {
+    return false;
+  }
 }

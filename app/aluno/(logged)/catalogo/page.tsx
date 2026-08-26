@@ -149,13 +149,13 @@ async function getUserCursoAcessos(): Promise<UserCursoAcesso[]> {
     const { supabase } = await import('@/lib/supabase');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
+    // Tabela real do schema full: course_enrollments (matrícula = acesso ativo)
     const { data, error } = await supabase
-      .from('user_curso_acessos')
-      .select('curso_id, status')
-      .eq('user_id', user.id)
-      .eq('status', 'ativo');
+      .from('course_enrollments')
+      .select('course_id')
+      .eq('user_id', user.id);
     if (error) return [];
-    return data || [];
+    return (data || []).map((e: { course_id: string }) => ({ curso_id: e.course_id, status: 'ativo' }));
   } catch {
     return [];
   }

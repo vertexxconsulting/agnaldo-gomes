@@ -47,22 +47,22 @@ export default function PerfilAlunoPage() {
           return;
         }
 
-        const { data: perfisData, error: perfisError } = await supabase
-          .from('perfis')
-          .select('nome, email, telefone, pontos, nivel, streak')
-          .eq('user_id', user.id)
+        const { data: perfilData, error: perfisError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, avatar_url, role')
+          .eq('id', user.id)
           .single();
 
-        if (perfisError || !perfisData) {
+        if (perfisError || !perfilData) {
           setProfile(MOCK_PROFILE);
         } else {
           setProfile({
-            nome: perfisData.nome || MOCK_PROFILE.nome,
-            email: perfisData.email || MOCK_PROFILE.email,
-            telefone: perfisData.telefone || MOCK_PROFILE.telefone,
-            pontos: perfisData.pontos || MOCK_PROFILE.pontos,
-            nivel: perfisData.nivel || MOCK_PROFILE.nivel,
-            streak: perfisData.streak || MOCK_PROFILE.streak,
+            nome: perfilData.full_name || MOCK_PROFILE.nome,
+            email: perfilData.email || user.email || MOCK_PROFILE.email,
+            telefone: MOCK_PROFILE.telefone,
+            pontos: MOCK_PROFILE.pontos,
+            nivel: MOCK_PROFILE.nivel,
+            streak: MOCK_PROFILE.streak,
             medalhas: MOCK_PROFILE.medalhas,
           });
         }
@@ -79,10 +79,12 @@ export default function PerfilAlunoPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase
-          .from('perfis')
-          .update({ nome, email, telefone })
-          .eq('user_id', user.id);
+        // profiles só tem full_name/email — telefone fica apenas no estado local
+        const { error } = await supabase
+          .from('profiles')
+          .update({ full_name: nome })
+          .eq('id', user.id);
+        if (error) throw error;
       }
       setProfile(prev => ({ ...prev, nome, email, telefone }));
       alert('Dados salvos!');

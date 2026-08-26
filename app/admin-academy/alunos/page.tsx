@@ -40,29 +40,71 @@ export default function AdminAlunosPage() {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('alunos')
-          .select(`
-            id, user_id, nome, email, status,
-            user_curso_acessos!inner (curso_id, progresso_percentual)
-          `)
-          .order('nome');
+        // Schema real: perfis (role STUDENT) + matrículas + cursos + progresso
+        const [perfisRes, matriculasRes, cursosRes, modulosRes, aulasRes, progressoRes] = await Promise.all([
+          supabase.from('profiles').select('id, email, full_name').eq('role', 'STUDENT').order('full_name'),
+          supabase.from('course_enrollments').select('user_id, course_id'),
+          supabase.from('courses').select('id, title'),
+          supabase.from('modules').select('id, course_id'),
+          supabase.from('lessons').select('id, module_id'),
+          supabase.from('lesson_progress').select('user_id, lesson_id, completed'),
+        ]);
 
-        if (error || !data || data.length === 0) {
+        const perfisData = perfisRes.data;
+        if (perfisRes.error || !perfisData || perfisData.length === 0) {
           setAlunos(MOCK_ALUNOS);
-        } else {
-          // Mapear dados reais
-          const mapped: Aluno[] = data.map((a: any) => ({
-            id: a.id,
-            user_id: a.user_id,
-            nome: a.nome,
-            email: a.email,
-            cursos: a.user_curso_acessos?.map((aca: any) => aca.curso_id) || [],
-            progresso: Math.max(...(a.user_curso_acessos?.map((aca: any) => aca.progresso_percentual) || [0]), 0),
-            status: a.status as Aluno['status']
-          }));
-          setAlunos(mapped);
+          setLoading(false);
+          return;
         }
+
+        // total de aulas por curso (via módulos)
+        const aulasPorModulo = new Map<string, number>();
+        ((aulasRes.data || []) as any[]).forEach(a => {
+          aulasPorModulo.set(a.module_id, (aulasPorModulo.get(a.module_id) ?? 0) + 1);
+        });
+        const aulasPorCurso = new Map<string, number>();
+        ((modulosRes.data || []) as any[]).forEach(m => {
+          aulasPorCurso.set(m.course_id, (aulasPorCurso.get(m.course_id) ?? 0) + (aulasPorModulo.get(m.id) ?? 0));
+        });
+
+        const cursoTitulo = new Map(((cursosRes.data || []) as any[]).map(c => [c.id, c.title]));
+        const concluidasPorUsuario = new Map<string, Set<string>>();
+        ((progressoRes.data || []) as any[]).forEach(p => {
+          if (!p.completed) return;
+          if (!concluidasPorUsuario.has(p.user_id)) concluidasPorUsuario.set(p.user_id, new Set());
+          concluidasPorUsuario.get(p.user_id)!.add(p.lesson_id);
+        });
+        // aula -> curso para localizar progresso por matrícula
+        const cursoDaAula = new Map<string, string>();
+        ((modulosRes.data || []) as any[]).forEach(m => {
+          ((aulasRes.data || []) as any[]).forEach(a => {
+            if (a.module_id === m.id) cursoDaAula.set(a.id, m.course_id);
+          });
+        });
+
+        const mapped: Aluno[] = perfisData.map((p: any) => {
+          const matriculas = ((matriculasRes.data || []) as any[]).filter(e => e.user_id === p.id);
+          const cursosIds = [...new Set(matriculas.map(e => e.course_id))];
+          let progressoMax = 0;
+          cursosIds.forEach(cid => {
+            const total = aulasPorCurso.get(cid) ?? 0;
+            if (total === 0) return;
+            const concluidas = [...(concluidasPorUsuario.get(p.id) ?? [])]
+              .filter(aid => cursoDaAula.get(aid) === cid).length;
+            progressoMax = Math.max(progressoMax, Math.round((concluidas / total) * 100));
+          });
+          const status: Aluno['status'] = progressoMax >= 100 ? 'Concluído' : 'Ativo';
+          return {
+            id: p.id,
+            user_id: p.id,
+            nome: p.full_name || 'Sem nome',
+            email: p.email || '',
+            cursos: cursosIds.map(cid => cursoTitulo.get(cid) ?? cid),
+            progresso: progressoMax,
+            status,
+          };
+        });
+        setAlunos(mapped);
       } catch {
         // Supabase não disponível
         setAlunos(MOCK_ALUNOS);
