@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Eye, Filter, Download, Printer } from 'lucide-react';
+import { Search, Eye, Download, Printer, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { gerarEtiquetaPDF, ENVIO_DEFAULT, ConfiguracaoEnvio } from '@/lib/envios';
+import { SectionHeader } from '@/components/ui/Panel';
 
 export default function AdminLojaPedidos() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,17 +30,17 @@ export default function AdminLojaPedidos() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING_PAYMENT':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-800">Aguardando Pagamento</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/25">Aguardando Pagamento</span>;
       case 'PAID':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-800">Pago (Separar)</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/25">Pago (Separar)</span>;
       case 'SHIPPED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">Enviado</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/25">Enviado</span>;
       case 'DELIVERED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">Entregue</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-foreground/5 text-foreground/60 border border-foreground/10">Entregue</span>;
       case 'CANCELLED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800">Cancelado</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-danger/10 text-danger border border-danger/25">Cancelado</span>;
       default:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-800">{status}</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-foreground/5 text-foreground/60 border border-foreground/10">{status}</span>;
     }
   };
 
@@ -88,20 +89,20 @@ export default function AdminLojaPedidos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Pedidos</h1>
-          <p className="text-slate-500 mt-1">Acompanhe as vendas do seu estoque físico.</p>
-        </div>
-        <button className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
-          <Download size={18} />
-          <span>Exportar Relatório</span>
-        </button>
-      </div>
+      <SectionHeader
+        eyebrow="Vendas da loja"
+        title="Pedidos"
+        action={
+          <button className="bg-card border border-[var(--border-subtle)] hover:border-primary/40 hover:bg-primary/5 text-foreground/70 hover:text-primary font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+            <Download size={18} />
+            <span>Exportar Relatório</span>
+          </button>
+        }
+      />
 
       {/* Alerta Mercado Livre */}
-      <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm flex gap-3 shadow-sm">
-        <div className="mt-0.5">ℹ️</div>
+      <div className="bg-primary/10 border border-primary/20 text-foreground/80 px-4 py-3 rounded-xl text-sm flex gap-3 shadow-sm">
+        <Info className="text-primary shrink-0 mt-0.5" size={18} />
         <div>
           <p className="font-semibold">Pedidos do Mercado Livre não aparecem aqui!</p>
           <p className="opacity-90">As compras feitas nos seus links de afiliado do Mercado Livre são gerenciadas inteiramente pela plataforma deles. Esta tela lista apenas os pedidos pagos via Mercado Pago dos produtos do seu estoque local.</p>
@@ -109,56 +110,56 @@ export default function AdminLojaPedidos() {
       </div>
 
       {/* Tabela e Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--border-subtle)] shadow-sm overflow-hidden flex flex-col">
         
         {/* Barra de Busca */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
+        <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--background)] flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <input 
               type="text" 
               placeholder="Buscar por ID ou Nome do Cliente..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              className="w-full pl-10 pr-4 py-2 bg-card border border-[var(--border-subtle)] rounded-lg text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
           </div>
         </div>
 
         {/* Tabela */}
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="p-12 text-center text-slate-400">Carregando pedidos...</div>
+            <div className="p-12 text-center text-foreground/40">Carregando pedidos...</div>
           ) : filtered.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
+            <div className="p-12 text-center text-foreground/40">
               {searchTerm ? 'Nenhum pedido encontrado com esse filtro.' : 'Nenhum pedido registrado ainda. As vendas aparecerão aqui automaticamente.'}
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-white border-b border-slate-200">
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID do Pedido</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Etiqueta</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                <tr className="border-b border-[var(--border-subtle)]">
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider">ID do Pedido</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider">Data</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider">Cliente</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider">Total</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider">Status</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider text-right">Etiqueta</th>
+                  <th className="py-4 px-6 text-xs font-semibold text-foreground/45 uppercase tracking-wider text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border-subtle)]">
                 {filtered.map((pedido) => (
-                  <tr key={pedido.id} className="hover:bg-slate-50 transition-colors group">
+                  <tr key={pedido.id} className="hover:bg-foreground/[0.02] transition-colors group">
                     <td className="py-4 px-6">
-                      <span className="font-semibold text-slate-900">#{pedido.id?.toString().slice(0, 8)}</span>
+                      <span className="font-semibold text-foreground">#{pedido.id?.toString().slice(0, 8)}</span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-500">
+                    <td className="py-4 px-6 text-sm text-foreground/50">
                       {pedido.created_at ? new Date(pedido.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
                     <td className="py-4 px-6">
-                      <p className="font-semibold text-slate-900 text-sm">{pedido.customer_name || pedido.customer_email || '-'}</p>
+                      <p className="font-semibold text-foreground text-sm">{pedido.customer_name || pedido.customer_email || '-'}</p>
                     </td>
-                    <td className="py-4 px-6 text-sm font-bold text-slate-900">
+                    <td className="py-4 px-6 text-sm font-bold text-foreground">
                       R$ {Number(pedido.total || 0).toFixed(2).replace('.', ',')}
                     </td>
                     <td className="py-4 px-6">
@@ -168,7 +169,7 @@ export default function AdminLojaPedidos() {
                       <button
                         onClick={() => handlePrintLabel(pedido)}
                         disabled={['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(pedido.status)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-card border-primary/30 text-primary hover:bg-primary/10"
                         title="Baixar etiqueta de envio (PDF)"
                       >
                         {printId === pedido.id ? (
@@ -182,7 +183,7 @@ export default function AdminLojaPedidos() {
                       </button>
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <button className="p-2 text-slate-400 hover:text-amber-500 transition-colors bg-white border border-slate-200 rounded-lg shadow-sm" title="Ver Detalhes">
+                      <button className="p-2 text-foreground/40 hover:text-primary transition-colors bg-card border border-[var(--border-subtle)] rounded-lg shadow-sm" title="Ver Detalhes">
                         <Eye size={16} />
                       </button>
                     </td>
@@ -195,7 +196,7 @@ export default function AdminLojaPedidos() {
         
         {/* Paginação */}
         {!loading && filtered.length > 0 && (
-          <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm text-slate-500">
+          <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--background)] flex items-center justify-between text-sm text-foreground/50">
             <span>Mostrando {filtered.length} pedidos</span>
           </div>
         )}

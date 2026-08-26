@@ -49,7 +49,6 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
     params.then(resolved => setSlug(resolved.slug));
   }, [params]);
 
@@ -102,17 +101,17 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
       : filtered;
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#f8f9fa] pb-20">
+    <div className="flex flex-col w-full min-h-screen bg-background pb-20">
       {/* Header da Categoria */}
-      <section className="bg-white border-b border-slate-200 py-8">
+      <section className="bg-card border-b border-[var(--border-subtle)] py-8">
         <div className="container mx-auto px-4 md:px-6">
-          <Link href="/loja" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 transition-colors mb-4">
+          <Link href="/loja" className="inline-flex items-center gap-2 text-sm text-foreground/50 hover:text-primary transition-colors mb-4">
             <ArrowLeft size={16} /> Voltar para Loja
           </Link>
-          <h1 className="text-2xl md:text-4xl font-bold text-slate-900 uppercase tracking-widest">
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
             {categoryName}
           </h1>
-          <p className="text-slate-500 text-sm mt-2">
+          <p className="text-foreground/50 text-sm mt-2">
             Explore nossa seleção oficial de {categoryName.toLowerCase()}.
           </p>
         </div>
@@ -122,34 +121,34 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
       <section className="pt-12">
         <div className="container mx-auto px-4 md:px-6">
           {error && (
-            <div className="p-4 bg-amber-50 text-amber-800 rounded-sm mb-6 border border-amber-100 text-sm">
+            <div className="p-4 bg-warning/10 text-warning border border-warning/25 rounded-lg mb-6 text-sm">
               Exibindo catálogo de demonstração enquanto o banco de dados não está configurado.
             </div>
           )}
 
           {loading ? (
             <div className="flex items-center justify-center py-24">
-              <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : !displayList || displayList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <ShoppingBag size={24} className="text-slate-300" />
+              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mb-4">
+                <ShoppingBag size={24} className="text-foreground/30" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Nenhum produto encontrado</h3>
-              <p className="text-slate-500 text-sm max-w-md mb-6">
+              <h3 className="text-lg font-bold text-foreground mb-2">Nenhum produto encontrado</h3>
+              <p className="text-foreground/50 text-sm max-w-md mb-6">
                 Estamos preparando novidades para esta categoria. Volte em breve para conferir!
               </p>
-              <Link href="/loja" className="text-sm font-semibold text-amber-600 hover:text-amber-700 underline underline-offset-4">
+              <Link href="/loja" className="text-sm font-semibold text-primary hover:text-primary-hover underline underline-offset-4">
                 Ver todos os produtos
               </Link>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
               {displayList.map((produto) => (
-                <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
+                <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-card border border-[var(--border-subtle)] rounded-xl hover:shadow-lg hover:border-primary/50 transition-all duration-300 relative h-full overflow-hidden">
                   {/* Imagem */}
-                  <div className="relative w-full pt-[100%] bg-white">
+                  <div className="relative w-full pt-[100%] bg-card">
                     {produto.image_url ? (
                       <Image
                         src={produto.image_url}
@@ -158,24 +157,24 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                         className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
+                      <div className="absolute inset-0 flex items-center justify-center bg-background text-foreground/20">
                         <ShoppingBag size={48} />
                       </div>
                     )}
                   </div>
 
                   {/* Info */}
-                  <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
-                    <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1 mt-2">
+                  <div className="p-3 flex flex-col flex-1 border-t border-[var(--border-subtle)]">
+                    <h3 className="text-[12px] text-foreground/80 leading-tight mb-3 line-clamp-2 group-hover:text-primary transition-colors flex-1 mt-2">
                       {produto.name}
                     </h3>
 
                     <div className="mt-auto">
-                      <div className="text-lg font-bold text-slate-900 mb-3">
+                      <div className="text-base font-bold text-foreground mb-3">
                         R$ {Number(produto.price ?? 0).toFixed(2)}
                       </div>
 
-                      <button className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm">
+                      <button className="w-full bg-secondary text-foreground border border-transparent text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors flex items-center justify-center gap-2 rounded-lg shadow-sm">
                         <ShoppingBag size={14} /> Detalhes
                       </button>
                     </div>

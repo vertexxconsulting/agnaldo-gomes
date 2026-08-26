@@ -130,16 +130,16 @@ export default function LojaHome() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm shadow-xl flex items-center gap-2"
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg shadow-xl flex items-center gap-2"
           >
-            <ShoppingBag size={14} className="text-amber-500" /> {toast}
+            <ShoppingBag size={14} className="text-primary" /> {toast}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Banner Principal com Transição */}
-      <section className="relative w-full h-[250px] md:h-[350px] flex items-center overflow-hidden border-b border-slate-200">
-        <div className="absolute inset-0 w-full h-full bg-slate-900">
+      <section className="relative w-full h-[250px] md:h-[350px] flex items-center overflow-hidden border-b border-[var(--border-subtle)]">
+        <div className="absolute inset-0 w-full h-full bg-foreground">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}
@@ -173,30 +173,30 @@ export default function LojaHome() {
         </div>
 
         {/* Overlay com CTA e Barra de Busca */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-950/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/50" />
         <div className="relative z-10 container mx-auto px-4 md:px-6 flex flex-col items-center justify-center gap-5 text-center">
           <div>
-            <p className="text-[10px] md:text-[11px] font-bold text-amber-400 uppercase tracking-[0.3em] mb-2">
+            <p className="text-[10px] md:text-[11px] font-bold text-primary uppercase tracking-[0.3em] mb-2">
               A Loja Oficial do Agnaldo Gomes
             </p>
-            <h1 className="text-xl md:text-3xl font-bold text-white uppercase tracking-wider leading-tight">
-              Produtos selecionados pelo <span className="text-amber-400">profissional</span> que você admira
+            <h1 className="text-xl md:text-3xl font-serif font-bold text-white leading-tight text-balance">
+              Produtos selecionados pelo <span className="text-primary">profissional</span> que você admira
             </h1>
           </div>
           <div className="w-full max-w-xl flex gap-2">
             <div className="flex-1 relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar produtos, tratamentos, ferramentas..."
-                className="w-full bg-white/95 text-slate-900 placeholder-slate-500 text-sm pl-9 pr-4 py-3 rounded-sm border-2 border-transparent focus:border-amber-400 focus:outline-none transition-colors shadow-lg"
+                className="w-full bg-card text-foreground placeholder:text-foreground/40 text-sm pl-9 pr-4 py-3 rounded-lg border border-transparent focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none transition-colors shadow-lg"
               />
             </div>
             <Link
               href="/loja/carrinho"
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-widest px-5 rounded-sm shadow-lg transition-colors flex items-center gap-2"
+              className="bg-primary hover:bg-primary-hover text-primary-foreground font-bold text-xs uppercase tracking-widest px-5 rounded-lg shadow-lg transition-colors flex items-center gap-2"
             >
               <ShoppingBag size={15} />
               <span className="hidden sm:inline">Carrinho</span>
@@ -206,14 +206,14 @@ export default function LojaHome() {
       </section>
 
       {/* Barra de Categorias */}
-      <section className="sticky top-16 md:top-[72px] z-20 bg-white border-b border-slate-200 shadow-sm">
+      <section className="sticky top-16 md:top-[72px] z-20 bg-card/90 backdrop-blur-sm border-b border-[var(--border-subtle)] shadow-sm">
         <div className="container mx-auto px-4 md:px-6 py-2.5 flex gap-2 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`shrink-0 px-4 py-1.5 rounded-sm text-[11px] font-bold uppercase tracking-wider border transition-colors ${
+            className={`shrink-0 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-colors ${
               selectedCategory === null
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400 hover:text-slate-900'
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-card text-foreground/60 border-[var(--border-subtle)] hover:border-primary hover:text-foreground'
             }`}
           >
             Todos
@@ -222,10 +222,10 @@ export default function LojaHome() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-              className={`shrink-0 px-4 py-1.5 rounded-sm text-[11px] font-bold uppercase tracking-wider border transition-colors ${
+              className={`shrink-0 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-colors ${
                 selectedCategory === cat
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400 hover:text-slate-900'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-card text-foreground/60 border-[var(--border-subtle)] hover:border-primary hover:text-foreground'
               }`}
             >
               {cat}
@@ -239,10 +239,10 @@ export default function LojaHome() {
         <section className="pt-8">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base md:text-lg font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={16} className="text-amber-500" /> Destaques AG
+              <h2 className="text-base md:text-lg font-bold text-foreground flex items-center gap-2">
+                <Sparkles size={16} className="text-primary" /> Destaques AG
               </h2>
-              <Link href="/loja/categoria/mais-vendidos" className="text-[10px] text-amber-600 font-bold uppercase tracking-widest hover:text-amber-700 transition-colors flex items-center gap-1">
+              <Link href="/loja/categoria/mais-vendidos" className="text-[10px] text-primary font-bold uppercase tracking-widest hover:text-primary-hover transition-colors flex items-center gap-1">
                 Ver Todos <ArrowRight size={12} />
               </Link>
             </div>
@@ -259,28 +259,28 @@ export default function LojaHome() {
       <section id="produtos" className="pt-8">
         <div className="container mx-auto px-4 md:px-6">
 
-          <div className="flex justify-between items-center mb-5 pb-2 border-b border-slate-200">
-            <h2 className="text-base md:text-lg font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-              <Flame size={16} className="text-amber-500" />
+          <div className="flex justify-between items-center mb-5 pb-2 border-b border-[var(--border-subtle)]">
+            <h2 className="text-base md:text-lg font-bold text-foreground flex items-center gap-2">
+              <Flame size={16} className="text-primary" />
               {selectedCategory ?? (search ? `Resultados para "${search}"` : 'Mais Vendidos')}
               {filtered.length > 0 && (
-                <span className="text-[10px] font-medium text-slate-400 normal-case tracking-normal ml-2">({filtered.length})</span>
+                <span className="text-[10px] font-medium text-foreground/40 ml-2">({filtered.length})</span>
               )}
             </h2>
           </div>
 
           {loading ? (
-            <div className="py-20 flex justify-center items-center text-slate-500">
+            <div className="py-20 flex justify-center items-center text-foreground/50">
               Carregando produtos oficiais...
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-20 flex flex-col justify-center items-center text-center">
-              <Search size={40} className="text-slate-300 mb-4" />
-              <p className="font-bold text-slate-700 mb-1">Nenhum produto encontrado</p>
-              <p className="text-xs text-slate-400 mb-5">Tente outro termo ou categoria.</p>
+              <Search size={40} className="text-foreground/20 mb-4" />
+              <p className="font-bold text-foreground mb-1">Nenhum produto encontrado</p>
+              <p className="text-xs text-foreground/50 mb-5">Tente outro termo ou categoria.</p>
               <button
                 onClick={() => { setSearch(''); setSelectedCategory(null); }}
-                className="bg-slate-900 text-white px-5 py-2 text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition-colors rounded-sm"
+                className="bg-foreground text-background px-5 py-2 text-xs font-bold uppercase tracking-wider hover:bg-primary hover:text-primary-foreground transition-colors rounded-lg"
               >
                 Limpar filtros
               </button>
@@ -297,7 +297,7 @@ export default function LojaHome() {
       </section>
 
       {/* Faixa de confiança */}
-      <section className="mt-10 border-t border-slate-200 bg-slate-50">
+      <section className="mt-10 border-t border-[var(--border-subtle)] bg-secondary/40">
         <div className="container mx-auto px-4 md:px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-5">
           {[
             { icon: Truck, title: 'Entrega Garantida', desc: 'Motoboy local no mesmo dia ou Correios para todo Brasil' },
@@ -306,9 +306,9 @@ export default function LojaHome() {
             { icon: ShoppingBag, title: 'Retire no Salon', desc: 'Retire seu pedido no salon sem custo de frete' },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex flex-col items-center text-center gap-2">
-              <Icon size={22} className="text-amber-600" />
-              <p className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">{title}</p>
-              <p className="text-[10px] text-slate-500 leading-relaxed max-w-[220px]">{desc}</p>
+              <Icon size={22} className="text-primary" />
+              <p className="text-[11px] font-bold text-foreground uppercase tracking-wider">{title}</p>
+              <p className="text-[10px] text-foreground/50 leading-relaxed max-w-[220px]">{desc}</p>
             </div>
           ))}
         </div>
@@ -325,29 +325,29 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
   const outOfStock = produto.type === 'LOCAL_STOCK' && produto.stock_quantity === 0;
 
   return (
-    <Link href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
+    <Link href={`/loja/p/${produto.id}`} className="group flex flex-col bg-card border border-[var(--border-subtle)] rounded-xl hover:shadow-lg hover:border-primary/50 transition-all duration-300 relative h-full overflow-hidden">
 
       {/* Badges */}
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
         {produto.tagline && (
-          <span className="bg-slate-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm shadow">
+          <span className="bg-foreground text-background text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md shadow">
             {produto.tagline}
           </span>
         )}
         {isAffiliate && (
-          <span className="bg-blue-100 text-blue-800 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border border-blue-200">
+          <span className="bg-warning/10 text-warning border border-warning/25 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
             Mercado Livre
           </span>
         )}
         {outOfStock && (
-          <span className="bg-red-100 text-red-700 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border border-red-200">
+          <span className="bg-danger/10 text-danger border border-danger/25 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
             Esgotado
           </span>
         )}
       </div>
 
       {/* Imagem */}
-      <div className="relative w-full pt-[100%] bg-white">
+      <div className="relative w-full pt-[100%] bg-card">
         {produto.image_url ? (
           <Image
             src={produto.image_url}
@@ -356,33 +356,33 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
             className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
+          <div className="absolute inset-0 flex items-center justify-center bg-background text-foreground/20">
             <ShoppingBag size={48} />
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
-        <h3 className="text-[12px] text-slate-700 leading-tight mb-1 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1 mt-2">
+      <div className="p-3 flex flex-col flex-1 border-t border-[var(--border-subtle)]">
+        <h3 className="text-[12px] text-foreground/80 leading-tight mb-1 line-clamp-2 group-hover:text-primary transition-colors flex-1 mt-2">
           {produto.name}
         </h3>
 
         <div className="flex items-center gap-1 mb-2">
-          <Star size={10} className="text-amber-400" fill="currentColor" />
-          <span className="text-[10px] font-bold text-slate-800">{produto.rating.toFixed(1)}</span>
-          <span className="text-[9px] text-slate-400">({produto.reviews})</span>
+          <Star size={10} className="text-primary" fill="currentColor" />
+          <span className="text-[10px] font-bold text-foreground">{produto.rating.toFixed(1)}</span>
+          <span className="text-[9px] text-foreground/40">({produto.reviews})</span>
         </div>
 
         <div className="mt-auto">
-          <div className="text-lg font-bold text-slate-900 mb-3">
+          <div className="text-base font-bold text-foreground mb-3">
             {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2)}` : 'Ver oferta'}
           </div>
 
           <button
             onClick={(e) => { e.preventDefault(); onAdd(produto); }}
             disabled={outOfStock}
-            className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:group-hover:bg-slate-100 disabled:group-hover:text-slate-900"
+            className="w-full bg-secondary text-foreground border border-transparent text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors flex items-center justify-center gap-2 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:group-hover:bg-secondary disabled:group-hover:text-foreground"
           >
             <ShoppingBag size={14} />
             {outOfStock ? 'Indisponível' : isAffiliate ? 'Ver Oferta' : 'Detalhes'}

@@ -94,10 +94,10 @@ export default function NoivasPage() {
 
       {/* Formulário de novo agendamento */}
       {mostrarForm && (
-        <form onSubmit={e => handleNovo(e.currentTarget)} className="mt-6 bg-white border border-[var(--border-subtle)] rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={e => handleNovo(e.currentTarget)} className="mt-6 bg-card border border-[var(--border-subtle)] rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-bold mb-1.5">Pacote</label>
-            <select name="pacote_id" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+            <select name="pacote_id" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
               {pacotes.map(p => (
                 <option key={p.id} value={p.id}>{p.nome} — {formatBRL(p.preco)}</option>
               ))}
@@ -105,31 +105,31 @@ export default function NoivasPage() {
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Nome da Noiva</label>
-            <input name="nome_noiva" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Nome completo" />
+            <input name="nome_noiva" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Nome completo" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Telefone</label>
-            <input name="telefone" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="(42) 99999-9999" />
+            <input name="telefone" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="(42) 99999-9999" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">E-mail (opcional)</label>
-            <input name="email" type="email" className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="email@exemplo.com" />
+            <input name="email" type="email" className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="email@exemplo.com" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Data do Casamento</label>
-            <input name="data_evento" type="date" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            <input name="data_evento" type="date" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Data do Agendamento (serviço/prova)</label>
-            <input name="data_agendamento" type="date" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            <input name="data_agendamento" type="date" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Horário</label>
-            <input name="hora" type="time" required defaultValue="08:00" className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            <input name="hora" type="time" required defaultValue="08:00" className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5">Profissional</label>
-            <select name="profissional_id" required className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+            <select name="profissional_id" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
               {profissionais.map(p => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
@@ -137,7 +137,7 @@ export default function NoivasPage() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-bold mb-1.5">Observações</label>
-            <textarea name="observacoes" rows={2} className="w-full bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Detalhes do visual, madrinhais, local do evento..." />
+            <textarea name="observacoes" rows={2} className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Detalhes do visual, madrinhais, local do evento..." />
           </div>
           <div className="md:col-span-2 flex items-center justify-end gap-3">
             <button type="button" onClick={() => setMostrarForm(false)} className="px-5 py-2.5 text-sm font-bold text-foreground/60 hover:text-foreground">Cancelar</button>
@@ -163,7 +163,7 @@ export default function NoivasPage() {
             className={`px-4 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition-colors ${
               filtroStatus === s
                 ? 'bg-foreground text-background border-foreground'
-                : 'bg-white border-[var(--border-subtle)] text-foreground/60 hover:border-primary/50'
+                : 'bg-card border-[var(--border-subtle)] text-foreground/60 hover:border-primary/50'
             }`}
           >
             {s === 'todos' ? 'Todos' : NOIVA_STATUS_LABEL[s as StatusAgendamentoNoiva]}
@@ -174,7 +174,7 @@ export default function NoivasPage() {
       {/* Lista de agendamentos */}
       <div className="mt-6 flex flex-col gap-4">
         {sorted.length === 0 && (
-          <div className="bg-white border border-[var(--border-subtle)] rounded-xl p-10 text-center text-sm text-foreground/50">
+          <div className="bg-card border border-[var(--border-subtle)] rounded-xl p-10 text-center text-sm text-foreground/50">
             Nenhum agendamento de noiva por aqui ainda. Clique em "Novo Agendamento de Noiva" para começar.
           </div>
         )}
@@ -187,7 +187,7 @@ export default function NoivasPage() {
           const Icon = ag.pacote_id === 'noiva-vip' ? Crown : ag.pacote_id === 'noiva-dia-completo' ? Heart : ag.pacote_id === 'noiva-prova' ? Camera : ag.pacote_id === 'noiva-penteado' ? Star : Users;
           const aberto = detalheAberto === ag.id;
           return (
-            <div key={ag.id} className="bg-white border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+            <div key={ag.id} className="bg-card border border-[var(--border-subtle)] rounded-xl overflow-hidden">
               <div className="p-5 flex items-center gap-4 flex-wrap">
                 <div className={`w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0`}>
                   <Icon size={20} />
@@ -222,7 +222,7 @@ export default function NoivasPage() {
                     <button
                       onClick={() => excluirAgendamentoNoiva(ag.id)}
                       title="Cancelar agendamento"
-                      className="inline-flex items-center gap-1.5 border border-red-200 text-red-600 bg-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors"
+                      className="inline-flex items-center gap-1.5 border border-danger/30 text-danger bg-card px-3 py-2 rounded-lg text-xs font-bold hover:bg-danger/10 transition-colors"
                     >
                       <XCircle size={13} />
                     </button>
@@ -232,7 +232,7 @@ export default function NoivasPage() {
 
               {/* Painel de detalhes / ações */}
               {aberto && (
-                <div className="border-t border-[var(--border-subtle)] bg-slate-50/50 px-5 py-4 flex flex-col gap-3">
+                <div className="border-t border-[var(--border-subtle)] bg-[var(--background)] px-5 py-4 flex flex-col gap-3">
                   {ag.status === 'sinal_pendente' && (
                     <div className="flex items-center gap-2 text-amber-800 bg-amber-50 border border-amber-200 text-xs rounded-lg px-4 py-3">
                       <AlertTriangle size={14} className="shrink-0" />
@@ -243,7 +243,7 @@ export default function NoivasPage() {
                     {ag.status === 'sinal_pago' && !podeConf && (
                       <button
                         onClick={() => setPagamentoAberto(ag.id)}
-                        className="inline-flex items-center gap-1.5 bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-amber-600 transition-colors"
+                        className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary-hover transition-colors"
                       >
                         <Receipt size={13} /> Completar Sinal ({formatBRL(Math.max(0, ((pacote?.preco ?? 0) * NOIVA_SINAL_MIN_PCT) / 100 - pago))})
                       </button>
@@ -251,7 +251,7 @@ export default function NoivasPage() {
                     {(ag.status === 'sinal_pago' || ag.status === 'sinal_pendente') && podeConf && (
                       <button
                         onClick={() => atualizarStatusNoiva(ag.id, 'confirmado')}
-                        className="inline-flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors"
+                        className="inline-flex items-center gap-1.5 bg-success text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-success/90 transition-colors"
                       >
                         <CheckCircle2 size={13} /> Confirmar Agendamento (Sinal ≥ {NOIVA_SINAL_MIN_PCT}%)
                       </button>
@@ -267,7 +267,7 @@ export default function NoivasPage() {
                     {ag.status === 'confirmado' && (
                       <button
                         onClick={() => atualizarStatusNoiva(ag.id, 'sinal_pago')}
-                        className="inline-flex items-center gap-1.5 border border-red-200 text-red-600 bg-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors"
+                        className="inline-flex items-center gap-1.5 border border-danger/30 text-danger bg-card px-4 py-2 rounded-lg text-xs font-bold hover:bg-danger/10 transition-colors"
                       >
                         <XCircle size={13} /> Reverter Confirmação
                       </button>
@@ -278,9 +278,9 @@ export default function NoivasPage() {
                       <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/50 mb-2">Histórico de Pagamentos</h4>
                       <div className="flex flex-col gap-1.5">
                         {pagos.map(pg => (
-                          <div key={pg.id} className="flex items-center justify-between bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm">
+                          <div key={pg.id} className="flex items-center justify-between bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm">
                             <span className="capitalize font-medium">{pg.tipo === 'sinal' ? `Sinal (${NOIVA_SINAL_MIN_PCT}%)` : pg.tipo === 'final' ? 'Pagamento final' : 'Complemento'} — {pg.forma.toUpperCase()}</span>
-                            <span className="font-bold text-emerald-700">{formatBRL(pg.valor)} <span className="text-xs font-normal text-foreground/50">· {pg.data_pagamento ? new Date(pg.data_pagamento).toLocaleDateString('pt-BR') : ''}</span></span>
+                            <span className="font-bold text-success">{formatBRL(pg.valor)} <span className="text-xs font-normal text-foreground/50">· {pg.data_pagamento ? new Date(pg.data_pagamento).toLocaleDateString('pt-BR') : ''}</span></span>
                           </div>
                         ))}
                       </div>
@@ -385,8 +385,8 @@ function PagamentoModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+      <div className="bg-card rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between sticky top-0 bg-card rounded-t-2xl">
           <div>
             <h3 className="font-bold">Pagamento — {ag.nome_noiva}</h3>
             <p className="text-xs text-foreground/60 mt-0.5">{pacote.nome} · Total {formatBRL(pacote.preco)}</p>
@@ -397,13 +397,13 @@ function PagamentoModal({
         <div className="p-6 flex flex-col gap-5">
           {/* Resumo financeiro */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-50 border border-[var(--border-subtle)] rounded-lg p-3 text-center">
+            <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-foreground/50 font-bold">Total</div>
               <div className="font-bold">{formatBRL(pacote.preco)}</div>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-bold">Pago</div>
-              <div className="font-bold text-emerald-700">{formatBRL(pago)}</div>
+            <div className="bg-success/10 border border-success/20 rounded-lg p-3 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-success font-bold">Pago</div>
+              <div className="font-bold text-success">{formatBRL(pago)}</div>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-amber-700 font-bold">Sinal alvo ({NOIVA_SINAL_MIN_PCT}%)</div>
@@ -433,7 +433,7 @@ function PagamentoModal({
               step="0.01"
               value={valor}
               onChange={e => setValor(Number(e.target.value))}
-              className="bg-white border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
 
@@ -458,31 +458,31 @@ function PagamentoModal({
           {forma === 'pix' && (
             <div className="flex flex-col gap-2">
               {(pixGerado || qrBase64) ? (
-                <div className="bg-slate-900 text-white rounded-lg p-4 flex flex-col gap-3">
+                <div className="bg-foreground text-background rounded-lg p-4 flex flex-col gap-3">
                   {qrBase64 ? (
-                    <div className="flex flex-col items-center gap-2 bg-white rounded-lg p-3 self-center">
+                    <div className="flex flex-col items-center gap-2 bg-background rounded-lg p-3 self-center">
                       <img src={`data:image/png;base64,${qrBase64}`} alt="QR Code PIX Mercado Pago" className="w-40 h-40 object-contain" />
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">PIX oficial — Mercado Pago</span>
+                      <span className="text-[10px] uppercase tracking-wider text-foreground/50 font-bold">PIX oficial — Mercado Pago</span>
                     </div>
                   ) : null}
                   {pixGerado ? (
                     <>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wider text-white/60 font-bold">PIX Copia e Cola</span>
-                        <button onClick={() => copiarPix(pixGerado)} className="inline-flex items-center gap-1.5 bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-white/90">
+                        <span className="text-xs uppercase tracking-wider text-background/60 font-bold">PIX Copia e Cola</span>
+                        <button onClick={() => copiarPix(pixGerado)} className="inline-flex items-center gap-1.5 bg-secondary text-foreground text-xs font-bold px-3 py-1.5 rounded-md hover:bg-card">
                           {copiado ? <Check size={12} /> : <Copy size={12} />} {copiado ? 'Copiado!' : 'Copiar'}
                         </button>
                       </div>
-                      <p className="text-[11px] font-mono break-all text-white/80">{pixGerado}</p>
+                      <p className="text-[11px] font-mono break-all text-background/80">{pixGerado}</p>
                     </>
                   ) : (
-                    <p className="text-xs text-emerald-300 font-bold flex items-center gap-2">
+                    <p className="text-xs text-success/80 font-bold flex items-center gap-2">
                       <CheckCircle2 size={14} /> Pagamento PIX criado no Mercado Pago — o código copia-e-cola foi registrado.
                     </p>
                   )}
                 </div>
               ) : (
-                <button type="button" onClick={gerarPix} className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white rounded-lg px-4 py-3 text-sm font-bold hover:bg-slate-800 transition-colors">
+                <button type="button" onClick={gerarPix} className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg px-4 py-3 text-sm font-bold hover:bg-primary-hover transition-colors">
                   <QrCode size={16} /> Gerar PIX de {formatBRL(valor)}
                 </button>
               )}
