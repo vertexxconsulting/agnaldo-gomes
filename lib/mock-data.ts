@@ -20,20 +20,9 @@ import {
 // ────────────────────────────────────────────
 // SERVIÇOS
 // ────────────────────────────────────────────
-export const MOCK_SERVICOS: Servico[] = [
-  { id: 's1', nome: 'Corte Feminino', categoria: 'Cabelo', duracao_min: 45, preco: 70, ativo: true, visivel_app: true },
-  { id: 's2', nome: 'Corte Masculino', categoria: 'Cabelo', duracao_min: 30, preco: 50, ativo: true, visivel_app: true },
-  { id: 's3', nome: 'Corte Infantil', categoria: 'Cabelo', duracao_min: 25, preco: 45, ativo: true, visivel_app: true },
-  { id: 's4', nome: 'Coloração Completa', categoria: 'Coloração', duracao_min: 120, preco: 250, ativo: true, visivel_app: true },
-  { id: 's5', nome: 'Mechas / Luzes', categoria: 'Coloração', duracao_min: 150, preco: 350, ativo: true, visivel_app: true },
-  { id: 's6', nome: 'Morena Iluminada', categoria: 'Coloração', duracao_min: 180, preco: 320, ativo: true, visivel_app: true },
-  { id: 's7', nome: 'Terapia Capilar', categoria: 'Tratamento', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
-  { id: 's8', nome: 'Escova Progressiva', categoria: 'Tratamento', duracao_min: 90, preco: 180, ativo: true, visivel_app: true },
-  { id: 's9', nome: 'Manicure', categoria: 'Unhas', duracao_min: 40, preco: 40, ativo: true, visivel_app: true },
-  { id: 's10', nome: 'Pedicure', categoria: 'Unhas', duracao_min: 50, preco: 50, ativo: true, visivel_app: true },
-  { id: 's11', nome: 'Design de Sobrancelhas', categoria: 'Estética', duracao_min: 30, preco: 35, ativo: true, visivel_app: true },
-  { id: 's12', nome: 'Barba', categoria: 'Barbearia', duracao_min: 20, preco: 30, ativo: true, visivel_app: true },
-];
+// Sem mock: os serviços reais vivem na tabela salon_services.
+// A lista vazia é intencional — o cadastro acontece no painel e persiste no DB.
+export const MOCK_SERVICOS: Servico[] = [];
 
 // ────────────────────────────────────────────
 // PROFISSIONAIS
@@ -160,8 +149,8 @@ export async function getProfissionais(): Promise<Profissional[]> {
 
 export async function getServicos(ativoOnly = false): Promise<Servico[]> {
   const real = await fetchServicos(ativoOnly);
-  const fallback = ativoOnly ? MOCK_SERVICOS.filter(s => s.ativo) : MOCK_SERVICOS;
-  return real.length > 0 ? real : fallback;
+  // Sem fallback mock: tabela vazia = lista vazia (cadastro real no painel)
+  return real;
 }
 
 export async function getProfissionalServico(): Promise<ProfissionalServico[]> {

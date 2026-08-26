@@ -5,7 +5,12 @@ import { Plus, Edit, Trash2, Search, Clock, DollarSign, Eye, EyeOff } from 'luci
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { getServicos, getProfissionalServico, getProfissionais, getCategorias } from '@/lib/mock-data';
+import {
+  getServicos, getProfissionalServico, getProfissionais,
+} from '@/lib/mock-data';
+import {
+  criarServico, atualizarServico, excluirServico,
+} from '@/lib/supabase-queries';
 import type { Servico, Profissional, ProfissionalServico } from '@/lib/gestao-types';
 
 export default function ServicosPage() {
@@ -18,7 +23,7 @@ export default function ServicosPage() {
   const [editando, setEditando] = useState<Servico | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  // Carregar dados do Supabase (com fallback para mock)
+  // Carregar dados do Supabase
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
@@ -35,7 +40,8 @@ export default function ServicosPage() {
     carregarDados();
   }, []);
 
-  const categorias = getCategorias();
+  // Categorias derivadas dos serviços reais carregados
+  const categorias = [...new Set(servicos.map(s => s.categoria))].sort();
 
   const filtrados = servicos.filter(s => {
     const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) || s.categoria.toLowerCase().includes(busca.toLowerCase());
@@ -48,34 +54,71 @@ export default function ServicosPage() {
     return profissionaisData.filter(p => ids.includes(p.id)).map(p => p.nome);
   };
 
-  const toggleAtivo = (id: string) => {
-    setServicos(prev => prev.map(s => s.id === id ? { ...s, ativo: !s.ativo } : s));
+  const toggleAtivo = async (id: string) => {
+    const atual = servicos.find(s => s.id === id);
+    if (!atual) return;
+    const resultado = await atualizarServico(id, { ativo: !atual.ativo });
+    if (resultado.ok) {
+      setServicos(prev => prev.map(s => s.id === id ? { ...s, ativo: !s.ativo } : s));
+    } else {
+      alert(`Erro ao atualizar: ${resultado.error}`);
+    }
   };
 
-  const toggleVisivel = (id: string) => {
-    setServicos(prev => prev.map(s => s.id === id ? { ...s, visivel_app: !s.visivel_app } : s));
+  const toggleVisivel = async (id: string) => {
+    const atual = servicos.find(s => s.id === id);
+    if (!atual) return;
+    const resultado = await atualizarServico(id, { visivel_app: !atual.visivel_app });
+    if (resultado.ok) {
+      setServicos(prev => prev.map(s => s.id === id ? { ...s, visivel_app: !s.visivel_app } : s));
+    } else {
+      alert(`Erro ao atualizar: ${resultado.error}`);
+    }
   };
 
-  const excluir = (id: string) => {
-    setServicos(prev => prev.filter(s => s.id !== id));
+  const excluir = async (id: string) => {
+    if (!confirm('Excluir este serviço? Ele será removido também dos profissionais vinculados.')) return;
+    const resultado = await excluirServico(id);
+    if (resultado.ok) {
+      setServicos(prev => prev.filter(s => s.id !== id));
+      setProfisiconalServicoData(prev => prev.filter(ps => ps.servico_id !== id));
+    } else {
+      alert(`Erro ao excluir: ${resultado.error}`);
+    }
   };
 
-  const salvar = (e: React.FormEvent<HTMLFormElement>) => {
+  const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const novoServico: Servico = {
-      id: editando?.id ?? `s${Date.now()}`,
+    const payload = {
       nome: form.get('nome') as string,
       categoria: form.get('categoria') as string,
       duracao_min: Number(form.get('duracao_min')),
       preco: Number(form.get('preco')),
-      ativo: true,
-      visivel_app: true,
     };
+
     if (editando) {
-      setServicos(prev => prev.map(s => s.id === editando.id ? novoServico : s));
+      const resultado = await atualizarServico(editando.id, payload);
+      if (!resultado.ok) {
+        alert(`Erro ao salvar: ${resultado.error}`);
+        return;
+      }
+      setServicos(prev => prev.map(s => s.id === editando.id ? { ...s, ...payload } : s));
     } else {
-      setServicos(prev => [...prev, novoServico]);
+      const resultado = await criarServico({ ...payload, ativo: true, visivel_app: true });
+      if (resultado.error || !resultado.id) {
+        alert(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
+        return;
+      }
+      setServicos(prev => [...prev, {
+        id: resultado.id!,
+        nome: payload.nome,
+        categoria: payload.categoria,
+        duracao_min: payload.duracao_min,
+        preco: payload.preco,
+        ativo: true,
+        visivel_app: true,
+      }]);
     }
     setEditando(null);
     setShowForm(false);

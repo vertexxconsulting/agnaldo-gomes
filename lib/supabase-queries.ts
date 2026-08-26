@@ -462,3 +462,77 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
 
   return { ok: true };
 }
+
+// ── SERVIÇOS MUTATIONS ───────────────────────────────────
+
+export async function criarServico(payload: {
+  nome: string;
+  categoria: string;
+  duracao_min: number;
+  preco: number;
+  ativo?: boolean;
+  visivel_app?: boolean;
+}): Promise<{ id?: string; error?: string }> {
+  const { data, error } = await supabase
+    .from(TBL.servicos)
+    .insert({
+      name: payload.nome,
+      category: payload.categoria,
+      duration_minutes: payload.duracao_min,
+      price: payload.preco,
+      active: payload.ativo ?? true,
+      visible_in_app: payload.visivel_app ?? true,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    logSupabaseError('[supabase] criarServico error:', error);
+    return { error: traduzirErro(error) };
+  }
+  return { id: data.id };
+}
+
+export async function atualizarServico(id: string, payload: Partial<{
+  nome: string;
+  categoria: string;
+  duracao_min: number;
+  preco: number;
+  ativo: boolean;
+  visivel_app: boolean;
+}>): Promise<{ ok: boolean; error?: string }> {
+  const patch: Row = {};
+  if (payload.nome !== undefined) patch.name = payload.nome;
+  if (payload.categoria !== undefined) patch.category = payload.categoria;
+  if (payload.duracao_min !== undefined) patch.duration_minutes = payload.duracao_min;
+  if (payload.preco !== undefined) patch.price = payload.preco;
+  if (payload.ativo !== undefined) patch.active = payload.ativo;
+  if (payload.visivel_app !== undefined) patch.visible_in_app = payload.visivel_app;
+
+  const { error } = await supabase
+    .from(TBL.servicos)
+    .update(patch)
+    .eq('id', id);
+
+  if (error) {
+    logSupabaseError(`[supabase] atualizarServico(${id}) error:`, error);
+    return { ok: false, error: traduzirErro(error) };
+  }
+  return { ok: true };
+}
+
+export async function excluirServico(id: string): Promise<{ ok: boolean; error?: string }> {
+  // Remove vínculos antes (FK em salon_professional_services)
+  await supabase.from(TBL.profServicos).delete().eq('service_id', id);
+
+  const { error } = await supabase
+    .from(TBL.servicos)
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    logSupabaseError(`[supabase] excluirServico(${id}) error:`, error);
+    return { ok: false, error: traduzirErro(error) };
+  }
+  return { ok: true };
+}
