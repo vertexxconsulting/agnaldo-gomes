@@ -81,17 +81,22 @@ export default function ProfissionaisPage() {
     const prof = profissionais.find(p => p.id === id);
     if (!prof) return;
     const novoAtivo = !prof.ativo;
-    const sucesso = await atualizarProfissional(id, { ativo: novoAtivo });
-    if (sucesso) {
+    const resultado = await atualizarProfissional(id, { ativo: novoAtivo });
+    if (resultado.ok) {
       setProfissionais(prev => prev.map(p => p.id === id ? { ...p, ativo: novoAtivo } : p));
+    } else {
+      alert(`Erro ao atualizar: ${resultado.error}`);
     }
   };
 
   const excluir = async (id: string) => {
-    const sucesso = await excluirProfissional(id);
-    if (sucesso) {
+    if (!confirm('Excluir este profissional?')) return;
+    const resultado = await excluirProfissional(id);
+    if (resultado.ok) {
       setProfissionais(prev => prev.filter(p => p.id !== id));
       setProfServCache(prev => prev.filter(ps => ps.profissional_id !== id));
+    } else {
+      alert(`Erro ao excluir: ${resultado.error}`);
     }
   };
 
@@ -128,13 +133,19 @@ export default function ProfissionaisPage() {
     let profissionalId: string;
 
     if (editando) {
-      const sucesso = await atualizarProfissional(editando.id, profissionalData);
-      if (!sucesso) return;
+      const resultado = await atualizarProfissional(editando.id, profissionalData);
+      if (!resultado.ok) {
+        alert(`Erro ao salvar: ${resultado.error}`);
+        return;
+      }
       profissionalId = editando.id;
       setProfissionais(prev => prev.map(p => p.id === editando.id ? { ...p, ...profissionalData } : p));
     } else {
       const resultado = await criarProfissional(profissionalData);
-      if (!resultado) return;
+      if (resultado.error || !resultado.id) {
+        alert(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
+        return;
+      }
       profissionalId = resultado.id;
       const novo: Profissional = {
         id: profissionalId,
@@ -145,8 +156,11 @@ export default function ProfissionaisPage() {
     }
 
     // Vincular serviços
-    const sucessoVinculo = await vincularProfissionalServicos(profissionalId, servicosSelecionados);
-    if (sucessoVinculo) {
+    const vinculo = await vincularProfissionalServicos(profissionalId, servicosSelecionados);
+    if (!vinculo.ok) {
+      alert(`Profissional salvo, mas houve erro ao vincular serviços: ${vinculo.error}`);
+    }
+    if (vinculo.ok) {
       setProfServCache(prev => {
         const filtrado = prev.filter(ps => ps.profissional_id !== profissionalId);
         const novosVinculos = servicosSelecionados.map(sId => ({

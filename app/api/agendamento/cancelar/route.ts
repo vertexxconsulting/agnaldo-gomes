@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { getWhatsAppCancelUrl } from '@/lib/whatsapp';
 
 export async function POST(req: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
+    // Rota pública (links do WhatsApp sem sessão) — usa service role para bypass de RLS
+    const supabase = await getSupabaseServiceClient();
     const body = await req.json();
     const { id, motivo, reagendamentoRecusado } = body;
 
@@ -13,9 +14,9 @@ export async function POST(req: Request) {
       .from('salon_appointments')
       .select(`
         *,
-        cliente:salon_customers(nome, telefone),
-        servico:salon_services(nome),
-        profissional:salon_professionals(nome)
+        cliente:salon_customers(id, name, phone),
+        servico:salon_services(id, name, price),
+        profissional:salon_professionals(id, name)
       `)
       .eq('id', id)
       .single();
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     const { error: updateError } = await supabase
       .from('salon_appointments')
       .update({
-        status: 'cancelado',
+        status: 'CANCELLED',
         motivo_cancelamento: motivo,
         cancelado_em: new Date().toISOString(),
         reagendamento_proposto: reagendamentoRecusado ? true : false
@@ -40,13 +41,13 @@ export async function POST(req: Request) {
     // 3. Gerar URL do WhatsApp para notificar o Studio
     const whatsappUrl = getWhatsAppCancelUrl({
       id: agendamento.id,
-      cliente: agendamento.cliente.nome,
-      telefone: agendamento.cliente.telefone,
-      servico: agendamento.servico.nome,
-      profissional: agendamento.profissional.nome,
-      data: new Date(agendamento.data).toLocaleDateString('pt-BR'),
-      hora: agendamento.hora_inicio,
-      valor: 0, // Não relevante no cancelamento
+      cliente: agendamento.cliente?.name ?? '',
+      telefone: agendamento.cliente?.phone ?? '',
+      servico: agendamento.servico?.name ?? '',
+      profissional: agendamento.profissional?.name ?? '',
+      data: new Date(agendamento.date).toLocaleDateString('pt-BR'),
+      hora: (agendamento.start_time ?? '').slice(0, 5),
+      valor: Number(agendamento.servico?.price ?? 0),
     }, motivo);
 
     return NextResponse.json({ 

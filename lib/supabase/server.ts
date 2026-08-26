@@ -45,3 +45,19 @@ export async function getSupabaseServerClient() {
     },
   });
 }
+
+/**
+ * Client com SERVICE ROLE KEY — ignora RLS.
+ * Usar APENAS em rotas de servidor confiáveis (ex.: agendamento público,
+ * onde o visitante não tem sessão mas a escrita é legítima).
+ */
+export async function getSupabaseServiceClient() {
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase service role não configurado');
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}

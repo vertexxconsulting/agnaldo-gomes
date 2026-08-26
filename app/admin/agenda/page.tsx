@@ -84,7 +84,7 @@ export default function AgendaPage() {
 
   const bloqueiosFiltrados = bloqueiosDia.filter(b => profFiltro === 'todos' || profFiltro === b.profissional_id);
 
-  const mudarStatus = async (id: string, status: StatusAgendamento) => {
+  async function mudarStatus(id: string, status: StatusAgendamento) {
     try {
       // Tentar atualizar no Supabase se não for mock
       const { atualizarStatusAgendamento } = await import('@/lib/supabase-queries');
@@ -100,7 +100,7 @@ export default function AgendaPage() {
       console.error('Erro ao atualizar status:', err);
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     }
-  };
+  }
 
   const handleSalvarAgendamento = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +108,11 @@ export default function AgendaPage() {
       alert('Preencha todos os campos obrigatórios.');
       return;
     }
+    const servicoSel = servicos.find(s => s.id === formData.servico_id);
+    const duracaoMin = servicoSel?.duracao_min ?? 60;
+    const [h, m] = formData.hora_inicio.split(':').map(Number);
+    const fim = new Date(2000, 0, 1, h, m + duracaoMin);
+    const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
     const novoAgendamento: Agendamento = {
       id: Math.random().toString(36).substring(7),
       cliente_id: formData.cliente_id,
@@ -115,8 +120,10 @@ export default function AgendaPage() {
       servico_id: formData.servico_id,
       data: formData.data,
       hora_inicio: formData.hora_inicio,
+      hora_fim: horaFim,
       status: 'confirmado',
-      canal: 'manual'
+      canal: 'recepcao',
+      criado_em: new Date().toISOString()
     };
     setAgendamentos(prev => [...prev, novoAgendamento]);
     setShowForm(false);

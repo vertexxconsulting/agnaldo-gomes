@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { getWhatsAppBookingUrl } from '@/lib/whatsapp';
 
 export async function POST(req: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
+    // Rota pública (visitante sem sessão) — usa service role para bypass de RLS
+    const supabase = await getSupabaseServiceClient();
     const body = await req.json();
     const { 
       servicoId, 
@@ -25,8 +26,8 @@ export async function POST(req: Request) {
       const { data: cliente, error: searchError } = await supabase
         .from('salon_customers')
         .select('id')
-        .eq('telefone', numLimpo)
-        .single();
+        .eq('phone', numLimpo)
+        .maybeSingle();
 
       if (searchError && searchError.code !== 'PGRST116') {
         throw searchError;
@@ -38,8 +39,8 @@ export async function POST(req: Request) {
         const { data: novoCliente, error: createError } = await supabase
           .from('salon_customers')
           .insert({
-            nome,
-            telefone: numLimpo,
+            name: nome,
+            phone: numLimpo,
             email: email || null,
           })
           .select('id')
@@ -55,8 +56,8 @@ export async function POST(req: Request) {
       { data: servico },
       { data: profissional }
     ] = await Promise.all([
-      supabase.from('salon_services').select('nome, preco, duracao_min').eq('id', servicoId).single(),
-      supabase.from('salon_professionals').select('nome').eq('id', profissionalId).single()
+      supabase.from('salon_services').select('name, price, duration_minutes').eq('id', servicoId).single(),
+      supabase.from('salon_professionals').select('name').eq('id', profissionalId).single()
     ]);
 
     if (!servico || !profissional) {
@@ -66,21 +67,21 @@ export async function POST(req: Request) {
     // Calcular hora_fim baseado na duração do serviço
     const [h, m] = hora.split(':').map(Number);
     const dataInicio = new Date(`${data}T${hora}:00`);
-    const dataFim = new Date(dataInicio.getTime() + servico.duracao_min * 60000);
+    const dataFim = new Date(dataInicio.getTime() + servico.duration_minutes * 60000);
     const horaFim = `${String(dataFim.getHours()).padStart(2, '0')}:${String(dataFim.getMinutes()).padStart(2, '0')}`;
 
     // 3. Criar o agendamento como PENDENTE
     const { data: agendamento, error: bookingError } = await supabase
       .from('salon_appointments')
       .insert({
-        cliente_id: clienteId,
-        profissional_id: profissionalId,
-        servico_id: servicoId,
-        data,
-        hora_inicio: hora,
-        hora_fim: horaFim,
-        status: 'pendente',
-        canal: 'online',
+        customer_id: clienteId,
+        professional_id: profissionalId,
+        service_id: servicoId,
+        date: data,
+        start_time: hora,
+        end_time: horaFim,
+        status: 'PENDING',
+        channel: 'ONLINE',
       })
       .select('id')
       .single();
@@ -92,11 +93,11 @@ export async function POST(req: Request) {
       id: agendamento.id,
       cliente: nome,
       telefone: telefone,
-      servico: servico.nome,
-      profissional: profissional.nome,
+      servico: servico.name,
+      profissional: profissional.name,
       data: new Date(data).toLocaleDateString('pt-BR'),
       hora: hora,
-      valor: servico.preco,
+      valor: Number(servico.price),
     });
 
     return NextResponse.json({ 
