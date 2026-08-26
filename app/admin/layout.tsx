@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, BookOpen, Command, GitMerge, ShieldCheck, Heart, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Scissors, UserCircle, BookOpen, Command, GitMerge, ShieldCheck, Heart, TrendingUp, Megaphone } from 'lucide-react';
 import { AdminSidebar, AdminShell } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -16,6 +16,7 @@ const links = [
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
   // { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge }, // Ocultado conforme solicitado
   { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck },
+  { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
 
