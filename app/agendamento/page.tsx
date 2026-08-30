@@ -1,11 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Calendar, Clock, User, CheckCircle, X, Search, Phone, Crown, Copy, Check, ShieldCheck, MessageCircle, Sparkles } from 'lucide-react';
+import { 
+  Calendar, 
+  Clock, 
+  User, 
+  CheckCircle, 
+  X, 
+  Search, 
+  Phone, 
+  Crown, 
+  Copy, 
+  Check, 
+  ShieldCheck, 
+  MessageCircle, 
+  Sparkles,
+  AlertTriangle,
+  UserCheck
+} from 'lucide-react';
 import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
-import type { Servico, Profissional, Cliente } from '@/lib/mock-data';
+import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
+
+// Horário geral de funcionamento do salão
+const HORARIO_SALAO: Record<number, { aberto: boolean; inicio: string; fim: string; label: string }> = {
+  0: { aberto: false, inicio: '09:00', fim: '13:00', label: 'Domingo (Fechado)' },
+  1: { aberto: false, inicio: '09:00', fim: '19:00', label: 'Segunda (Fechado)' },
+  2: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Terça (09h às 19h)' },
+  3: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Quarta (09h às 19h)' },
+  4: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Quinta (09h às 19h)' },
+  5: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Sexta (09h às 19h)' },
+  6: { aberto: true, inicio: '08:00', fim: '17:00', label: 'Sábado (08h às 17h)' },
+};
+
+const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
 export default function AgendamentoPage() {
   const router = useRouter();
@@ -15,9 +44,11 @@ export default function AgendamentoPage() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [servicosRelacionados, setServicosRelacionados] = useState<Record<string, string[]>>({});
+  const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'telefone' | 'servico' | 'profissional' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
+  
+  // Ordem nova: telefone -> profissional -> servico -> data -> confirmacao
+  const [step, setStep] = useState<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
   const [copiadoPix, setCopiadoPix] = useState(false);
@@ -31,8 +62,8 @@ export default function AgendamentoPage() {
   } | null>(null);
 
   const [formData, setFormData] = useState({
-    servicoId: servicoParam || '',
     profissionalId: '',
+    servicoId: servicoParam || '',
     clienteId: '',
     data: '',
     hora: '',
@@ -41,7 +72,7 @@ export default function AgendamentoPage() {
     email: '',
   });
 
-  // Carregar dados do Supabase (com fallback para mock)
+  // Carregar dados
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
@@ -52,36 +83,51 @@ export default function AgendamentoPage() {
         getProfissionalServico()
       ]);
       setServicos(sData);
-      setProfissionais(pData);
+      setProfissionais(pData.filter(p => p.ativo));
       setClientes(cData);
+      setProfServicos(psData);
 
-      // Mapeia profissionais por serviço
-      const map: Record<string, string[]> = {};
-      psData.forEach(ps => {
-        if (!map[ps.servico_id]) map[ps.servico_id] = [];
-        map[ps.servico_id].push(ps.profissional_id);
-      });
-      setServicosRelacionados(map);
+      // Se veio com servicoParam, tenta pré-selecionar o profissional vinculado
+      if (servicoParam) {
+        const vinculo = psData.find(ps => ps.servico_id === servicoParam);
+        if (vinculo) {
+          setFormData(prev => ({ ...prev, profissionalId: vinculo.profissional_id, servicoId: servicoParam }));
+        }
+      }
+
       setLoading(false);
     };
     carregarDados();
-  }, []);
+  }, [servicoParam]);
 
-  // Derived: serviços ativos visíveis no app
-  const servicosAtivos = servicos.filter(s => s.ativo && s.visivel_app);
+  const steps: Array<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao'> = [
+    'telefone', 
+    'profissional', 
+    'servico', 
+    'data', 
+    'confirmacao'
+  ];
 
-  // Derived: profissionais ativos
-  const profissionaisAtivos = profissionais.filter(p => p.ativo);
+  // Profissional selecionado
+  const profissionalSelecionado = profissionais.find(p => p.id === formData.profissionalId);
 
-  // Derived: profissionais ativos para o serviço selecionado
-  const profissionaisDoServico = servicosRelacionados[formData.servicoId]?.map(pid =>
-    profissionais.find(p => p.id === pid)
-  ).filter(Boolean) || [];
+  // Serviços filtrados pelo profissional selecionado
+  const servicosDoProfissional = useMemo(() => {
+    if (!formData.profissionalId) return [];
+    const idsVinculados = profServicos
+      .filter(ps => ps.profissional_id === formData.profissionalId)
+      .map(ps => ps.servico_id);
 
-  // Derived: serviço selecionado
+    if (idsVinculados.length > 0) {
+      return servicos.filter(s => s.ativo && s.visivel_app && idsVinculados.includes(s.id));
+    }
+    return servicos.filter(s => s.ativo && s.visivel_app);
+  }, [formData.profissionalId, profServicos, servicos]);
+
+  // Serviço selecionado
   const servicoSelecionado = servicos.find(s => s.id === formData.servicoId);
 
-  // Regra de Negócio: Dia da Noiva (exige sinal obrigatório de 50% para reserva definitiva)
+  // Regra de Negócio: Dia da Noiva (sinal obrigatório de 50%)
   const isNoiva = servicoSelecionado?.categoria === 'Noivas' || (servicoSelecionado?.nome || '').toLowerCase().includes('noiva');
   const valorTotalServico = Number(servicoSelecionado?.preco || 0);
   const valorSinalNoiva = isNoiva ? Math.round(valorTotalServico * 0.5 * 100) / 100 : 0;
@@ -91,19 +137,13 @@ export default function AgendamentoPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const steps: Array<'telefone' | 'servico' | 'profissional' | 'data' | 'confirmacao'> = ['telefone', 'servico', 'profissional', 'data', 'confirmacao'];
-
   const verificarTelefone = () => {
     if (!formData.telefone || formData.telefone.length < 10) {
-      setErrorWhatsApp('Digite um WhatsApp válido');
+      setErrorWhatsApp('Digite um WhatsApp válido com DDD');
       return;
     }
     setErrorWhatsApp('');
-    
-    // Normalizar telefone para busca:
     const numLimpo = formData.telefone.replace(/\D/g, '');
-    
-    // Buscar no mock
     const clienteExistente = clientes.find(c => (c.telefone || '').replace(/\D/g, '') === numLimpo);
     
     if (clienteExistente) {
@@ -113,10 +153,8 @@ export default function AgendamentoPage() {
         email: clienteExistente.email || '',
         clienteId: clienteExistente.id
       }));
-      // Já está cadastrado, segue direto pro próximo passo
       nextStep();
     } else {
-      // Não cadastrado, mostra os campos Nome e Email
       setTelefoneVerificado(true);
     }
   };
@@ -131,6 +169,97 @@ export default function AgendamentoPage() {
     if (idx > 0) setStep(steps[idx - 1]);
   };
 
+  // Cálculo de Datas Disponíveis (Próximos 14 dias)
+  const datasDisponiveis = useMemo(() => {
+    const lista: Array<{ value: string; label: string; diaSemana: number; abertoSalao: boolean; profAtende: boolean }> = [];
+    const hojeObj = new Date();
+
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(hojeObj);
+      d.setDate(d.getDate() + i);
+      const diaSemana = d.getDay();
+      const isoDate = d.toISOString().split('T')[0];
+      const salaoAberto = HORARIO_SALAO[diaSemana].aberto;
+
+      let profAtende = salaoAberto;
+      if (profissionalSelecionado?.jornada_semanal) {
+        const chave = DIAS_CHAVE[diaSemana];
+        const cfg = profissionalSelecionado.jornada_semanal[diaSemana] || (chave ? profissionalSelecionado.jornada_semanal[chave] : undefined);
+        if (cfg) {
+          profAtende = cfg.ativo !== false;
+        }
+      }
+
+      lista.push({
+        value: isoDate,
+        label: d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }),
+        diaSemana,
+        abertoSalao: salaoAberto,
+        profAtende,
+      });
+    }
+    return lista;
+  }, [profissionalSelecionado]);
+
+  // Cálculo dos Horários Livres para a data e profissional selecionados
+  const { slotsHorarios, statusData } = useMemo(() => {
+    if (!formData.data || !profissionalSelecionado) {
+      return { slotsHorarios: [], statusData: null };
+    }
+
+    const [ano, mes, dia] = formData.data.split('-').map(Number);
+    const dataObj = new Date(ano, mes - 1, dia);
+    const diaSemana = dataObj.getDay();
+
+    const infoSalao = HORARIO_SALAO[diaSemana];
+    const jornadaProf = profissionalSelecionado.jornada_semanal;
+
+    let profAtende = infoSalao.aberto;
+    let horaIni = infoSalao.inicio;
+    let horaFim = infoSalao.fim;
+
+    if (jornadaProf) {
+      const chave = DIAS_CHAVE[diaSemana];
+      const cfg = jornadaProf[diaSemana] || (chave ? jornadaProf[chave] : undefined);
+      if (cfg) {
+        profAtende = cfg.ativo !== false;
+        if (cfg.inicio) horaIni = cfg.inicio;
+        if (cfg.fim) horaFim = cfg.fim;
+      }
+    }
+
+    if (!profAtende && !infoSalao.aberto) {
+      return {
+        slotsHorarios: [],
+        statusData: { tipo: 'fechado', texto: 'Salão fechado aos domingos e segundas-feiras.' }
+      };
+    }
+
+    if (!profAtende) {
+      return {
+        slotsHorarios: [],
+        statusData: { tipo: 'folga', texto: `${profissionalSelecionado.nome} não atende neste dia da semana.` }
+      };
+    }
+
+    const [hIni, mIni] = horaIni.split(':').map(Number);
+    const [hFim, mFim] = horaFim.split(':').map(Number);
+    const totalIni = hIni * 60 + mIni;
+    const totalFim = hFim * 60 + mFim;
+
+    const slots: string[] = [];
+    for (let m = totalIni; m < totalFim; m += 30) {
+      const hStr = String(Math.floor(m / 60)).padStart(2, '0');
+      const minStr = String(m % 60).padStart(2, '0');
+      slots.push(`${hStr}:${minStr}`);
+    }
+
+    return {
+      slotsHorarios: slots,
+      statusData: { tipo: 'aberto', texto: `Horário de atendimento: ${horaIni} às ${horaFim}` }
+    };
+  }, [formData.data, profissionalSelecionado]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step !== 'confirmacao') {
@@ -140,7 +269,6 @@ export default function AgendamentoPage() {
 
     setLoading(true);
     try {
-      // 1. Persistir no CRM Interno (Supabase) via API Route
       const res = await fetch('/api/agendamento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,7 +282,6 @@ export default function AgendamentoPage() {
 
       const resData = await res.json();
 
-      // 2. Se for pacote de Noiva, abre a tela de cobrança do sinal de 50% via PIX
       if (resData.isNoiva) {
         setPixNoivaData({
           agendamentoId: resData.id,
@@ -169,7 +296,6 @@ export default function AgendamentoPage() {
         return;
       }
 
-      // 3. Para serviços comuns: Redirecionar para o WhatsApp do Studio com a confirmação
       window.location.href = resData.whatsappUrl;
     } catch (err: any) {
       console.error('Erro no agendamento:', err);
@@ -178,28 +304,12 @@ export default function AgendamentoPage() {
     }
   };
 
-  // Derived: horas disponíveis
-  const horasDisponiveis = Array.from({ length: 12 }, (_, i) => {
-    const h = 8 + i;
-    return `${String(h).padStart(2, '0')}:00`;
-  });
-
-  // Derived: datas disponíveis (7 dias a partir de hoje)
-  const datasDisponiveis = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return {
-      value: d.toISOString().split('T')[0],
-      label: d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })
-    };
-  });
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-transparent to-primary/5 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-foreground/70">Processando agendamento...</p>
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto" />
+          <p className="text-foreground/70">Carregando horários e serviços do Studio...</p>
         </div>
       </div>
     );
@@ -214,28 +324,28 @@ export default function AgendamentoPage() {
             {isNoiva && <Crown size={28} className="text-amber-500" />}
             {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
           </h1>
-          <p className="text-foreground/60">
+          <p className="text-foreground/60 text-sm">
             {isNoiva 
               ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes' 
-              : 'Preencha os dados e confirme seu agendamento'}
+              : 'Selecione o profissional, o serviço e o melhor horário para você'}
           </p>
         </div>
 
-        {/* Progress Steps (apenas para o fluxo normal de agendamento) */}
+        {/* Progress Steps */}
         {step !== 'pagamento_noiva' && (
           <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {steps.map((s, idx) => {
                 const isActive = s === step;
                 const isCompleted = steps.indexOf(step as any) > idx;
                 return (
                   <div key={s} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                      isActive ? 'bg-primary text-black' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/20 text-foreground/50'
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                      isActive ? 'bg-primary text-black ring-4 ring-primary/20' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'
                     }`}>
                       {idx + 1}
                     </div>
-                    {idx < steps.length - 1 && <div className={`w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/20'}`} />}
+                    {idx < steps.length - 1 && <div className={`w-8 sm:w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/10'}`} />}
                   </div>
                 );
               })}
@@ -243,28 +353,30 @@ export default function AgendamentoPage() {
           </div>
         )}
 
-        {/* Form Container */}
-        <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-6 sm:p-8 shadow-xl">
+        {/* Container do Formulário */}
+        <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
-          {/* Step 1: Identificação */}
+          {/* Passo 1: Telefone / Identificação */}
           {step === 'telefone' && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2"><Phone size={20} /> Identificação</h2>
-              <p className="text-sm text-foreground/60 mb-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <Phone size={20} className="text-primary" /> Identificação
+              </h2>
+              <p className="text-sm text-foreground/60">
                 {!telefoneVerificado 
-                  ? "Informe seu WhatsApp para começar o agendamento." 
-                  : "Não encontramos seu cadastro. Por favor, preencha os dados abaixo para continuar."}
+                  ? "Informe seu WhatsApp para iniciarmos o agendamento." 
+                  : "Por favor, complete seus dados para continuarmos."}
               </p>
               
               {!telefoneVerificado ? (
                 <div>
-                  <label className="block text-sm font-medium text-foreground/70 mb-1">Telefone (WhatsApp) *</label>
+                  <label className="block text-xs font-bold text-foreground/70 mb-1.5">WhatsApp com DDD *</label>
                   <input
                     type="tel"
                     value={formData.telefone}
                     onChange={e => handleInputChange('telefone', e.target.value)}
                     placeholder="(42) 99999-9999"
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-primary"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-base"
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -273,25 +385,27 @@ export default function AgendamentoPage() {
                     }}
                     autoFocus
                   />
-                  {errorWhatsApp && <p className="text-red-500 text-xs mt-1">{errorWhatsApp}</p>}
-                  <Button type="button" variant="primary" className="mt-6 w-full" onClick={verificarTelefone}>Continuar →</Button>
+                  {errorWhatsApp && <p className="text-red-500 text-xs mt-1.5">{errorWhatsApp}</p>}
+                  <Button type="button" variant="primary" className="mt-6 w-full font-bold" onClick={verificarTelefone}>
+                    Continuar para Escolha do Profissional →
+                  </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">Telefone (WhatsApp)</label>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">WhatsApp</label>
                     <div className="flex gap-2">
                       <input
                         type="tel"
                         value={formData.telefone}
                         disabled
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground/50 cursor-not-allowed"
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground/50 cursor-not-allowed font-mono"
                       />
                       <Button type="button" variant="outline" onClick={() => setTelefoneVerificado(false)}>Alterar</Button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">Nome Completo *</label>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">Nome Completo *</label>
                     <input
                       type="text"
                       value={formData.nome}
@@ -303,7 +417,7 @@ export default function AgendamentoPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">E-mail (opcional)</label>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">E-mail (opcional)</label>
                     <input
                       type="email"
                       value={formData.email}
@@ -313,382 +427,366 @@ export default function AgendamentoPage() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <Button type="button" variant="primary" className="mt-6 w-full" onClick={() => {
-                      if (!formData.nome) {
-                        alert("Por favor, preencha o Nome Completo.");
-                        return;
-                      }
-                      nextStep();
-                    }}>Continuar →</Button>
+                    <Button 
+                      type="button" 
+                      variant="primary" 
+                      className="mt-6 w-full font-bold" 
+                      onClick={() => {
+                        if (!formData.nome) {
+                          alert("Por favor, preencha o Nome Completo.");
+                          return;
+                        }
+                        nextStep();
+                      }}
+                    >
+                      Continuar para Escolha do Profissional →
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 2: Serviço */}
-          {step === 'servico' && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2"><Search size={20} /> Escolha o Serviço</h2>
-              <div className="space-y-3">
-                {servicosAtivos.map(servico => (
-                  <div
-                    key={servico.id}
-                    onClick={() => {
-                      handleInputChange('servicoId', servico.id);
-                      nextStep();
-                    }}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                      formData.servicoId === servico.id
-                        ? 'border-primary bg-primary/10'
-                        : 'border-[var(--border-subtle)] hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold text-foreground flex items-center gap-2">
-                          {(servico.categoria === 'Noivas' || servico.nome.toLowerCase().includes('noiva')) && (
-                            <Crown size={16} className="text-amber-500" />
-                          )}
-                          {servico.nome}
-                        </h3>
-                        <span className="text-xs text-foreground/50">{servico.categoria}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-primary">R$ {Number(servico.preco).toFixed(2).replace('.', ',')}</span>
-                        <span className="text-xs text-foreground/50 block">{servico.duracao_min} min</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button" onClick={prevStep} className="text-sm text-foreground/60 hover:text-foreground mt-4">← Voltar</button>
-            </div>
-          )}
-
-          {/* Step 3: Profissional */}
+          {/* Passo 2: PROFISSIONAL PRIMEIRO */}
           {step === 'profissional' && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2"><User size={20} /> Escolha o Profissional</h2>
-              <div className="space-y-3">
-                {((profissionaisDoServico.filter(Boolean).length > 0
-                  ? profissionaisDoServico.filter(Boolean) as Profissional[]
-                  : profissionaisAtivos) || []).map(prof => (
+              <h2 className="text-xl font-bold text-foreground mb-1.5 flex items-center gap-2">
+                <UserCheck size={22} className="text-primary" /> Escolha o Profissional
+              </h2>
+              <p className="text-xs text-foreground/60 mb-6">
+                Selecione quem você deseja que realize seu atendimento:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {profissionais.map(prof => (
                   <div
                     key={prof.id}
                     onClick={() => {
                       handleInputChange('profissionalId', prof.id);
+                      handleInputChange('servicoId', ''); // limpa serviço ao trocar de profissional
                       nextStep();
                     }}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 ${
                       formData.profissionalId === prof.id
-                        ? 'border-primary bg-primary/10'
-                        : 'border-[var(--border-subtle)] hover:border-primary/50'
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                        : 'border-[var(--border-subtle)] hover:border-primary/40 bg-[var(--background)]'
                     }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {prof.nome.charAt(0)}
+                      {prof.foto_url ? (
+                        <img 
+                          src={prof.foto_url} 
+                          alt={prof.nome} 
+                          className="w-14 h-14 rounded-full object-cover border-2 border-primary/30 shrink-0" 
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-lg shrink-0">
+                          {prof.nome.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-foreground text-base truncate">{prof.nome}</h3>
+                        <p className="text-xs text-foreground/60 mt-0.5 line-clamp-2">
+                          {(prof.especialidades || ['Especialista']).join(' • ')}
+                        </p>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-foreground">{prof.nome}</h3>
-                        <p className="text-sm text-foreground/60">{(prof.especialidades || ['Especialista']).join(', ')}</p>
-                      </div>
-                      <CheckCircle size={20} className={prof.ativo ? 'text-green-500' : 'text-foreground/30'} />
                     </div>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={prevStep} className="text-sm text-foreground/60 hover:text-foreground mt-4">
-                ← Voltar
-              </button>
+
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-[var(--border-subtle)]">
+                <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
+                  ← Voltar
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Step 4: Data/Hora */}
-          {step === 'data' && (
+          {/* Passo 3: SERVIÇOS FILTRADOS PELO PROFISSIONAL */}
+          {step === 'servico' && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2"><Calendar size={20} /> Escolha a Data e Hora</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground/70 mb-2">Data</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
-                    {datasDisponiveis.map(d => (
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  <Search size={20} className="text-primary" /> Procedimentos de {profissionalSelecionado?.nome || 'Salão'}
+                </h2>
+                <span className="text-xs text-primary font-mono bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                  {servicosDoProfissional.length} opções
+                </span>
+              </div>
+              <p className="text-xs text-foreground/60 mb-6">
+                Valores oficiais do Studio. Todos os serviços são &quot;a partir de&quot; conforme comprimento e necessidade.
+              </p>
+
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                {servicosDoProfissional.map(servico => {
+                  const isServicoNoiva = servico.categoria === 'Noivas' || servico.nome.toLowerCase().includes('noiva');
+                  const isSelected = formData.servicoId === servico.id;
+
+                  return (
+                    <div
+                      key={servico.id}
+                      onClick={() => {
+                        handleInputChange('servicoId', servico.id);
+                        nextStep();
+                      }}
+                      className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 flex justify-between items-center gap-4 ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                          : 'border-[var(--border-subtle)] hover:border-primary/40 bg-[var(--background)]'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                          {isServicoNoiva && <Crown size={16} className="text-amber-500 shrink-0" />}
+                          <span className="truncate">{servico.nome}</span>
+                        </h3>
+                        <span className="text-[11px] text-foreground/50 block mt-0.5">{servico.categoria}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-primary text-base">
+                          R$ {Number(servico.preco).toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-[11px] text-foreground/50 block">{servico.duracao_min} min</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-[var(--border-subtle)]">
+                <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
+                  ← Voltar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Passo 4: DATA & HORÁRIO INTELIGENTE */}
+          {step === 'data' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-1">
+                  <Calendar size={20} className="text-primary" /> Data e Horário Disponível
+                </h2>
+                <p className="text-xs text-foreground/60">
+                  Profissional: <strong>{profissionalSelecionado?.nome}</strong> • Serviço: <strong>{servicoSelecionado?.nome}</strong>
+                </p>
+              </div>
+
+              {/* Seletor de Datas */}
+              <div>
+                <label className="block text-xs font-bold text-foreground/70 mb-2">Escolha o Dia:</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                  {datasDisponiveis.map(d => {
+                    const isSelected = formData.data === d.value;
+                    const indisponivel = !d.abertoSalao || !d.profAtende;
+
+                    return (
                       <button
                         key={d.value}
                         type="button"
-                        onClick={() => handleInputChange('data', d.value)}
-                        className={`p-3 text-center rounded-lg border text-sm transition-all ${
-                          formData.data === d.value
-                            ? 'border-primary bg-primary/10 text-primary font-bold'
-                            : 'border-[var(--border-subtle)] hover:border-primary/50'
+                        onClick={() => !indisponivel && handleInputChange('data', d.value)}
+                        disabled={indisponivel}
+                        className={`p-3 text-center rounded-xl border text-xs transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/15 text-primary font-bold shadow-md'
+                            : indisponivel
+                            ? 'border-transparent bg-foreground/5 text-foreground/30 cursor-not-allowed'
+                            : 'border-[var(--border-subtle)] hover:border-primary/40 bg-[var(--background)] text-foreground font-medium'
                         }`}
                       >
-                        {d.label}
+                        <span className="block capitalize">{d.label.split(',')[0]}</span>
+                        <span className="block font-bold text-sm mt-0.5">{d.label.split(',')[1] || d.value.slice(8)}</span>
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Status do Salão vs Profissional */}
+              {statusData && (
+                <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
+                  statusData.tipo === 'aberto'
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                }`}>
+                  {statusData.tipo === 'aberto' ? <CheckCircle size={16} className="shrink-0" /> : <AlertTriangle size={16} className="shrink-0" />}
+                  <span>{statusData.texto}</span>
+                </div>
+              )}
+
+              {/* Seletor de Horários */}
+              {slotsHorarios.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground/70 mb-2">Hora</label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    {horasDisponiveis.map(h => (
+                  <label className="block text-xs font-bold text-foreground/70 mb-2">Selecione o Horário:</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {slotsHorarios.map(h => (
                       <button
                         key={h}
                         type="button"
                         onClick={() => handleInputChange('hora', h)}
-                        className={`p-3 text-center rounded-lg border text-sm transition-all ${
+                        className={`p-2.5 text-center rounded-lg border text-xs font-mono font-bold transition-all ${
                           formData.hora === h
-                            ? 'border-primary bg-primary/10 text-primary font-bold'
-                            : 'border-[var(--border-subtle)] hover:border-primary/50'
+                            ? 'border-primary bg-primary text-black shadow-md'
+                            : 'border-[var(--border-subtle)] hover:border-primary/40 bg-[var(--background)] text-foreground'
                         }`}
                       >
-                        <Clock size={14} className="inline mr-1" />
+                        <Clock size={12} className="inline mr-1 opacity-70" />
                         {h}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
+
+              <div className="flex justify-between items-center pt-4 border-t border-[var(--border-subtle)]">
+                <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
+                  ← Voltar
+                </button>
+                <Button 
+                  type="button" 
+                  variant="primary" 
+                  disabled={!formData.data || !formData.hora} 
+                  onClick={nextStep}
+                  className="font-bold"
+                >
+                  Revisar e Confirmar →
+                </Button>
               </div>
-              <button type="button" onClick={prevStep} className="text-sm text-foreground/60 hover:text-foreground mt-4">
-                ← Voltar
-              </button>
             </div>
           )}
 
-          {/* Step 5: Confirmação */}
+          {/* Passo 5: CONFIRMAÇÃO / RESUMO */}
           {step === 'confirmacao' && (
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <CheckCircle size={20} className="text-primary" /> 
-                {isNoiva ? 'Confirmar Reserva de Noiva' : 'Confirme o Agendamento'}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <CheckCircle size={22} className="text-primary" /> 
+                {isNoiva ? 'Confirmar Reserva de Noiva' : 'Resumo do Agendamento'}
               </h2>
 
-              {/* Alerta explicativo de Sinal de 50% para Noivas */}
               {isNoiva && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500 shrink-0">
-                      <Crown size={22} />
-                    </div>
+                    <Crown size={22} className="text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-bold text-amber-500 text-sm flex items-center gap-1.5">
-                        Garantia de Data — Sinal Obrigatório de 50%
+                      <h4 className="font-bold text-amber-500 text-sm">
+                        Exclusividade da Data — Sinal de 50%
                       </h4>
                       <p className="text-xs text-foreground/80 mt-1 leading-relaxed">
-                        Para assegurar a exclusividade da sua data na agenda e garantir a dedicação da nossa equipe, é cobrado o <strong>sinal de 50% via PIX</strong> na finalização da reserva.
+                        Para bloquear sua data na agenda com Agnaldo Gomes, o sinal de 50% é gerado via PIX na próxima etapa.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Cliente / Noiva</span>
+              <div className="space-y-3 text-sm bg-[var(--background)] p-4 rounded-xl border border-[var(--border-subtle)]">
+                <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  <span className="text-foreground/60">Cliente:</span>
                   <span className="font-bold text-foreground">{formData.nome}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Telefone</span>
-                  <span className="font-bold text-foreground">{formData.telefone}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  <span className="text-foreground/60">WhatsApp:</span>
+                  <span className="font-mono text-foreground font-semibold">{formData.telefone}</span>
                 </div>
-                {formData.email && (
-                  <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                    <span className="text-foreground/60">E-mail</span>
-                    <span className="font-bold text-foreground">{formData.email}</span>
-                  </div>
-                )}
-                <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Serviço / Pacote</span>
-                  <span className="font-bold text-foreground">{servicoSelecionado?.nome || 'N/A'}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  <span className="text-foreground/60">Profissional:</span>
+                  <span className="font-bold text-primary">{profissionalSelecionado?.nome}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Profissional</span>
-                  <span className="font-bold text-foreground">{profissionais.find(p => p.id === formData.profissionalId)?.nome || 'Agnaldo Gomes'}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  <span className="text-foreground/60">Procedimento:</span>
+                  <span className="font-bold text-foreground">{servicoSelecionado?.nome}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Data e Hora</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  <span className="text-foreground/60">Data & Hora:</span>
                   <span className="font-bold text-foreground">{formData.data} às {formData.hora}</span>
                 </div>
-
-                {isNoiva ? (
-                  <>
-                    <div className="flex justify-between py-2 border-b border-[var(--border-subtle)] text-foreground/70">
-                      <span>Valor Total do Pacote</span>
-                      <span>R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-amber-500/30 text-amber-500 font-bold bg-amber-500/5 px-2 rounded">
-                      <span className="flex items-center gap-1.5"><ShieldCheck size={16} /> Sinal de Reserva (50% a pagar agora)</span>
-                      <span className="text-lg font-black">R$ {valorSinalNoiva.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    <div className="flex justify-between py-2 text-xs text-foreground/50">
-                      <span>Saldo restante no dia da produção</span>
-                      <span>R$ {valorRestanteNoiva.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-between py-4 text-lg">
-                    <span className="font-bold text-foreground">Total</span>
-                    <span className="font-black text-primary text-xl">R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
-                  </div>
-                )}
+                <div className="flex justify-between py-1.5 text-base">
+                  <span className="font-bold text-foreground">Valor:</span>
+                  <span className="font-extrabold text-primary">R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
+                </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <Button type="button" variant="outline" onClick={prevStep} className="flex-1">
-                  <X size={18} className="mr-2" />
-                  Voltar
-                </Button>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  className={`flex-1 font-bold ${isNoiva ? 'bg-amber-500 hover:bg-amber-600 text-black shadow-lg shadow-amber-500/20' : ''}`}
-                >
-                  {isNoiva ? (
-                    <>
-                      <Crown size={18} className="mr-2" />
-                      Pagar Sinal de 50% (PIX)
-                    </>
-                  ) : (
-                    'Confirmar e Finalizar'
-                  )}
+              <div className="flex justify-between items-center pt-4 border-t border-[var(--border-subtle)]">
+                <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
+                  ← Voltar
+                </button>
+                <Button type="submit" variant="primary" className="font-bold">
+                  {isNoiva ? 'Gerar PIX do Sinal de 50% →' : 'Confirmar Agendamento no WhatsApp →'}
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 6: Tela de Pagamento do Sinal PIX (Exclusivo para Noivas) */}
+          {/* Passo Especial: Cobrança de Sinal PIX para Noivas */}
           {step === 'pagamento_noiva' && pixNoivaData && (
-            <div className="text-center py-2">
-              <div className="inline-flex items-center justify-center p-3 bg-amber-500/20 text-amber-500 rounded-full mb-3 shadow-inner">
-                <Crown size={36} />
-              </div>
-              <h2 className="text-2xl font-black text-foreground mb-1">Sinal de Reserva da Noiva</h2>
-              <p className="text-sm text-foreground/60 max-w-md mx-auto mb-6">
-                Efetue o pagamento do sinal de <strong>50%</strong> via PIX para garantir o bloqueio definitivo da sua data com nossa equipe.
-              </p>
-
-              {/* Resumo dos Valores */}
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
-                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
-                  <span className="text-foreground/70">Noiva:</span>
-                  <span className="font-bold text-foreground">{formData.nome}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
-                  <span className="text-foreground/70">Pacote Escolhido:</span>
-                  <span className="font-bold text-foreground">{servicoSelecionado?.nome}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
-                  <span className="text-foreground/70">Data e Horário:</span>
-                  <span className="font-bold text-foreground">{formData.data} às {formData.hora}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
-                  <span className="text-foreground/70">Valor Total do Pacote:</span>
-                  <span className="text-foreground font-semibold">R$ {pixNoivaData.valorTotal.toFixed(2).replace('.', ',')}</span>
-                </div>
-                <div className="flex justify-between items-center text-base pt-2">
-                  <span className="font-bold text-amber-500">Sinal a Pagar Agora (50%):</span>
-                  <span className="text-2xl font-black text-amber-500">R$ {pixNoivaData.valorSinal.toFixed(2).replace('.', ',')}</span>
+            <div className="space-y-6 text-center">
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
+                <Crown size={36} className="text-amber-500 mx-auto mb-2" />
+                <h2 className="text-xl font-bold text-foreground">Reserva Dia da Noiva Solicitada!</h2>
+                <p className="text-xs text-foreground/70 mt-1">
+                  Pague o sinal de 50% para garantir a exclusividade da sua data na agenda com Agnaldo Gomes.
+                </p>
+                <div className="mt-3 inline-flex items-center gap-2 bg-amber-500/20 px-4 py-2 rounded-xl text-amber-500 font-extrabold text-lg">
+                  Sinal: R$ {pixNoivaData.valorSinal.toFixed(2).replace('.', ',')}
                 </div>
               </div>
 
-              {/* QR Code Container */}
-              <div className="bg-white p-4 rounded-2xl inline-block shadow-xl border border-[var(--border-subtle)] mb-4">
-                {pixNoivaData.qrcodeBase64 ? (
-                  <img 
-                    src={pixNoivaData.qrcodeBase64.startsWith('data:') ? pixNoivaData.qrcodeBase64 : `data:image/png;base64,${pixNoivaData.qrcodeBase64}`} 
-                    alt="QR Code PIX Sinal Noiva" 
-                    className="w-56 h-56 mx-auto object-contain"
+              {/* QR Code */}
+              {pixNoivaData.qrcodeBase64 && (
+                <div className="flex flex-col items-center">
+                  <img
+                    src={`data:image/png;base64,${pixNoivaData.qrcodeBase64}`}
+                    alt="QR Code PIX Noiva"
+                    className="w-48 h-48 rounded-xl border border-[var(--border-subtle)] bg-white p-2 shadow-lg"
                   />
-                ) : (
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(pixNoivaData.pixCopiaCola)}`} 
-                    alt="QR Code PIX Sinal Noiva" 
-                    className="w-56 h-56 mx-auto object-contain"
-                  />
-                )}
-              </div>
+                  <p className="text-xs text-foreground/50 mt-2">Abra o app do seu banco e escaneie o código</p>
+                </div>
+              )}
 
               {/* Copia e Cola */}
-              <div className="max-w-md mx-auto mb-6">
-                <label className="block text-xs font-semibold text-foreground/70 mb-1.5 text-left">
-                  Código PIX Copia e Cola:
-                </label>
+              <div className="space-y-2 text-left">
+                <label className="block text-xs font-bold text-foreground/70">Código PIX Copia e Cola:</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
                     value={pixNoivaData.pixCopiaCola}
-                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-xs text-foreground/80 font-mono truncate select-all"
+                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs font-mono text-foreground select-all"
                   />
                   <Button
                     type="button"
-                    variant="primary"
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black"
+                    variant="outline"
+                    className="shrink-0 text-xs font-bold"
                     onClick={() => {
                       navigator.clipboard.writeText(pixNoivaData.pixCopiaCola);
                       setCopiadoPix(true);
-                      setTimeout(() => setCopiadoPix(false), 3000);
+                      setTimeout(() => setCopiadoPix(false), 2500);
                     }}
                   >
-                    {copiadoPix ? <Check size={16} className="text-green-800" /> : <Copy size={16} />}
-                    {copiadoPix ? 'Copiado!' : 'Copiar PIX'}
+                    {copiadoPix ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                    {copiadoPix ? 'Copiado!' : 'Copiar'}
                   </Button>
                 </div>
-                {copiadoPix && (
-                  <p className="text-xs text-green-500 font-semibold mt-1.5 text-left flex items-center gap-1">
-                    <Check size={14} /> Código PIX copiado para a sua área de transferência!
-                  </p>
-                )}
               </div>
 
-              {/* Passo a Passo Pós-Pagamento */}
-              <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4 max-w-md mx-auto mb-6 text-left text-xs text-foreground/70 space-y-2">
-                <p className="font-bold text-foreground flex items-center gap-1.5">
-                  <ShieldCheck size={16} className="text-amber-500" /> Próximos passos para confirmação:
-                </p>
-                <ol className="list-decimal list-inside space-y-1.5 text-foreground/80 pl-1">
-                  <li>Realize o pagamento de <strong>R$ {pixNoivaData.valorSinal.toFixed(2).replace('.', ',')}</strong> no app do seu banco.</li>
-                  <li>Clique no botão verde abaixo para abrir o WhatsApp do Studio.</li>
-                  <li>Envie o comprovante para que nossa recepção confirme o bloqueio da sua data!</li>
-                </ol>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+              {/* Botão de Enviar Comprovante no WhatsApp */}
+              <div className="pt-4 border-t border-[var(--border-subtle)]">
                 <a
                   href={pixNoivaData.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-emerald-600/30"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all"
                 >
                   <MessageCircle size={18} />
-                  Já Paguei / Enviar Comprovante
+                  Enviar Comprovante do Sinal no WhatsApp
                 </a>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/')}
-                  className="shrink-0"
-                >
-                  Voltar ao Site
-                </Button>
               </div>
             </div>
           )}
 
-          {/* Navigation button for data step */}
-          {step === 'data' && formData.data && formData.hora && (
-            <Button type="button" variant="primary" className="mt-4 w-full" onClick={nextStep}>
-              Continuar →
-            </Button>
-          )}
         </form>
-
-        {/* Disclaimer */}
-        <p className="text-xs text-foreground/40 text-center mt-6">
-          Ao confirmar, você concorda com nossos termos de serviço e política de reserva.
-        </p>
       </div>
     </div>
   );
