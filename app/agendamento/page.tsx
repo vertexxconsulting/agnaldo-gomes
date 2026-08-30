@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Calendar, Clock, User, CheckCircle, X, Search, Phone } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, X, Search, Phone, Crown, Copy, Check, ShieldCheck, MessageCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente } from '@/lib/mock-data';
@@ -17,9 +17,19 @@ export default function AgendamentoPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicosRelacionados, setServicosRelacionados] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'telefone' | 'servico' | 'profissional' | 'data' | 'confirmacao'>('telefone');
+  const [step, setStep] = useState<'telefone' | 'servico' | 'profissional' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
+  const [copiadoPix, setCopiadoPix] = useState(false);
+  const [pixNoivaData, setPixNoivaData] = useState<{
+    agendamentoId: string;
+    valorTotal: number;
+    valorSinal: number;
+    pixCopiaCola: string;
+    qrcodeBase64: string;
+    whatsappUrl: string;
+  } | null>(null);
+
   const [formData, setFormData] = useState({
     servicoId: servicoParam || '',
     profissionalId: '',
@@ -71,6 +81,12 @@ export default function AgendamentoPage() {
   // Derived: serviço selecionado
   const servicoSelecionado = servicos.find(s => s.id === formData.servicoId);
 
+  // Regra de Negócio: Dia da Noiva (exige sinal obrigatório de 50% para reserva definitiva)
+  const isNoiva = servicoSelecionado?.categoria === 'Noivas' || (servicoSelecionado?.nome || '').toLowerCase().includes('noiva');
+  const valorTotalServico = Number(servicoSelecionado?.preco || 0);
+  const valorSinalNoiva = isNoiva ? Math.round(valorTotalServico * 0.5 * 100) / 100 : 0;
+  const valorRestanteNoiva = isNoiva ? Math.round((valorTotalServico - valorSinalNoiva) * 100) / 100 : 0;
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -106,12 +122,12 @@ export default function AgendamentoPage() {
   };
 
   const nextStep = () => {
-    const idx = steps.indexOf(step);
+    const idx = steps.indexOf(step as any);
     if (idx < steps.length - 1) setStep(steps[idx + 1]);
   };
 
   const prevStep = () => {
-    const idx = steps.indexOf(step);
+    const idx = steps.indexOf(step as any);
     if (idx > 0) setStep(steps[idx - 1]);
   };
 
@@ -136,11 +152,25 @@ export default function AgendamentoPage() {
         throw new Error(errorData.error || 'Erro ao salvar agendamento');
       }
 
-      const { whatsappUrl } = await res.json();
+      const resData = await res.json();
 
-      // 2. Redirecionar para o WhatsApp do Studio com a trava de confirmação
-      // Usamos window.location.href para garantir o redirecionamento externo
-      window.location.href = whatsappUrl;
+      // 2. Se for pacote de Noiva, abre a tela de cobrança do sinal de 50% via PIX
+      if (resData.isNoiva) {
+        setPixNoivaData({
+          agendamentoId: resData.id,
+          valorTotal: resData.valorTotal,
+          valorSinal: resData.valorSinal,
+          pixCopiaCola: resData.pixCopiaCola,
+          qrcodeBase64: resData.qrcodeBase64,
+          whatsappUrl: resData.whatsappUrl,
+        });
+        setStep('pagamento_noiva');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Para serviços comuns: Redirecionar para o WhatsApp do Studio com a confirmação
+      window.location.href = resData.whatsappUrl;
     } catch (err: any) {
       console.error('Erro no agendamento:', err);
       alert(`Erro: ${err.message || 'Ocorreu um erro ao processar seu agendamento. Tente novamente.'}`);
@@ -169,7 +199,7 @@ export default function AgendamentoPage() {
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-transparent to-primary/5 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-foreground/70">Carregando serviços e profissionais...</p>
+          <p className="text-foreground/70">Processando agendamento...</p>
         </div>
       </div>
     );
@@ -180,32 +210,41 @@ export default function AgendamentoPage() {
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-foreground mb-2">Agende seu Horário</h1>
-          <p className="text-foreground/60">Preencha os dados e confirme seu agendamento</p>
+          <h1 className="text-3xl font-black text-foreground mb-2 flex items-center justify-center gap-2">
+            {isNoiva && <Crown size={28} className="text-amber-500" />}
+            {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+          </h1>
+          <p className="text-foreground/60">
+            {isNoiva 
+              ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes' 
+              : 'Preencha os dados e confirme seu agendamento'}
+          </p>
         </div>
 
-        {/* Progress Steps */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-4">
-            {steps.map((s, idx) => {
-              const isActive = s === step;
-              const isCompleted = steps.indexOf(step) > idx;
-              return (
-                <div key={s} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                    isActive ? 'bg-primary text-black' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/20 text-foreground/50'
-                  }`}>
-                    {idx + 1}
+        {/* Progress Steps (apenas para o fluxo normal de agendamento) */}
+        {step !== 'pagamento_noiva' && (
+          <div className="flex justify-center mb-8">
+            <div className="flex items-center gap-4">
+              {steps.map((s, idx) => {
+                const isActive = s === step;
+                const isCompleted = steps.indexOf(step as any) > idx;
+                return (
+                  <div key={s} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                      isActive ? 'bg-primary text-black' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/20 text-foreground/50'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    {idx < steps.length - 1 && <div className={`w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/20'}`} />}
                   </div>
-                  {idx < steps.length - 1 && <div className={`w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/20'}`} />}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-8">
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-6 sm:p-8 shadow-xl">
 
           {/* Step 1: Identificação */}
           {step === 'telefone' && (
@@ -306,7 +345,15 @@ export default function AgendamentoPage() {
                     }`}
                   >
                     <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-foreground">{servico.nome}</h3>
+                      <div>
+                        <h3 className="font-bold text-foreground flex items-center gap-2">
+                          {(servico.categoria === 'Noivas' || servico.nome.toLowerCase().includes('noiva')) && (
+                            <Crown size={16} className="text-amber-500" />
+                          )}
+                          {servico.nome}
+                        </h3>
+                        <span className="text-xs text-foreground/50">{servico.categoria}</span>
+                      </div>
                       <div className="text-right">
                         <span className="font-bold text-primary">R$ {Number(servico.preco).toFixed(2).replace('.', ',')}</span>
                         <span className="text-xs text-foreground/50 block">{servico.duracao_min} min</span>
@@ -319,7 +366,7 @@ export default function AgendamentoPage() {
             </div>
           )}
 
-          {/* Step 2: Profissional */}
+          {/* Step 3: Profissional */}
           {step === 'profissional' && (
             <div>
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2"><User size={20} /> Escolha o Profissional</h2>
@@ -357,8 +404,6 @@ export default function AgendamentoPage() {
               </button>
             </div>
           )}
-
-
 
           {/* Step 4: Data/Hora */}
           {step === 'data' && (
@@ -414,10 +459,33 @@ export default function AgendamentoPage() {
           {/* Step 5: Confirmação */}
           {step === 'confirmacao' && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2"><CheckCircle size={20} /> Confirme o Agendamento</h2>
-              <div className="space-y-4 text-sm">
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                <CheckCircle size={20} className="text-primary" /> 
+                {isNoiva ? 'Confirmar Reserva de Noiva' : 'Confirme o Agendamento'}
+              </h2>
+
+              {/* Alerta explicativo de Sinal de 50% para Noivas */}
+              {isNoiva && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500 shrink-0">
+                      <Crown size={22} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-500 text-sm flex items-center gap-1.5">
+                        Garantia de Data — Sinal Obrigatório de 50%
+                      </h4>
+                      <p className="text-xs text-foreground/80 mt-1 leading-relaxed">
+                        Para assegurar a exclusividade da sua data na agenda e garantir a dedicação da nossa equipe, é cobrado o <strong>sinal de 50% via PIX</strong> na finalização da reserva.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3 text-sm">
                 <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Cliente</span>
+                  <span className="text-foreground/60">Cliente / Noiva</span>
                   <span className="font-bold text-foreground">{formData.nome}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
@@ -431,29 +499,179 @@ export default function AgendamentoPage() {
                   </div>
                 )}
                 <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
-                  <span className="text-foreground/60">Serviço</span>
+                  <span className="text-foreground/60">Serviço / Pacote</span>
                   <span className="font-bold text-foreground">{servicoSelecionado?.nome || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
                   <span className="text-foreground/60">Profissional</span>
-                  <span className="font-bold text-foreground">{profissionais.find(p => p.id === formData.profissionalId)?.nome || 'Qualquer Especialista'}</span>
+                  <span className="font-bold text-foreground">{profissionais.find(p => p.id === formData.profissionalId)?.nome || 'Agnaldo Gomes'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
                   <span className="text-foreground/60">Data e Hora</span>
                   <span className="font-bold text-foreground">{formData.data} às {formData.hora}</span>
                 </div>
-                <div className="flex justify-between py-4 text-lg">
-                  <span className="font-bold text-foreground">Total</span>
-                  <span className="font-black text-primary text-xl">R$ {Number(servicoSelecionado?.preco).toFixed(2).replace('.', ',')}</span>
-                </div>
+
+                {isNoiva ? (
+                  <>
+                    <div className="flex justify-between py-2 border-b border-[var(--border-subtle)] text-foreground/70">
+                      <span>Valor Total do Pacote</span>
+                      <span>R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-amber-500/30 text-amber-500 font-bold bg-amber-500/5 px-2 rounded">
+                      <span className="flex items-center gap-1.5"><ShieldCheck size={16} /> Sinal de Reserva (50% a pagar agora)</span>
+                      <span className="text-lg font-black">R$ {valorSinalNoiva.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between py-2 text-xs text-foreground/50">
+                      <span>Saldo restante no dia da produção</span>
+                      <span>R$ {valorRestanteNoiva.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between py-4 text-lg">
+                    <span className="font-bold text-foreground">Total</span>
+                    <span className="font-black text-primary text-xl">R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-3 mt-6">
                 <Button type="button" variant="outline" onClick={prevStep} className="flex-1">
                   <X size={18} className="mr-2" />
-                  Cancelar
+                  Voltar
                 </Button>
-                <Button type="submit" variant="primary" className="flex-1">
-                  Confirmar e Finalizar
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  className={`flex-1 font-bold ${isNoiva ? 'bg-amber-500 hover:bg-amber-600 text-black shadow-lg shadow-amber-500/20' : ''}`}
+                >
+                  {isNoiva ? (
+                    <>
+                      <Crown size={18} className="mr-2" />
+                      Pagar Sinal de 50% (PIX)
+                    </>
+                  ) : (
+                    'Confirmar e Finalizar'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Tela de Pagamento do Sinal PIX (Exclusivo para Noivas) */}
+          {step === 'pagamento_noiva' && pixNoivaData && (
+            <div className="text-center py-2">
+              <div className="inline-flex items-center justify-center p-3 bg-amber-500/20 text-amber-500 rounded-full mb-3 shadow-inner">
+                <Crown size={36} />
+              </div>
+              <h2 className="text-2xl font-black text-foreground mb-1">Sinal de Reserva da Noiva</h2>
+              <p className="text-sm text-foreground/60 max-w-md mx-auto mb-6">
+                Efetue o pagamento do sinal de <strong>50%</strong> via PIX para garantir o bloqueio definitivo da sua data com nossa equipe.
+              </p>
+
+              {/* Resumo dos Valores */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
+                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
+                  <span className="text-foreground/70">Noiva:</span>
+                  <span className="font-bold text-foreground">{formData.nome}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
+                  <span className="text-foreground/70">Pacote Escolhido:</span>
+                  <span className="font-bold text-foreground">{servicoSelecionado?.nome}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
+                  <span className="text-foreground/70">Data e Horário:</span>
+                  <span className="font-bold text-foreground">{formData.data} às {formData.hora}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 border-b border-amber-500/20">
+                  <span className="text-foreground/70">Valor Total do Pacote:</span>
+                  <span className="text-foreground font-semibold">R$ {pixNoivaData.valorTotal.toFixed(2).replace('.', ',')}</span>
+                </div>
+                <div className="flex justify-between items-center text-base pt-2">
+                  <span className="font-bold text-amber-500">Sinal a Pagar Agora (50%):</span>
+                  <span className="text-2xl font-black text-amber-500">R$ {pixNoivaData.valorSinal.toFixed(2).replace('.', ',')}</span>
+                </div>
+              </div>
+
+              {/* QR Code Container */}
+              <div className="bg-white p-4 rounded-2xl inline-block shadow-xl border border-[var(--border-subtle)] mb-4">
+                {pixNoivaData.qrcodeBase64 ? (
+                  <img 
+                    src={pixNoivaData.qrcodeBase64.startsWith('data:') ? pixNoivaData.qrcodeBase64 : `data:image/png;base64,${pixNoivaData.qrcodeBase64}`} 
+                    alt="QR Code PIX Sinal Noiva" 
+                    className="w-56 h-56 mx-auto object-contain"
+                  />
+                ) : (
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(pixNoivaData.pixCopiaCola)}`} 
+                    alt="QR Code PIX Sinal Noiva" 
+                    className="w-56 h-56 mx-auto object-contain"
+                  />
+                )}
+              </div>
+
+              {/* Copia e Cola */}
+              <div className="max-w-md mx-auto mb-6">
+                <label className="block text-xs font-semibold text-foreground/70 mb-1.5 text-left">
+                  Código PIX Copia e Cola:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={pixNoivaData.pixCopiaCola}
+                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-xs text-foreground/80 font-mono truncate select-all"
+                  />
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixNoivaData.pixCopiaCola);
+                      setCopiadoPix(true);
+                      setTimeout(() => setCopiadoPix(false), 3000);
+                    }}
+                  >
+                    {copiadoPix ? <Check size={16} className="text-green-800" /> : <Copy size={16} />}
+                    {copiadoPix ? 'Copiado!' : 'Copiar PIX'}
+                  </Button>
+                </div>
+                {copiadoPix && (
+                  <p className="text-xs text-green-500 font-semibold mt-1.5 text-left flex items-center gap-1">
+                    <Check size={14} /> Código PIX copiado para a sua área de transferência!
+                  </p>
+                )}
+              </div>
+
+              {/* Passo a Passo Pós-Pagamento */}
+              <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4 max-w-md mx-auto mb-6 text-left text-xs text-foreground/70 space-y-2">
+                <p className="font-bold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck size={16} className="text-amber-500" /> Próximos passos para confirmação:
+                </p>
+                <ol className="list-decimal list-inside space-y-1.5 text-foreground/80 pl-1">
+                  <li>Realize o pagamento de <strong>R$ {pixNoivaData.valorSinal.toFixed(2).replace('.', ',')}</strong> no app do seu banco.</li>
+                  <li>Clique no botão verde abaixo para abrir o WhatsApp do Studio.</li>
+                  <li>Envie o comprovante para que nossa recepção confirme o bloqueio da sua data!</li>
+                </ol>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <a
+                  href={pixNoivaData.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-emerald-600/30"
+                >
+                  <MessageCircle size={18} />
+                  Já Paguei / Enviar Comprovante
+                </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/')}
+                  className="shrink-0"
+                >
+                  Voltar ao Site
                 </Button>
               </div>
             </div>
@@ -469,7 +687,7 @@ export default function AgendamentoPage() {
 
         {/* Disclaimer */}
         <p className="text-xs text-foreground/40 text-center mt-6">
-          Ao confirmar, você concorda com nossos termos de serviço.
+          Ao confirmar, você concorda com nossos termos de serviço e política de reserva.
         </p>
       </div>
     </div>

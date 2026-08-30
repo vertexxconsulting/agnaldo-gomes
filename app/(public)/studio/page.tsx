@@ -107,46 +107,92 @@ function StudioCarouselHero() {
 export default function StudioPage() {
   const servicos = [
     {
-      name: "Cortes Femininos",
-      icon: Scissors,
-      desc: "Cortes personalizados com técnica de visagismo para valorizar seus traços.",
-      grupo: "Cortes",
-    },
-    {
       name: "Cortes Masculinos",
+      preco: "A partir de R$ 50",
+      detalhe: "R$ 60 com Agnaldo · R$ 50 com equipe",
       icon: User,
-      desc: "Estilo e precisão para o visual masculino moderno.",
+      desc: "Estilo, visagismo e precisão para o visual masculino moderno.",
       grupo: "Cortes",
     },
     {
-      name: "Cortes Infantis",
-      icon: Baby,
-      desc: "Atendimento acolhedor para os pequenos, com paciência e cuidado.",
+      name: "Cortes Femininos",
+      preco: "A partir de R$ 140",
+      detalhe: "R$ 140 corte · R$ 160 com escova",
+      icon: Scissors,
+      desc: "Cortes personalizados com visagismo para valorizar seus traços únicos.",
       grupo: "Cortes",
     },
     {
-      name: "Coloração & Loiras",
+      name: "Mechas & Morena Iluminada",
+      preco: "De R$ 480 a R$ 1.080",
+      detalhe: "Técnicas exclusivas e preservação da saúde dos fios",
       icon: Sparkles,
-      desc: "Loiras deslumbrantes, ruivos vibrantes e morenas iluminadas com colorimetria de precisão.",
+      desc: "Loiras deslumbrantes, morenas iluminadas e mechas com colorimetria de precisão.",
       grupo: "Coloração",
     },
     {
-      name: "Morena Iluminada",
+      name: "Coloração",
+      preco: "De R$ 160 a R$ 580",
+      detalhe: "Cores vibrantes e cobertura perfeita",
       icon: Sparkles,
-      desc: "Técnica exclusiva de iluminação que traz movimento e profundidade aos fios.",
+      desc: "Tonalização e coloração profissional com pigmentos de alta fixação e brilho.",
       grupo: "Coloração",
     },
     {
-      name: "Terapia Capilar",
+      name: "Hidratação & Reconstrução",
+      preco: "A partir de R$ 95",
+      detalhe: "Hidratação R$ 95 · Reconstrução R$ 120 · Selamento R$ 120",
       icon: Droplets,
-      desc: "Tratamentos de reconstrução, nutrição e hidratação com produtos premium.",
-      grupo: "Cuidados",
+      desc: "Reposição hídrica, lipídica e de massa com produtos de alta performance.",
+      grupo: "Tratamentos",
     },
     {
-      name: "Unhas & Manicure",
+      name: "Terapia Capilar & Micro Mist",
+      preco: "De R$ 160 a R$ 420",
+      detalhe: "Ozônio R$ 160 · Micro Mist R$ 180 · Terapia Capilar personalizada até R$ 420",
+      icon: Droplets,
+      desc: "Tratamento avançado do couro cabeludo e fibra capilar com tecnologia e vapor.",
+      grupo: "Terapia Capilar",
+    },
+    {
+      name: "Escova & Penteado",
+      preco: "A partir de R$ 45",
+      detalhe: "Escova R$ 45 · Penteado R$ 140",
+      icon: Scissors,
+      desc: "Finalização impecável para o dia a dia, eventos e ocasiões especiais.",
+      grupo: "Finalização",
+    },
+    {
+      name: "Barba",
+      preco: "A partir de R$ 45",
+      detalhe: "Alinhamento e acabamento perfeito",
+      icon: User,
+      desc: "Modelagem, hidratação e cuidado tradicional com a barba.",
+      grupo: "Barbearia",
+    },
+    {
+      name: "Unhas & Podologia",
+      preco: "A partir de R$ 40",
+      detalhe: "Mão R$ 40 · Pé R$ 45 · Podologia R$ 90",
       icon: Hand,
-      desc: "Unhas perfeitas com acabamento impecável para completar seu visual.",
-      grupo: "Unhas",
+      desc: "Cuidado e estética das mãos e pés com técnicas de biossegurança.",
+      grupo: "Unhas & Pés",
+    },
+    {
+      name: "Maquiagem & Sobrancelha",
+      preco: "A partir de R$ 55",
+      detalhe: "Sobrancelha R$ 55 · Maquiagem R$ 160",
+      icon: Sparkles,
+      desc: "Design de sobrancelhas e maquiagens elegantes e duradouras para eventos.",
+      grupo: "Face",
+    },
+    {
+      name: "Estética & Drenagem",
+      preco: "A partir de R$ 180",
+      detalhe: "Drenagem R$ 180 · Limpeza de Pele (sob consulta)",
+      icon: Droplets,
+      desc: "Drenagem linfática e cuidados faciais para renovar seu bem-estar.",
+      grupo: "Estética",
     },
   ];
 
@@ -163,25 +209,34 @@ export default function StudioPage() {
 
       {/* ===== CONTEÚDO ===== */}
       <div className="container mx-auto px-6 py-14">
-        <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe" align="center" />
+        <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe · Valores sempre a partir de" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
           <p className="text-foreground/80 text-base leading-relaxed">
             No Studio Agnaldo Gomes, cada detalhe é pensado para revelar a sua melhor versão.
-            Cabelo, estilo e autoestima em um só lugar — com técnicas exclusivas e produtos de alta performance.
+            Cabelo, estilo e autoestima em um só lugar — com técnicas exclusivas, produtos de alta performance e transparência.
           </p>
         </div>
 
         {/* Serviços */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
           {servicos.map((s, i) => (
-            <div key={i} className="glass p-8 rounded-2xl flex flex-col gap-4 text-center items-center hover:bg-primary/5 transition-colors border-t-2 border-t-primary/50">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
-                <s.icon size={32} />
+            <div key={i} className="glass p-6 rounded-2xl flex flex-col justify-between hover:bg-primary/5 transition-all duration-300 border border-primary/15 hover:border-primary/40 group">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                    <s.icon size={24} />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">{s.grupo}</span>
+                </div>
+                <h3 className="text-lg font-bold text-foreground mt-1">{s.name}</h3>
+                <p className="text-foreground/70 text-sm leading-relaxed">{s.desc}</p>
               </div>
-              <span className="text-xs font-bold uppercase tracking-widest text-primary/70">{s.grupo}</span>
-              <h3 className="text-xl font-bold">{s.name}</h3>
-              <p className="text-foreground/70 text-sm">{s.desc}</p>
+
+              <div className="mt-6 pt-4 border-t border-[var(--border-subtle)] flex flex-col gap-1">
+                <span className="text-primary font-bold text-base font-serif">{s.preco}</span>
+                <span className="text-xs text-foreground/50">{s.detalhe}</span>
+              </div>
             </div>
           ))}
         </div>

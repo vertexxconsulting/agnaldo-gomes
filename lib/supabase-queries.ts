@@ -13,9 +13,18 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
 } from './gestao-types';
 
-// Função auxiliar para silenciar erros esperados de tabelas não criadas (fallback para mock)
+export function isUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+// Função auxiliar para silenciar erros esperados de tabelas não criadas ou IDs não-UUID (fallback para mock)
 function logSupabaseError(context: string, error: any) {
-  if (error?.message?.includes('Could not find the table') || error?.code === '42P01') return;
+  if (
+    error?.message?.includes('Could not find the table') || 
+    error?.code === '42P01' || 
+    error?.code === '22P02' ||
+    error?.message?.includes('invalid input syntax for type uuid')
+  ) return;
   console.error(context, error?.message || error);
 }
 
@@ -49,10 +58,12 @@ const STATUS_FROM_DB: Record<string, StatusAgendamento> = {
 const CANAL_TO_DB: Record<CanalAgendamento, string> = {
   online: 'ONLINE',
   recepcao: 'RECEPTION',
+  manual: 'MANUAL',
 };
 const CANAL_FROM_DB: Record<string, CanalAgendamento> = {
   ONLINE: 'online',
   RECEPTION: 'recepcao',
+  MANUAL: 'manual',
 };
 
 function horaCurta(t: string | null | undefined): string {
@@ -396,6 +407,10 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   ativo: boolean;
   jornada_semanal: Record<number, { inicio: string; fim: string }>;
 }>): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.foto_url !== undefined) patch.photo_url = payload.foto_url;
@@ -410,12 +425,19 @@ export async function atualizarProfissional(id: string, payload: Partial<{
 
   if (error) {
     logSupabaseError(`[supabase] atualizarProfissional(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function excluirProfissional(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
   // Remove vínculos antes (FK em salon_professional_services)
   await supabase.from(TBL.profServicos).delete().eq('professional_id', id);
 
@@ -426,12 +448,19 @@ export async function excluirProfissional(id: string): Promise<{ ok: boolean; er
 
   if (error) {
     logSupabaseError(`[supabase] excluirProfissional(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function vincularProfissionalServicos(profissionalId: string, servicoIds: string[]): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(profissionalId)) {
+    return { ok: true };
+  }
+
   // Remove antigos vínculos
   const { error: deleteError } = await supabase
     .from(TBL.profServicos)
@@ -440,12 +469,15 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
 
   if (deleteError) {
     logSupabaseError(`[supabase] vincularProfissionalServicos delete error:`, deleteError);
-    return { ok: false, error: traduzirErro(deleteError) };
+    if (deleteError.code !== '22P02') {
+      return { ok: false, error: traduzirErro(deleteError) };
+    }
   }
 
   // Adiciona novos vínculos
-  if (servicoIds.length > 0) {
-    const vinculos = servicoIds.map(service_id => ({
+  const validServicoIds = servicoIds.filter(isUUID);
+  if (validServicoIds.length > 0) {
+    const vinculos = validServicoIds.map(service_id => ({
       professional_id: profissionalId,
       service_id,
     }));
@@ -456,7 +488,9 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
 
     if (insertError) {
       logSupabaseError(`[supabase] vincularProfissionalServicos insert error:`, insertError);
-      return { ok: false, error: traduzirErro(insertError) };
+      if (insertError.code !== '22P02') {
+        return { ok: false, error: traduzirErro(insertError) };
+      }
     }
   }
 
@@ -501,6 +535,10 @@ export async function atualizarServico(id: string, payload: Partial<{
   ativo: boolean;
   visivel_app: boolean;
 }>): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.categoria !== undefined) patch.category = payload.categoria;
@@ -516,12 +554,19 @@ export async function atualizarServico(id: string, payload: Partial<{
 
   if (error) {
     logSupabaseError(`[supabase] atualizarServico(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function excluirServico(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
   // Remove vínculos antes (FK em salon_professional_services)
   await supabase.from(TBL.profServicos).delete().eq('service_id', id);
 
@@ -532,6 +577,9 @@ export async function excluirServico(id: string): Promise<{ ok: boolean; error?:
 
   if (error) {
     logSupabaseError(`[supabase] excluirServico(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };

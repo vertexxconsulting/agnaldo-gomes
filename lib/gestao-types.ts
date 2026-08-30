@@ -14,7 +14,7 @@ export type StatusAgendamento =
   | 'cancelado'
   | 'no_show';
 
-export type CanalAgendamento = 'online' | 'recepcao';
+export type CanalAgendamento = 'online' | 'recepcao' | 'manual';
 
 export interface Cliente {
   id: UUID;
@@ -39,7 +39,8 @@ export interface Profissional {
 }
 
 export interface JornadaSemanal {
-  [dia: number]: { inicio: string; fim: string }; // 0=Sun..6=Sat, "09:00"
+  [dia: number]: { inicio: string; fim: string; ativo?: boolean };
+  [diaStr: string]: { inicio: string; fim: string; ativo?: boolean } | any;
 }
 
 export interface Servico {

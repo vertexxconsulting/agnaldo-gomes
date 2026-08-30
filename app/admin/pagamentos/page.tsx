@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { ShieldCheck, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, QrCode } from 'lucide-react';
@@ -34,24 +34,36 @@ export default function AdminPagamentosStudio() {
     setTimeout(() => setSalvo(false), 3000);
   };
 
+  const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [mensagemErro, setMensagemErro] = useState('');
+
   const testarConexao = async () => {
+    const valor = accessToken.trim();
+    if (!valor) return;
     setTestando(true);
     setTesteStatus(null);
+    setMensagemErro('');
+    setMensagemSucesso('');
     try {
-      const res = await fetch('https://api.mercadopago.com/v1/account', {
-        headers: { Authorization: `Bearer ${accessToken.trim()}` },
+      const res = await fetch('/api/mercadopago/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: valor }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
         setTesteStatus('ok');
-        const valor = accessToken.trim();
+        setMensagemSucesso(data.message || 'Conexão válida com o Mercado Pago.');
         await saveMPConfig({ accessToken: valor, ativo: true });
         setAtivo(true);
         setAtivoReal(true);
       } else {
         setTesteStatus('erro');
+        setMensagemErro(data?.error || 'Token inválido ou não autorizado.');
       }
     } catch {
       setTesteStatus('erro');
+      setMensagemErro('Erro ao conectar ao servidor para validação.');
     } finally {
       setTestando(false);
     }
@@ -61,10 +73,10 @@ export default function AdminPagamentosStudio() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <ShieldCheck size={22} className="text-primary" /> Pagamentos â€” Studio
+          <ShieldCheck size={22} className="text-primary" /> Pagamentos — Studio
         </h1>
         <p className="text-foreground/50 mt-1">
-          ConfiguraÃ§Ã£o do Mercado Pago para sinais e pagamentos de agendamentos (Dia da Noiva e serviÃ§os).
+          Configuração do Mercado Pago para sinais e pagamentos de agendamentos (Dia da Noiva e serviços).
         </p>
       </div>
 
@@ -83,12 +95,18 @@ export default function AdminPagamentosStudio() {
         )}
         <div className="text-sm">
           <p className="font-semibold text-foreground">
-            {ativoReal ? 'Mercado Pago ATIVO' : 'Mercado Pago em modo demonstraÃ§Ã£o'}
+            {ativoReal
+              ? accessToken.trim().startsWith('TEST-')
+                ? 'Mercado Pago ATIVO (Modo de Testes / Sandbox)'
+                : 'Mercado Pago ATIVO (Modo Produção)'
+              : 'Mercado Pago em modo demonstração'}
           </p>
           <p className="text-foreground/70 mt-0.5">
             {ativoReal
-              ? 'Os PIX gerados nos pagamentos do Studio (Noiva e agenda) sÃ£o reais, com QR Code e cÃ³digo copia-e-cola do Mercado Pago.'
-              : 'Insira o Access Token abaixo para ativar pagamentos reais. Enquanto isso, os cÃ³digos PIX gerados sÃ£o simulados (demonstraÃ§Ã£o).'}
+              ? accessToken.trim().startsWith('TEST-')
+                ? 'Os PIX gerados nos pagamentos do Studio estão conectados ao ambiente de testes do Mercado Pago (QR Code e código copia-e-cola válidos para homologação).'
+                : 'Os PIX gerados nos pagamentos do Studio (Noiva e agenda) são reais, com QR Code e código copia-e-cola do Mercado Pago.'
+              : 'Insira o Access Token abaixo para ativar pagamentos reais ou de teste. Enquanto isso, os códigos PIX gerados são simulados (demonstração).'}
           </p>
         </div>
       </div>
@@ -102,14 +120,14 @@ export default function AdminPagamentosStudio() {
 
         <div className="space-y-2">
           <label className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
-            Access Token (ProduÃ§Ã£o)
+            Access Token (Produção ou Teste)
           </label>
           <div className="relative">
             <input
               type={mostrar ? 'text' : 'password'}
               value={accessToken}
               onChange={e => setAccessToken(e.target.value)}
-              placeholder="APP_USR-seu_access_token"
+              placeholder="APP_USR-... ou TEST-..."
               className="w-full bg-background border border-[var(--border-subtle)] px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 rounded-md font-mono"
             />
             <button
@@ -123,14 +141,14 @@ export default function AdminPagamentosStudio() {
           <p className="text-xs text-foreground/50">
             Gere o token em{' '}
             <a
-              href="https://www.mercadopago.com.br/developers/panel/credentials"
+              href="https://www.mercadopago.com.br/developers/panel/app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline hover:text-primary-hover"
             >
-              Mercado Pago Developers â†’ Credenciais
+              Mercado Pago Developers → Suas aplicações
             </a>{' '}
-            (sua aplicaÃ§Ã£o â†’ Production access token).
+            (escolha sua aplicação → Credenciais de produção ou Credenciais de teste → Access Token).
           </p>
         </div>
 
@@ -147,21 +165,21 @@ export default function AdminPagamentosStudio() {
             disabled={testando || !accessToken.trim()}
             className="border border-[var(--border-subtle)] hover:bg-primary/10 disabled:opacity-40 text-foreground/70 text-sm font-semibold px-5 py-2.5 rounded-md transition-colors"
           >
-            {testando ? 'Testando...' : 'Testar conexÃ£o'}
+            {testando ? 'Testando...' : 'Testar conexão'}
           </button>
           {salvo && (
             <span className="text-xs font-semibold text-success flex items-center gap-1">
-              <CheckCircle2 size={14} /> Credencial salva â€” pagamentos reais ativados.
+              <CheckCircle2 size={14} /> Credencial salva com sucesso.
             </span>
           )}
           {testeStatus === 'ok' && (
             <span className="text-xs font-semibold text-success flex items-center gap-1">
-              <CheckCircle2 size={14} /> ConexÃ£o vÃ¡lida com o Mercado Pago.
+              <CheckCircle2 size={14} /> {mensagemSucesso || 'Conexão válida com o Mercado Pago.'}
             </span>
           )}
           {testeStatus === 'erro' && (
             <span className="text-xs font-semibold text-danger flex items-center gap-1">
-              <AlertTriangle size={14} /> Token invÃ¡lido â€” verifique o Access Token.
+              <AlertTriangle size={14} /> {mensagemErro || 'Token inválido — verifique o Access Token.'}
             </span>
           )}
         </div>
@@ -177,19 +195,19 @@ export default function AdminPagamentosStudio() {
           <div className="bg-[var(--background)] rounded-lg p-4">
             <p className="font-bold text-foreground mb-1">1. Agendamento</p>
             <p className="text-foreground/70">
-              Em Dia da Noiva, o agendamento fica como "Sinal Pendente" atÃ© o pagamento de no mÃ­nimo 50%.
+              Em Dia da Noiva, o agendamento fica como "Sinal Pendente" até o pagamento de no mínimo 50%.
             </p>
           </div>
           <div className="bg-[var(--background)] rounded-lg p-4">
             <p className="font-bold text-foreground mb-1">2. PIX via Mercado Pago</p>
             <p className="text-foreground/70">
-              Ao clicar em "Gerar PIX", o sistema cria a cobranÃ§a real e exibe o QR Code com o cÃ³digo copia-e-cola.
+              Ao clicar em "Gerar PIX", o sistema cria a cobrança real e exibe o QR Code com o código copia-e-cola.
             </p>
           </div>
           <div className="bg-[var(--background)] rounded-lg p-4">
-            <p className="font-bold text-foreground mb-1">3. ConfirmaÃ§Ã£o</p>
+            <p className="font-bold text-foreground mb-1">3. Confirmação</p>
             <p className="text-foreground/70">
-              ApÃ³s o cliente pagar, registre o pagamento e o agendamento passa automaticamente para "Sinal Pago", protegendo a agenda.
+              Após o cliente pagar, registre o pagamento e o agendamento passa automaticamente para "Sinal Pago", protegendo a agenda.
             </p>
           </div>
         </div>

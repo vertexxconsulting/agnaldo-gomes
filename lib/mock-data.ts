@@ -18,16 +18,87 @@ import {
 } from './supabase-queries';
 
 // ────────────────────────────────────────────
-// SERVIÇOS
+// SERVIÇOS (Tabela Oficial do Salão — sempre "a partir de")
 // ────────────────────────────────────────────
-// Sem mock: os serviços reais vivem na tabela salon_services.
-// A lista vazia é intencional — o cadastro acontece no painel e persiste no DB.
-export const MOCK_SERVICOS: Servico[] = [];
+export const MOCK_SERVICOS: Servico[] = [
+  // Cabelo & Cortes
+  { id: 'b0000001-0000-0000-0000-000000000001', nome: 'Corte Masculino (Equipe)', categoria: 'Cortes', duracao_min: 30, preco: 50, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000002', nome: 'Corte Masculino (com Agnaldo Gomes)', categoria: 'Cortes', duracao_min: 35, preco: 60, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000003', nome: 'Corte Feminino', categoria: 'Cortes', duracao_min: 45, preco: 140, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000004', nome: 'Corte Feminino com Escova', categoria: 'Cortes', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000005', nome: 'Escova', categoria: 'Cortes', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000006', nome: 'Penteado', categoria: 'Cortes', duracao_min: 60, preco: 140, ativo: true, visivel_app: true },
+
+  // Coloração & Mechas
+  { id: 'b0000001-0000-0000-0000-000000000007', nome: 'Mechas (R$ 480 a R$ 1.080)', categoria: 'Coloração', duracao_min: 180, preco: 480, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000008', nome: 'Coloração (R$ 160 a R$ 580)', categoria: 'Coloração', duracao_min: 90, preco: 160, ativo: true, visivel_app: true },
+
+  // Tratamentos & Terapia Capilar
+  { id: 'b0000001-0000-0000-0000-000000000009', nome: 'Hidratação', categoria: 'Tratamentos', duracao_min: 40, preco: 95, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000010', nome: 'Selamento Térmico', categoria: 'Tratamentos', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000011', nome: 'Reconstrução', categoria: 'Tratamentos', duracao_min: 50, preco: 120, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000012', nome: 'Ozônio Terapia', categoria: 'Tratamentos', duracao_min: 50, preco: 160, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000013', nome: 'Micro Mist - Terapia Capilar', categoria: 'Tratamentos', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000014', nome: 'Terapia Capilar Personalizada (R$ 190 a R$ 420)', categoria: 'Tratamentos', duracao_min: 60, preco: 190, ativo: true, visivel_app: true },
+
+  // Barbearia & Rosto
+  { id: 'b0000001-0000-0000-0000-000000000015', nome: 'Barba', categoria: 'Barbearia', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000016', nome: 'Sobrancelha', categoria: 'Estética Facial', duracao_min: 20, preco: 55, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000017', nome: 'Maquiagem', categoria: 'Maquiagem', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000018', nome: 'Limpeza de Pele (Sob consulta)', categoria: 'Estética Facial', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
+
+  // Manicure, Pedicure & Podologia
+  { id: 'b0000001-0000-0000-0000-000000000019', nome: 'Mão', categoria: 'Unhas', duracao_min: 40, preco: 40, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000020', nome: 'Pé', categoria: 'Unhas', duracao_min: 45, preco: 45, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000021', nome: 'Podologia', categoria: 'Podologia', duracao_min: 60, preco: 90, ativo: true, visivel_app: true },
+
+  // Estética Corporal
+  { id: 'b0000001-0000-0000-0000-000000000022', nome: 'Drenagem Linfática', categoria: 'Estética Corporal', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
+
+  // Noivas
+  { id: 'b0000001-0000-0000-0000-000000000023', nome: 'Noivas — Cabelo e Maquiagem (sem teste)', categoria: 'Noivas', duracao_min: 180, preco: 980, ativo: true, visivel_app: true },
+  { id: 'b0000001-0000-0000-0000-000000000024', nome: 'Noivas — Pé e mão, Sobrancelha, teste de make/cabelo e dia da noiva', categoria: 'Noivas', duracao_min: 360, preco: 2499, ativo: true, visivel_app: true },
+];
 
 // ────────────────────────────────────────────
 // PROFISSIONAIS
 // ────────────────────────────────────────────
-export const MOCK_PROFISSIONAIS: Profissional[] = [];
+export const MOCK_PROFISSIONAIS: Profissional[] = [
+  {
+    id: 'a0000001-0000-0000-0000-000000000001',
+    nome: 'Agnaldo Gomes',
+    foto_url: '/agnaldo1.webp',
+    especialidades: ['Cortes', 'Coloração', 'Mechas', 'Terapia Capilar', 'Noivas'],
+    ativo: true,
+    jornada_semanal: {
+      seg: { ativo: false, inicio: '09:00', fim: '19:00' },
+      ter: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qua: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qui: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sex: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sab: { ativo: true, inicio: '08:00', fim: '17:00' },
+      dom: { ativo: false, inicio: '09:00', fim: '13:00' },
+    },
+    criado_em: new Date().toISOString(),
+  },
+  {
+    id: 'a0000001-0000-0000-0000-000000000002',
+    nome: 'Equipe Studio',
+    foto_url: '/agnaldo2.webp',
+    especialidades: ['Cortes', 'Escova', 'Tratamentos', 'Barbearia', 'Unhas', 'Podologia', 'Estética'],
+    ativo: true,
+    jornada_semanal: {
+      seg: { ativo: true, inicio: '09:00', fim: '19:00' },
+      ter: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qua: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qui: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sex: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sab: { ativo: true, inicio: '08:00', fim: '17:00' },
+      dom: { ativo: false, inicio: '09:00', fim: '13:00' },
+    },
+    criado_em: new Date().toISOString(),
+  },
+];
 
 export function upsertMockProfissional(prof: Profissional) {
   const idx = MOCK_PROFISSIONAIS.findIndex(p => p.id === prof.id);
@@ -46,7 +117,39 @@ export function deleteMockProfissional(id: string) {
 // ────────────────────────────────────────────
 // VÍNCULO PROFISSIONAL ↔ SERVIÇO
 // ────────────────────────────────────────────
-export const MOCK_PROF_SERVICO: ProfissionalServico[] = [];
+export const MOCK_PROF_SERVICO: ProfissionalServico[] = [
+  // Agnaldo Gomes
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000002' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000003' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000004' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000007' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000008' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000006' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000013' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000014' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000023' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000024' },
+
+  // Equipe
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000001' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000003' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000004' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000005' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000006' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000009' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000010' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000011' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000012' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000013' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000015' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000016' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000017' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000018' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000019' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000020' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000021' },
+  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000022' },
+];
 
 export function updateMockProfissionalServicos(profissionalId: string, servicoIds: string[]) {
   // Remove antigos
@@ -149,8 +252,8 @@ export async function getProfissionais(): Promise<Profissional[]> {
 
 export async function getServicos(ativoOnly = false): Promise<Servico[]> {
   const real = await fetchServicos(ativoOnly);
-  // Sem fallback mock: tabela vazia = lista vazia (cadastro real no painel)
-  return real;
+  if (real.length > 0) return real;
+  return ativoOnly ? MOCK_SERVICOS.filter(s => s.ativo) : MOCK_SERVICOS;
 }
 
 export async function getProfissionalServico(): Promise<ProfissionalServico[]> {

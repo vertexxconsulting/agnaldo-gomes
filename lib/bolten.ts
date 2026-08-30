@@ -20,16 +20,33 @@ export interface BoltenConfig {
   kanbanComponentId: string;
   contactComponentId: string;
   webhookKey?: string;
+  webhookUrl?: string;
+  ativo?: boolean;
+}
+
+// Armazenamento em memória/servidor para persistência dinâmica
+let dynamicBoltenConfig: BoltenConfig | null = null;
+
+export function setDynamicBoltenConfig(cfg: BoltenConfig) {
+  dynamicBoltenConfig = cfg;
 }
 
 export function getBoltenConfig(): BoltenConfig | null {
+  if (dynamicBoltenConfig && (dynamicBoltenConfig.apiKey || dynamicBoltenConfig.webhookUrl)) {
+    return dynamicBoltenConfig;
+  }
+
   const apiKey = process.env.BOLTEN_API_KEY || '';
   const projectId = process.env.BOLTEN_PROJECT_ID || '';
   const kanbanComponentId = process.env.BOLTEN_KANBAN_COMPONENT_ID || '';
   const contactComponentId = process.env.BOLTEN_CONTACT_COMPONENT_ID || '';
   const webhookKey = process.env.BOLTEN_WEBHOOK_KEY || '';
-  if (!apiKey || !projectId) return null;
-  return { apiKey, projectId, kanbanComponentId, contactComponentId, webhookKey };
+  const webhookUrl = process.env.BOLTEN_WEBHOOK_URL || '';
+
+  if (!apiKey && !webhookUrl) {
+    return null;
+  }
+  return { apiKey, projectId, kanbanComponentId, contactComponentId, webhookKey, webhookUrl, ativo: true };
 }
 
 // ── Rate limiting (1 req/s por chave) ──────────────────────────
@@ -119,12 +136,101 @@ export async function boltenSchema(config: BoltenConfig, path: string) {
   return boltenFetch<any>(config, path);
 }
 
+// ── Sincronização Automática com Bolten CRM ──────────────────────
+export interface AgendamentoSyncPayload {
+  id: string;
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  servico: string;
+  profissional: string;
+  data: string;
+  hora: string;
+  valor: number;
+  isNoiva?: boolean;
+}
+
+export async function sincronizarAgendamentoComBolten(payload: AgendamentoSyncPayload): Promise<{
+  sucesso: boolean;
+  modo: 'real' | 'simulado';
+  opportunityId?: string;
+  error?: string | null;
+}> {
+  const config = getBoltenConfig();
+
+  // 1. Enviar para Webhook dedicado se configurado
+  if (config?.webhookUrl) {
+    try {
+      await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.webhookKey ? { 'x-api-key': config.webhookKey } : {}),
+        },
+        body: JSON.stringify({
+          event: payload.isNoiva ? 'noiva.agendamento_criado' : 'agendamento.criado',
+          timestamp: new Date().toISOString(),
+          data: payload,
+        }),
+      });
+      console.log(`[bolten] Webhook disparado com sucesso para ${payload.nome}`);
+    } catch (err: any) {
+      console.warn(`[bolten] Falha ao enviar para webhook: ${err?.message || err}`);
+    }
+  }
+
+  // 2. Se a API estiver configurada com Chave e Componentes
+  if (config?.apiKey && config?.projectId) {
+    try {
+      // Criar Contato se houver contactComponentId
+      if (config.contactComponentId) {
+        await boltenCreateContact(config, config.contactComponentId, {
+          Nome: payload.nome,
+          Telefone: payload.telefone,
+          'E-mail': payload.email || '',
+        });
+      }
+
+      // Criar Oportunidade no Kanban
+      if (config.kanbanComponentId) {
+        const oppRes = await boltenCreateOpportunity(config, config.kanbanComponentId, {
+          Name: `${payload.nome} — ${payload.servico}`,
+          'E-mail': payload.email || '',
+          Status: payload.isNoiva ? 'Dia da Noiva (Sinal)' : 'Novo Agendamento',
+          Valor: payload.valor,
+          Data: `${payload.data} ${payload.hora}`,
+          Servico: payload.servico,
+          Profissional: payload.profissional,
+          Contato: {
+            Nome: payload.nome,
+            Telefone: payload.telefone,
+          },
+        });
+
+        if (oppRes.data) {
+          console.log(`[bolten] Oportunidade criada no Bolten CRM: ID ${oppRes.data.id || 'OK'}`);
+          return { sucesso: true, modo: 'real', opportunityId: oppRes.data.id };
+        }
+      }
+
+      return { sucesso: true, modo: 'real' };
+    } catch (err: any) {
+      console.error('[bolten] Erro na sincronização com a API:', err);
+      return { sucesso: false, modo: 'real', error: err?.message || 'Erro de comunicação' };
+    }
+  }
+
+  // Modo simulação quando ainda não configurado
+  console.log(`[bolten-simulado] Agendamento registrado localmente: ${payload.nome} (${payload.servico}) - R$ ${payload.valor}`);
+  return { sucesso: true, modo: 'simulado' };
+}
+
 // ── Dados de demonstração (sem configuração) ───────────────────
 export function demoOpportunities() {
   return [
-    { id: 'demo-1', attributes: { Name: 'Patrícia Almeida', 'E-mail': 'patricia@email.com', Status: 'Novo agendamento', Contato: { Nome: 'Patrícia Almeida', Telefone: '5511987654321' } }, created_at: '2026-08-18T10:00:00Z' },
-    { id: 'demo-2', attributes: { Name: 'Ricardo Mendes', 'E-mail': 'ricardo@email.com', Status: 'Em negociação', Contato: { Nome: 'Ricardo Mendes', Telefone: '5511912345678' } }, created_at: '2026-08-17T14:30:00Z' },
-    { id: 'demo-3', attributes: { Name: 'Fernanda Lima', 'E-mail': 'fernanda@email.com', Status: 'Atendimento concluído', Contato: { Nome: 'Fernanda Lima', Telefone: '5511998877665' } }, created_at: '2026-08-16T09:15:00Z' },
-    { id: 'demo-4', attributes: { Name: 'Thiago Souza', 'E-mail': 'thiago@email.com', Status: 'Novo agendamento', Contato: { Nome: 'Thiago Souza', Telefone: '5511976543210' } }, created_at: '2026-08-15T16:45:00Z' },
+    { id: 'demo-1', attributes: { Name: 'Patrícia Almeida — Mechas', 'E-mail': 'patricia@email.com', Status: 'Novo Agendamento', Contato: { Nome: 'Patrícia Almeida', Telefone: '(42) 98765-4321' } }, created_at: '2026-08-28T10:00:00Z' },
+    { id: 'demo-2', attributes: { Name: 'Mariana Silva — Noivas Completo', 'E-mail': 'mariana@email.com', Status: 'Dia da Noiva (Sinal)', Contato: { Nome: 'Mariana Silva', Telefone: '(42) 99999-8888' } }, created_at: '2026-08-27T14:30:00Z' },
+    { id: 'demo-3', attributes: { Name: 'Fernanda Lima — Corte Feminino com Escova', 'E-mail': 'fernanda@email.com', Status: 'Atendimento Concluído', Contato: { Nome: 'Fernanda Lima', Telefone: '(42) 99887-7665' } }, created_at: '2026-08-26T09:15:00Z' },
+    { id: 'demo-4', attributes: { Name: 'Thiago Souza — Corte Masculino', 'E-mail': 'thiago@email.com', Status: 'Novo Agendamento', Contato: { Nome: 'Thiago Souza', Telefone: '(42) 99765-4321' } }, created_at: '2026-08-25T16:45:00Z' },
   ];
 }

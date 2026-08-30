@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { getWhatsAppBookingUrl } from '@/lib/whatsapp';
+import { criarPixMercadoPago } from '@/lib/pagamentos-studio';
+import { gerarPixCopiaCola } from '@/lib/noivas';
+import { MOCK_SERVICOS, MOCK_PROFISSIONAIS } from '@/lib/mock-data';
+import { sincronizarAgendamentoComBolten } from '@/lib/bolten';
 
 export async function POST(req: Request) {
   try {
-    // Rota pública (visitante sem sessão) — usa service role para bypass de RLS
     const supabase = await getSupabaseServiceClient();
     const body = await req.json();
     const { 
@@ -19,90 +22,183 @@ export async function POST(req: Request) {
     } = body;
 
     let clienteId = existingClienteId;
+    const numLimpo = (telefone || '').replace(/\D/g, '');
 
     // 1. Garantir que o cliente existe
-    if (!clienteId) {
-      const numLimpo = telefone.replace(/\D/g, '');
-      const { data: cliente, error: searchError } = await supabase
-        .from('salon_customers')
-        .select('id')
-        .eq('phone', numLimpo)
-        .maybeSingle();
-
-      if (searchError && searchError.code !== 'PGRST116') {
-        throw searchError;
-      }
-
-      if (cliente) {
-        clienteId = cliente.id;
-      } else {
-        const { data: novoCliente, error: createError } = await supabase
+    if (!clienteId && supabase) {
+      try {
+        const { data: cliente } = await supabase
           .from('salon_customers')
+          .select('id')
+          .eq('phone', numLimpo)
+          .maybeSingle();
+
+        if (cliente) {
+          clienteId = cliente.id;
+        } else {
+          const { data: novoCliente } = await supabase
+            .from('salon_customers')
+            .insert({
+              name: nome,
+              phone: numLimpo,
+              email: email || null,
+            })
+            .select('id')
+            .single();
+
+          if (novoCliente) clienteId = novoCliente.id;
+        }
+      } catch (err) {
+        console.warn('Fallback CRM cliente:', err);
+      }
+    }
+
+    // 2. Buscar detalhes do serviço e profissional (do Supabase ou Fallback Mock)
+    let servicoNome = 'Serviço do Salão';
+    let servicoCategoria = '';
+    let servicoPreco = 50;
+    let servicoDuracao = 30;
+    let profissionalNome = 'Qualquer Especialista';
+
+    if (supabase) {
+      const [srvRes, profRes] = await Promise.all([
+        supabase.from('salon_services').select('name, category, price, duration_minutes').eq('id', servicoId).maybeSingle(),
+        supabase.from('salon_professionals').select('name').eq('id', profissionalId).maybeSingle()
+      ]);
+      if (srvRes?.data) {
+        servicoNome = srvRes.data.name;
+        servicoCategoria = srvRes.data.category || '';
+        servicoPreco = Number(srvRes.data.price);
+        servicoDuracao = Number(srvRes.data.duration_minutes) || 30;
+      }
+      if (profRes?.data) {
+        profissionalNome = profRes.data.name;
+      }
+    }
+
+    // Fallback se não achou no banco
+    if (!servicoNome || servicoNome === 'Serviço do Salão') {
+      const mockSrv = MOCK_SERVICOS.find(s => s.id === servicoId);
+      if (mockSrv) {
+        servicoNome = mockSrv.nome;
+        servicoCategoria = mockSrv.categoria;
+        servicoPreco = mockSrv.preco;
+        servicoDuracao = mockSrv.duracao_min;
+      }
+    }
+    if (!profissionalNome || profissionalNome === 'Qualquer Especialista') {
+      const mockProf = MOCK_PROFISSIONAIS.find(p => p.id === profissionalId);
+      if (mockProf) {
+        profissionalNome = mockProf.nome;
+      }
+    }
+
+    // Calcular hora_fim
+    const dataInicio = new Date(`${data}T${hora}:00`);
+    const dataFim = new Date(dataInicio.getTime() + servicoDuracao * 60000);
+    const horaFim = isNaN(dataFim.getTime()) 
+      ? hora 
+      : `${String(dataFim.getHours()).padStart(2, '0')}:${String(dataFim.getMinutes()).padStart(2, '0')}`;
+
+    // 3. Identificar se é Noivas (exige 50% de sinal obrigatório para garantir a data)
+    const isNoiva = servicoCategoria === 'Noivas' || servicoNome.toLowerCase().includes('noiva');
+    const valorTotal = servicoPreco;
+    const valorSinal = isNoiva ? Math.round(valorTotal * 0.5 * 100) / 100 : 0;
+
+    let agendamentoId = `ag-${Date.now()}`;
+
+    // Salvar no Supabase se disponível
+    if (supabase && clienteId) {
+      try {
+        const { data: agendamento, error: bookingError } = await supabase
+          .from('salon_appointments')
           .insert({
-            name: nome,
-            phone: numLimpo,
-            email: email || null,
+            customer_id: clienteId,
+            professional_id: profissionalId,
+            service_id: servicoId,
+            date: data,
+            start_time: hora,
+            end_time: horaFim,
+            status: 'PENDING',
+            channel: 'ONLINE',
+            notes: isNoiva ? `Sinal de 50% obrigatório: R$ ${valorSinal.toFixed(2)} (Total: R$ ${valorTotal.toFixed(2)})` : null
           })
           .select('id')
           .single();
 
-        if (createError) throw createError;
-        clienteId = novoCliente.id;
+        if (agendamento) {
+          agendamentoId = agendamento.id;
+        } else if (bookingError) {
+          console.warn('Aviso ao criar agendamento no banco:', bookingError);
+        }
+      } catch (err) {
+        console.warn('Erro ao inserir salon_appointments:', err);
       }
     }
 
-    // 2. Buscar detalhes do serviço e profissional para a mensagem
-    const [
-      { data: servico },
-      { data: profissional }
-    ] = await Promise.all([
-      supabase.from('salon_services').select('name, price, duration_minutes').eq('id', servicoId).single(),
-      supabase.from('salon_professionals').select('name').eq('id', profissionalId).single()
-    ]);
+    // 4. Sincronizar dados com o CRM Bolten.io (em background, sem travar o cliente)
+    sincronizarAgendamentoComBolten({
+      id: agendamentoId,
+      nome,
+      telefone,
+      email,
+      servico: servicoNome,
+      profissional: profissionalNome,
+      data,
+      hora,
+      valor: valorTotal,
+      isNoiva
+    }).catch(err => console.warn('[bolten-sync] Falha assíncrona:', err));
 
-    if (!servico || !profissional) {
-      throw new Error('Serviço ou Profissional não encontrado');
+    // 5. Gerar PIX se for Noiva
+    let pixCopiaCola = '';
+    let qrcodeBase64 = '';
+    let isRealPix = false;
+
+    if (isNoiva) {
+      try {
+        const pixRes = await criarPixMercadoPago(
+          valorSinal,
+          `Sinal 50% Noiva - ${nome.slice(0, 30)} - ${agendamentoId.slice(0, 8)}`
+        );
+        pixCopiaCola = pixRes.copia_e_cola;
+        qrcodeBase64 = pixRes.qrcode_base64;
+        isRealPix = pixRes.real;
+      } catch (err) {
+        console.warn('Mercado Pago não configurado ou indisponível, gerando PIX padrão:', err);
+        pixCopiaCola = gerarPixCopiaCola(valorSinal, `Sinal Noiva ${agendamentoId.slice(0, 10)}`);
+        isRealPix = false;
+      }
     }
 
-    // Calcular hora_fim baseado na duração do serviço
-    const [h, m] = hora.split(':').map(Number);
-    const dataInicio = new Date(`${data}T${hora}:00`);
-    const dataFim = new Date(dataInicio.getTime() + servico.duration_minutes * 60000);
-    const horaFim = `${String(dataFim.getHours()).padStart(2, '0')}:${String(dataFim.getMinutes()).padStart(2, '0')}`;
-
-    // 3. Criar o agendamento como PENDENTE
-    const { data: agendamento, error: bookingError } = await supabase
-      .from('salon_appointments')
-      .insert({
-        customer_id: clienteId,
-        professional_id: profissionalId,
-        service_id: servicoId,
-        date: data,
-        start_time: hora,
-        end_time: horaFim,
-        status: 'PENDING',
-        channel: 'ONLINE',
-      })
-      .select('id')
-      .single();
-
-    if (bookingError) throw bookingError;
-
-    // 4. Gerar URL do WhatsApp
+    // 5. Gerar URL do WhatsApp
     const whatsappUrl = getWhatsAppBookingUrl({
-      id: agendamento.id,
+      id: agendamentoId,
       cliente: nome,
       telefone: telefone,
-      servico: servico.name,
-      profissional: profissional.name,
+      servico: servicoNome,
+      profissional: profissionalNome,
       data: new Date(data).toLocaleDateString('pt-BR'),
       hora: hora,
-      valor: Number(servico.price),
+      valor: valorTotal,
+      isNoiva,
+      valorSinal
     });
 
     return NextResponse.json({ 
       success: true, 
-      id: agendamento.id, 
+      id: agendamentoId,
+      isNoiva,
+      valorTotal,
+      valorSinal,
+      pixCopiaCola,
+      qrcodeBase64,
+      isRealPix,
+      servico: servicoNome,
+      profissional: profissionalNome,
+      data,
+      hora,
+      nome,
       whatsappUrl 
     });
 

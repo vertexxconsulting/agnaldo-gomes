@@ -371,10 +371,10 @@ export default function ProfissionaisPage() {
             return (
               <CardGlass key={prof.id} className={`transition-all duration-300 ${!prof.ativo ? 'opacity-50' : ''}`}>
                 <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                  {/* Avatar compacto */}
+                  <div className="relative w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden border border-primary/20">
                     {prof.foto_url ? (
-                      <Image src={prof.foto_url} alt={prof.nome} fill className="object-cover" />
+                      <Image src={prof.foto_url} alt={prof.nome} fill className="object-cover" sizes="56px" />
                     ) : (
                       <User2 size={24} />
                     )}

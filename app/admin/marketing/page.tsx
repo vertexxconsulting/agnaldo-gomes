@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink } from 'lucide-react';
+import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink, RotateCcw } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 
@@ -12,6 +12,7 @@ type ItemMsg = {
   mensagem: string;
   wa_link: string;
   enviada_via_api: boolean;
+  diasDesdeUltima?: number | null;
 };
 
 interface RespostaCron {
@@ -35,6 +36,7 @@ const DIAS_INATIVO = 60;
 export default function MarketingPage() {
   const [aniversarios, setAniversarios] = useState<RespostaCron | null>(null);
   const [agenda, setAgenda] = useState<RespostaCron | null>(null);
+  const [reativacao, setReativacao] = useState<RespostaCron | null>(null);
   const [inativos, setInativos] = useState<ClienteInativo[]>([]);
   const [evolutionOk, setEvolutionOk] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -90,13 +92,15 @@ export default function MarketingPage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [ani, ag, envStatus] = await Promise.all([
+      const [ani, ag, reat, envStatus] = await Promise.all([
         carregarCron('/api/cron/aniversarios'),
         carregarCron('/api/cron/agenda'),
+        carregarCron('/api/cron/reativacao'),
         fetch('/api/env-status').then(r => r.json()).catch(() => null),
       ]);
       setAniversarios(ani);
       setAgenda(ag);
+      setReativacao(reat);
       setEvolutionOk(Boolean(envStatus?.evolutionApi));
       await carregarInativos();
       setLoading(false);
@@ -105,37 +109,40 @@ export default function MarketingPage() {
 
   const reenviarTudo = async () => {
     setDisparando(true);
-    const [ani, ag] = await Promise.all([
+    const [ani, ag, reat] = await Promise.all([
       carregarCron('/api/cron/aniversarios'),
       carregarCron('/api/cron/agenda'),
+      carregarCron('/api/cron/reativacao'),
     ]);
     setAniversarios(ani);
     setAgenda(ag);
+    setReativacao(reat);
     setDisparando(false);
   };
 
   return (
     <div className="py-2 space-y-6">
       <SectionHeader
-        eyebrow="WhatsApp · relacionamento com a cliente"
+        eyebrow="WhatsApp & CRM · relacionamento com a cliente"
         title="Marketing & Mensagens"
-        action={
-          <div className="flex items-center gap-3">
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
-              evolutionOk ? 'bg-success/10 text-success border-success/25' : 'bg-warning/10 text-warning border-warning/25'
-            }`}>
-              {evolutionOk ? 'Evolution API conectada' : 'Evolution off — clique p/ enviar'}
-            </span>
-            <Button variant="outline" size="sm" onClick={reenviarTudo} disabled={disparando}>
-              <Send size={14} className="mr-1" /> {disparando ? 'Enviando...' : 'Rodar agora'}
-            </Button>
-          </div>
-        }
+action={
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border bg-primary/10 text-primary border-primary/25">
+                WhatsApp & Bolten CRM Integrados
+              </span>
+              <Button variant="outline" size="sm" onClick={reenviarTudo} disabled={disparando}>
+                <Send size={14} className="mr-1" /> {disparando ? 'Atualizando...' : 'Rodar agora'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => carregarCron('/api/cron/reativacao').then(setReativacao)} disabled={disparando} className="hidden sm:flex">
+                <RotateCcw size={14} className="mr-1" /> Reativação 90d
+              </Button>
+            </div>
+          }
       />
 
       <p className="text-sm text-foreground/60 -mt-3">
-        Disparo automático diário às <strong>08h</strong> (aniversários) e <strong>09h</strong> (confirmações e feedback)
-        quando a Evolution API estiver conectada. Sem ela, use os botões verdes para enviar manualmente.
+        Disparo diário às <strong>08h</strong> (aniversários) e <strong>09h</strong> (confirmações e feedback).
+        Use os botões verdes abaixo para enviar mensagens personalizadas diretamente pelo WhatsApp do Studio ou sincronizar com o Bolten.io.
       </p>
 
       {loading && <div className="text-center py-10 text-foreground/50">Carregando...</div>}
@@ -205,6 +212,39 @@ export default function MarketingPage() {
                     </li>
                   );
                 })}
+              </ul>
+            )}
+          </Panel>
+
+          {/* Reativação 90+ dias (Cron Mensal) */}
+          <Panel title={`🔄 Reengajamento 90+ dias (${reativacao?.total ?? 0})`}
+            action={reativacao?.error ? <span className="text-xs text-danger">{reativacao.error}</span> : undefined}>
+            {(reativacao?.itens?.length ?? 0) === 0 ? (
+              <p className="text-sm text-foreground/50 py-3">Nenhuma cliente para reengajar no momento (90+ dias sem atendimento concluído).</p>
+            ) : (
+              <ul className="space-y-2">
+                {reativacao!.itens!.map((i, idx) => (
+                  <li key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{i.nome || 'Sem nome'}</p>
+                      <p className="text-xs text-foreground/50 truncate">
+                        {i.diasDesdeUltima === null ? 'Nunca frequentou' : `Última visita há ${i.diasDesdeUltima} dias`}
+                        {' · '}
+                        {i.telefone || 'sem telefone'}
+                      </p>
+                    </div>
+                    {i.enviada_via_api ? (
+                      <span className="text-[10px] font-bold bg-success/10 text-success px-2 py-1 rounded-full border border-success/25">ENVIADA</span>
+                    ) : i.wa_link ? (
+                      <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors">
+                        <MessageCircleHeart size={13} /> Enviar Reativação
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-foreground/40">—</span>
+                    )}
+                  </li>
+                ))}
               </ul>
             )}
           </Panel>
