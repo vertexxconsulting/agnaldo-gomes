@@ -225,6 +225,51 @@ export async function sincronizarAgendamentoComBolten(payload: AgendamentoSyncPa
   return { sucesso: true, modo: 'simulado' };
 }
 
+// ── Sincronização de Cliente com Bolten CRM ───────────────────
+export async function sincronizarClienteComBolten(cliente: {
+  id: string;
+  nome: string;
+  telefone: string;
+  email?: string | null;
+}): Promise<void> {
+  const config = getBoltenConfig();
+  if (!config) return;
+
+  // 1. Webhook se configurado
+  if (config.webhookUrl) {
+    try {
+      await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.webhookKey ? { 'x-api-key': config.webhookKey } : {}),
+        },
+        body: JSON.stringify({
+          event: 'cliente.upsert',
+          timestamp: new Date().toISOString(),
+          data: cliente,
+        }),
+      });
+    } catch (err) {
+      console.warn('[bolten] Webhook cliente ignorado:', err);
+    }
+  }
+
+  // 2. API direta se configurada
+  if (config.apiKey && config.contactComponentId) {
+    try {
+      await boltenCreateContact(config, config.contactComponentId, {
+        Nome: cliente.nome,
+        Telefone: cliente.telefone,
+        'E-mail': cliente.email || '',
+        'ID Interno': cliente.id,
+      });
+    } catch (err) {
+      console.warn('[bolten] Contact API cliente ignorado:', err);
+    }
+  }
+}
+
 // ── Dados de demonstração (sem configuração) ───────────────────
 export function demoOpportunities() {
   return [

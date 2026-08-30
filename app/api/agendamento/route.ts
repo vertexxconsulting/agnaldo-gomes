@@ -24,30 +24,17 @@ export async function POST(req: Request) {
     let clienteId = existingClienteId;
     const numLimpo = (telefone || '').replace(/\D/g, '');
 
-    // 1. Garantir que o cliente existe
-    if (!clienteId && supabase) {
+    // 1. Garantir que o cliente existe no Sistema Mãe (sem duplicar)
+    if (supabase && nome && numLimpo) {
       try {
-        const { data: cliente } = await supabase
-          .from('salon_customers')
-          .select('id')
-          .eq('phone', numLimpo)
-          .maybeSingle();
-
-        if (cliente) {
-          clienteId = cliente.id;
-        } else {
-          const { data: novoCliente } = await supabase
-            .from('salon_customers')
-            .insert({
-              name: nome,
-              phone: numLimpo,
-              email: email || null,
-            })
-            .select('id')
-            .single();
-
-          if (novoCliente) clienteId = novoCliente.id;
-        }
+        const { upsertClienteMae } = await import('@/lib/crm-sync');
+        const clienteSalvo = await upsertClienteMae({
+          id: clienteId,
+          nome,
+          telefone: numLimpo,
+          email,
+        });
+        if (clienteSalvo) clienteId = clienteSalvo.id;
       } catch (err) {
         console.warn('Fallback CRM cliente:', err);
       }

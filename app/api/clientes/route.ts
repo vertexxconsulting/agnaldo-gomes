@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { upsertClienteMae } from '@/lib/crm-sync';
 
 export async function GET() {
   try {
@@ -29,49 +30,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome e Telefone são obrigatórios.' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseServiceClient();
-    const phoneClean = String(telefone).replace(/\D/g, '');
+    // Grava no Sistema Mãe com prevenção automática de duplicação
+    const clienteSalvo = await upsertClienteMae({
+      id,
+      nome,
+      telefone,
+      email,
+      nascimento,
+      observacoes,
+    });
 
-    const payload: any = {
-      name: nome.trim(),
-      phone: phoneClean,
-      email: email ? String(email).trim().toLowerCase() : null,
-      birth_date: nascimento || null,
-      notes: observacoes || null,
-    };
-
-    // Se tiver ID válido (UUID), faz update
-    const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-    if (isUUID) {
-      const { data, error } = await supabase
-        .from('salon_customers')
-        .update(payload)
-        .eq('id', id)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error('[api/clientes] Erro ao atualizar cliente:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-      return NextResponse.json({ success: true, cliente: data });
-    } else {
-      // Cria novo cliente
-      const { data, error } = await supabase
-        .from('salon_customers')
-        .insert(payload)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error('[api/clientes] Erro ao criar cliente:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-      return NextResponse.json({ success: true, cliente: data });
-    }
+    return NextResponse.json({ success: true, cliente: clienteSalvo });
   } catch (err: any) {
-    console.error('[api/clientes] Erro inesperado:', err);
+    console.error('[api/clientes] Erro ao salvar cliente no sistema mãe:', err);
     return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
   }
 }

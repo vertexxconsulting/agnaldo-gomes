@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBoltenConfig } from '@/lib/bolten';
+import { upsertClienteMae, normalizarTelefone } from '@/lib/crm-sync';
 
 /**
- * Webhook receiver para eventos do CRM Bolten (Beta).
- * Eventos: opportunity.created, opportunity.transitioned, opportunity.won, opportunity.lost
- * Docs: https://bolten.gitbook.io/bolten-docs/configuracoes-avancadas/webhooks
- *
- * Se BOLTEN_WEBHOOK_KEY estiver configurada, valida o header X-API-KEY.
- * Responde 200 rapidamente (boa prática) e registra o evento em log.
+ * Webhook receiver para eventos do CRM Bolten.
+ * SISTEMA MÃE: O Supabase salon_customers é a fonte primária de verdade.
+ * Eventos recebidos do CRM externo apenas confirmam e atualizam o cliente cadastrado,
+ * sem duplicar registros por telefone ou e-mail.
  */
 export async function POST(request: NextRequest) {
   const config = getBoltenConfig();
@@ -27,15 +26,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const eventType = payload?.type ?? 'unknown';
-  const opp = payload?.data?.opportunity;
+  const eventType = payload?.type ?? payload?.event ?? 'unknown';
+  const opp = payload?.data?.opportunity || payload?.data || {};
+  const contact = payload?.data?.contact || opp?.Contato || opp?.attributes?.Contato || {};
 
-  console.log(
-    `[bolten-webhook] event=${eventType} opportunity=${opp?.id ?? 'n/a'} name=${opp?.Name ?? opp?.attributes?.Name ?? 'n/a'} status=${opp?.Status ?? 'n/a'}`
-  );
+  const nome = contact?.Nome || contact?.name || opp?.Name || opp?.attributes?.Name || payload?.name;
+  const telefone = normalizarTelefone(contact?.Telefone || contact?.phone || opp?.Telefone || payload?.phone);
+  const email = contact?.['E-mail'] || contact?.email || opp?.['E-mail'] || payload?.email;
 
-  // Opcional: persistir o evento (ex.: tabela bolten_webhook_events no Supabase)
-  // aqui mantemos o endpoint leve; em produção, registrar em DB conforme necessidade.
+  console.log(`[bolten-webhook] Evento recebido: ${eventType} | Lead: ${nome || 'n/a'} (${telefone || 'sem telefone'})`);
+
+  // Se tiver pelo menos nome e telefone, confirma/atualiza no CRM mãe
+  if (nome && telefone) {
+    try {
+      await upsertClienteMae({
+        nome: String(nome).split('—')[0].trim(),
+        telefone,
+        email: email || null,
+        observacoes: `Origem: Bolten CRM (${eventType})`,
+      });
+      console.log(`[bolten-webhook] Cliente sincronizado com o sistema mãe com sucesso: ${nome}`);
+    } catch (err: any) {
+      console.warn('[bolten-webhook] Erro ao sincronizar cliente vindo do CRM externo:', err?.message || err);
+    }
+  }
 
   return NextResponse.json({ received: true, event: eventType }, { status: 200 });
 }
