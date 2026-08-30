@@ -370,6 +370,63 @@ function traduzirErro(error: any): string {
   return msg;
 }
 
+// ── CLIENTES MUTATIONS ────────────────────────────────────
+
+export async function criarCliente(payload: {
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  nascimento?: string | null;
+  observacoes?: string | null;
+}): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Erro ao criar cliente' };
+    return { id: data.cliente?.id };
+  } catch (err: any) {
+    return { error: err?.message || 'Erro de conexão' };
+  }
+}
+
+export async function atualizarCliente(id: string, payload: Partial<{
+  nome: string;
+  telefone: string;
+  email: string | null;
+  nascimento: string | null;
+  observacoes: string | null;
+}>): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || 'Erro ao atualizar cliente' };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro de conexão' };
+  }
+}
+
+export async function excluirCliente(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/clientes?id=${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || 'Erro ao excluir cliente' };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro de conexão' };
+  }
+}
+
+// ── PROFISSIONAIS MUTATIONS ──────────────────────────────
+
 export async function criarProfissional(payload: {
   nome: string;
   foto_url?: string | null;
@@ -378,6 +435,20 @@ export async function criarProfissional(payload: {
   jornada_semanal?: Record<number, { inicio: string; fim: string }>;
   profile_id?: string | null;
 }): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/profissionais', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.profissional?.id) {
+      return { id: data.profissional.id };
+    }
+  } catch (err) {
+    console.warn('[criarProfissional] API route falhou, tentando client-side:', err);
+  }
+
   const insert: Row = {
     name: payload.nome,
     photo_url: payload.foto_url ?? null,
@@ -411,6 +482,17 @@ export async function atualizarProfissional(id: string, payload: Partial<{
     return { ok: true };
   }
 
+  try {
+    const res = await fetch('/api/profissionais', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[atualizarProfissional] API route falhou, tentando client-side:', err);
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.foto_url !== undefined) patch.photo_url = payload.foto_url;
@@ -436,6 +518,13 @@ export async function atualizarProfissional(id: string, payload: Partial<{
 export async function excluirProfissional(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
+  }
+
+  try {
+    const res = await fetch(`/api/profissionais?id=${id}`, { method: 'DELETE' });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[excluirProfissional] API route falhou, tentando client-side:', err);
   }
 
   // Remove vínculos antes (FK em salon_professional_services)
@@ -515,6 +604,20 @@ export async function criarServico(payload: {
   ativo?: boolean;
   visivel_app?: boolean;
 }): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/servicos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.servico?.id) {
+      return { id: data.servico.id };
+    }
+  } catch (err) {
+    console.warn('[criarServico] API route falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.servicos)
     .insert({
@@ -547,6 +650,17 @@ export async function atualizarServico(id: string, payload: Partial<{
     return { ok: true };
   }
 
+  try {
+    const res = await fetch('/api/servicos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[atualizarServico] API route falhou, tentando client-side:', err);
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.categoria !== undefined) patch.category = payload.categoria;
@@ -573,6 +687,13 @@ export async function atualizarServico(id: string, payload: Partial<{
 export async function excluirServico(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
+  }
+
+  try {
+    const res = await fetch(`/api/servicos?id=${id}`, { method: 'DELETE' });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[excluirServico] API route falhou, tentando client-side:', err);
   }
 
   // Remove vínculos antes (FK em salon_professional_services)

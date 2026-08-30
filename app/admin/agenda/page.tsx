@@ -202,7 +202,7 @@ export default function AgendaPage() {
     }
   }
 
-  const handleSalvarAgendamento = (e: React.FormEvent) => {
+  const handleSalvarAgendamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cliente_id || !formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
       alert('Preencha todos os campos obrigatórios.');
@@ -213,21 +213,44 @@ export default function AgendaPage() {
     const [h, m] = formData.hora_inicio.split(':').map(Number);
     const fim = new Date(2000, 0, 1, h, m + duracaoMin);
     const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
-    const novoAgendamento: Agendamento = {
-      id: Math.random().toString(36).substring(7),
-      cliente_id: formData.cliente_id,
-      profissional_id: formData.profissional_id,
-      servico_id: formData.servico_id,
-      data: formData.data,
-      hora_inicio: formData.hora_inicio,
-      hora_fim: horaFim,
-      status: 'confirmado',
-      canal: 'recepcao',
-      criado_em: new Date().toISOString()
-    };
-    setAgendamentos(prev => [...prev, novoAgendamento]);
-    setShowForm(false);
-    setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00' });
+    
+    try {
+      const res = await fetch('/api/agendamentos/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_id: formData.cliente_id,
+          profissional_id: formData.profissional_id,
+          servico_id: formData.servico_id,
+          data: formData.data,
+          hora_inicio: formData.hora_inicio,
+          hora_fim: horaFim,
+          status: 'confirmado',
+          canal: 'recepcao'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar agendamento');
+
+      const novoAgendamento: Agendamento = {
+        id: data.agendamento?.id ?? Math.random().toString(36).substring(7),
+        cliente_id: formData.cliente_id,
+        profissional_id: formData.profissional_id,
+        servico_id: formData.servico_id,
+        data: formData.data,
+        hora_inicio: formData.hora_inicio,
+        hora_fim: horaFim,
+        status: 'confirmado',
+        canal: 'recepcao',
+        criado_em: data.agendamento?.created_at ?? new Date().toISOString()
+      };
+      setAgendamentos(prev => [...prev, novoAgendamento]);
+      setShowForm(false);
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00' });
+    } catch (err: any) {
+      console.error('Erro ao salvar agendamento:', err);
+      alert(`Erro ao salvar no banco: ${err.message}`);
+    }
   };
 
   return (

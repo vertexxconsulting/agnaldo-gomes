@@ -63,31 +63,70 @@ export default function ClienteModule() {
     (c.email ?? '').toLowerCase().includes(busca.toLowerCase())
   );
 
-  const salvar = (e: React.FormEvent<HTMLFormElement>) => {
+  const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const novo: Cliente = {
-      id: editando?.id ?? `c${Date.now()}`,
+    const payload = {
+      id: editando?.id,
       nome: form.get('nome') as string,
       telefone: form.get('telefone') as string,
       email: (form.get('email') as string) || null,
       nascimento: (form.get('nascimento') as string) || null,
       observacoes: (form.get('observacoes') as string) || null,
-      criado_em: editando?.criado_em ?? new Date().toISOString()
     };
 
-    if (editando) {
-      setClientes(prev => prev.map(c => c.id === editando.id ? novo : c));
-    } else {
-      setClientes(prev => [novo, ...prev]);
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar cliente');
+
+      const savedCliente: Cliente = data.cliente ? {
+        id: data.cliente.id,
+        nome: data.cliente.name,
+        telefone: data.cliente.phone,
+        email: data.cliente.email,
+        nascimento: data.cliente.birth_date,
+        observacoes: data.cliente.notes,
+        criado_em: data.cliente.created_at,
+      } : {
+        id: editando?.id ?? `c${Date.now()}`,
+        nome: payload.nome,
+        telefone: payload.telefone,
+        email: payload.email,
+        nascimento: payload.nascimento,
+        observacoes: payload.observacoes,
+        criado_em: editando?.criado_em ?? new Date().toISOString()
+      };
+
+      if (editando) {
+        setClientes(prev => prev.map(c => c.id === editando.id ? savedCliente : c));
+      } else {
+        setClientes(prev => [savedCliente, ...prev]);
+      }
+      setEditando(null);
+      setShowForm(false);
+    } catch (err: any) {
+      console.error('Erro ao salvar cliente:', err);
+      alert(`Erro ao salvar no banco: ${err.message}`);
     }
-    setEditando(null);
-    setShowForm(false);
   };
 
-  const excluir = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este cliente?")) {
+  const excluir = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
+    try {
+      const res = await fetch(`/api/clientes?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erro ao excluir');
+      }
       setClientes(prev => prev.filter(c => c.id !== id));
+    } catch (err: any) {
+      console.error('Erro ao excluir cliente:', err);
+      alert(`Erro ao excluir no banco: ${err.message}`);
     }
   };
 
