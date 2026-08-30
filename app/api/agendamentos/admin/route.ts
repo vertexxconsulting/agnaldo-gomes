@@ -1,6 +1,34 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
 
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const data = searchParams.get('data');
+    const profissional_id = searchParams.get('profissional_id');
+
+    const supabase = await getSupabaseServiceClient();
+    let query = supabase
+      .from('salon_appointments')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('start_time');
+
+    if (data) query = query.eq('date', data);
+    if (profissional_id) query = query.eq('professional_id', profissional_id);
+
+    const { data: agendamentos, error } = await query;
+    if (error) {
+      console.error('[api/agendamentos/admin] Erro ao buscar agendamentos:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(agendamentos || []);
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

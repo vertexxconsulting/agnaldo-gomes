@@ -148,6 +148,18 @@ function mapBloqueio(r: Row): BloqueioAgenda {
 // ── CLIENTES ─────────────────────────────────────────────
 
 export async function fetchClientes(): Promise<Cliente[]> {
+  try {
+    const res = await fetch('/api/clientes');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map(mapCliente);
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchClientes] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.clientes)
     .select('*')
@@ -177,6 +189,18 @@ export async function fetchClientePorId(id: string): Promise<Cliente | null> {
 // ── PROFISSIONAIS ────────────────────────────────────────
 
 export async function fetchProfissionais(): Promise<Profissional[]> {
+  try {
+    const res = await fetch('/api/profissionais');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map(mapProfissional);
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchProfissionais] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.profissionais)
     .select('*')
@@ -206,6 +230,20 @@ export async function fetchProfissionalPorId(id: string): Promise<Profissional |
 // ── SERVIÇOS ─────────────────────────────────────────────
 
 export async function fetchServicos(ativoOnly = false): Promise<Servico[]> {
+  try {
+    const res = await fetch('/api/servicos');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        let list = data.map(mapServico);
+        if (ativoOnly) list = list.filter(s => s.ativo);
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchServicos] API server falhou, tentando client-side:', err);
+  }
+
   let query = supabase.from(TBL.servicos).select('*').order('category').order('name');
   if (ativoOnly) query = query.eq('active', true);
 
@@ -249,6 +287,27 @@ export async function fetchAgendamentos(filtro?: {
   profissional_id?: string;
   status?: string;
 }): Promise<Agendamento[]> {
+  try {
+    let url = '/api/agendamentos/admin';
+    const params = new URLSearchParams();
+    if (filtro?.data) params.append('data', filtro.data);
+    if (filtro?.profissional_id) params.append('profissional_id', filtro.profissional_id);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        let list = data.map(mapAgendamento);
+        if (filtro?.status) list = list.filter(a => a.status === filtro.status);
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchAgendamentos] API server falhou, tentando client-side:', err);
+  }
+
   let query = supabase.from(TBL.agendamentos).select('*')
     .order('date', { ascending: false })
     .order('start_time');
