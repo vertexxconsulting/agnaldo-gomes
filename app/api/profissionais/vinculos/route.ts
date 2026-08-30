@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'ID do profissional é obrigatório' }, { status: 400 });
     }
 
-    const supabase = getSupabaseServiceClient();
+    const supabase = await getSupabaseServiceClient();
 
     // 1. Remover vínculos existentes
     const { error: deleteError } = await supabase
