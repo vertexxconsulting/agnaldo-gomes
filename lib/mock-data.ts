@@ -22,42 +22,42 @@ import {
 // ────────────────────────────────────────────
 export const MOCK_SERVICOS: Servico[] = [
   // Cabelo & Cortes
-  { id: 'b0000001-0000-0000-0000-000000000001', nome: 'Corte Masculino (Equipe)', categoria: 'Cortes', duracao_min: 30, preco: 50, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000002', nome: 'Corte Masculino (com Agnaldo Gomes)', categoria: 'Cortes', duracao_min: 35, preco: 60, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000003', nome: 'Corte Feminino', categoria: 'Cortes', duracao_min: 45, preco: 140, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000004', nome: 'Corte Feminino com Escova', categoria: 'Cortes', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000005', nome: 'Escova', categoria: 'Cortes', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000006', nome: 'Penteado', categoria: 'Cortes', duracao_min: 60, preco: 140, ativo: true, visivel_app: true },
+  { id: 'c18d9f42-7a2e-4b83-91de-5ca39674f101', nome: 'Corte Masculino (Equipe)', categoria: 'Cortes', duracao_min: 30, preco: 50, ativo: true, visivel_app: true },
+  { id: 'c29e0a53-8b3f-4c94-a2ef-6db40785a202', nome: 'Corte Masculino (com Agnaldo Gomes)', categoria: 'Cortes', duracao_min: 35, preco: 60, ativo: true, visivel_app: true },
+  { id: 'c3af1b64-9c40-4da5-b3f0-7ec51896b303', nome: 'Corte Feminino', categoria: 'Cortes', duracao_min: 45, preco: 140, ativo: true, visivel_app: true },
+  { id: 'c4b02c75-ad51-4eb6-c401-8fd629a7c404', nome: 'Corte Feminino com Escova', categoria: 'Cortes', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
+  { id: 'c5c13d86-be62-4fc7-d512-90e73ab8d505', nome: 'Escova', categoria: 'Cortes', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
+  { id: 'c6d24e97-cf73-40d8-e623-a1f84bc9e606', nome: 'Penteado', categoria: 'Cortes', duracao_min: 60, preco: 140, ativo: true, visivel_app: true },
 
   // Coloração & Mechas
-  { id: 'b0000001-0000-0000-0000-000000000007', nome: 'Mechas (R$ 480 a R$ 1.080)', categoria: 'Coloração', duracao_min: 180, preco: 480, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000008', nome: 'Coloração (R$ 160 a R$ 580)', categoria: 'Coloração', duracao_min: 90, preco: 160, ativo: true, visivel_app: true },
+  { id: 'c7e35fa8-d084-41e9-f734-b2095cda0707', nome: 'Mechas (R$ 480 a R$ 1.080)', categoria: 'Coloração', duracao_min: 180, preco: 480, ativo: true, visivel_app: true },
+  { id: 'c8f460b9-e195-42fa-0845-c31a6deb1808', nome: 'Coloração (R$ 160 a R$ 580)', categoria: 'Coloração', duracao_min: 90, preco: 160, ativo: true, visivel_app: true },
 
   // Tratamentos & Terapia Capilar
-  { id: 'b0000001-0000-0000-0000-000000000009', nome: 'Hidratação', categoria: 'Tratamentos', duracao_min: 40, preco: 95, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000010', nome: 'Selamento Térmico', categoria: 'Tratamentos', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000011', nome: 'Reconstrução', categoria: 'Tratamentos', duracao_min: 50, preco: 120, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000012', nome: 'Ozônio Terapia', categoria: 'Tratamentos', duracao_min: 50, preco: 160, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000013', nome: 'Micro Mist - Terapia Capilar', categoria: 'Tratamentos', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000014', nome: 'Terapia Capilar Personalizada (R$ 190 a R$ 420)', categoria: 'Tratamentos', duracao_min: 60, preco: 190, ativo: true, visivel_app: true },
+  { id: 'c90571ca-f206-430b-1956-d42b7efc2909', nome: 'Hidratação', categoria: 'Tratamentos', duracao_min: 40, preco: 95, ativo: true, visivel_app: true },
+  { id: 'ca1682db-0317-441c-2a67-e53c800d3a10', nome: 'Selamento Térmico', categoria: 'Tratamentos', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
+  { id: 'cb2793ec-1428-452d-3b78-f64d911e4b11', nome: 'Reconstrução', categoria: 'Tratamentos', duracao_min: 50, preco: 120, ativo: true, visivel_app: true },
+  { id: 'cc38a4fd-2539-463e-4c89-075ea22f5c12', nome: 'Ozônio Terapia', categoria: 'Tratamentos', duracao_min: 50, preco: 160, ativo: true, visivel_app: true },
+  { id: 'cd49b50e-364a-474f-5d90-186fb3306d13', nome: 'Micro Mist - Terapia Capilar', categoria: 'Tratamentos', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
+  { id: 'ce5ac61f-475b-4850-6e01-2970c4417e14', nome: 'Terapia Capilar Personalizada (R$ 190 a R$ 420)', categoria: 'Tratamentos', duracao_min: 60, preco: 190, ativo: true, visivel_app: true },
 
   // Barbearia & Rosto
-  { id: 'b0000001-0000-0000-0000-000000000015', nome: 'Barba', categoria: 'Barbearia', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000016', nome: 'Sobrancelha', categoria: 'Estética Facial', duracao_min: 20, preco: 55, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000017', nome: 'Maquiagem', categoria: 'Maquiagem', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000018', nome: 'Limpeza de Pele (Sob consulta)', categoria: 'Estética Facial', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
+  { id: 'cf6bd720-586c-4961-7f12-3a81d5528f15', nome: 'Barba', categoria: 'Barbearia', duracao_min: 30, preco: 45, ativo: true, visivel_app: true },
+  { id: 'd07ce831-697d-4a72-8023-4b92e6639016', nome: 'Sobrancelha', categoria: 'Estética Facial', duracao_min: 20, preco: 55, ativo: true, visivel_app: true },
+  { id: 'd18df942-7a8e-4b83-9134-5ca3f774a117', nome: 'Maquiagem', categoria: 'Maquiagem', duracao_min: 60, preco: 160, ativo: true, visivel_app: true },
+  { id: 'd29ea053-8b9f-4c94-a245-6db40885b218', nome: 'Limpeza de Pele (Sob consulta)', categoria: 'Estética Facial', duracao_min: 60, preco: 120, ativo: true, visivel_app: true },
 
   // Manicure, Pedicure & Podologia
-  { id: 'b0000001-0000-0000-0000-000000000019', nome: 'Mão', categoria: 'Unhas', duracao_min: 40, preco: 40, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000020', nome: 'Pé', categoria: 'Unhas', duracao_min: 45, preco: 45, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000021', nome: 'Podologia', categoria: 'Podologia', duracao_min: 60, preco: 90, ativo: true, visivel_app: true },
+  { id: 'd3afb164-9caf-4da5-b356-7ec51996c319', nome: 'Mão', categoria: 'Unhas', duracao_min: 40, preco: 40, ativo: true, visivel_app: true },
+  { id: 'd4b0c275-adba-4eb6-c467-8fd62aa7d420', nome: 'Pé', categoria: 'Unhas', duracao_min: 45, preco: 45, ativo: true, visivel_app: true },
+  { id: 'd5c1d386-becb-4fc7-d578-90e73bb8e521', nome: 'Podologia', categoria: 'Podologia', duracao_min: 60, preco: 90, ativo: true, visivel_app: true },
 
   // Estética Corporal
-  { id: 'b0000001-0000-0000-0000-000000000022', nome: 'Drenagem Linfática', categoria: 'Estética Corporal', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
+  { id: 'd6d2e497-cfdc-40d8-e689-a1f84cc9f622', nome: 'Drenagem Linfática', categoria: 'Estética Corporal', duracao_min: 60, preco: 180, ativo: true, visivel_app: true },
 
   // Noivas
-  { id: 'b0000001-0000-0000-0000-000000000023', nome: 'Noivas — Cabelo e Maquiagem (sem teste)', categoria: 'Noivas', duracao_min: 180, preco: 980, ativo: true, visivel_app: true },
-  { id: 'b0000001-0000-0000-0000-000000000024', nome: 'Noivas — Pé e mão, Sobrancelha, teste de make/cabelo e dia da noiva', categoria: 'Noivas', duracao_min: 360, preco: 2499, ativo: true, visivel_app: true },
+  { id: 'd7e3f5a8-d0ed-41e9-f79a-b2095dda0723', nome: 'Noivas — Cabelo e Maquiagem (sem teste)', categoria: 'Noivas', duracao_min: 180, preco: 980, ativo: true, visivel_app: true },
+  { id: 'd8f406b9-e1fe-42fa-08ab-c31a6eeb1824', nome: 'Noivas — Pé e mão, Sobrancelha, teste de make/cabelo e dia da noiva', categoria: 'Noivas', duracao_min: 360, preco: 2499, ativo: true, visivel_app: true },
 ];
 
 // ────────────────────────────────────────────
@@ -65,7 +65,7 @@ export const MOCK_SERVICOS: Servico[] = [
 // ────────────────────────────────────────────
 export const MOCK_PROFISSIONAIS: Profissional[] = [
   {
-    id: 'a0000001-0000-0000-0000-000000000001',
+    id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901',
     nome: 'Agnaldo Gomes',
     foto_url: '/agnaldo1.webp',
     especialidades: ['Cortes', 'Coloração', 'Mechas', 'Terapia Capilar', 'Noivas'],
@@ -82,7 +82,7 @@ export const MOCK_PROFISSIONAIS: Profissional[] = [
     criado_em: new Date().toISOString(),
   },
   {
-    id: 'a0000001-0000-0000-0000-000000000002',
+    id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012',
     nome: 'Equipe Studio',
     foto_url: '/agnaldo2.webp',
     especialidades: ['Cortes', 'Escova', 'Tratamentos', 'Barbearia', 'Unhas', 'Podologia', 'Estética'],
@@ -119,36 +119,36 @@ export function deleteMockProfissional(id: string) {
 // ────────────────────────────────────────────
 export const MOCK_PROF_SERVICO: ProfissionalServico[] = [
   // Agnaldo Gomes
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000002' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000003' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000004' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000007' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000008' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000006' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000013' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000014' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000023' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000001', servico_id: 'b0000001-0000-0000-0000-000000000024' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c29e0a53-8b3f-4c94-a2ef-6db40785a202' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c3af1b64-9c40-4da5-b3f0-7ec51896b303' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c4b02c75-ad51-4eb6-c401-8fd629a7c404' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c7e35fa8-d084-41e9-f734-b2095cda0707' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c8f460b9-e195-42fa-0845-c31a6deb1808' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'c6d24e97-cf73-40d8-e623-a1f84bc9e606' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'cd49b50e-364a-474f-5d90-186fb3306d13' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'ce5ac61f-475b-4850-6e01-2970c4417e14' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'd7e3f5a8-d0ed-41e9-f79a-b2095dda0723' },
+  { profissional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901', servico_id: 'd8f406b9-e1fe-42fa-08ab-c31a6eeb1824' },
 
   // Equipe
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000001' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000003' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000004' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000005' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000006' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000009' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000010' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000011' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000012' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000013' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000015' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000016' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000017' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000018' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000019' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000020' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000021' },
-  { profissional_id: 'a0000001-0000-0000-0000-000000000002', servico_id: 'b0000001-0000-0000-0000-000000000022' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c18d9f42-7a2e-4b83-91de-5ca39674f101' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c3af1b64-9c40-4da5-b3f0-7ec51896b303' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c4b02c75-ad51-4eb6-c401-8fd629a7c404' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c5c13d86-be62-4fc7-d512-90e73ab8d505' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c6d24e97-cf73-40d8-e623-a1f84bc9e606' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'c90571ca-f206-430b-1956-d42b7efc2909' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'ca1682db-0317-441c-2a67-e53c800d3a10' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'cb2793ec-1428-452d-3b78-f64d911e4b11' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'cc38a4fd-2539-463e-4c89-075ea22f5c12' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'cd49b50e-364a-474f-5d90-186fb3306d13' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'cf6bd720-586c-4961-7f12-3a81d5528f15' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd07ce831-697d-4a72-8023-4b92e6639016' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd18df942-7a8e-4b83-9134-5ca3f774a117' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd29ea053-8b9f-4c94-a245-6db40885b218' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd3afb164-9caf-4da5-b356-7ec51996c319' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd4b0c275-adba-4eb6-c467-8fd62aa7d420' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd5c1d386-becb-4fc7-d578-90e73bb8e521' },
+  { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd6d2e497-cfdc-40d8-e689-a1f84cc9f622' },
 ];
 
 export function updateMockProfissionalServicos(profissionalId: string, servicoIds: string[]) {

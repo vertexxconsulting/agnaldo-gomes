@@ -1,17 +1,17 @@
 -- ==============================================================================
--- SEED DE SERVIÇOS E VALORES OFICIAIS — STUDIO AGNALDO GOMES
--- Atualizado com UUIDs v4 aleatórios seguros (sem sequências de zeros)
+-- SCRIPT DE ATUALIZAÇÃO PARA UUIDS REAIS E ALEATÓRIOS (SUPABASE SQL EDITOR)
+-- Studio Agnaldo Gomes
 -- ==============================================================================
 
--- 0. Limpar registros antigos com IDs sequenciais (se existirem)
+-- 1. Limpar vínculos e registros com IDs sequenciais (que continham zeros)
 DELETE FROM public.salon_professional_services 
 WHERE professional_id IN ('a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000002')
    OR service_id LIKE 'b0000001-%';
 
-DELETE FROM public.salon_services WHERE id LIKE 'b0000001-%';
-DELETE FROM public.salon_professionals WHERE id IN ('a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000002');
+DELETE FROM public.salon_services WHERE id::text LIKE 'b0000001-%';
+DELETE FROM public.salon_professionals WHERE id::text IN ('a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000002');
 
--- 1. Inserir Profissionais Base com UUIDs v4 aleatórios
+-- 2. Inserir Profissionais com UUIDs v4 Aleatórios Válidos
 INSERT INTO public.salon_professionals (id, name, specialties, active)
 VALUES 
   ('e47b1a20-8d3f-4e92-91bc-3a817452d901', 'Agnaldo Gomes', ARRAY['Cortes', 'Coloração', 'Mechas', 'Terapia Capilar', 'Noivas'], true),
@@ -21,7 +21,7 @@ ON CONFLICT (id) DO UPDATE SET
   specialties = EXCLUDED.specialties,
   active = true;
 
--- 2. Inserir Tabela Oficial de Serviços com UUIDs v4 aleatórios
+-- 3. Inserir Serviços com UUIDs v4 Aleatórios Válidos
 INSERT INTO public.salon_services (id, name, category, duration_minutes, price, active, visible_in_app)
 VALUES
   -- Cabelo & Cortes
@@ -69,7 +69,7 @@ ON CONFLICT (id) DO UPDATE SET
   active = EXCLUDED.active,
   visible_in_app = EXCLUDED.visible_in_app;
 
--- 3. Vincular Serviços aos Profissionais com novos UUIDs
+-- 4. Vincular Serviços aos Profissionais
 INSERT INTO public.salon_professional_services (professional_id, service_id)
 VALUES
   -- Agnaldo Gomes
