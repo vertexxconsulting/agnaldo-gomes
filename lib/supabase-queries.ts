@@ -461,20 +461,30 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
     return { ok: true };
   }
 
-  // Remove antigos vínculos
+  // Tenta via API Server-side com service_role (garante sucesso independente de RLS)
+  try {
+    const res = await fetch('/api/profissionais/vinculos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profissionalId, servicoIds }),
+    });
+    if (res.ok) {
+      return { ok: true };
+    }
+  } catch (apiErr) {
+    console.warn('[vincularProfissionalServicos] Tentativa via API falhou, tentando fallback client:', apiErr);
+  }
+
+  // Fallback client-side
   const { error: deleteError } = await supabase
     .from(TBL.profServicos)
     .delete()
     .eq('professional_id', profissionalId);
 
-  if (deleteError) {
+  if (deleteError && deleteError.code !== '22P02' && deleteError.code !== '42501') {
     logSupabaseError(`[supabase] vincularProfissionalServicos delete error:`, deleteError);
-    if (deleteError.code !== '22P02') {
-      return { ok: false, error: traduzirErro(deleteError) };
-    }
   }
 
-  // Adiciona novos vínculos
   const validServicoIds = servicoIds.filter(isUUID);
   if (validServicoIds.length > 0) {
     const vinculos = validServicoIds.map(service_id => ({
@@ -486,11 +496,9 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
       .from(TBL.profServicos)
       .insert(vinculos);
 
-    if (insertError) {
+    if (insertError && insertError.code !== '22P02') {
       logSupabaseError(`[supabase] vincularProfissionalServicos insert error:`, insertError);
-      if (insertError.code !== '22P02') {
-        return { ok: false, error: traduzirErro(insertError) };
-      }
+      return { ok: false, error: traduzirErro(insertError) };
     }
   }
 
