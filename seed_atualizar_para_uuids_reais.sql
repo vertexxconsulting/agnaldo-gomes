@@ -6,7 +6,7 @@
 -- 1. Limpar vínculos e registros com IDs sequenciais (que continham zeros)
 DELETE FROM public.salon_professional_services 
 WHERE professional_id IN ('a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000002')
-   OR service_id LIKE 'b0000001-%';
+   OR service_id::text LIKE 'b0000001-%';
 
 DELETE FROM public.salon_services WHERE id::text LIKE 'b0000001-%';
 DELETE FROM public.salon_professionals WHERE id::text IN ('a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000002');
