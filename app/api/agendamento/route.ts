@@ -114,6 +114,28 @@ export async function POST(req: Request) {
 
         if (agendamento) {
           agendamentoId = agendamento.id;
+
+          // Espelhar na tabela específica de Noivas para aparecer no Dashboard "Dia da Noiva"
+          if (isNoiva) {
+            try {
+              await supabase.from('salon_bride_appointments').insert({
+                pacote_id: servicoId, // usaremos o ID do serviço como pacote_id para o APP
+                nome_noiva: nome,
+                telefone: numLimpo,
+                email: email || null,
+                data_evento: data, // Por padrão assume a mesma data, salão entra em contato
+                data_agendamento: data,
+                hora: hora,
+                profissional_id: profissionalId,
+                status: 'sinal_pendente',
+                sinal_percentual: 50,
+                observacoes: 'Agendado pelo APP Público. Favor entrar em contato para marcar o teste e detalhes.',
+              });
+            } catch(e) {
+              console.warn('Falha ao espelhar noiva:', e);
+            }
+          }
+
         } else if (bookingError) {
           console.warn('Aviso ao criar agendamento no banco:', bookingError);
         }

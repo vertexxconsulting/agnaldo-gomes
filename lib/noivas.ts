@@ -119,50 +119,79 @@ export const NOIVA_STATUS_COLOR: Record<StatusAgendamentoNoiva, string> = {
 export const NOIVA_SINAL_MIN_PCT = 50;
 
 // ─────────────────────────────────────────────────────────────────────
-// Camada de dados: memória (persiste em memória da sessão + localStorage)
-// Quando o Supabase estiver conectado, substituir por queries reais.
+// Camada de dados: Conectado ao Supabase com fallback de memória para UI síncrona
 // ─────────────────────────────────────────────────────────────────────
 
-const LS_KEY = 'ag_noivas_state';
+import { supabase } from './supabase';
 
 interface NoivasState {
   agendamentos: AgendamentoNoiva[];
   pagamentos: PagamentoNoiva[];
 }
 
-function loadState(): NoivasState {
+let state: NoivasState = { agendamentos: [], pagamentos: [] };
+let subscribers: (() => void)[] = [];
+
+export async function fetchNoivaDadosDB() {
+  if (typeof window === 'undefined') return;
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as NoivasState;
-      // Remove os dados de exemplo antigos para garantir que a lista fique limpa
-      parsed.agendamentos = parsed.agendamentos.filter(a => !a.id.startsWith('n-seed-'));
-      return parsed;
+    const [resAg, resPg] = await Promise.all([
+      supabase.from('salon_bride_appointments').select('*').order('data_agendamento', { ascending: true }),
+      supabase.from('salon_bride_payments').select('*').order('created_at', { ascending: true })
+    ]);
+    
+    if (resAg.data && resPg.data) {
+       state.agendamentos = resAg.data.map((r: any) => ({
+         id: r.id,
+         pacote_id: r.pacote_id,
+         nome_noiva: r.nome_noiva,
+         telefone: r.telefone,
+         email: r.email,
+         data_evento: r.data_evento,
+         data_agendamento: r.data_agendamento,
+         hora: r.hora,
+         profissional_id: r.profissional_id,
+         status: r.status,
+         sinal_percentual: r.sinal_percentual,
+         observacoes: r.observacoes,
+         criado_em: r.created_at,
+       }));
+       state.pagamentos = resPg.data.map((r: any) => ({
+         id: r.id,
+         agendamento_id: r.agendamento_id,
+         tipo: r.tipo,
+         valor: Number(r.valor),
+         forma: r.forma,
+         status: r.status,
+         pixCopiaCola: r.pix_copia_cola,
+         comprovante: r.comprovante_url,
+         data_pagamento: r.data_pagamento,
+         criado_em: r.created_at,
+       }));
+       notifySubscribers();
     }
-  } catch {}
-  return { agendamentos: seedAgendamentos(), pagamentos: [] };
+  } catch(e) { console.error('Erro ao buscar dados de noivas', e) }
 }
 
-function saveState(state: NoivasState) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+function notifySubscribers() {
+  subscribers.forEach(cb => cb());
 }
-
-let state: NoivasState =
-  typeof window !== 'undefined' ? loadState() : { agendamentos: [], pagamentos: [] };
 
 export function subscribeNoivas(cb: () => void): () => void {
-  const id = setInterval(() => {
-    if (typeof window !== 'undefined') {
-      const next = loadState();
-      if (next !== state) {
-        state = next;
-        cb();
-      }
+  subscribers.push(cb);
+  fetchNoivaDadosDB();
+  
+  const channel = supabase.channel('noivas_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_bride_appointments' }, () => fetchNoivaDadosDB())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_bride_payments' }, () => fetchNoivaDadosDB())
+    .subscribe();
+
+  return () => {
+    subscribers = subscribers.filter(s => s !== cb);
+    if (subscribers.length === 0) {
+       supabase.removeChannel(channel);
     }
-  }, 1500);
-  return () => clearInterval(id);
+  };
 }
 
 export function getNoivaPacotes(): NoivaPacote[] {
@@ -170,47 +199,45 @@ export function getNoivaPacotes(): NoivaPacote[] {
 }
 
 export function getNoivaAgendamentos(): AgendamentoNoiva[] {
-  state = typeof window !== 'undefined' ? loadState() : state;
   return state.agendamentos;
 }
 
 export function getNoivaPagamentos(agendamentoId: string): PagamentoNoiva[] {
-  state = typeof window !== 'undefined' ? loadState() : state;
   return state.pagamentos.filter(p => p.agendamento_id === agendamentoId);
 }
 
-function setState(next: NoivasState) {
-  state = next;
-  saveState(next);
-}
-
-export function criarAgendamentoNoiva(
+export async function criarAgendamentoNoiva(
   params: Omit<AgendamentoNoiva, 'id' | 'status' | 'criado_em'>
-): AgendamentoNoiva {
-  const novo: AgendamentoNoiva = {
-    ...params,
-    id: `n${Date.now()}`,
+): Promise<AgendamentoNoiva> {
+  const { data, error } = await supabase.from('salon_bride_appointments').insert({
+    pacote_id: params.pacote_id,
+    nome_noiva: params.nome_noiva,
+    telefone: params.telefone,
+    email: params.email,
+    data_evento: params.data_evento,
+    data_agendamento: params.data_agendamento,
+    hora: params.hora,
+    profissional_id: params.profissional_id,
     status: 'sinal_pendente',
-    criado_em: new Date().toISOString(),
-  };
-  const next = { agendamentos: [...state.agendamentos, novo], pagamentos: state.pagamentos };
-  setState(next);
+    sinal_percentual: params.sinal_percentual,
+    observacoes: params.observacoes,
+  }).select().single();
+
+  if (error || !data) throw new Error(error?.message || 'Erro ao criar agendamento');
+  
+  const novo = { ...data, criado_em: data.created_at } as unknown as AgendamentoNoiva;
+  await fetchNoivaDadosDB();
   return novo;
 }
 
-export function atualizarStatusNoiva(id: string, status: StatusAgendamentoNoiva) {
-  const next = {
-    agendamentos: state.agendamentos.map(a => (a.id === id ? { ...a, status } : a)),
-    pagamentos: state.pagamentos,
-  };
-  setState(next);
+export async function atualizarStatusNoiva(id: string, status: StatusAgendamentoNoiva) {
+  await supabase.from('salon_bride_appointments').update({ status }).eq('id', id);
+  await fetchNoivaDadosDB();
 }
 
-export function excluirAgendamentoNoiva(id: string) {
-  setState({
-    agendamentos: state.agendamentos.filter(a => a.id !== id),
-    pagamentos: state.pagamentos.filter(p => p.agendamento_id !== id),
-  });
+export async function excluirAgendamentoNoiva(id: string) {
+  await supabase.from('salon_bride_appointments').delete().eq('id', id);
+  await fetchNoivaDadosDB();
 }
 
 /** Valor total já pago de um agendamento */
@@ -257,34 +284,36 @@ export function gerarPixCopiaCola(valor: number, descricao: string): string {
   return payload + crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-export function registrarPagamentoNoiva(params: {
+export async function registrarPagamentoNoiva(params: {
   agendamento_id: string;
   tipo: 'sinal' | 'complemento' | 'final';
   valor: number;
   forma: 'pix' | 'cartao' | 'dinheiro' | 'transferencia';
   comprovante?: string | null;
   pixCopiaCola?: string | null;
-}): PagamentoNoiva {
-  const pagamento: PagamentoNoiva = {
-    id: `pg${Date.now()}`,
+}): Promise<PagamentoNoiva> {
+  const { data, error } = await supabase.from('salon_bride_payments').insert({
+    agendamento_id: params.agendamento_id,
+    tipo: params.tipo,
+    valor: params.valor,
+    forma: params.forma,
     status: 'pago',
-    criado_em: new Date().toISOString(),
-    data_pagamento: new Date().toISOString(),
-    ...params,
-  };
-  setState({ agendamentos: state.agendamentos, pagamentos: [...state.pagamentos, pagamento] });
+    pix_copia_cola: params.pixCopiaCola || null,
+    comprovante_url: params.comprovante || null,
+    data_pagamento: new Date().toISOString()
+  }).select().single();
+
+  if (error || !data) throw new Error(error?.message || 'Erro ao registrar pagamento');
+
+  await fetchNoivaDadosDB();
 
   // Auto-atualizar status do agendamento conforme a regra do sinal de 50%
-  const ag = state.agendamentos.find(a => a.id === pagamento.agendamento_id);
-  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(pagamento.agendamento_id)) {
-    setState({
-      agendamentos: state.agendamentos.map(a =>
-        a.id === pagamento.agendamento_id ? { ...a, status: 'sinal_pago' as StatusAgendamentoNoiva } : a
-      ),
-      pagamentos: state.pagamentos,
-    });
+  const ag = state.agendamentos.find(a => a.id === params.agendamento_id);
+  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(params.agendamento_id)) {
+    await atualizarStatusNoiva(params.agendamento_id, 'sinal_pago');
   }
-  return pagamento;
+  
+  return { ...data, criado_em: data.created_at, pixCopiaCola: data.pix_copia_cola } as unknown as PagamentoNoiva;
 }
 
 // ─────────────────────────────────────────────────────────────────────

@@ -49,9 +49,9 @@ export default function NoivasPage() {
   const pacoteById = (id: string) => pacotes.find(p => p.id === id);
   const profById = (id: string) => profissionais.find(p => p.id === id);
 
-  const handleNovo = (form: HTMLFormElement) => {
+  const handleNovo = async (form: HTMLFormElement) => {
     const data = new FormData(form);
-    criarAgendamentoNoiva({
+    await criarAgendamentoNoiva({
       pacote_id: data.get('pacote_id') as string,
       nome_noiva: data.get('nome_noiva') as string,
       telefone: data.get('telefone') as string,
@@ -365,8 +365,8 @@ function PagamentoModal({
     reader.readAsDataURL(f);
   };
 
-  const confirmar = () => {
-    onRegistrar({
+  const confirmar = async () => {
+    await onRegistrar({
       agendamento_id: ag.id,
       tipo,
       valor,
