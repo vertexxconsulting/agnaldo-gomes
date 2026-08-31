@@ -202,24 +202,44 @@ export const STATUS_COLORS: Record<StatusAgendamento, string> = {
   no_show: '#9333EA',
 };
 
-export function getClienteNome(id: string): string {
-  return MOCK_CLIENTES.find(c => c.id === id)?.nome ?? 'Desconhecido';
+export function getClienteNome(id: string, customList?: Cliente[]): string {
+  if (customList && customList.length > 0) {
+    const found = customList.find(c => c.id === id);
+    if (found) return found.nome;
+  }
+  return MOCK_CLIENTES.find(c => c.id === id)?.nome ?? 'Cliente';
 }
 
-export function getProfissionalNome(id: string): string {
-  return MOCK_PROFISSIONAIS.find(p => p.id === id)?.nome ?? 'Desconhecido';
+export function getProfissionalNome(id: string, customList?: Profissional[]): string {
+  if (customList && customList.length > 0) {
+    const found = customList.find(p => p.id === id);
+    if (found) return found.nome;
+  }
+  return MOCK_PROFISSIONAIS.find(p => p.id === id)?.nome ?? 'Profissional';
 }
 
-export function getServicoNome(id: string): string {
-  return MOCK_SERVICOS.find(s => s.id === id)?.nome ?? 'Desconhecido';
+export function getServicoNome(id: string, customList?: Servico[]): string {
+  if (customList && customList.length > 0) {
+    const found = customList.find(s => s.id === id);
+    if (found) return found.nome;
+  }
+  return MOCK_SERVICOS.find(s => s.id === id)?.nome ?? 'Serviço';
 }
 
-export function getServicoPreco(id: string): number {
+export function getServicoPreco(id: string, customList?: Servico[]): number {
+  if (customList && customList.length > 0) {
+    const found = customList.find(s => s.id === id);
+    if (found) return found.preco;
+  }
   return MOCK_SERVICOS.find(s => s.id === id)?.preco ?? 0;
 }
 
-export function getServicoDuracao(id: string): number {
-  return MOCK_SERVICOS.find(s => s.id === id)?.duracao_min ?? 0;
+export function getServicoDuracao(id: string, customList?: Servico[]): number {
+  if (customList && customList.length > 0) {
+    const found = customList.find(s => s.id === id);
+    if (found) return found.duracao_min;
+  }
+  return MOCK_SERVICOS.find(s => s.id === id)?.duracao_min ?? 30;
 }
 
 /** Categorias únicas dos serviços ativos */

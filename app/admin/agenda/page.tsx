@@ -69,8 +69,8 @@ export default function AgendaPage() {
       const [
         agendamentosData, bloqueiosData, profissionaisData, clientesData, servicosData, profServData
       ] = await Promise.all([
-        getAgendamentos({ data: dataSelecionada }),
-        getBloqueios(dataSelecionada),
+        getAgendamentos(),
+        getBloqueios(),
         getProfissionais(),
         getClientes(),
         getServicos(),
@@ -87,7 +87,7 @@ export default function AgendaPage() {
     carregarDados();
   }, [dataSelecionada]);
 
-  // Filtro por profissional na visualização
+  // Filtro por data e profissional na visualização
   const doDia = agendamentos.filter(a => a.data === dataSelecionada);
   const agendamentosFiltrados = profFiltro === 'todos'
     ? doDia
@@ -95,7 +95,11 @@ export default function AgendaPage() {
 
   agendamentosFiltrados.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
-  const bloqueiosFiltrados = bloqueiosDia.filter(b => profFiltro === 'todos' || profFiltro === b.profissional_id);
+  const bloqueiosFiltrados = bloqueiosDia.filter(b => {
+    const matchProf = profFiltro === 'todos' || profFiltro === b.profissional_id;
+    const matchData = b.data_inicio.slice(0, 10) === dataSelecionada || b.data_fim.slice(0, 10) === dataSelecionada;
+    return matchProf && matchData;
+  });
 
   // Serviços filtrados pelo profissional selecionado no formulário
   const servicosDoProfissional = useMemo(() => {
@@ -245,6 +249,7 @@ export default function AgendaPage() {
         criado_em: data.agendamento?.created_at ?? new Date().toISOString()
       };
       setAgendamentos(prev => [...prev, novoAgendamento]);
+      setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
       setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00' });
     } catch (err: any) {
@@ -307,7 +312,7 @@ export default function AgendaPage() {
               <div className="flex flex-wrap gap-2">
                 {bloqueiosFiltrados.map((b) => (
                   <span key={b.id} className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
-                    {getProfissionalNome(b.profissional_id)}: {b.data_inicio.includes('T') ? b.data_inicio.slice(11, 16) : b.data_inicio} - {b.data_fim.includes('T') ? b.data_fim.slice(11, 16) : b.data_fim} ({b.motivo})
+                    {getProfissionalNome(b.profissional_id, profissionais)}: {b.data_inicio.includes('T') ? b.data_inicio.slice(11, 16) : b.data_inicio} - {b.data_fim.includes('T') ? b.data_fim.slice(11, 16) : b.data_fim} ({b.motivo})
                   </span>
                 ))}
               </div>
@@ -318,14 +323,28 @@ export default function AgendaPage() {
           <div className="space-y-3">
             {agendamentosFiltrados.length === 0 ? (
               <CardGlass className="p-8 text-center text-foreground/50">
-                Nenhum agendamento para esta data e filtro selecionado.
+                <p>Nenhum agendamento para esta data ({new Date(`${dataSelecionada}T12:00:00`).toLocaleDateString('pt-BR')}).</p>
+                {agendamentos.length > 0 && (
+                  <div className="mt-3 text-xs text-primary/80">
+                    💡 Existem agendamentos em outras datas:{' '}
+                    {[...new Set(agendamentos.map(a => a.data))].sort().map(d => (
+                      <button 
+                        key={d} 
+                        onClick={() => setDataSelecionada(d)}
+                        className="underline font-bold mr-2 hover:text-primary"
+                      >
+                        {new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR')} ({agendamentos.filter(a => a.data === d).length})
+                      </button>
+                    ))}
+                  </div>
+                )}
               </CardGlass>
             ) : (
               agendamentosFiltrados.map((a) => {
-                const cliente = getClienteNome(a.cliente_id);
-                const servico = getServicoNome(a.servico_id);
-                const prof = getProfissionalNome(a.profissional_id);
-                const valor = getServicoPreco(a.servico_id);
+                const cliente = getClienteNome(a.cliente_id, clientes);
+                const servico = getServicoNome(a.servico_id, servicos);
+                const prof = getProfissionalNome(a.profissional_id, profissionais);
+                const valor = getServicoPreco(a.servico_id, servicos);
 
                 return (
                   <div 
