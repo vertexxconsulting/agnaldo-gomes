@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -71,70 +71,166 @@ const marqueeItems = [
 ];
 
 export default function Home() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = 0.5; // Desacelera o vídeo pela metade
-    }
-  }, []);
 
   return (
     <div className="flex flex-col w-full">
-      {/* ===== HERO: vídeo fachada + editorial stagger ===== */}
-      <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
-        {/* Vídeo de fundo */}
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-        >
-          <source src="/videos/fachada.mp4" type="video/mp4" />
-        </video>
-        {/* Overlay premium escuro (luxury mood) */}
-        <div className="absolute inset-0 bg-black/50" aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" aria-hidden />
+      {/* ===== HERO: autoridade nos primeiros 3 segundos ===== */}
+      <section className="relative w-full min-h-[92vh] flex items-center overflow-hidden" aria-label="Hero">
+        {/* Foto de fundo: Agnaldo trabalhando — presença humana e autoridade */}
+        <Image
+          src="/agnaldo5.webp"
+          alt="Agnaldo Gomes — Master Hair Stylist trabalhando com tesoura no studio"
+          fill
+          priority
+          fetchPriority="high"
+          className="object-cover object-center"
+          sizes="100vw"
+        />
 
-        {/* Conteúdo com stagger - Alinhamento Editorial (Esquerda) */}
+        {/* Overlays para contraste > 4.5:1 */}
+        <div className="absolute inset-0 bg-black/55" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/15" aria-hidden />
+
+        {/* Conteúdo editorial com stagger */}
         <motion.div
-          className="container relative z-10 mx-auto px-6 lg:px-12 flex flex-col items-start text-left gap-5 mt-16"
-          variants={staggerContainer(0.15, 0.2)}
+          className="container relative z-10 mx-auto px-6 lg:px-14 flex flex-col items-start text-left gap-4 py-24"
+          variants={staggerContainer(0.13, 0.15)}
           initial="hidden"
           animate="show"
         >
-          <motion.span variants={fadeUp} className="text-primary font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs">
-            Bem-vindo à excelência
+          {/* Eyebrow — credencial verificável */}
+          <motion.span
+            variants={fadeUp}
+            className="text-primary font-bold tracking-[0.22em] uppercase text-[10px] md:text-[11px]"
+          >
+            MASTER HAIR STYLIST · EDUCADOR · +30 ANOS
           </motion.span>
 
-          <motion.h1 variants={fadeUp} className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight max-w-3xl leading-[1.1]">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/30">
-              Descubra o <span className="italic font-serif">Poder</span> da
-            </span>
+          {/* H1 — credencial concreta, não promessa genérica */}
+          <motion.h1
+            variants={fadeUp}
+            className="text-4xl md:text-5xl lg:text-[3.5rem] xl:text-6xl font-light tracking-tight max-w-2xl leading-[1.08]"
+          >
+            <span className="text-white font-light">O cabeleireiro que</span>
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#D4AF37] to-[#AA8529] font-bold">
-              Sua Melhor Versão
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#D4AF37] to-[#AA8529] font-bold italic font-serif">
+              forma cabeleireiros.
             </span>
           </motion.h1>
 
-          <motion.p variants={fadeUp} className="text-white/80 text-base md:text-lg max-w-lg font-light leading-relaxed mt-2">
-            Mais de 30 anos transformando vidas através das mãos de um artista. Cabeleireiro, Educador e Apaixonado pela Beleza.
+          {/* Subheadline — marcas e localização */}
+          <motion.p
+            variants={fadeUp}
+            className="text-white/75 text-sm md:text-base max-w-md font-light leading-relaxed"
+          >
+            Master Hair Stylist, embaixador Mirra Cosméticos e Maison Visage.
+            Studio em Telêmaco Borba/PR e formação para quem quer viver bem da beleza.
           </motion.p>
 
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
-            <Link href="/studio">
-              <Button variant="primary" className="w-full sm:w-auto uppercase tracking-widest text-xs py-3 px-6 shadow-lg shadow-primary/20">
-                Agende seu Horário
+          {/* CTAs com hierarquia clara */}
+          <motion.div
+            variants={fadeUp}
+            className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-3"
+          >
+            {/* CTA Primário — sólido, alto contraste */}
+            <Link
+              href="/agendamento"
+              onClick={() => {
+                if (typeof window !== 'undefined' && (window as any).gtag) {
+                  (window as any).gtag('event', 'hero_cta_primary_click');
+                }
+              }}
+            >
+              <Button
+                variant="primary"
+                className="min-w-[200px] py-3.5 px-7 text-sm font-bold tracking-wide shadow-xl shadow-primary/25"
+              >
+                Agendar meu horário
               </Button>
             </Link>
-            <Link href="/academy">
-              <Button variant="outline" className="w-full sm:w-auto uppercase tracking-widest text-xs py-3 px-6 border-white/30 text-white hover:bg-white hover:text-black">
-                Conheça os Cursos
-              </Button>
+
+            {/* CTA Secundário — link com seta, sem preenchimento */}
+            <Link
+              href="/academy"
+              className="group inline-flex items-center gap-2 text-white/80 hover:text-primary text-sm font-semibold transition-colors duration-200 min-h-[44px] px-1"
+              onClick={() => {
+                if (typeof window !== 'undefined' && (window as any).gtag) {
+                  (window as any).gtag('event', 'hero_cta_secondary_click');
+                }
+              }}
+            >
+              Quero me formar
+              <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
             </Link>
+          </motion.div>
+
+          {/* Barra de credenciais — 4 stats, 2×2 no mobile */}
+          <motion.div
+            variants={fadeUp}
+            className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 mt-6 pt-6 border-t border-white/15 w-full max-w-2xl"
+          >
+            {/* Stat 1 */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">+30</span>
+              <span className="text-white/50 text-[11px] uppercase tracking-wider">anos de carreira</span>
+            </div>
+            {/* Stat 2 — TODO: confirmar número real de profissionais formados */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">
+                {/* TODO: substituir pelo número real de profissionais formados */}
+                +[N]
+              </span>
+              <span className="text-white/50 text-[11px] uppercase tracking-wider">profissionais formados</span>
+            </div>
+            {/* Stat 3 */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">2x</span>
+              <span className="text-white/50 text-[11px] uppercase tracking-wider">embaixador oficial</span>
+            </div>
+            {/* Stat 4 — TODO: confirmar nota e qtd de avaliações no Google Business */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">
+                {/* TODO: substituir pela nota real do Google ex: ★ 4.9 */}
+                ★ [X]
+              </span>
+              <span className="text-white/50 text-[11px] uppercase tracking-wider">
+                {/* TODO: substituir pelo nº real de avaliações ex: 247 avaliações */}
+                [N] avaliações Google
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Selos das marcas parceiras — monocromático branco */}
+          <motion.div
+            variants={fadeUp}
+            className="flex flex-col gap-2 mt-4"
+          >
+            <span className="text-white/35 text-[9px] uppercase tracking-[0.25em] font-semibold">
+              ARTISTA E EMBAIXADOR OFICIAL
+            </span>
+            <div className="flex items-center gap-6">
+              {/* Mirra Cosméticos — texto logo (substituir por <Image> quando tiver logo vetorial) */}
+              <a
+                href="https://www.instagram.com/mirracosmeticos/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-white/100 transition-opacity duration-300 text-[11px] font-bold tracking-[0.15em] uppercase"
+                aria-label="Mirra Cosméticos — 514 mil seguidores"
+              >
+                MIRRA COSMÉTICOS
+              </a>
+              <span className="text-white/20 text-lg">·</span>
+              {/* Maison Visage — texto logo */}
+              <a
+                href="https://www.instagram.com/maisonvisage/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-white/100 transition-opacity duration-300 text-[11px] font-bold tracking-[0.15em] uppercase"
+                aria-label="Maison Visage — 238 mil seguidores"
+              >
+                MAISON VISAGE
+              </a>
+            </div>
           </motion.div>
         </motion.div>
       </section>
