@@ -83,7 +83,7 @@ export default function PerfilClientePage() {
 
     if (diffHoras < 2) {
       alert('O cancelamento online só é permitido com até 2 horas de antecedência. Por favor, entre em contato diretamente com o Studio via WhatsApp para solicitar o reagendamento.');
-      window.location.href = `https://wa.me/5544999999999?text=Olá, gostaria de solicitar o reagendamento do meu horário de ${agendamento.servico} no dia ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora_inicio}.`;
+      window.location.href = `https://wa.me/5542998271222?text=Olá, gostaria de solicitar o reagendamento do meu horário de ${agendamento.servico} no dia ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora_inicio}.`;
       return;
     }
 

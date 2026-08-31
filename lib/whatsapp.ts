@@ -2,7 +2,7 @@
  * Utilitários para disparar notificações via WhatsApp para o Studio Agnaldo Gomes.
  */
 
-const WHATSAPP_STUDIO = process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '5542999999999';
+const WHATSAPP_STUDIO = process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '5542998271222';
 
 interface AppointmentNotifyData {
   id: string;
