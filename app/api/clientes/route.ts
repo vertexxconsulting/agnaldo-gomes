@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { upsertClienteMae } from '@/lib/crm-sync';
-import { requireStudioAuth, handleAuthError } from '@/lib/api-auth';
+import { requireStudioAuth } from '@/lib/api-auth';
 
 export async function GET() {
   const auth = await requireStudioAuth();
@@ -19,8 +18,9 @@ export async function GET() {
     }
 
     return NextResponse.json(data || []);
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -46,9 +46,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, cliente: clienteSalvo });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/clientes] Erro ao salvar cliente no sistema mãe:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -69,7 +70,21 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true, message: 'Mock id ignorado' });
     }
 
-    const { error } = await auth.supabase!
+    const supabase = auth.supabase!;
+
+    // 1. Excluir agendamentos do cliente para evitar violação de FK
+    const { error: agError } = await supabase
+      .from('salon_appointments')
+      .delete()
+      .eq('customer_id', id);
+
+    if (agError) {
+      console.error('[api/clientes] Erro ao excluir agendamentos do cliente:', agError);
+      return NextResponse.json({ error: `Erro ao remover agendamentos vinculados: ${agError.message}` }, { status: 500 });
+    }
+
+    // 2. Excluir o cliente
+    const { error } = await supabase
       .from('salon_customers')
       .delete()
       .eq('id', id);
@@ -80,8 +95,9 @@ export async function DELETE(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/clientes] Erro inesperado ao excluir:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
