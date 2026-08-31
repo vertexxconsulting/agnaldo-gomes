@@ -175,9 +175,9 @@ export default function StudioPage() {
   ];
 
   const horarios = [
-    { dia: "Segunda a Sexta", horas: "09h às 19h" },
+    { dia: "Terça a Sexta", horas: "09h às 19h" },
     { dia: "Sábado", horas: "08h às 17h" },
-    { dia: "Domingo", horas: "Fechado" },
+    { dia: "Domingo e Segunda", horas: "Fechado" },
   ];
 
   return (
