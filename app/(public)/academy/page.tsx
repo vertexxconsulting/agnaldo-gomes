@@ -56,6 +56,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Colorimetria Avançada",
@@ -71,6 +76,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Escova Perfeita",
@@ -86,6 +96,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Barbearia",
@@ -101,6 +116,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Gestão de Salão",
@@ -116,6 +136,9 @@ const cursos: Curso[] = [
     ],
     formato: "Online · 8h",
     certificado: false,
+    investimento: [
+      { label: "Online", valor: "R$ 0" },
+    ],
   },
 ];
 
