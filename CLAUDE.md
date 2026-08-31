@@ -155,7 +155,22 @@ Todos os valores exibidos e cadastrados utilizam a premissa de **"Tudo sempre a 
 
 ---
 
-## 8. Comandos Úteis
+## 8. Módulo da IA Assistente (`/admin/ia-assistente`)
+
+- **Controle Administrativo Restrito**: Acesso exclusivo para o administrador gerenciar o comportamento e automações da IA.
+- **Master Switch**: Ativação e desativação em tempo real com indicador visual de status.
+- **Diretrizes Mestre & System Instructions**: Editor de comportamento, tom de voz e regras inegociáveis do Studio Agnaldo Gomes.
+- **Relatórios Automáticos para o Agnaldo**: Configuração de envio periódico (diário, semanal, mensal) com integração direta via WhatsApp (`wa.me`).
+- **Scripts para Atendente Física da Recepção**: Protocolos de boas-vindas, roteiros de upsell de tratamentos/combos e regras do Dia da Noiva.
+- **Separação por Sistemas de Gestão**:
+  - **Salão (Studio)**: Agendamentos, jornada dos profissionais, intervalos e contratos de noivas.
+  - **Loja (Store)**: Estoque local de cosméticos e links de afiliados oficiais do Mercado Livre.
+  - **Academy (Cursos)**: Regras de videoaulas no Vimeo, certificação e suporte a alunos.
+- **Simulador Interativo (Playground)**: Chat interno para testar respostas e simular cenários antes de colocar em prática.
+
+---
+
+## 9. Comandos Úteis
 
 ```bash
 # Instalar dependências
