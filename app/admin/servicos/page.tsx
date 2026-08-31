@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Clock, Eye, EyeOff } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -205,7 +205,7 @@ export default function ServicosPage() {
                   <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
                   <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">{s.categoria}</span></td>
                   <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
-                  <td className="py-3 pr-4 text-primary font-semibold"><DollarSign size={13} className="inline" />R$ {Number(s.preco).toFixed(2)}</td>
+                  <td className="py-3 pr-4 text-primary font-semibold">R$ {Number(s.preco).toFixed(2)}</td>
                   <td className="py-3 pr-4 text-foreground/60 text-xs">
                     {(() => {
                       const profs = profsPorServico(s.id);
