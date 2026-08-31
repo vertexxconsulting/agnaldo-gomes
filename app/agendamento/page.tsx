@@ -118,8 +118,9 @@ export default function AgendamentoPage() {
   // Serviço selecionado
   const servicoSelecionado = servicos.find(s => s.id === formData.servicoId);
 
-  // Regra de Negócio: Dia da Noiva (sinal obrigatório de 50%)
-  const isNoiva = servicoSelecionado?.categoria === 'Noivas' || (servicoSelecionado?.nome || '').toLowerCase().includes('noiva');
+  // Regra de Negócio: Dia da Noiva e Maquiagem Profissional (sinal obrigatório de 50%)
+  const nomeSvc = (servicoSelecionado?.nome || '').toLowerCase();
+  const isNoiva = servicoSelecionado?.categoria === 'Noivas' || nomeSvc.includes('noiva') || nomeSvc.includes('maquiagem profissional');
   const valorTotalServico = Number(servicoSelecionado?.preco || 0);
   const valorSinalNoiva = isNoiva ? Math.round(valorTotalServico * 0.5 * 100) / 100 : 0;
   const valorRestanteNoiva = isNoiva ? Math.round((valorTotalServico - valorSinalNoiva) * 100) / 100 : 0;
