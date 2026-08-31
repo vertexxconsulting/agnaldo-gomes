@@ -35,6 +35,7 @@ export interface IAConfig {
     ativo: boolean;
     whatsappAgnaldo: string;
     frequencia: 'diario' | 'semanal' | 'mensal';
+    diaSemana: number; // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb (para frequência semanal)
     horarioEnvio: string;
     incluirMetricas: boolean;
     incluirDestaquesProfissionais: boolean;
@@ -98,6 +99,7 @@ Suas diretrizes fundamentais e inegociáveis são:
     ativo: true,
     whatsappAgnaldo: '5542991534011',
     frequencia: 'diario',
+    diaSemana: 0,
     horarioEnvio: '20:00',
     incluirMetricas: true,
     incluirDestaquesProfissionais: true,

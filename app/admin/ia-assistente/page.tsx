@@ -63,6 +63,18 @@ export default function IAAssistentePage() {
   const handleSalvar = () => {
     setSalvando(true);
     salvarIAConfig(config);
+    // Persistir configurações de relatório no Supabase para acesso pelo Cron server-side
+    fetch('/api/ia-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        frequencia: config.relatorios.frequencia,
+        diaSemana: config.relatorios.diaSemana ?? 0,
+        horarioEnvio: config.relatorios.horarioEnvio,
+        whatsappAgnaldo: config.relatorios.whatsappAgnaldo,
+        ativo: config.relatorios.ativo,
+      }),
+    }).catch(err => console.warn('[ia-assistente] Erro ao persistir config no Supabase:', err));
     setTimeout(() => {
       setSalvando(false);
       setMensagemSucesso(true);
@@ -413,51 +425,135 @@ export default function IAAssistentePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-foreground/70 mb-1">Periodicidade</label>
-                  <select
-                    value={config.relatorios.frequencia}
-                    onChange={(e) => setConfig(prev => ({
-                      ...prev,
-                      relatorios: { ...prev.relatorios, frequencia: e.target.value as any }
-                    }))}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
-                  >
-                    <option value="diario">Diário (à noite)</option>
-                    <option value="semanal">Semanal (Domingos)</option>
-                    <option value="mensal">Mensal (Dia 1º)</option>
-                  </select>
+              {/* Frequência + Dia da Semana + Horário */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1">Frequência de Envio</label>
+                    <select
+                      value={config.relatorios.frequencia}
+                      onChange={(e) => setConfig(prev => ({
+                        ...prev,
+                        relatorios: { ...prev.relatorios, frequencia: e.target.value as any }
+                      }))}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                    >
+                      <option value="diario">📅 Diário</option>
+                      <option value="semanal">📆 Semanal</option>
+                      <option value="mensal">🗓️ Mensal (dia 1°)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1">Horário de Envio (BRT)</label>
+                    <input
+                      type="time"
+                      value={config.relatorios.horarioEnvio}
+                      onChange={(e) => setConfig(prev => ({
+                        ...prev,
+                        relatorios: { ...prev.relatorios, horarioEnvio: e.target.value }
+                      }))}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-foreground/70 mb-1">Horário de Envio</label>
-                  <input
-                    type="time"
-                    value={config.relatorios.horarioEnvio}
-                    onChange={(e) => setConfig(prev => ({
-                      ...prev,
-                      relatorios: { ...prev.relatorios, horarioEnvio: e.target.value }
-                    }))}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
-                  />
-                </div>
+                {/* Seletor de dia da semana (só aparece quando frequência = semanal) */}
+                {config.relatorios.frequencia === 'semanal' && (
+                  <div>
+                    <label className="block text-xs font-bold text-foreground/70 mb-2">
+                      Dia da Semana para Envio do Relatório
+                    </label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { num: 0, label: 'Dom' },
+                        { num: 1, label: 'Seg' },
+                        { num: 2, label: 'Ter' },
+                        { num: 3, label: 'Qua' },
+                        { num: 4, label: 'Qui' },
+                        { num: 5, label: 'Sex' },
+                        { num: 6, label: 'Sáb' },
+                      ].map(({ num, label }) => {
+                        const ativo = (config.relatorios.diaSemana ?? 0) === num;
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setConfig(prev => ({
+                              ...prev,
+                              relatorios: { ...prev.relatorios, diaSemana: num }
+                            }))}
+                            className={`flex-1 min-w-[38px] py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 border ${
+                              ativo
+                                ? 'bg-primary text-black border-primary shadow-md'
+                                : 'bg-foreground/5 text-foreground/60 border-[var(--border-subtle)] hover:border-primary/50'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-foreground/40 mt-1.5">
+                      O relatório consolida toda a semana e é enviado neste dia.
+                    </p>
+                  </div>
+                )}
+
+                {config.relatorios.frequencia === 'mensal' && (
+                  <p className="text-[11px] text-foreground/50 px-1">
+                    📌 O relatório consolida o mês inteiro e é enviado automaticamente todo dia <strong>1°</strong>.
+                  </p>
+                )}
+
+                {config.relatorios.frequencia === 'diario' && (
+                  <p className="text-[11px] text-foreground/50 px-1">
+                    📌 O relatório consolida os atendimentos do dia e é enviado todos os dias no horário configurado.
+                  </p>
+                )}
               </div>
 
               {/* Box de Automação Cron & Disparo Bolten */}
               <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="relative flex">
+                      <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+                    </span>
                     <span className="text-xs font-bold text-foreground">Cron Automático Vercel Ativo</span>
                   </div>
                   <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary text-black">
-                    Bolten.io Integrado
+                    Bolten.io
                   </span>
                 </div>
-                <p className="text-[11px] text-foreground/70 leading-relaxed">
-                  O sistema executa sozinho o endpoint <code className="bg-black/30 px-1 py-0.5 rounded text-primary">/api/cron/relatorio-ia</code> todos os dias às <strong>20:00 (BRT)</strong>, processando o faturamento real do banco e disparando via Bolten CRM para o Agnaldo.
-                </p>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="block text-[10px] text-foreground/40 mb-0.5">Frequência</span>
+                    <span className="text-xs font-extrabold text-primary uppercase">
+                      {config.relatorios.frequencia === 'diario' ? 'Diário' :
+                       config.relatorios.frequencia === 'semanal' ? 'Semanal' : 'Mensal'}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="block text-[10px] text-foreground/40 mb-0.5">Horário</span>
+                    <span className="text-xs font-extrabold text-foreground">
+                      {config.relatorios.horarioEnvio} BRT
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                    <span className="block text-[10px] text-foreground/40 mb-0.5">
+                      {config.relatorios.frequencia === 'semanal' ? 'Dia' : 'Próx. Envio'}
+                    </span>
+                    <span className="text-xs font-extrabold text-foreground">
+                      {config.relatorios.frequencia === 'semanal'
+                        ? ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][config.relatorios.diaSemana ?? 0]
+                        : config.relatorios.frequencia === 'mensal' ? 'Todo dia 1°'
+                        : 'Todo dia'}
+                    </span>
+                  </div>
+                </div>
 
                 <Button
                   variant="primary"
@@ -470,7 +566,7 @@ export default function IAAssistentePage() {
                 </Button>
 
                 {resultadoCron && (
-                  <div className="p-2.5 rounded-lg bg-black/40 border border-primary/30 text-xs font-medium text-foreground animate-fade-in whitespace-pre-line">
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-primary/30 text-xs font-medium text-foreground whitespace-pre-line">
                     {resultadoCron}
                   </div>
                 )}
@@ -483,13 +579,23 @@ export default function IAAssistentePage() {
               Exemplo de Relatório que a IA envia para o Agnaldo:
             </h4>
             <div className="p-4 rounded-xl bg-[#0b0f19] border border-primary/20 font-mono text-xs text-foreground/80 space-y-2 leading-relaxed">
-              <p className="text-primary font-bold">📊 STUDIO AGNALDO GOMES — RELATÓRIO DO DIA</p>
-              <p>Olá Mestre Agnaldo! Segue o resumo executivo de hoje:</p>
-              <p>• <strong>Faturamento Estimado:</strong> R$ 60,00</p>
+              <p className="text-primary font-bold">
+                📊 STUDIO AGNALDO GOMES — RELATÓRIO{' '}
+                {config.relatorios.frequencia === 'diario' ? 'DIÁRIO' :
+                 config.relatorios.frequencia === 'semanal' ? 'SEMANAL' : 'MENSAL'}
+              </p>
+              <p>
+                <span className="text-foreground/50">Período:</span>{' '}
+                {config.relatorios.frequencia === 'semanal'
+                  ? `Semana com fechamento às ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][config.relatorios.diaSemana ?? 0]}`
+                  : config.relatorios.frequencia === 'mensal' ? 'Mês completo (apurado no dia 1°)'
+                  : 'Dia atual (apurado às ' + config.relatorios.horarioEnvio + ' BRT)'}
+              </p>
+              <p>• <strong>Faturamento:</strong> R$ 60,00</p>
               <p>• <strong>Atendimentos:</strong> 1 cliente atendido</p>
-              <p>• <strong>Profissional destaque:</strong> Agnaldo Gomes (Corte Masculino)</p>
+              <p>• <strong>Profissional destaque:</strong> Agnaldo Gomes</p>
               <p>• <strong>Cancelamentos:</strong> 0 registros</p>
-              <p className="text-emerald-400 mt-2">💡 <strong>Insight Estratégico:</strong> Sexta e Sábado com alta procura de Mechas. Grade de horários 80% ocupada.</p>
+              <p className="text-emerald-400 mt-2">💡 Disparo via Bolten.io CRM.</p>
             </div>
           </CardGlass>
         </div>
