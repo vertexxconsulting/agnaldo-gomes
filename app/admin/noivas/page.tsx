@@ -333,7 +333,7 @@ export default function NoivasPage() {
                   copiarPix={copiarPix}
                   copiado={copiado}
                   onRegistrar={(params) => {
-                    registrarPagamentoNoiva({ ...params, pacote_preco: pacote.preco });
+                    return registrarPagamentoNoiva({ ...params, pacote_preco: pacote.preco });
                   }}
                 />
               )}
@@ -354,7 +354,7 @@ function PagamentoModal({
   onClose: () => void;
   copiarPix: (c: string) => void;
   copiado: boolean;
-  onRegistrar: (p: { agendamento_id: string; tipo: 'sinal' | 'complemento' | 'final'; valor: number; forma: 'pix' | 'cartao' | 'dinheiro' | 'transferencia'; comprovante?: string | null; pixCopiaCola?: string | null }) => void;
+  onRegistrar: (p: { agendamento_id: string; tipo: 'sinal' | 'complemento' | 'final'; valor: number; forma: 'pix' | 'cartao' | 'dinheiro' | 'transferencia'; comprovante?: string | null; pixCopiaCola?: string | null }) => Promise<void> | void;
 }) {
   const pago = totalPago(ag.id);
   const sinalAlvo = (pacote.preco * NOIVA_SINAL_MIN_PCT) / 100;
@@ -400,15 +400,20 @@ function PagamentoModal({
   };
 
   const confirmar = async () => {
-    await onRegistrar({
-      agendamento_id: ag.id,
-      tipo,
-      valor,
-      forma,
-      comprovante,
-      pixCopiaCola: pixGerado,
-    });
-    onClose();
+    try {
+      await onRegistrar({
+        agendamento_id: ag.id,
+        tipo,
+        valor,
+        forma,
+        comprovante,
+        pixCopiaCola: pixGerado,
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Erro ao confirmar pagamento:', err);
+      alert('Erro ao salvar pagamento: ' + (err.message || 'Erro desconhecido. Verifique o console.'));
+    }
   };
 
   const tiposDisponiveis: { id: 'sinal' | 'complemento' | 'final'; label: string; disabled?: boolean }[] = [

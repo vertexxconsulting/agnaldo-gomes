@@ -235,10 +235,17 @@ export async function atualizarStatusNoiva(id: string, status: StatusAgendamento
   
   // Sincronizar com a agenda principal se for confirmado ou sinal pago
   if (status === 'confirmado' || status === 'sinal_pago') {
-    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora').eq('id', id).single();
+    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora').eq('id', id).maybeSingle();
     if (noiva) {
       const telLimpo = noiva.telefone.replace(/\D/g, '');
-      const { data: customer } = await supabase.from('salon_customers').select('id').eq('phone', telLimpo).single();
+      let { data: customer } = await supabase.from('salon_customers').select('id').eq('phone', telLimpo).maybeSingle();
+      
+      // Fallback: se não achou pelo telefone exato, tenta pelo nome
+      if (!customer) {
+        const { data: customerByName } = await supabase.from('salon_customers').select('id').ilike('name', noiva.nome_noiva).maybeSingle();
+        if (customerByName) customer = customerByName;
+      }
+
       if (customer) {
         await supabase.from('salon_appointments')
           .update({ status: 'CONFIRMED' })
