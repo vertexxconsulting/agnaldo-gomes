@@ -235,23 +235,22 @@ export async function atualizarStatusNoiva(id: string, status: StatusAgendamento
   
   // Sincronizar com a agenda principal se for confirmado ou sinal pago
   if (status === 'confirmado' || status === 'sinal_pago') {
-    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora').eq('id', id).maybeSingle();
+    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora, nome_noiva').eq('id', id).maybeSingle();
     if (noiva) {
-      const telLimpo = noiva.telefone.replace(/\D/g, '');
-      let { data: customer } = await supabase.from('salon_customers').select('id').eq('phone', telLimpo).maybeSingle();
-      
-      // Fallback: se não achou pelo telefone exato, tenta pelo nome
-      if (!customer) {
-        const { data: customerByName } = await supabase.from('salon_customers').select('id').ilike('name', noiva.nome_noiva).maybeSingle();
-        if (customerByName) customer = customerByName;
-      }
-
-      if (customer) {
-        await supabase.from('salon_appointments')
-          .update({ status: 'CONFIRMED' })
-          .eq('customer_id', customer.id)
-          .eq('date', noiva.data_agendamento)
-          .eq('start_time', noiva.hora);
+      try {
+        await fetch('/api/noivas/sync-agenda', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telefone: noiva.telefone,
+            nome_noiva: noiva.nome_noiva,
+            data_agendamento: noiva.data_agendamento,
+            hora: noiva.hora,
+            status: status
+          })
+        });
+      } catch (e) {
+        console.error('Erro ao sincronizar agenda geral:', e);
       }
     }
   }
