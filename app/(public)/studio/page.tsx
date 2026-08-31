@@ -108,88 +108,66 @@ export default function StudioPage() {
   const servicos = [
     {
       name: "Cortes Masculinos",
-      preco: "A partir de R$ 50",
-      detalhe: "R$ 60 com Agnaldo · R$ 50 com equipe",
       icon: User,
       desc: "Estilo, visagismo e precisão para o visual masculino moderno.",
       grupo: "Cortes",
     },
     {
       name: "Cortes Femininos",
-      preco: "A partir de R$ 140",
-      detalhe: "R$ 140 corte · R$ 160 com escova",
       icon: Scissors,
       desc: "Cortes personalizados com visagismo para valorizar seus traços únicos.",
       grupo: "Cortes",
     },
     {
-      name: "Mechas & Morena Iluminada",
-      preco: "De R$ 480 a R$ 1.080",
-      detalhe: "Técnicas exclusivas e preservação da saúde dos fios",
+      name: "Mechas",
       icon: Sparkles,
       desc: "Loiras deslumbrantes, morenas iluminadas e mechas com colorimetria de precisão.",
       grupo: "Coloração",
     },
     {
       name: "Coloração",
-      preco: "De R$ 160 a R$ 580",
-      detalhe: "Cores vibrantes e cobertura perfeita",
       icon: Sparkles,
       desc: "Tonalização e coloração profissional com pigmentos de alta fixação e brilho.",
       grupo: "Coloração",
     },
     {
       name: "Hidratação & Reconstrução",
-      preco: "A partir de R$ 95",
-      detalhe: "Hidratação R$ 95 · Reconstrução R$ 120 · Selamento R$ 120",
       icon: Droplets,
       desc: "Reposição hídrica, lipídica e de massa com produtos de alta performance.",
       grupo: "Tratamentos",
     },
     {
       name: "Terapia Capilar & Micro Mist",
-      preco: "De R$ 160 a R$ 420",
-      detalhe: "Ozônio R$ 160 · Micro Mist R$ 180 · Terapia Capilar personalizada até R$ 420",
       icon: Droplets,
       desc: "Tratamento avançado do couro cabeludo e fibra capilar com tecnologia e vapor.",
       grupo: "Terapia Capilar",
     },
     {
       name: "Escova & Penteado",
-      preco: "A partir de R$ 45",
-      detalhe: "Escova R$ 45 · Penteado R$ 140",
       icon: Scissors,
       desc: "Finalização impecável para o dia a dia, eventos e ocasiões especiais.",
       grupo: "Finalização",
     },
     {
       name: "Barba",
-      preco: "A partir de R$ 45",
-      detalhe: "Alinhamento e acabamento perfeito",
       icon: User,
       desc: "Modelagem, hidratação e cuidado tradicional com a barba.",
       grupo: "Barbearia",
     },
     {
       name: "Unhas & Podologia",
-      preco: "A partir de R$ 40",
-      detalhe: "Mão R$ 40 · Pé R$ 45 · Podologia R$ 90",
       icon: Hand,
       desc: "Cuidado e estética das mãos e pés com técnicas de biossegurança.",
       grupo: "Unhas & Pés",
     },
     {
       name: "Maquiagem & Sobrancelha",
-      preco: "A partir de R$ 55",
-      detalhe: "Sobrancelha R$ 55 · Maquiagem R$ 160",
       icon: Sparkles,
       desc: "Design de sobrancelhas e maquiagens elegantes e duradouras para eventos.",
       grupo: "Face",
     },
     {
       name: "Estética & Drenagem",
-      preco: "A partir de R$ 180",
-      detalhe: "Drenagem R$ 180 · Limpeza de Pele (sob consulta)",
       icon: Droplets,
       desc: "Drenagem linfática e cuidados faciais para renovar seu bem-estar.",
       grupo: "Estética",
@@ -209,7 +187,7 @@ export default function StudioPage() {
 
       {/* ===== CONTEÚDO ===== */}
       <div className="container mx-auto px-6 py-14">
-        <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe · Valores sempre a partir de" align="center" />
+        <SectionTitle title="Nossos Serviços" subtitle="Excelência em cada detalhe" align="center" />
 
         <div className="text-center max-w-3xl mx-auto mt-8 mb-16">
           <p className="text-foreground/80 text-base leading-relaxed">
@@ -233,10 +211,7 @@ export default function StudioPage() {
                 <p className="text-foreground/70 text-sm leading-relaxed">{s.desc}</p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--border-subtle)] flex flex-col gap-1">
-                <span className="text-primary font-bold text-base font-serif">{s.preco}</span>
-                <span className="text-xs text-foreground/50">{s.detalhe}</span>
-              </div>
+
             </div>
           ))}
         </div>
