@@ -41,19 +41,30 @@ export async function GET(req: Request) {
       id: string;
       date: string;
       start_time: string;
-      cliente?: { name?: string; phone?: string } | null;
-      servico?: { id?: string; name?: string } | null;
-      profissional?: { name?: string } | null;
+      cliente?: { name?: string; phone?: string } | { name?: string; phone?: string }[] | null;
+      servico?: { id?: string; name?: string } | { id?: string; name?: string }[] | null;
+      profissional?: { name?: string } | { name?: string }[] | null;
     };
 
-    const itens = (concluidos ?? [] as AgendamentoJoin[]).map((a: AgendamentoJoin) => {
-      const telefone = normalizarTelefone(a.cliente?.phone ?? '');
-      const nomeProcedimento = a.servico?.name ?? 'procedimento';
-      const msg = msgFeedback({ nome: a.cliente?.name ?? '', servico: nomeProcedimento });
+    const getCliente = (a: AgendamentoJoin) => {
+      if (!a.cliente) return null;
+      return Array.isArray(a.cliente) ? a.cliente[0] : a.cliente;
+    };
+    const getServico = (a: AgendamentoJoin) => {
+      if (!a.servico) return null;
+      return Array.isArray(a.servico) ? a.servico[0] : a.servico;
+    };
+
+    const itens = ((concluidos ?? []) as unknown as AgendamentoJoin[]).map((a) => {
+      const cliente = getCliente(a);
+      const servico = getServico(a);
+      const telefone = normalizarTelefone(cliente?.phone ?? '');
+      const nomeProcedimento = servico?.name ?? 'procedimento';
+      const msg = msgFeedback({ nome: cliente?.name ?? '', servico: nomeProcedimento });
 
       return {
         tipo: 'feedback',
-        nome: a.cliente?.name ?? null,
+        nome: cliente?.name ?? null,
         telefone,
         servico: nomeProcedimento,
         data: a.date,
