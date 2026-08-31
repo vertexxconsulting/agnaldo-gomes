@@ -23,6 +23,7 @@ import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -309,6 +310,7 @@ export default function AgendamentoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-transparent to-primary/5 py-8">
+      <PWAInstallPrompt />
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">

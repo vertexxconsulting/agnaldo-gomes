@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
@@ -13,9 +13,22 @@ const playfair = Playfair_Display({
   subsets: ['latin'],
 });
 
+export const viewport: Viewport = {
+  themeColor: '#D4AF37',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   title: 'Agnaldo Gomes | Cabeleireiro • Educador • Apaixonado pela Beleza',
   description: 'Mais de 30 anos transformando vidas através da beleza. Agnaldo Gomes é cabeleireiro, educador e embaixador de marcas premium — Studio de Beleza e Academy em Telêmaco Borba/PR.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Agnaldo',
+  },
 };
 
 /**
