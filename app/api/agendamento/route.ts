@@ -88,7 +88,7 @@ export async function POST(req: Request) {
       : `${String(dataFim.getHours()).padStart(2, '0')}:${String(dataFim.getMinutes()).padStart(2, '0')}`;
 
     // 3. Identificar se é Noivas (exige 50% de sinal obrigatório para garantir a data)
-    const isNoiva = servicoCategoria === 'Noivas' || servicoNome.toLowerCase().includes('noiva');
+    const isNoiva = servicoCategoria === 'Noivas' || servicoCategoria === 'Dia da Noiva' || servicoNome.toLowerCase().includes('noiva');
     const valorTotal = servicoPreco;
     const valorSinal = isNoiva ? Math.round(valorTotal * 0.5 * 100) / 100 : 0;
 
@@ -116,23 +116,25 @@ export async function POST(req: Request) {
           agendamentoId = agendamento.id;
 
           // Espelhar na tabela específica de Noivas para aparecer no Dashboard "Dia da Noiva"
+          console.log(`[API Agendamento] Verificando isNoiva:`, { isNoiva, servicoCategoria, servicoNome });
           if (isNoiva) {
-            try {
-              await supabase.from('salon_bride_appointments').insert({
-                pacote_id: servicoId, // usaremos o ID do serviço como pacote_id para o APP
-                nome_noiva: nome,
-                telefone: numLimpo,
-                email: email || null,
-                data_evento: data, // Por padrão assume a mesma data, salão entra em contato
-                data_agendamento: data,
-                hora: hora,
-                profissional_id: profissionalId,
-                status: 'sinal_pendente',
-                sinal_percentual: 50,
-                observacoes: 'Agendado pelo APP Público. Favor entrar em contato para marcar o teste e detalhes.',
-              });
-            } catch(e) {
-              console.warn('Falha ao espelhar noiva:', e);
+            const { error: brideError } = await supabase.from('salon_bride_appointments').insert({
+              pacote_id: servicoId, // usaremos o ID do serviço como pacote_id para o APP
+              nome_noiva: nome,
+              telefone: numLimpo,
+              email: email || null,
+              data_evento: data, // Por padrão assume a mesma data, salão entra em contato
+              data_agendamento: data,
+              hora: hora,
+              profissional_id: profissionalId,
+              status: 'sinal_pendente',
+              sinal_percentual: 50,
+              observacoes: 'Agendado pelo APP Público. Favor entrar em contato para marcar o teste e detalhes.',
+            });
+            if (brideError) {
+              console.error('[API Agendamento] Falha ao espelhar noiva:', brideError);
+            } else {
+              console.log('[API Agendamento] Espelhado com sucesso na tabela salon_bride_appointments');
             }
           }
 
