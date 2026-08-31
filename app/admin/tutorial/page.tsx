@@ -6,7 +6,7 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { 
   BookOpen, CalendarDays, Users, Scissors, UserCircle, 
-  Heart, CheckCircle2, ShieldAlert, Sparkles, MessageSquare, MonitorPlay, HelpCircle
+  Heart, CheckCircle2, ShieldAlert, Sparkles, MessageSquare, MonitorPlay, HelpCircle, Bot
 } from 'lucide-react';
 
 type TabTutorial = 'visao-geral' | 'agenda' | 'crm' | 'noivas' | 'cadastros';
