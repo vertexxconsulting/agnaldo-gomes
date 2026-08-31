@@ -12,11 +12,17 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
  */
 export async function POST(req: NextRequest) {
   const body = await req.text();
-  const signature = req.headers.get('stripe-signature') as string;
+  const signature = req.headers.get('stripe-signature');
 
   const cfg = await getStripeConfig();
   if (!cfg.secretKey) {
     return NextResponse.json({ error: 'Stripe não configurado' }, { status: 400 });
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET não configurado');
+    return NextResponse.json({ error: 'Webhook secret não configurado' }, { status: 500 });
   }
 
   const stripe = new Stripe(cfg.secretKey, {
@@ -26,11 +32,10 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
 
   try {
-    // Para validação real, seria necessário o STRIPE_WEBHOOK_SECRET nas env vars da Vercel.
-    // Aqui processamos o evento confiando no payload para demonstração/implementação inicial.
-    event = JSON.parse(body);
-  } catch (err) {
-    return NextResponse.json({ error: 'Webhook Error' }, { status: 400 });
+    event = stripe.webhooks.constructEvent(body, signature!, webhookSecret);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -55,7 +60,7 @@ export async function POST(req: NextRequest) {
             email,
             email_confirmed: true,
             user_metadata: { role: 'aluno', full_name: nome },
-            password: Math.random().toString(36).slice(-12), // Senha aleatória inicial
+            password: Math.random().toString(36).slice(-12),
           });
 
           if (createError) {

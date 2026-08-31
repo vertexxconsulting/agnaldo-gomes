@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { requireStudioAuth } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
-    const supabase = await getSupabaseServiceClient();
-    const { data, error } = await supabase
+    const { data, error } = await auth.supabase!
       .from('salon_professionals')
       .select('*')
       .order('name');
@@ -21,6 +23,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await req.json();
     const { id, nome, foto_url, especialidades, ativo, jornada_semanal } = body;
@@ -29,7 +34,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseServiceClient();
     const payload: any = {
       name: String(nome).trim(),
       photo_url: foto_url || null,
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isUUID) {
-      const { data, error } = await supabase
+      const { data, error } = await auth.supabase!
         .from('salon_professionals')
         .update(payload)
         .eq('id', id)
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ success: true, profissional: data });
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await auth.supabase!
         .from('salon_professionals')
         .insert(payload)
         .select('*')
@@ -73,6 +77,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -86,13 +93,11 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true, message: 'Mock id ignorado' });
     }
 
-    const supabase = await getSupabaseServiceClient();
-
     // 1. Remove vínculos
-    await supabase.from('salon_professional_services').delete().eq('professional_id', id);
+    await auth.supabase!.from('salon_professional_services').delete().eq('professional_id', id);
 
     // 2. Remove o profissional
-    const { error } = await supabase
+    const { error } = await auth.supabase!
       .from('salon_professionals')
       .delete()
       .eq('id', id);

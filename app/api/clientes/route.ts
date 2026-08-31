@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { upsertClienteMae } from '@/lib/crm-sync';
+import { requireStudioAuth, handleAuthError } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
-    const supabase = await getSupabaseServiceClient();
-    const { data, error } = await supabase
+    const { data, error } = await auth.supabase!
       .from('salon_customers')
       .select('*')
       .order('created_at', { ascending: false });
@@ -22,6 +25,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await req.json();
     const { id, nome, telefone, email, nascimento, observacoes } = body;
@@ -30,7 +36,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome e Telefone são obrigatórios.' }, { status: 400 });
     }
 
-    // Grava no Sistema Mãe com prevenção automática de duplicação
     const clienteSalvo = await upsertClienteMae({
       id,
       nome,
@@ -48,6 +53,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -61,8 +69,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true, message: 'Mock id ignorado' });
     }
 
-    const supabase = await getSupabaseServiceClient();
-    const { error } = await supabase
+    const { error } = await auth.supabase!
       .from('salon_customers')
       .delete()
       .eq('id', id);
