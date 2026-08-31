@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -373,6 +374,15 @@ function AgendaContent() {
 
                       {a.status !== 'concluido' && a.status !== 'cancelado' && a.status !== 'no_show' && (
                         <div className="flex gap-1 mt-auto">
+                          {servico.toLowerCase().includes('noiva') && (
+                            <Link 
+                              href="/admin/noivas" 
+                              title="Ver na aba Dia da Noiva" 
+                              className="flex-1 flex justify-center items-center p-1.5 rounded bg-pink-500/5 text-pink-400 hover:bg-pink-500/15 transition-colors"
+                            >
+                              <Sparkles size={14} />
+                            </Link>
+                          )}
                           <button onClick={() => mudarStatus(a.id, 'cancelado')} title="Cancelar" className="flex-1 flex justify-center items-center p-1.5 rounded bg-red-500/5 text-red-400 hover:bg-red-500/15 transition-colors"><X size={14} /></button>
                           <button onClick={() => mudarStatus(a.id, 'no_show')} title="No-Show (Faltou)" className="flex-1 flex justify-center items-center p-1.5 rounded bg-purple-500/5 text-purple-400 hover:bg-purple-500/15 transition-colors"><AlertCircle size={14} /></button>
                         </div>
