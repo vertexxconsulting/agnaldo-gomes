@@ -179,6 +179,10 @@ export default function ProfissionaisPage() {
   };
 
   const abrirForm = (prof?: Profissional) => {
+    // Recolhe todas as categorias de serviços por padrão para deixar a tela limpa
+    const todasCategorias = Array.from(new Set(servicosCache.map(s => s.categoria || 'Outros')));
+    setCategoriasColapsadas(todasCategorias);
+
     if (prof) {
       setEditando(prof);
       setFotoLocal(prof.foto_url ?? null);
