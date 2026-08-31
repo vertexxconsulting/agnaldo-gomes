@@ -312,9 +312,14 @@ export default function AgendamentoPage() {
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-foreground mb-2 flex items-center justify-center gap-2">
-            {isNoiva && <Crown size={28} className="text-amber-500" />}
-            {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+          <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-center justify-center gap-2">
+            {formData.nome && step !== 'telefone' && (
+              <span className="text-xl font-bold text-primary tracking-tight">Olá, {formData.nome}!</span>
+            )}
+            <div className="flex items-center justify-center gap-2">
+              {isNoiva && <Crown size={28} className="text-amber-500" />}
+              {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+            </div>
           </h1>
           <p className="text-foreground/60 text-sm">
             {isNoiva 
