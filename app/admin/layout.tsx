@@ -8,16 +8,19 @@ import { AdminUserButton } from '@/components/AdminUserButton';
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  // Operacional Diário
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
-  { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, adminOnly: true },
-  { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true },
-  { href: '/admin/noivas', label: 'Dia da Noiva', icon: Heart },
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
-  { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
-  { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
-  { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge },
+  { href: '/admin/noivas', label: 'Dia da Noiva', icon: Heart },
   { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck },
+  // Cadastros
+  { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
+  { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
+  // Gestão & Ferramentas
+  { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, adminOnly: true },
   { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone },
+  { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge },
+  { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
 
