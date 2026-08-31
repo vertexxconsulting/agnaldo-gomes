@@ -22,17 +22,7 @@ import {
 import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
-
-// Horário geral de funcionamento do salão
-const HORARIO_SALAO: Record<number, { aberto: boolean; inicio: string; fim: string; label: string }> = {
-  0: { aberto: false, inicio: '09:00', fim: '13:00', label: 'Domingo (Fechado)' },
-  1: { aberto: false, inicio: '09:00', fim: '19:00', label: 'Segunda (Fechado)' },
-  2: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Terça (09h às 19h)' },
-  3: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Quarta (09h às 19h)' },
-  4: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Quinta (09h às 19h)' },
-  5: { aberto: true, inicio: '09:00', fim: '19:00', label: 'Sexta (09h às 19h)' },
-  6: { aberto: true, inicio: '08:00', fim: '17:00', label: 'Sábado (08h às 17h)' },
-};
+import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -179,7 +169,8 @@ export default function AgendamentoPage() {
       d.setDate(d.getDate() + i);
       const diaSemana = d.getDay();
       const isoDate = d.toISOString().split('T')[0];
-      const salaoAberto = HORARIO_SALAO[diaSemana].aberto;
+      const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
+      const salaoAberto = (horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana]).aberto;
 
       let profAtende = salaoAberto;
       if (profissionalSelecionado?.jornada_semanal) {
@@ -211,7 +202,8 @@ export default function AgendamentoPage() {
     const dataObj = new Date(ano, mes - 1, dia);
     const diaSemana = dataObj.getDay();
 
-    const infoSalao = HORARIO_SALAO[diaSemana];
+    const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
+    const infoSalao = horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana];
     const jornadaProf = profissionalSelecionado.jornada_semanal;
 
     let profAtende = infoSalao.aberto;

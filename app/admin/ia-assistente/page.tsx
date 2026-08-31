@@ -7,9 +7,9 @@ import { Button } from '@/components/Button';
 import { 
   Bot, Sparkles, Send, CheckCircle2, ShieldAlert, FileText, 
   MessageSquare, Users, Store, GraduationCap, Scissors, Settings2, 
-  RefreshCw, Smartphone, HelpCircle, Save, Sliders, Play
+  RefreshCw, Smartphone, HelpCircle, Save, Sliders, Play, Clock
 } from 'lucide-react';
-import { IAConfig, DEFAULT_IA_CONFIG, obterIAConfig, salvarIAConfig } from '@/lib/ia-config';
+import { IAConfig, DEFAULT_IA_CONFIG, DEFAULT_HORARIOS_SALAO, obterIAConfig, salvarIAConfig } from '@/lib/ia-config';
 
 type TabAtiva = 'diretrizes' | 'relatorios' | 'atendente' | 'modulos' | 'tutorial' | 'playground';
 
@@ -214,25 +214,122 @@ export default function IAAssistentePage() {
                 />
               </div>
             </CardGlass>
+            <CardGlass className="p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                <div>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
+                    <Clock size={16} /> Horários de Atendimento do Salão (Editáveis)
+                  </h4>
+                  <p className="text-[11px] text-foreground/50 mt-0.5">
+                    Ajuste os dias e horários em que o salão está aberto. A IA e os agendamentos respeitarão automaticamente essa grade.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[0, 1, 2, 3, 4, 5, 6].map((diaNum) => {
+                  const info = config.horariosSalao?.[diaNum] || DEFAULT_HORARIOS_SALAO[diaNum];
+                  return (
+                    <div 
+                      key={diaNum} 
+                      className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        info.aberto 
+                          ? 'bg-foreground/5 border-[var(--border-subtle)]' 
+                          : 'bg-red-500/5 border-red-500/10 opacity-70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfig(prev => ({
+                              ...prev,
+                              horariosSalao: {
+                                ...prev.horariosSalao,
+                                [diaNum]: { ...info, aberto: !info.aberto }
+                              }
+                            }));
+                          }}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            info.aberto ? 'bg-primary' : 'bg-foreground/20'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                              info.aberto ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-xs font-bold text-foreground">
+                          {info.nome}
+                        </span>
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                          info.aberto ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          {info.aberto ? 'Aberto' : 'Fechado'}
+                        </span>
+                      </div>
+
+                      {info.aberto && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-foreground/50">Das:</span>
+                          <input
+                            type="time"
+                            value={info.inicio}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setConfig(prev => ({
+                                ...prev,
+                                horariosSalao: {
+                                  ...prev.horariosSalao,
+                                  [diaNum]: { ...info, inicio: v }
+                                }
+                              }));
+                            }}
+                            className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-primary [color-scheme:dark]"
+                          />
+                          <span className="text-[11px] text-foreground/50">às:</span>
+                          <input
+                            type="time"
+                            value={info.fim}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setConfig(prev => ({
+                                ...prev,
+                                horariosSalao: {
+                                  ...prev.horariosSalao,
+                                  [diaNum]: { ...info, fim: v }
+                                }
+                              }));
+                            }}
+                            className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-primary [color-scheme:dark]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardGlass>
           </div>
 
           <div className="space-y-6">
             <CardGlass className="p-6 space-y-4 border-primary/20">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
-                <ShieldAlert size={16} /> Regras Inegociáveis
+                <ShieldAlert size={16} /> Diretrizes Globais
               </h4>
               <ul className="text-xs text-foreground/70 space-y-2.5 leading-relaxed">
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">1.</span>
-                  <span><strong>Tudo a partir de:</strong> NUNCA prometer preço fixo sem avaliar o cabelo do cliente no salão.</span>
+                  <span><strong>Valores a partir de:</strong> NUNCA prometer preço fixo sem avaliar o cabelo do cliente no salão.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">2.</span>
-                  <span><strong>Sinal de Noivas:</strong> 50% de entrada obrigatória para reserva de data do Dia da Noiva.</span>
+                  <span><strong>Sinal de Noivas:</strong> 50% de entrada obrigatória para reserva e bloqueio da data do Dia da Noiva.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">3.</span>
-                  <span><strong>Horários:</strong> Terça a Sexta (09h-19h), Sábado (08h-17h). Dom e Seg fechado.</span>
+                  <span><strong>Horários Dinâmicos:</strong> Abertura e fechamento configuráveis no editor ao lado com aplicação imediata.</span>
                 </li>
               </ul>
             </CardGlass>

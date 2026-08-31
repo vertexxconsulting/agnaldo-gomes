@@ -13,17 +13,7 @@ import {
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
 import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles } from 'lucide-react';
-
-// Horário geral de funcionamento do salão
-const HORARIO_SALAO: Record<number, { aberto: boolean; inicio: string; fim: string; nome: string }> = {
-  0: { aberto: false, inicio: '09:00', fim: '13:00', nome: 'Domingo (Fechado)' },
-  1: { aberto: false, inicio: '09:00', fim: '19:00', nome: 'Segunda-feira (Fechado)' },
-  2: { aberto: true, inicio: '09:00', fim: '19:00', nome: 'Terça-feira (09h às 19h)' },
-  3: { aberto: true, inicio: '09:00', fim: '19:00', nome: 'Quarta-feira (09h às 19h)' },
-  4: { aberto: true, inicio: '09:00', fim: '19:00', nome: 'Quinta-feira (09h às 19h)' },
-  5: { aberto: true, inicio: '09:00', fim: '19:00', nome: 'Sexta-feira (09h às 19h)' },
-  6: { aberto: true, inicio: '08:00', fim: '17:00', nome: 'Sábado (08h às 17h)' },
-};
+import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -124,8 +114,8 @@ export default function AgendaPage() {
     const [ano, mes, dia] = formData.data.split('-').map(Number);
     const dataObj = new Date(ano, mes - 1, dia);
     const diaSemana = dataObj.getDay();
-
-    const infoSalao = HORARIO_SALAO[diaSemana];
+    const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
+    const infoSalao = horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana];
     const profSel = profissionais.find(p => p.id === formData.profissional_id);
     const jornadaProf = profSel?.jornada_semanal;
 

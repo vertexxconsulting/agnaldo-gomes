@@ -1,9 +1,32 @@
+export interface HorarioDiaSalao {
+  dia: number; // 0 = Domingo, 1 = Segunda, 2 = Terça, ..., 6 = Sábado
+  nome: string;
+  aberto: boolean;
+  inicio: string;
+  fim: string;
+}
+
+export type HorariosFuncionamentoSalao = Record<number, HorarioDiaSalao>;
+
+export const DEFAULT_HORARIOS_SALAO: HorariosFuncionamentoSalao = {
+  0: { dia: 0, nome: 'Domingo', aberto: false, inicio: '09:00', fim: '18:00' },
+  1: { dia: 1, nome: 'Segunda-feira', aberto: false, inicio: '09:00', fim: '19:00' },
+  2: { dia: 2, nome: 'Terça-feira', aberto: true, inicio: '09:00', fim: '19:00' },
+  3: { dia: 3, nome: 'Quarta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
+  4: { dia: 4, nome: 'Quinta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
+  5: { dia: 5, nome: 'Sexta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
+  6: { dia: 6, nome: 'Sábado', aberto: true, inicio: '08:00', fim: '17:00' },
+};
+
 export interface IAConfig {
   ativa: boolean;
   modo: 'ativo' | 'aprendizado' | 'desativado';
   nomeAssistente: string;
   tomDeVoz: string;
   
+  // Horários de Atendimento Editáveis do Salão
+  horariosSalao: HorariosFuncionamentoSalao;
+
   // Diretrizes Mestre
   diretrizesMestre: string;
   
@@ -61,12 +84,14 @@ export const DEFAULT_IA_CONFIG: IAConfig = {
   nomeAssistente: 'Assistente Agnaldo Gomes',
   tomDeVoz: 'Elegante, consultivo, acolhedor e focado em excelência capilar e estética de alto padrão.',
   
+  horariosSalao: DEFAULT_HORARIOS_SALAO,
+
   diretrizesMestre: `Você é a inteligência artificial executiva do Studio de Beleza & Academy Agnaldo Gomes.
 Suas diretrizes fundamentais e inegociáveis são:
 1. VALORES SEMPRE "A PARTIR DE": Todos os preços informados devem conter a expressão "a partir de" (ex: Corte Masculino com Agnaldo Gomes a partir de R$ 60,00; Mechas a partir de R$ 480,00).
 2. POLÍTICA DE NOIVAS: Serviços para noivas exigem pagamento obrigatório de 50% de sinal via PIX para reserva e bloqueio de data na agenda.
 3. PROFISSIONAL PRIMEIRO: Cada procedimento está vinculado ao profissional habilitado (Agnaldo Gomes ou Equipe Studio).
-4. DIAS E HORÁRIOS: O salão funciona de Terça a Sexta (09h às 19h) e Sábado (08h às 17h). Domingos e Segundas o salão é fechado.
+4. DIAS E HORÁRIOS: O salão funciona conforme os horários de atendimento cadastrados no painel administrativo.
 5. EXCELÊNCIA E HIGIENE: Tratamentos capilares utilizam tecnologia de ponta (Micro Mist, Ozonioterapia e Terapia Capilar Personalizada).`,
 
   relatorios: {
@@ -124,7 +149,15 @@ export function obterIAConfig(): IAConfig {
   try {
     const salvo = localStorage.getItem(STORAGE_KEY);
     if (salvo) {
-      return { ...DEFAULT_IA_CONFIG, ...JSON.parse(salvo) };
+      const parsed = JSON.parse(salvo);
+      return { 
+        ...DEFAULT_IA_CONFIG, 
+        ...parsed,
+        horariosSalao: {
+          ...DEFAULT_HORARIOS_SALAO,
+          ...(parsed.horariosSalao || {})
+        }
+      };
     }
   } catch (err) {
     console.warn('[ia-config] Erro ao carregar do localStorage:', err);
@@ -142,4 +175,8 @@ export function salvarIAConfig(config: IAConfig): boolean {
     console.error('[ia-config] Erro ao salvar no localStorage:', err);
     return false;
   }
+}
+
+export function obterHorariosSalao(): HorariosFuncionamentoSalao {
+  return obterIAConfig().horariosSalao;
 }
