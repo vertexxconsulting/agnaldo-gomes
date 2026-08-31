@@ -286,36 +286,7 @@ export function registrarPagamentoNoiva(params: {
 // Dados de exemplo (demonstração)
 // ─────────────────────────────────────────────────────────────────────
 function seedAgendamentos(): AgendamentoNoiva[] {
-  return [
-    {
-      id: 'n-seed-1',
-      pacote_id: 'noiva-dia-completo',
-      nome_noiva: 'Juliana Ribeiro',
-      telefone: '(42) 99876-5432',
-      email: 'juliana@email.com',
-      data_evento: '2026-11-14',
-      data_agendamento: '2026-11-14',
-      hora: '08:00',
-      profissional_id: 'p1',
-      status: 'sinal_pendente',
-      sinal_percentual: NOIVA_SINAL_MIN_PCT,
-      criado_em: '2026-08-15T10:00:00Z',
-    },
-    {
-      id: 'n-seed-2',
-      pacote_id: 'noiva-prova',
-      nome_noiva: 'Fernanda Souza',
-      telefone: '(42) 98765-1234',
-      email: 'fernanda@email.com',
-      data_evento: '2026-09-20',
-      data_agendamento: '2026-09-05',
-      hora: '14:00',
-      profissional_id: 'p2',
-      status: 'confirmado',
-      sinal_percentual: NOIVA_SINAL_MIN_PCT,
-      criado_em: '2026-08-10T09:00:00Z',
-    },
-  ];
+  return [];
 }
 
 export function formatBRL(v: number): string {

@@ -94,7 +94,7 @@ export default function NoivasPage() {
 
       {/* Formulário de novo agendamento */}
       {mostrarForm && (
-        <form onSubmit={e => handleNovo(e.currentTarget)} className="mt-6 bg-card border border-[var(--border-subtle)] rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={e => { e.preventDefault(); handleNovo(e.currentTarget); }} className="mt-6 bg-card border border-[var(--border-subtle)] rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-bold mb-1.5">Pacote</label>
             <select name="pacote_id" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
@@ -120,7 +120,7 @@ export default function NoivasPage() {
             <input name="data_evento" type="date" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
           </div>
           <div>
-            <label className="block text-sm font-bold mb-1.5">Data do Agendamento (serviço/prova)</label>
+            <label className="block text-sm font-bold mb-1.5">Data da Prova (Agendado pelo Salão)</label>
             <input name="data_agendamento" type="date" required className="w-full bg-card border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
           </div>
           <div>
