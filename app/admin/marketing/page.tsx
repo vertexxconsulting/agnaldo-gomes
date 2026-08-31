@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink, RotateCcw } from 'lucide-react';
+import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink, RotateCcw, Star } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 
@@ -37,6 +37,7 @@ export default function MarketingPage() {
   const [aniversarios, setAniversarios] = useState<RespostaCron | null>(null);
   const [agenda, setAgenda] = useState<RespostaCron | null>(null);
   const [reativacao, setReativacao] = useState<RespostaCron | null>(null);
+  const [feedback, setFeedback] = useState<RespostaCron | null>(null);
   const [inativos, setInativos] = useState<ClienteInativo[]>([]);
   const [evolutionOk, setEvolutionOk] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -92,15 +93,17 @@ export default function MarketingPage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [ani, ag, reat, envStatus] = await Promise.all([
+      const [ani, ag, reat, fb, envStatus] = await Promise.all([
         carregarCron('/api/cron/aniversarios'),
         carregarCron('/api/cron/agenda'),
         carregarCron('/api/cron/reativacao'),
+        carregarCron('/api/cron/feedback'),
         fetch('/api/env-status').then(r => r.json()).catch(() => null),
       ]);
       setAniversarios(ani);
       setAgenda(ag);
       setReativacao(reat);
+      setFeedback(fb);
       setEvolutionOk(Boolean(envStatus?.evolutionApi));
       await carregarInativos();
       setLoading(false);
@@ -109,14 +112,16 @@ export default function MarketingPage() {
 
   const reenviarTudo = async () => {
     setDisparando(true);
-    const [ani, ag, reat] = await Promise.all([
+    const [ani, ag, reat, fb] = await Promise.all([
       carregarCron('/api/cron/aniversarios'),
       carregarCron('/api/cron/agenda'),
       carregarCron('/api/cron/reativacao'),
+      carregarCron('/api/cron/feedback'),
     ]);
     setAniversarios(ani);
     setAgenda(ag);
     setReativacao(reat);
+    setFeedback(fb);
     setDisparando(false);
   };
 
@@ -239,6 +244,46 @@ action={
                       <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors">
                         <MessageCircleHeart size={13} /> Enviar Reativação
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-foreground/40">—</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {/* Feedback pós-atendimento */}
+          <Panel
+            title={`⭐ Feedback pós-atendimento (${feedback?.total ?? 0})`}
+            action={feedback?.error ? <span className="text-xs text-danger">{feedback.error}</span> : undefined}
+          >
+            {(feedback?.itens?.length ?? 0) === 0 ? (
+              <p className="text-sm text-foreground/50 py-3">
+                Nenhum atendimento concluído ontem ou anteontem para pedir feedback.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {feedback!.itens!.map((i, idx) => (
+                  <li key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
+                    <Star size={15} className="text-amber-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{i.nome || 'Sem nome'}</p>
+                      <p className="text-xs text-foreground/50 truncate">
+                        {(i as any).servico ? `${(i as any).servico} · ` : ''}{i.telefone || 'sem telefone'}
+                      </p>
+                    </div>
+                    {i.enviada_via_api ? (
+                      <span className="text-[10px] font-bold bg-success/10 text-success px-2 py-1 rounded-full border border-success/25">ENVIADA</span>
+                    ) : i.wa_link ? (
+                      <a
+                        href={i.wa_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-400/30 text-amber-500 hover:bg-amber-400/10 transition-colors"
+                      >
+                        <ExternalLink size={13} /> Pedir avaliação
                       </a>
                     ) : (
                       <span className="text-[10px] text-foreground/40">—</span>
