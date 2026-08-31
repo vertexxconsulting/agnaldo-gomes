@@ -232,6 +232,23 @@ export async function criarAgendamentoNoiva(
 
 export async function atualizarStatusNoiva(id: string, status: StatusAgendamentoNoiva) {
   await supabase.from('salon_bride_appointments').update({ status }).eq('id', id);
+  
+  // Sincronizar com a agenda principal se for confirmado ou sinal pago
+  if (status === 'confirmado' || status === 'sinal_pago') {
+    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora').eq('id', id).single();
+    if (noiva) {
+      const telLimpo = noiva.telefone.replace(/\D/g, '');
+      const { data: customer } = await supabase.from('salon_customers').select('id').eq('phone', telLimpo).single();
+      if (customer) {
+        await supabase.from('salon_appointments')
+          .update({ status: 'CONFIRMED' })
+          .eq('customer_id', customer.id)
+          .eq('date', noiva.data_agendamento)
+          .eq('start_time', noiva.hora);
+      }
+    }
+  }
+
   await fetchNoivaDadosDB();
 }
 
