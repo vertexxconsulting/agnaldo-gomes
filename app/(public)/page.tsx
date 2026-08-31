@@ -78,7 +78,7 @@ export default function Home() {
       <section className="relative w-full min-h-[92vh] flex items-center overflow-hidden" aria-label="Hero">
         {/* Foto de fundo: Agnaldo trabalhando — presença humana e autoridade */}
         <Image
-          src="/agnaldo5.webp"
+          src="/agnaldo_hero.jpg"
           alt="Agnaldo Gomes — Master Hair Stylist trabalhando com tesoura no studio"
           fill
           priority
