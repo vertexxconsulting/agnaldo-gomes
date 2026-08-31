@@ -243,6 +243,9 @@ export default function NoivasPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <Link href={`/admin/agenda?date=${ag.data_agendamento}`} className="inline-flex items-center gap-1.5 border border-[var(--border-subtle)] bg-white px-3.5 py-2 rounded-lg text-xs font-bold hover:border-primary/50 transition-colors">
+                    <CalendarDays size={13} /> Agenda
+                  </Link>
                   <button onClick={() => setPagamentoAberto(ag.id)} className="inline-flex items-center gap-1.5 bg-foreground text-background px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-foreground/85 transition-colors">
                     <CreditCard size={13} /> Pagamentos
                   </button>

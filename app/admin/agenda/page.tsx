@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -17,9 +18,10 @@ import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
-export default function AgendaPage() {
+function AgendaContent() {
+  const searchParams = useSearchParams();
   const hoje = new Date().toISOString().split('T')[0];
-  const [dataSelecionada, setDataSelecionada] = useState(hoje);
+  const [dataSelecionada, setDataSelecionada] = useState(searchParams.get('date') || hoje);
   const [profFiltro, setProfFiltro] = useState<string>('todos');
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [bloqueiosDia, setBloqueiosDia] = useState<BloqueioAgenda[]>([]);
@@ -542,5 +544,13 @@ export default function AgendaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AgendaPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-foreground/50">Carregando agenda...</div>}>
+      <AgendaContent />
+    </Suspense>
   );
 }
