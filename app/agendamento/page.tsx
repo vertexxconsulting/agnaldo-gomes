@@ -126,8 +126,21 @@ export default function AgendamentoPage() {
   const valorSinalNoiva = isNoiva ? Math.round(valorTotalServico * 0.5 * 100) / 100 : 0;
   const valorRestanteNoiva = isNoiva ? Math.round((valorTotalServico - valorSinalNoiva) * 100) / 100 : 0;
 
+  const formatPhone = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 11);
+    if (clean.length === 0) return '';
+    if (clean.length <= 2) return `(${clean}`;
+    if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+    if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+  };
+
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    let finalValue = value;
+    if (field === 'telefone') {
+      finalValue = formatPhone(value);
+    }
+    setFormData(prev => ({ ...prev, [field]: finalValue }));
   };
 
   const verificarTelefone = () => {
@@ -415,7 +428,7 @@ export default function AgendamentoPage() {
                     value={formData.telefone}
                     onChange={e => handleInputChange('telefone', e.target.value)}
                     placeholder="(42) 99999-9999"
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-base"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-base font-bold tracking-widest shadow-inner"
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -438,7 +451,7 @@ export default function AgendamentoPage() {
                         type="tel"
                         value={formData.telefone}
                         disabled
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground/50 cursor-not-allowed font-mono"
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground/70 cursor-not-allowed font-mono font-bold tracking-widest"
                       />
                       <Button type="button" variant="outline" onClick={() => setTelefoneVerificado(false)}>Alterar</Button>
                     </div>
