@@ -27,14 +27,23 @@ export default function NoivasPage() {
   const [copiado, setCopiado] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
 
+  const [dbServicos, setDbServicos] = useState<any[]>([]);
+
   useEffect(() => {
     const atualizar = () => setAgendamentos(getNoivaAgendamentos());
     atualizar();
     const unsub = subscribeNoivas(atualizar);
+    
+    // Buscar serviços reais para não quebrar a tela se a noiva for agendada pelo App
+    fetch('/api/servicos')
+      .then(res => res.json())
+      .then(data => setDbServicos(Array.isArray(data) ? data : []))
+      .catch(console.error);
+      
     return () => unsub();
   }, []);
 
-  const pacotes = getNoivaPacotes();
+  const pacotesStatic = getNoivaPacotes();
   const profissionais = [
     { id: 'p1', nome: 'Agnaldo Gomes' },
     { id: 'p2', nome: 'Camila Ferreira' },
@@ -46,7 +55,29 @@ export default function NoivasPage() {
 
   const sorted = [...filtrados].sort((a, b) => a.data_agendamento.localeCompare(b.data_agendamento));
 
-  const pacoteById = (id: string) => pacotes.find(p => p.id === id);
+  // Combina os estáticos com os que vieram do banco
+  const pacotes = [
+    ...pacotesStatic,
+    ...dbServicos.map(s => ({
+      id: s.id,
+      nome: s.nome,
+      descricao: s.descricao,
+      preco: s.preco,
+      duracao_min: s.duracao,
+      itens: [],
+      ativo: true
+    }))
+  ];
+
+  const pacoteById = (id: string) => pacotes.find(p => p.id === id) || {
+    id,
+    nome: 'Pacote Personalizado',
+    descricao: 'Serviço importado do App',
+    preco: 0,
+    duracao_min: 0,
+    itens: [],
+    ativo: true
+  };
   const profById = (id: string) => profissionais.find(p => p.id === id);
 
   const handleNovo = async (form: HTMLFormElement) => {
