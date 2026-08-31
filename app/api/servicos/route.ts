@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { requireStudioAuth } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
-    const supabase = await getSupabaseServiceClient();
-    const { data, error } = await supabase
+    const { data, error } = await auth.supabase!
       .from('salon_services')
       .select('*')
       .order('name');
@@ -15,12 +17,16 @@ export async function GET() {
     }
 
     return NextResponse.json(data || []);
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await req.json();
     const { id, nome, categoria, duracao_min, preco, ativo, visivel_app } = body;
@@ -29,8 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome e Preço são obrigatórios.' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseServiceClient();
-    const payload: any = {
+    const payload = {
       name: String(nome).trim(),
       category: String(categoria || 'Geral').trim(),
       duration_minutes: Number(duracao_min) || 60,
@@ -42,7 +47,7 @@ export async function POST(req: Request) {
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isUUID) {
-      const { data, error } = await supabase
+      const { data, error } = await auth.supabase!
         .from('salon_services')
         .update(payload)
         .eq('id', id)
@@ -55,7 +60,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ success: true, servico: data });
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await auth.supabase!
         .from('salon_services')
         .insert(payload)
         .select('*')
@@ -67,13 +72,17 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ success: true, servico: data });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/servicos] Erro inesperado:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -87,13 +96,11 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true, message: 'Mock id ignorado' });
     }
 
-    const supabase = await getSupabaseServiceClient();
-
     // 1. Remove vínculos primeiro
-    await supabase.from('salon_professional_services').delete().eq('service_id', id);
+    await auth.supabase!.from('salon_professional_services').delete().eq('service_id', id);
 
     // 2. Remove o serviço
-    const { error } = await supabase
+    const { error } = await auth.supabase!
       .from('salon_services')
       .delete()
       .eq('id', id);
@@ -104,8 +111,9 @@ export async function DELETE(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/servicos] Erro inesperado ao excluir serviço:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

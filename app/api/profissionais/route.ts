@@ -17,8 +17,9 @@ export async function GET() {
     }
 
     return NextResponse.json(data || []);
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
     }
 
-    const payload: any = {
+    const payload = {
       name: String(nome).trim(),
       photo_url: foto_url || null,
       specialties: Array.isArray(especialidades) ? especialidades : [],
@@ -70,9 +71,10 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ success: true, profissional: data });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/profissionais] Erro inesperado:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -108,8 +110,9 @@ export async function DELETE(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/profissionais] Erro inesperado ao excluir profissional:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { requireStudioAuth } from '@/lib/api-auth';
 
 export async function GET(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(req.url);
     const data = searchParams.get('data');
     const profissional_id = searchParams.get('profissional_id');
 
-    const supabase = await getSupabaseServiceClient();
-    let query = supabase
+    let query = auth.supabase!
       .from('salon_appointments')
       .select('*')
       .order('date', { ascending: false })
@@ -24,21 +26,23 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(agendamentos || []);
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await req.json();
-    const { cliente_id, profissional_id, servico_id, data, hora_inicio, hora_fim, status, canal, observacoes } = body;
+    const { cliente_id, profissional_id, servico_id, data, hora_inicio, hora_fim, status, canal } = body;
 
     if (!cliente_id || !profissional_id || !servico_id || !data || !hora_inicio) {
       return NextResponse.json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' }, { status: 400 });
     }
-
-    const supabase = await getSupabaseServiceClient();
 
     const canalDb = (canal === 'online' || canal === 'ONLINE') ? 'ONLINE' : 'RECEPTION';
     
@@ -61,7 +65,7 @@ export async function POST(req: Request) {
       channel: canalDb,
     };
 
-    const { data: agendamento, error } = await supabase
+    const { data: agendamento, error } = await auth.supabase!
       .from('salon_appointments')
       .insert(insertPayload)
       .select('*')
@@ -73,8 +77,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, agendamento });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/agendamentos/admin] Erro inesperado:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

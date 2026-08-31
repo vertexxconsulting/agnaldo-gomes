@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { requireStudioAuth } from '@/lib/api-auth';
 
 export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { telefone, nome_noiva, data_agendamento, hora, status } = await req.json();
 
@@ -9,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Dados insuficientes para sincronizar.' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseServiceClient();
+    const supabase = auth.supabase!;
     
     // Status que queremos na agenda principal
     const statusDb = (status === 'confirmado' || status === 'sinal_pago') ? 'CONFIRMED' : 'PENDING';
@@ -43,8 +46,9 @@ export async function POST(req: Request) {
       console.warn(`[sync-agenda] Cliente não encontrado para a noiva: ${nome_noiva} (${telefone})`);
       return NextResponse.json({ success: true, updated: false, message: 'Cliente não encontrado' });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('[sync-agenda] Erro inesperado:', err);
-    return NextResponse.json({ error: err?.message || 'Erro interno' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

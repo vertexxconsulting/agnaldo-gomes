@@ -6,7 +6,45 @@ import { gerarPixCopiaCola } from '@/lib/noivas';
 import { MOCK_SERVICOS, MOCK_PROFISSIONAIS } from '@/lib/mock-data';
 import { sincronizarAgendamentoComBolten } from '@/lib/bolten';
 
+const ALLOWED_ORIGINS = [
+  'https://agnaldogomes.com.br',
+  'https://www.agnaldogomes.com.br',
+  'http://localhost:3000',
+];
+
+function validateOrigin(req: Request): boolean {
+  const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+  return ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+}
+
+function sanitizeInput(input: string): string {
+  return input.trim().slice(0, 500);
+}
+
+function validatePhone(phone: string): string {
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length < 10 || cleaned.length > 11) {
+    throw new Error('Telefone inválido');
+  }
+  return cleaned;
+}
+
+function validateEmail(email: string): string {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error('E-mail inválido');
+  }
+  return email.toLowerCase().slice(0, 254);
+}
+
 export async function POST(req: Request) {
+  if (!validateOrigin(req)) {
+    return NextResponse.json(
+      { error: 'Origem não permitida' },
+      { status: 403 }
+    );
+  }
+
   try {
     const supabase = await getSupabaseServiceClient();
     const body = await req.json();
@@ -21,18 +59,28 @@ export async function POST(req: Request) {
       clienteId: existingClienteId 
     } = body;
 
+    if (!servicoId || !profissionalId || !data || !hora || !nome || !telefone) {
+      return NextResponse.json(
+        { error: 'Todos os campos são obrigatórios: servicoId, profissionalId, data, hora, nome, telefone' },
+        { status: 400 }
+      );
+    }
+
+    const nomeSanitizado = sanitizeInput(nome);
+    const telefoneLimpo = validatePhone(telefone);
+    const emailSanitizado = email ? validateEmail(email) : null;
+
     let clienteId = existingClienteId;
-    const numLimpo = (telefone || '').replace(/\D/g, '');
 
     // 1. Garantir que o cliente existe no Sistema Mãe (sem duplicar)
-    if (supabase && nome && numLimpo) {
+    if (supabase && nomeSanitizado && telefoneLimpo) {
       try {
         const { upsertClienteMae } = await import('@/lib/crm-sync');
         const clienteSalvo = await upsertClienteMae({
           id: clienteId,
-          nome,
-          telefone: numLimpo,
-          email,
+          nome: nomeSanitizado,
+          telefone: telefoneLimpo,
+          email: emailSanitizado,
         });
         if (clienteSalvo) clienteId = clienteSalvo.id;
       } catch (err) {
@@ -82,6 +130,9 @@ export async function POST(req: Request) {
 
     // Calcular hora_fim
     const dataInicio = new Date(`${data}T${hora}:00`);
+    if (isNaN(dataInicio.getTime())) {
+      return NextResponse.json({ error: 'Data ou hora inválida' }, { status: 400 });
+    }
     const dataFim = new Date(dataInicio.getTime() + servicoDuracao * 60000);
     const horaFim = isNaN(dataFim.getTime()) 
       ? hora 
@@ -119,11 +170,11 @@ export async function POST(req: Request) {
           console.log(`[API Agendamento] Verificando isNoiva:`, { isNoiva, servicoCategoria, servicoNome });
           if (isNoiva) {
             const { error: brideError } = await supabase.from('salon_bride_appointments').insert({
-              pacote_id: servicoId, // usaremos o ID do serviço como pacote_id para o APP
-              nome_noiva: nome,
-              telefone: numLimpo,
-              email: email || null,
-              data_evento: data, // Por padrão assume a mesma data, salão entra em contato
+              pacote_id: servicoId,
+              nome_noiva: nomeSanitizado,
+              telefone: telefoneLimpo,
+              email: emailSanitizado,
+              data_evento: data,
               data_agendamento: data,
               hora: hora,
               profissional_id: profissionalId,
@@ -149,9 +200,9 @@ export async function POST(req: Request) {
     // 4. Sincronizar dados com o CRM Bolten.io (em background, sem travar o cliente)
     sincronizarAgendamentoComBolten({
       id: agendamentoId,
-      nome,
-      telefone,
-      email,
+      nome: nomeSanitizado,
+      telefone: telefoneLimpo,
+      email: emailSanitizado,
       servico: servicoNome,
       profissional: profissionalNome,
       data,
@@ -169,7 +220,7 @@ export async function POST(req: Request) {
       try {
         const pixRes = await criarPixMercadoPago(
           valorSinal,
-          `Sinal 50% Noiva - ${nome.slice(0, 30)} - ${agendamentoId.slice(0, 8)}`
+          `Sinal 50% Noiva - ${nomeSanitizado.slice(0, 30)} - ${agendamentoId.slice(0, 8)}`
         );
         pixCopiaCola = pixRes.copia_e_cola;
         qrcodeBase64 = pixRes.qrcode_base64;
@@ -181,11 +232,11 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Gerar URL do WhatsApp
+    // 6. Gerar URL do WhatsApp
     const whatsappUrl = getWhatsAppBookingUrl({
       id: agendamentoId,
-      cliente: nome,
-      telefone: telefone,
+      cliente: nomeSanitizado,
+      telefone: telefoneLimpo,
       servico: servicoNome,
       profissional: profissionalNome,
       data: new Date(data).toLocaleDateString('pt-BR'),
@@ -208,15 +259,19 @@ export async function POST(req: Request) {
       profissional: profissionalNome,
       data,
       hora,
-      nome,
+      nome: nomeSanitizado,
       whatsappUrl 
     });
 
   } catch (error: any) {
     console.error('Erro na API de agendamento:', error);
+    const message = error.message === 'Telefone inválido' || error.message === 'E-mail inválido' 
+      ? error.message 
+      : 'Erro interno no servidor';
+    const status = error.message === 'Telefone inválido' || error.message === 'E-mail inválido' ? 400 : 500;
     return NextResponse.json(
-      { error: error.message || 'Erro interno no servidor' },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }

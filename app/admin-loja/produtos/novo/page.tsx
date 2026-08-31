@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info } from 'lucide-react';
+import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 const inputCls = "w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-colors";
@@ -11,6 +11,8 @@ const inputCls = "w-full bg-[var(--background)] border border-[var(--border-subt
 export default function NovoProdutoPage() {
   const [productType, setProductType] = useState<'AFFILIATE_ML' | 'LOCAL_STOCK'>('AFFILIATE_ML');
   const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractResult, setExtractResult] = useState<{ success: boolean; message: string; product?: any } | null>(null);
   const router = useRouter();
   
   const [formData, setFormData] = useState({
@@ -21,21 +23,87 @@ export default function NovoProdutoPage() {
     stock: '',
     image_url: '',
     active: true,
+    description: '',
   });
 
+  const handleExtractML = async () => {
+    const link = formData.link.trim();
+    if (!link) {
+      setExtractResult({ success: false, message: 'Cole um link do Mercado Livre antes de extrair.' });
+      return;
+    }
+
+    setExtracting(true);
+    setExtractResult(null);
+
+    try {
+      const res = await fetch('/api/mercadolivre/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: link }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.product) {
+        // Preenche o formulário com os dados extraídos
+        setFormData(prev => ({
+          ...prev,
+          name: data.product.name || prev.name,
+          price: data.product.price ? String(data.product.price) : prev.price,
+          image_url: data.product.image_url || prev.image_url,
+          description: data.product.description || prev.description,
+          category: data.product.category || prev.category,
+        }));
+
+        setExtractResult({
+          success: true,
+          message: 'Dados extraídos com sucesso! Revise as informações abaixo.',
+          product: data.product,
+        });
+      } else {
+        setExtractResult({ success: false, message: data.error || 'Não foi possível extrair dados deste link.' });
+      }
+    } catch (error: any) {
+      setExtractResult({ success: false, message: `Erro: ${error.message}` });
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleSave = async () => {
+    // Validações
+    if (!formData.name.trim()) {
+      alert('Nome do produto é obrigatório.');
+      return;
+    }
+    if (!formData.category) {
+      alert('Selecione uma categoria.');
+      return;
+    }
+    if (productType === 'AFFILIATE_ML' && !formData.link.trim()) {
+      alert('Link do Mercado Livre é obrigatório para produtos afiliados.');
+      return;
+    }
+    if (productType === 'LOCAL_STOCK' && (!formData.price || parseFloat(formData.price) <= 0)) {
+      alert('Preço válido é obrigatório para produtos de estoque próprio.');
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase.from('products').insert({
-        name: formData.name,
+        name: formData.name.trim(),
         category: formData.category,
         type: productType,
         price: parseFloat(formData.price) || 0,
         stock: productType === 'LOCAL_STOCK' ? parseInt(formData.stock) || 0 : 0,
         active: formData.active,
-        image_url: formData.image_url || null,
-        link: formData.link || null,
+        image_url: formData.image_url.trim() || null,
+        link: productType === 'AFFILIATE_ML' ? formData.link.trim() : null,
+        description: formData.description.trim() || null,
       });
+      
       if (error) throw error;
       router.push('/admin-loja/produtos');
     } catch (err) {
@@ -45,6 +113,8 @@ export default function NovoProdutoPage() {
       setSaving(false);
     }
   };
+
+  const clearExtractResult = () => setExtractResult(null);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -79,7 +149,7 @@ export default function NovoProdutoPage() {
             <h2 className="text-sm font-semibold text-foreground tracking-tight mb-4">Qual é o tipo de produto?</h2>
             <div className="grid grid-cols-2 gap-4">
               <button 
-                onClick={() => setProductType('AFFILIATE_ML')}
+                onClick={() => { setProductType('AFFILIATE_ML'); clearExtractResult(); }}
                 className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all ${
                   productType === 'AFFILIATE_ML' ? 'border-primary bg-primary/10 text-primary-hover' : 'border-[var(--border-subtle)] bg-[var(--background)] hover:border-primary/50 text-foreground/60'
                 }`}
@@ -89,7 +159,7 @@ export default function NovoProdutoPage() {
               </button>
 
               <button 
-                onClick={() => setProductType('LOCAL_STOCK')}
+                onClick={() => { setProductType('LOCAL_STOCK'); clearExtractResult(); }}
                 className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-3 transition-all ${
                   productType === 'LOCAL_STOCK' ? 'border-primary bg-primary/10 text-primary-hover' : 'border-[var(--border-subtle)] bg-[var(--background)] hover:border-primary/50 text-foreground/60'
                 }`}
@@ -109,13 +179,42 @@ export default function NovoProdutoPage() {
                 <label className="block text-sm font-medium text-foreground/70 mb-1">Link do Mercado Livre *</label>
                 <div className="flex gap-2">
                   <input type="url" 
-                  placeholder="https://produto.mercadolivre.com.br/..." 
-                  value={formData.link}
-                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                  className={`flex-1 ${inputCls}`} />
-                  <button className="bg-foreground text-background px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">Extrair Dados</button>
+                    placeholder="https://produto.mercadolivre.com.br/MLB-1234567890" 
+                    value={formData.link}
+                    onChange={(e) => { setFormData({ ...formData, link: e.target.value }); clearExtractResult(); }}
+                    className={`flex-1 ${inputCls}`} 
+                    disabled={extracting}
+                  />
+                  <button 
+                    onClick={handleExtractML}
+                    disabled={extracting || !formData.link.trim()}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {extracting ? <Loader2 size={16} className="animate-spin" /> : 'Extrair Dados'}
+                    <CheckCircle2 size={14} className="opacity-0 group-hover:opacity-100" />
+                  </button>
                 </div>
-                <p className="text-xs text-foreground/50 mt-1">Cole o link acima e clique em &quot;Extrair&quot; para puxar nome, preço e fotos automaticamente.</p>
+                <p className="text-xs text-foreground/50 mt-1">Cole o link acima e clique em "Extrair Dados" para puxar nome, preço, descrição e fotos automaticamente.</p>
+                
+                {/* Resultado da Extração */}
+                {extractResult && (
+                  <div className={`mt-3 p-3 rounded-lg border flex items-start gap-3 ${extractResult.success ? 'bg-success/10 border-success/20 text-success' : 'bg-danger/10 border-danger/20 text-danger'}`}>
+                    {extractResult.success ? (
+                      <>
+                        <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">{extractResult.message}</p>
+                          <p className="text-xs mt-1">Os campos abaixo foram preenchidos automaticamente. Revise e ajuste se necessário.</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                        <p className="text-sm">{extractResult.message}</p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -135,10 +234,11 @@ export default function NovoProdutoPage() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className={inputCls}>
                   <option value="">Selecione...</option>
-                  <option value="alisamento">Alisamento</option>
-                  <option value="coloracao">Coloração</option>
-                  <option value="tratamento">Tratamento</option>
-                  <option value="finalizadores">Finalizadores</option>
+                  <option value="finalizacao">Finalização & Styling</option>
+                  <option value="tratamento">Tratamento Capilar</option>
+                  <option value="coloracao">Coloração Profissional</option>
+                  <option value="ferramentas">Ferramentas & Equipamentos</option>
+                  <option value="barbearia">Barbearia</option>
                 </select>
               </div>
               <div>
@@ -146,13 +246,23 @@ export default function NovoProdutoPage() {
                 <input type="number" step="0.01" placeholder="0,00" 
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className={inputCls} />
+                  className={inputCls} 
+                  disabled={productType === 'AFFILIATE_ML'}
+                />
+                {productType === 'AFFILIATE_ML' && (
+                  <p className="text-xs text-foreground/50 mt-1">Preço vem do Mercado Livre (opcional para referência)</p>
+                )}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground/70 mb-1">Descrição</label>
-              <textarea rows={4} className={`${inputCls} resize-none`}></textarea>
+              <textarea 
+                rows={4} 
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className={`${inputCls} resize-none`} 
+              />
             </div>
           </div>
 
@@ -168,9 +278,9 @@ export default function NovoProdutoPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground/70 mb-1">Estoque Inicial (unidades)</label>
                   <input type="number" placeholder="0" 
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  className={inputCls} />  
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    className={inputCls} />  
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground/70 mb-1">Peso (kg)</label>
@@ -206,10 +316,10 @@ export default function NovoProdutoPage() {
             <div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" 
-                checked={formData.active}
-                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                className="w-5 h-5 accent-primary"
-              />
+                  checked={formData.active}
+                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                  className="w-5 h-5 accent-primary"
+                />
                 <span className="text-sm font-medium text-foreground/80">Produto Ativo na Loja</span>
               </label>
               <p className="text-xs text-foreground/50 mt-2 ml-8">Desmarque para ocultar o produto sem deletá-lo.</p>
@@ -229,7 +339,7 @@ export default function NovoProdutoPage() {
             {productType === 'AFFILIATE_ML' && (
               <div className="bg-primary/10 border border-primary/20 text-foreground/70 p-4 rounded-lg text-sm mb-6 flex items-start gap-3">
                 <Info className="shrink-0 mt-0.5 text-primary" size={18} />
-                <p>Ao salvar um link do Mercado Livre, o sistema buscará automaticamente o preço e o estoque se disponível. Produtos do Mercado Livre aparecem com o selo &quot;Afiliado&quot; na vitrine.</p>
+                <p>Ao colar o link do Mercado Livre e clicar em "Extrair Dados", o sistema buscará automaticamente nome, preço, descrição e imagem do produto. O botão de compra na loja redirecionará para o link de afiliado no Mercado Livre.</p>
               </div>
             )}
           </div>

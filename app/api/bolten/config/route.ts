@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getBoltenConfig, setDynamicBoltenConfig } from '@/lib/bolten';
-import { requireAdminAuth, handleAuthError } from '@/lib/api-auth';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 export async function GET() {
   const auth = await requireAdminAuth();
@@ -41,7 +41,8 @@ export async function POST(req: Request) {
       message: 'Configurações do Bolten CRM salvas com sucesso!',
       configurado: Boolean(newConfig.apiKey && newConfig.projectId),
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Erro ao salvar configurações' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao salvar configurações';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

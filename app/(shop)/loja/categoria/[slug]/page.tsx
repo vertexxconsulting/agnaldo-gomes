@@ -145,42 +145,59 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-              {displayList.map((produto) => (
-                <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-card border border-[var(--border-subtle)] rounded-xl hover:shadow-lg hover:border-primary/50 transition-all duration-300 relative h-full overflow-hidden">
-                  {/* Imagem */}
-                  <div className="relative w-full pt-[100%] bg-card">
-                    {produto.image_url ? (
-                      <Image
-                        src={produto.image_url}
-                        alt={produto.name}
-                        fill
-                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background text-foreground/20">
-                        <ShoppingBag size={48} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-3 flex flex-col flex-1 border-t border-[var(--border-subtle)]">
-                    <h3 className="text-[12px] text-foreground/80 leading-tight mb-3 line-clamp-2 group-hover:text-primary transition-colors flex-1 mt-2">
-                      {produto.name}
-                    </h3>
-
-                    <div className="mt-auto">
-                      <div className="text-base font-bold text-foreground mb-3">
-                        R$ {Number(produto.price ?? 0).toFixed(2)}
-                      </div>
-
-                      <button className="w-full bg-secondary text-foreground border border-transparent text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors flex items-center justify-center gap-2 rounded-lg shadow-sm">
-                        <ShoppingBag size={14} /> Detalhes
-                      </button>
+              {displayList.map((produto) => {
+                const isAffiliate = produto.type === 'AFFILIATE_ML';
+                return (
+                  <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-card border border-[var(--border-subtle)] rounded-xl hover:shadow-lg hover:border-primary/50 transition-all duration-300 relative h-full overflow-hidden">
+                    {/* Badges */}
+                    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                      {produto.tagline && (
+                        <span className="bg-foreground text-background text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md shadow">
+                          {produto.tagline}
+                        </span>
+                      )}
+                      {isAffiliate && (
+                        <span className="bg-warning/10 text-warning border border-warning/25 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
+                          Mercado Livre
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              ))}
+
+                    {/* Imagem */}
+                    <div className="relative w-full pt-[100%] bg-card">
+                      {produto.image_url ? (
+                        <Image
+                          src={produto.image_url}
+                          alt={produto.name}
+                          fill
+                          className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background text-foreground/20">
+                          <ShoppingBag size={48} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-3 flex flex-col flex-1 border-t border-[var(--border-subtle)]">
+                      <h3 className="text-[12px] text-foreground/80 leading-tight mb-1 line-clamp-2 group-hover:text-primary transition-colors flex-1 mt-2">
+                        {produto.name}
+                      </h3>
+
+                      <div className="mt-auto">
+                        <div className="text-base font-bold text-foreground mb-3">
+                          {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2)}` : 'Ver oferta'}
+                        </div>
+
+                        <button className="w-full bg-secondary text-foreground border border-transparent text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors flex items-center justify-center gap-2 rounded-lg shadow-sm">
+                          <ShoppingBag size={14} />
+                          {isAffiliate ? 'Ver Oferta' : 'Detalhes'}
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
             </div>
           )}
         </div>

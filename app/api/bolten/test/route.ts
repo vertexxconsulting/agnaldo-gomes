@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getBoltenConfig, boltenListProjects, boltenCreateOpportunity, boltenCreateContact } from '@/lib/bolten';
+import { getBoltenConfig, boltenListProjects, boltenCreateOpportunity } from '@/lib/bolten';
+import { requireAdminAuth } from '@/lib/api-auth';
 
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
+  const auth = await requireAdminAuth();
+  if (auth.error) return auth.error;
+
   try {
     const config = getBoltenConfig();
     const logs: string[] = [];
@@ -39,8 +43,9 @@ export async function POST(req: Request) {
         } else {
           logs.push(`⚠️ Webhook retornou status HTTP ${testRes.status}`);
         }
-      } catch (err: any) {
-        logs.push(`❌ Falha ao chamar Webhook: ${err?.message || err}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logs.push(`❌ Falha ao chamar Webhook: ${message}`);
       }
     }
 
@@ -94,11 +99,12 @@ export async function POST(req: Request) {
       oppId,
       logs,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[bolten-test-route]', err);
+    const message = err instanceof Error ? err.message : 'Erro inesperado ao conectar com a Bolten.io.';
     return NextResponse.json({
       success: false,
-      error: err?.message || 'Erro inesperado ao conectar com a Bolten.io.',
+      error: message,
     }, { status: 500 });
   }
 }
