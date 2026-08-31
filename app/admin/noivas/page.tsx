@@ -332,8 +332,8 @@ export default function NoivasPage() {
                   onClose={() => setPagamentoAberto(null)}
                   copiarPix={copiarPix}
                   copiado={copiado}
-                  onRegistrar={(params) => {
-                    return registrarPagamentoNoiva({ ...params, pacote_preco: pacote.preco });
+                  onRegistrar={async (params) => {
+                    await registrarPagamentoNoiva({ ...params, pacote_preco: pacote.preco });
                   }}
                 />
               )}
