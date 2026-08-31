@@ -39,7 +39,8 @@ export default function AgendamentoPage() {
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Ordem nova: telefone -> profissional -> servico -> data -> confirmacao
+  // Ordem: telefone -> profissional -> servico -> confirmacao
+  // (Step 'data' oculto: data/hora definida pela secretaria do salão)
   const [step, setStep] = useState<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
@@ -92,11 +93,11 @@ export default function AgendamentoPage() {
     carregarDados();
   }, [servicoParam]);
 
-  const steps: Array<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao'> = [
+  // Step 'data' removido do fluxo público — data/hora são definidas pela secretaria
+  const steps: Array<'telefone' | 'profissional' | 'servico' | 'confirmacao'> = [
     'telefone', 
     'profissional', 
     'servico', 
-    'data', 
     'confirmacao'
   ];
 
@@ -763,7 +764,7 @@ export default function AgendamentoPage() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
                   <span className="text-foreground/60">Data & Hora:</span>
-                  <span className="font-bold text-foreground">{formData.data} às {formData.hora}</span>
+                  <span className="font-semibold text-amber-600 text-xs text-right leading-tight">A definir pela secretaria</span>
                 </div>
                 <div className="flex justify-between py-1.5 text-base">
                   <span className="font-bold text-foreground">Valor:</span>
@@ -771,12 +772,17 @@ export default function AgendamentoPage() {
                 </div>
               </div>
 
+              <div className="bg-primary/8 border border-primary/20 rounded-xl p-3 flex items-start gap-2 text-xs text-foreground/70">
+                <MessageCircle size={16} className="shrink-0 mt-0.5 text-primary" />
+                <p>Após confirmar, nossa secretaria entrará em contato pelo seu WhatsApp para definir a melhor data e horário disponível para você.</p>
+              </div>
+
               <div className="flex justify-between items-center pt-4 border-t border-[var(--border-subtle)]">
                 <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
                   ← Voltar
                 </button>
                 <Button type="submit" variant="primary" className="font-bold">
-                  {isNoiva ? 'Gerar PIX do Sinal de 50% →' : 'Confirmar Agendamento no WhatsApp →'}
+                  {isNoiva ? 'Gerar PIX do Sinal de 50% →' : 'Enviar Solicitação pelo WhatsApp →'}
                 </Button>
               </div>
             </div>

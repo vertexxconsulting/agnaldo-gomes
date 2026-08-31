@@ -55,14 +55,14 @@ _Olá! Acabei de solicitar meu agendamento de noiva pelo site e gerei o sinal de
 📞 *Telefone:* ${data.telefone}
 ✂️ *Serviço:* ${data.servico}
 👤 *Profissional:* ${data.profissional}
-🗓️ *Data:* ${data.data}
-⏰ *Hora:* ${data.hora}
 💰 *Valor:* R$ ${data.valor.toFixed(2).replace('.', ',')}
 
-👉 *Clique no link abaixo para aprovar no sistema:*
+🗓️ *Data/Hora:* A ser definida pela secretaria
+
+👉 *Clique no link abaixo para confirmar e agendar no sistema:*
 ${actionLink}
 
-_Por favor, confirme a disponibilidade e valide o agendamento._`;
+_Por favor, entre em contato com o cliente para definir a data e horário._`;
 
   return `https://wa.me/${WHATSAPP_STUDIO}?text=${encodeURIComponent(text)}`;
 }
