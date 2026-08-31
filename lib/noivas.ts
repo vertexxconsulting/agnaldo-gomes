@@ -248,12 +248,18 @@ export function totalPago(agendamentoId: string): number {
 }
 
 /** Regra: sinal mínimo de 50% — o agendamento só pode ser confirmado se o total pago ≥ 50% do pacote */
-export function podeConfirmar(agendamentoId: string): boolean {
+export function podeConfirmar(agendamentoId: string, pacote_preco?: number): boolean {
   const ag = state.agendamentos.find(a => a.id === agendamentoId);
   if (!ag) return false;
-  const pacote = NOIVA_PACOTES.find(p => p.id === ag.pacote_id);
-  if (!pacote) return false;
-  return totalPago(agendamentoId) >= (pacote.preco * NOIVA_SINAL_MIN_PCT) / 100;
+  
+  let preco = pacote_preco;
+  if (preco === undefined) {
+    const pacote = NOIVA_PACOTES.find(p => p.id === ag.pacote_id);
+    if (!pacote) return false;
+    preco = pacote.preco;
+  }
+  
+  return totalPago(agendamentoId) >= (preco * NOIVA_SINAL_MIN_PCT) / 100;
 }
 
 /** Gera código PIX copia e cola simulado (BR Code) para o sinal */
@@ -291,6 +297,7 @@ export async function registrarPagamentoNoiva(params: {
   forma: 'pix' | 'cartao' | 'dinheiro' | 'transferencia';
   comprovante?: string | null;
   pixCopiaCola?: string | null;
+  pacote_preco?: number;
 }): Promise<PagamentoNoiva> {
   const { data, error } = await supabase.from('salon_bride_payments').insert({
     agendamento_id: params.agendamento_id,
@@ -309,7 +316,7 @@ export async function registrarPagamentoNoiva(params: {
 
   // Auto-atualizar status do agendamento conforme a regra do sinal de 50%
   const ag = state.agendamentos.find(a => a.id === params.agendamento_id);
-  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(params.agendamento_id)) {
+  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(params.agendamento_id, params.pacote_preco)) {
     await atualizarStatusNoiva(params.agendamento_id, 'sinal_pago');
   }
   

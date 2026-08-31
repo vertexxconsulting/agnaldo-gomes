@@ -330,7 +330,7 @@ export default function NoivasPage() {
                   copiarPix={copiarPix}
                   copiado={copiado}
                   onRegistrar={(params) => {
-                    registrarPagamentoNoiva(params);
+                    registrarPagamentoNoiva({ ...params, pacote_preco: pacote.preco });
                   }}
                 />
               )}
