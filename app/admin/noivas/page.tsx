@@ -12,7 +12,7 @@ import {
   criarAgendamentoNoiva, atualizarStatusNoiva, excluirAgendamentoNoiva,
   registrarPagamentoNoiva, gerarPixCopiaCola, totalPago, podeConfirmar,
   formatBRL, NOIVA_SINAL_MIN_PCT,
-  NOIVA_STATUS_LABEL, NOIVA_STATUS_COLOR,
+  NOIVA_STATUS_LABEL, NOIVA_STATUS_COLOR, subscribeNoivas,
   type AgendamentoNoiva, type StatusAgendamentoNoiva,
 } from '@/lib/noivas';
 import { isMPAtivo, criarPixMercadoPago } from '@/lib/pagamentos-studio';
@@ -30,8 +30,8 @@ export default function NoivasPage() {
   useEffect(() => {
     const atualizar = () => setAgendamentos(getNoivaAgendamentos());
     atualizar();
-    const unsub = (window as any).__subNoivas?.();
-    return () => unsub?.();
+    const unsub = subscribeNoivas(atualizar);
+    return () => unsub();
   }, []);
 
   const pacotes = getNoivaPacotes();
