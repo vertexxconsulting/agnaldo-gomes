@@ -166,6 +166,7 @@ Todos os valores exibidos e cadastrados utilizam a premissa de **"Tudo sempre a 
   - **Salão (Studio)**: Agendamentos, jornada dos profissionais, intervalos e contratos de noivas.
   - **Loja (Store)**: Estoque local de cosméticos e links de afiliados oficiais do Mercado Livre.
   - **Academy (Cursos)**: Regras de videoaulas no Vimeo, certificação e suporte a alunos.
+- **Horários de Atendimento do Salão 100% Editáveis**: Editor visual de abertura/fechamento (Domingo a Sábado) com horários de início e fim que atualizam a IA, o agendamento público e a agenda administrativa em tempo real.
 - **Simulador Interativo (Playground)**: Chat interno para testar respostas e simular cenários antes de colocar em prática.
 
 ---
