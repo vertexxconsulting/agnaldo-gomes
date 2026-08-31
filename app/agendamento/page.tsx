@@ -594,6 +594,17 @@ export default function AgendamentoPage() {
                     );
                   })}
                 </div>
+
+                <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center gap-3">
+                  <span className="text-xs text-foreground/60 font-bold">Ou escolha uma data futura no calendário:</span>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={formData.data}
+                    onChange={(e) => handleInputChange('data', e.target.value)}
+                    className="w-full sm:w-auto bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
+                  />
+                </div>
               </div>
 
               {/* Status do Salão vs Profissional */}
