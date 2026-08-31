@@ -133,7 +133,12 @@ interface NoivasState {
 function loadState(): NoivasState {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw) as NoivasState;
+      // Remove os dados de exemplo antigos para garantir que a lista fique limpa
+      parsed.agendamentos = parsed.agendamentos.filter(a => !a.id.startsWith('n-seed-'));
+      return parsed;
+    }
   } catch {}
   return { agendamentos: seedAgendamentos(), pagamentos: [] };
 }
