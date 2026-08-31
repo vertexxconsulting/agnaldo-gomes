@@ -197,7 +197,8 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                       </div>
                     </div>
                   </Link>
-                ))}
+                );
+              })}
             </div>
           )}
         </div>
