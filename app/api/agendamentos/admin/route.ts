@@ -49,7 +49,6 @@ export async function POST(req: Request) {
       end_time: hora_fim || hora_inicio,
       status: (status || 'CONFIRMED').toUpperCase(),
       channel: (canal || 'RECEPTION').toUpperCase(),
-      notes: observacoes || null,
     };
 
     const { data: agendamento, error } = await supabase

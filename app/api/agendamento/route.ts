@@ -108,7 +108,6 @@ export async function POST(req: Request) {
             end_time: horaFim,
             status: 'PENDING',
             channel: 'ONLINE',
-            notes: isNoiva ? `Sinal de 50% obrigatório: R$ ${valorSinal.toFixed(2)} (Total: R$ ${valorTotal.toFixed(2)})` : null
           })
           .select('id')
           .single();
