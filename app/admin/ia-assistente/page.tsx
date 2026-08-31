@@ -29,6 +29,32 @@ export default function IAAssistentePage() {
   ]);
   const [pensandoIA, setPensandoIA] = useState(false);
 
+  // Estados do Cron / Disparo Bolten
+  const [disparandoCron, setDisparandoCron] = useState(false);
+  const [resultadoCron, setResultadoCron] = useState<string | null>(null);
+
+  const handleDispararCronBolten = async () => {
+    setDisparandoCron(true);
+    setResultadoCron(null);
+    try {
+      const res = await fetch('/api/cron/relatorio-ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone: config.relatorios.whatsappAgnaldo })
+      });
+      const json = await res.json();
+      if (json.sucesso) {
+        setResultadoCron(`✅ ${json.boltenResultado?.mensagem || 'Relatório disparado com sucesso via Bolten.io!'}`);
+      } else {
+        setResultadoCron(`⚠️ Erro: ${json.error || 'Não foi possível disparar'}`);
+      }
+    } catch (err: any) {
+      setResultadoCron(`⚠️ Falha na requisição: ${err.message}`);
+    } finally {
+      setDisparandoCron(false);
+    }
+  };
+
   useEffect(() => {
     const carregada = obterIAConfig();
     setConfig(carregada);
@@ -416,6 +442,38 @@ export default function IAAssistentePage() {
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
                   />
                 </div>
+              </div>
+
+              {/* Box de Automação Cron & Disparo Bolten */}
+              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-xs font-bold text-foreground">Cron Automático Vercel Ativo</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary text-black">
+                    Bolten.io Integrado
+                  </span>
+                </div>
+                <p className="text-[11px] text-foreground/70 leading-relaxed">
+                  O sistema executa sozinho o endpoint <code className="bg-black/30 px-1 py-0.5 rounded text-primary">/api/cron/relatorio-ia</code> todos os dias às <strong>20:00 (BRT)</strong>, processando o faturamento real do banco e disparando via Bolten CRM para o Agnaldo.
+                </p>
+
+                <Button
+                  variant="primary"
+                  onClick={handleDispararCronBolten}
+                  disabled={disparandoCron}
+                  className="w-full text-xs font-bold py-2.5 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  {disparandoCron ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                  {disparandoCron ? 'Processando e Enviando...' : '🚀 Disparar Relatório Agora via Bolten.io'}
+                </Button>
+
+                {resultadoCron && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-primary/30 text-xs font-medium text-foreground animate-fade-in whitespace-pre-line">
+                    {resultadoCron}
+                  </div>
+                )}
               </div>
             </div>
           </CardGlass>

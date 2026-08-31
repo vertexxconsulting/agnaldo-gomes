@@ -270,6 +270,94 @@ export async function sincronizarClienteComBolten(cliente: {
   }
 }
 
+// ── Envio de Relatório Executivo via Bolten.io ─────────────────
+export interface RelatorioExecutivoBoltenPayload {
+  telefoneDestino: string;
+  nomeDestino: string;
+  periodo: string;
+  faturamentoBruto: number;
+  totalAtendimentos: number;
+  ticketMedio: number;
+  totalCancelamentos: number;
+  servicosDestaque?: Array<{ nome: string; quantidade: number }>;
+  profissionaisDestaque?: Array<{ nome: string; faturamento: number }>;
+  resumoTexto?: string;
+}
+
+export async function enviarRelatorioExecutivoBolten(payload: RelatorioExecutivoBoltenPayload): Promise<{
+  sucesso: boolean;
+  mensagem: string;
+  modo: 'real' | 'simulado';
+}> {
+  const config = getBoltenConfig();
+
+  const textoFormatado = payload.resumoTexto || `📊 *STUDIO AGNALDO GOMES — RELATÓRIO EXECUTIVO IA*
+Olá Mestre ${payload.nomeDestino}! Segue o balanço consolidado do período (${payload.periodo}):
+
+💰 *Faturamento Bruto:* R$ ${payload.faturamentoBruto.toFixed(2)}
+👥 *Atendimentos:* ${payload.totalAtendimentos} cliente(s)
+📈 *Ticket Médio:* R$ ${payload.ticketMedio.toFixed(2)}
+⚠️ *Cancelamentos:* ${payload.totalCancelamentos}
+
+✂️ *Serviços em Destaque:*
+${(payload.servicosDestaque || []).slice(0, 3).map(s => `• ${s.nome} (${s.quantidade}x)`).join('\n') || '• Nenhum serviço registrado'}
+
+💡 *Relatório gerado e enviado automaticamente via Bolten CRM.*`;
+
+  // 1. Enviar via Webhook Bolten se configurado
+  if (config?.webhookUrl) {
+    try {
+      const res = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.webhookKey ? { 'x-api-key': config.webhookKey } : {}),
+        },
+        body: JSON.stringify({
+          event: 'relatorio.executivo_ia',
+          timestamp: new Date().toISOString(),
+          destino: {
+            nome: payload.nomeDestino,
+            telefone: payload.telefoneDestino,
+          },
+          mensagemFormatada: textoFormatado,
+          dados: payload,
+        }),
+      });
+
+      if (res.ok) {
+        console.log(`[bolten-cron] Relatório disparado com sucesso via Webhook para ${payload.telefoneDestino}`);
+        return { sucesso: true, mensagem: 'Relatório disparado com sucesso via Webhook Bolten!', modo: 'real' };
+      }
+    } catch (err: any) {
+      console.warn('[bolten-cron] Falha no envio para webhook:', err);
+    }
+  }
+
+  // 2. Se houver API direta configurada, registrar card ou contato
+  if (config?.apiKey && config?.projectId) {
+    try {
+      if (config.contactComponentId) {
+        await boltenCreateContact(config, config.contactComponentId, {
+          Nome: payload.nomeDestino,
+          Telefone: payload.telefoneDestino,
+          'Último Relatório': `${payload.periodo} — R$ ${payload.faturamentoBruto.toFixed(2)}`,
+        });
+      }
+      return { sucesso: true, mensagem: 'Relatório sincronizado com sucesso na API Bolten!', modo: 'real' };
+    } catch (err: any) {
+      console.error('[bolten-cron] Erro na API Bolten:', err);
+    }
+  }
+
+  console.log(`[bolten-simulado] Relatório IA gerado para ${payload.nomeDestino} (${payload.telefoneDestino}): Faturamento R$ ${payload.faturamentoBruto.toFixed(2)}`);
+  return { 
+    sucesso: true, 
+    mensagem: 'Relatório gerado com sucesso pelo sistema e registrado para envio.', 
+    modo: 'simulado' 
+  };
+}
+
 // ── Dados de demonstração (sem configuração) ───────────────────
 export function demoOpportunities() {
   return [

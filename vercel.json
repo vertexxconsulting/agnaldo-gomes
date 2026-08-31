@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/aniversarios", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/agenda", "schedule": "0 12 * * *" }
+    { "path": "/api/cron/agenda", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/relatorio-ia", "schedule": "0 23 * * *" }
   ]
 }
