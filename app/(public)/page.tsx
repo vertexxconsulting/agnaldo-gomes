@@ -187,15 +187,13 @@ export default function Home() {
               <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">2x</span>
               <span className="text-white/50 text-[11px] uppercase tracking-wider">embaixador oficial</span>
             </div>
-            {/* Stat 4 — TODO: confirmar nota e qtd de avaliações no Google Business */}
+            {/* Stat 4 */}
             <div className="flex flex-col gap-0.5">
               <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">
-                {/* TODO: substituir pela nota real do Google ex: ★ 4.9 */}
-                ★ [X]
+                ★ 4.8
               </span>
               <span className="text-white/50 text-[11px] uppercase tracking-wider">
-                {/* TODO: substituir pelo nº real de avaliações ex: 247 avaliações */}
-                [N] avaliações Google
+                97 avaliações Google
               </span>
             </div>
           </motion.div>
