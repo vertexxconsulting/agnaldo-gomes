@@ -315,27 +315,28 @@ export default function AgendamentoPage() {
       <PWAInstallPrompt />
       <div className="max-w-5xl mx-auto px-4">
         
+        {/* Header Centralizado acima das colunas */}
+        <div className="text-center mb-8 lg:mb-10">
+          <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-center justify-center gap-2">
+            {formData.nome && step !== 'telefone' && (
+              <span className="text-xl font-bold text-primary tracking-tight">Olá, {formData.nome}!</span>
+            )}
+            <div className="flex items-center justify-center gap-2">
+              {isNoiva && <Crown size={28} className="text-amber-500" />}
+              {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+            </div>
+          </h1>
+          <p className="text-foreground/60 text-sm">
+            {isNoiva 
+              ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes.' 
+              : 'Siga os passos abaixo para reservar seu atendimento.'}
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Coluna Esquerda: Instruções / Guia Lateral */}
           <div className="lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-8">
-            <div className="text-left">
-              <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-start gap-2">
-                {formData.nome && step !== 'telefone' && (
-                  <span className="text-xl font-bold text-primary tracking-tight">Olá, {formData.nome}!</span>
-                )}
-                <div className="flex items-center gap-2">
-                  {isNoiva && <Crown size={28} className="text-amber-500" />}
-                  {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
-                </div>
-              </h1>
-              <p className="text-foreground/60 text-sm">
-                {isNoiva 
-                  ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes.' 
-                  : 'Siga os passos ao lado para reservar seu atendimento.'}
-              </p>
-            </div>
-
             <div className="hidden lg:block bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-sm">
               <h3 className="font-bold text-foreground mb-4">Como funciona?</h3>
               <ul className="space-y-4 text-sm text-foreground/70">
