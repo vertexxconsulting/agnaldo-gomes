@@ -9,9 +9,10 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Users, Scissors, AlertTriangle, Calendar, Filter, 
-  DollarSign, CheckCircle2, Clock, ChevronRight
+  DollarSign, CheckCircle2, Clock, ChevronRight, FileDown, Image as ImageIcon, Download
 } from 'lucide-react';
 import { gerarRelatorioFiltrado, ReportData, TipoPeriodoRelatorio, FiltroRelatorio } from '@/lib/reports';
+import { exportarRelatorioPDF, exportarRelatorioSVG } from '@/lib/export-reports';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/mock-data';
 
 const COLORS = ['#D4AF37', '#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6', '#06B6D4', '#EF4444'];
@@ -73,13 +74,33 @@ export default function RelatoriosPage() {
           align="left" 
         />
 
-        {/* Período Atual Badge */}
-        {data && (
-          <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 py-2 text-right">
-            <span className="text-[10px] uppercase font-bold text-primary tracking-wider block">Período Selecionado</span>
-            <span className="text-sm font-extrabold text-foreground">{data.tituloPeriodo}</span>
-          </div>
-        )}
+        {/* Ações de Exportação e Período Atual Badge */}
+        <div className="flex flex-wrap items-center gap-3">
+          {data && (
+            <>
+              <button
+                onClick={() => exportarRelatorioPDF(data)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                title="Exportar Relatório Completo em PDF"
+              >
+                <FileDown size={15} /> Exportar PDF
+              </button>
+
+              <button
+                onClick={() => exportarRelatorioSVG(data)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                title="Exportar Resumo Vetorial em SVG"
+              >
+                <ImageIcon size={15} /> Exportar SVG
+              </button>
+
+              <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 py-2 text-right hidden sm:block">
+                <span className="text-[10px] uppercase font-bold text-primary tracking-wider block">Período</span>
+                <span className="text-xs font-extrabold text-foreground">{data.tituloPeriodo}</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Barra de Filtros Inteligente */}
