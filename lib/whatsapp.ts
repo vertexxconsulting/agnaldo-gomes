@@ -22,7 +22,8 @@ interface AppointmentNotifyData {
  * com a mensagem de confirmação para a atendente.
  */
 export function getWhatsAppBookingUrl(data: AppointmentNotifyData): string {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://agnaldogomes.vercel.app';
+  // Forçamos a URL de produção para garantir que o link seja clicável no celular da atendente
+  const baseUrl = 'https://agnaldogomes.vercel.app';
   const actionLink = `${baseUrl}/admin/agenda?confirmar=${data.id}`;
   
   if (data.isNoiva) {
@@ -39,7 +40,9 @@ export function getWhatsAppBookingUrl(data: AppointmentNotifyData): string {
 💳 *Sinal Obrigatório (50%):* R$ ${sinal.toFixed(2).replace('.', ',')}
 
 🔒 *Status:* Sinal PIX 50% gerado no agendamento
-🔗 *Validar e Confirmar no Sistema:* ${actionLink}
+
+👉 *Clique no link abaixo para aprovar no sistema:*
+${actionLink}
 
 _Olá! Acabei de solicitar meu agendamento de noiva pelo site e gerei o sinal de 50% via PIX. Segue meu comprovante para confirmação e bloqueio da data!_`;
 
@@ -56,7 +59,8 @@ _Olá! Acabei de solicitar meu agendamento de noiva pelo site e gerei o sinal de
 ⏰ *Hora:* ${data.hora}
 💰 *Valor:* R$ ${data.valor.toFixed(2).replace('.', ',')}
 
-🔗 *Confirmar no Sistema:* ${actionLink}
+👉 *Clique no link abaixo para aprovar no sistema:*
+${actionLink}
 
 _Por favor, confirme a disponibilidade e valide o agendamento._`;
 
