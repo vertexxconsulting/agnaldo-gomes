@@ -257,13 +257,24 @@ function AgendaContent() {
 
       {/* Controles de Busca / Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
-        <div className="flex bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-1">
-          <input
-            type="date"
-            value={dataSelecionada}
-            onChange={(e) => setDataSelecionada(e.target.value)}
-            className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none [color-scheme:dark]"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-1">
+            <input
+              type="date"
+              value={dataSelecionada}
+              onChange={(e) => setDataSelecionada(e.target.value)}
+              className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none [color-scheme:dark]"
+            />
+          </div>
+          {dataSelecionada !== hoje && (
+            <button
+              onClick={() => setDataSelecionada(hoje)}
+              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-background transition-colors text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg"
+              title="Ir para hoje"
+            >
+              Hoje
+            </button>
+          )}
         </div>
 
         {/* Filtro Profissional */}
