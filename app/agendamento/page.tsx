@@ -17,7 +17,8 @@ import {
   MessageCircle, 
   Sparkles,
   AlertTriangle,
-  UserCheck
+  UserCheck,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
@@ -310,51 +311,88 @@ export default function AgendamentoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-transparent to-primary/5 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-transparent to-primary/5 py-8 lg:py-12">
       <PWAInstallPrompt />
-      <div className="max-w-3xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-center justify-center gap-2">
-            {formData.nome && step !== 'telefone' && (
-              <span className="text-xl font-bold text-primary tracking-tight">Olá, {formData.nome}!</span>
-            )}
-            <div className="flex items-center justify-center gap-2">
-              {isNoiva && <Crown size={28} className="text-amber-500" />}
-              {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+      <div className="max-w-5xl mx-auto px-4">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Coluna Esquerda: Instruções / Guia Lateral */}
+          <div className="lg:col-span-4 flex flex-col gap-6 lg:sticky lg:top-8">
+            <div className="text-left">
+              <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-start gap-2">
+                {formData.nome && step !== 'telefone' && (
+                  <span className="text-xl font-bold text-primary tracking-tight">Olá, {formData.nome}!</span>
+                )}
+                <div className="flex items-center gap-2">
+                  {isNoiva && <Crown size={28} className="text-amber-500" />}
+                  {isNoiva ? 'Reserva Dia da Noiva' : 'Agende seu Horário'}
+                </div>
+              </h1>
+              <p className="text-foreground/60 text-sm">
+                {isNoiva 
+                  ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes.' 
+                  : 'Siga os passos ao lado para reservar seu atendimento.'}
+              </p>
             </div>
-          </h1>
-          <p className="text-foreground/60 text-sm">
-            {isNoiva 
-              ? 'Garanta exclusividade e reserve sua data com Agnaldo Gomes' 
-              : 'Selecione o profissional, o serviço e o melhor horário para você'}
-          </p>
-        </div>
 
-        {/* Progress Steps */}
-        {step !== 'pagamento_noiva' && (
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-3 sm:gap-4">
-              {steps.map((s, idx) => {
-                const isActive = s === step;
-                const isCompleted = steps.indexOf(step as any) > idx;
-                return (
-                  <div key={s} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      isActive ? 'bg-primary text-black ring-4 ring-primary/20' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'
-                    }`}>
-                      {idx + 1}
-                    </div>
-                    {idx < steps.length - 1 && <div className={`w-8 sm:w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/10'}`} />}
-                  </div>
-                );
-              })}
+            <div className="hidden lg:block bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-foreground mb-4">Como funciona?</h3>
+              <ul className="space-y-4 text-sm text-foreground/70">
+                <li className="flex gap-3">
+                  <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${steps.indexOf(step as any) >= 0 ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'}`}>1</div>
+                  <span><strong className="text-foreground">Identificação:</strong> Informe seu WhatsApp.</span>
+                </li>
+                <li className="flex gap-3">
+                  <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${steps.indexOf(step as any) >= 1 ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'}`}>2</div>
+                  <span><strong className="text-foreground">Profissional:</strong> Escolha quem irá lhe atender.</span>
+                </li>
+                <li className="flex gap-3">
+                  <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${steps.indexOf(step as any) >= 2 ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'}`}>3</div>
+                  <span><strong className="text-foreground">Serviço:</strong> Selecione o procedimento.</span>
+                </li>
+                <li className="flex gap-3">
+                  <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${steps.indexOf(step as any) >= 3 ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'}`}>4</div>
+                  <span><strong className="text-foreground">Data/Hora:</strong> Escolha o melhor momento.</span>
+                </li>
+                <li className="flex gap-3">
+                  <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${steps.indexOf(step as any) >= 4 ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'}`}>5</div>
+                  <span><strong className="text-foreground">Confirmação:</strong> Finalize seu agendamento!</span>
+                </li>
+              </ul>
+              
+              <div className="mt-6 pt-6 border-t border-[var(--border-subtle)] text-xs text-foreground/50 flex items-start gap-2">
+                <Info size={16} className="shrink-0 mt-0.5 text-primary" />
+                <p>O agendamento é rápido e 100% online. Se precisar de ajuda, chame no WhatsApp do salão.</p>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Container do Formulário */}
-        <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+          {/* Coluna Direita: Container do Formulário */}
+          <div className="lg:col-span-8">
+            {/* Progress Steps (Mobile Only) */}
+            {step !== 'pagamento_noiva' && (
+              <div className="flex justify-center mb-6 lg:hidden">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {steps.map((s, idx) => {
+                    const isActive = s === step;
+                    const isCompleted = steps.indexOf(step as any) > idx;
+                    return (
+                      <div key={s} className="flex items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                          isActive ? 'bg-primary text-black ring-4 ring-primary/20' : isCompleted ? 'bg-primary text-black' : 'bg-foreground/10 text-foreground/40'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        {idx < steps.length - 1 && <div className={`w-8 sm:w-12 h-0.5 ${isCompleted ? 'bg-primary' : 'bg-foreground/10'}`} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
           {/* Passo 1: Telefone / Identificação */}
           {step === 'telefone' && (
@@ -797,7 +835,9 @@ export default function AgendamentoPage() {
             </div>
           )}
 
-        </form>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );
