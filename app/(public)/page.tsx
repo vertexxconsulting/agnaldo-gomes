@@ -87,9 +87,9 @@ export default function Home() {
           sizes="100vw"
         />
 
-        {/* Overlays para contraste > 4.5:1 */}
-        <div className="absolute inset-0 bg-black/55" aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/15" aria-hidden />
+        {/* Overlays para garantir a leitura do texto (mais claros conforme pedido) */}
+        <div className="absolute inset-0 bg-black/20" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" aria-hidden />
 
         {/* Conteúdo editorial com stagger */}
         <motion.div
