@@ -60,10 +60,10 @@ export default function NoivasPage() {
     ...pacotesStatic,
     ...dbServicos.map(s => ({
       id: s.id,
-      nome: s.nome,
-      descricao: s.descricao,
-      preco: s.preco,
-      duracao_min: s.duracao,
+      nome: s.name || s.nome || 'Serviço sem nome',
+      descricao: s.description || s.descricao || '',
+      preco: Number(s.price || s.preco || 0),
+      duracao_min: Number(s.duration_minutes || s.duracao || 0),
       itens: [],
       ativo: true
     }))
