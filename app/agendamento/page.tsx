@@ -392,7 +392,7 @@ export default function AgendamentoPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <form onSubmit={handleSubmit} className="max-w-[520px] mx-auto lg:ml-0 lg:mr-auto bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
           {/* Passo 1: Telefone / Identificação */}
           {step === 'telefone' && (
