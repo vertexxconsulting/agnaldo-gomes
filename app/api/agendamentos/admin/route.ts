@@ -40,6 +40,16 @@ export async function POST(req: Request) {
 
     const supabase = await getSupabaseServiceClient();
 
+    const canalDb = (canal === 'online' || canal === 'ONLINE') ? 'ONLINE' : 'RECEPTION';
+    
+    let statusDb = 'CONFIRMED';
+    const statusClean = String(status || '').toLowerCase();
+    if (statusClean === 'pendente' || statusClean === 'pending') statusDb = 'PENDING';
+    else if (statusClean === 'em_atendimento' || statusClean === 'in_progress') statusDb = 'IN_PROGRESS';
+    else if (statusClean === 'concluido' || statusClean === 'completed') statusDb = 'COMPLETED';
+    else if (statusClean === 'cancelado' || statusClean === 'cancelled') statusDb = 'CANCELLED';
+    else if (statusClean === 'no_show') statusDb = 'NO_SHOW';
+
     const insertPayload = {
       customer_id: cliente_id,
       professional_id: profissional_id,
@@ -47,8 +57,8 @@ export async function POST(req: Request) {
       date: data,
       start_time: hora_inicio,
       end_time: hora_fim || hora_inicio,
-      status: (status || 'CONFIRMED').toUpperCase(),
-      channel: (canal || 'RECEPTION').toUpperCase(),
+      status: statusDb,
+      channel: canalDb,
     };
 
     const { data: agendamento, error } = await supabase
