@@ -147,7 +147,15 @@ Todos os valores exibidos e cadastrados utilizam a premissa de **"Tudo sempre a 
 
 ---
 
-## 7. Comandos Úteis
+## 7. Módulo de Relatórios & Exportação (PDF e SVG)
+
+- **Filtros Temporais Inteligentes**: Consulta por Dia específico, Mês Atual, Mês Anterior, Ano Atual, Ano Anterior, Mês Específico e Histórico Total.
+- **Exportação para PDF (`lib/export-reports.ts`)**: Gera documento A4 formatado com cabeçalho oficial do Studio Agnaldo Gomes, cartões de KPIs (Faturamento, Atendimentos, Ticket Médio, Cancelamentos), tabelas de serviços e profissionais, além de histórico detalhado de clientes com paginação automática.
+- **Exportação para SVG Vetorial (`lib/export-reports.ts`)**: Renderiza infográfico vetorial completo com gradientes dourados `#D4AF37` e visual glassmorphism em alta resolução para apresentações e compartilhamento instantâneo.
+
+---
+
+## 8. Comandos Úteis
 
 ```bash
 # Instalar dependências
