@@ -19,7 +19,6 @@ const PUBLIC_ROUTES = [
   '/admin-academy/login',
   '/admin-loja/login',
   '/admin-secretaria/login',
-  '/cadastro',
   '/contato',
   '/sobre',
   '/studio',
@@ -34,11 +33,12 @@ const PUBLIC_ROUTES = [
 ];
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(route =>
-    route.endsWith('/')
+  return PUBLIC_ROUTES.some(route => {
+    if (route === '/') return pathname === '/';
+    return route.endsWith('/')
       ? pathname === route || pathname.startsWith(route)
-      : pathname === route || pathname.startsWith(route + '/')
-  );
+      : pathname === route || pathname.startsWith(route + '/');
+  });
 }
 
 export async function proxy(request: NextRequest) {
