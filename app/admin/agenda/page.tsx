@@ -7,8 +7,8 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico } from '@/lib/supabase-queries';
 import {
-  getAgendamentos, getProfissionais, getBloqueios, getClientes, getServicos, getProfissionalServico,
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
@@ -62,12 +62,12 @@ function AgendaContent() {
       const [
         agendamentosData, bloqueiosData, profissionaisData, clientesData, servicosData, profServData
       ] = await Promise.all([
-        getAgendamentos(),
-        getBloqueios(),
-        getProfissionais(),
-        getClientes(),
-        getServicos(),
-        getProfissionalServico()
+        fetchAgendamentos(),
+        fetchBloqueios(),
+        fetchProfissionais(),
+        fetchClientes(),
+        fetchServicos(),
+        fetchProfissionalServico()
       ]);
       setAgendamentos(agendamentosData);
       setBloqueiosDia(bloqueiosData);

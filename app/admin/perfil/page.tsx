@@ -14,7 +14,7 @@ export default function AdminPerfilPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
       if (user) {
         const email = user.email || '';
         const name = user.user_metadata?.name || user.user_metadata?.nome || 'Administrador';

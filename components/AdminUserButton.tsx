@@ -27,7 +27,7 @@ export function AdminUserButton({
   const [userInitials, setUserInitials] = useState('AG');
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
       if (user) {
         const email = user.email || 'admin@agnaldo.com';
         const name = user.user_metadata?.name || user.user_metadata?.nome || 'Administrador';

@@ -12,8 +12,11 @@ import {
 import Link from 'next/link';
 import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
-import { getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome } from '@/lib/mock-data';
-import type { Cliente, Agendamento, Servico } from '@/lib/mock-data';
+import { fetchClientes, fetchAgendamentos, fetchServicos } from '@/lib/supabase-queries';
+import type { Cliente, Agendamento, Servico } from '@/lib/gestao-types';
+
+const getServicoNome = (id: string, servicos: Servico[]) => servicos.find(s => s.id === id)?.nome ?? 'Serviço excluído';
+const getClienteNome = (id: string, clientes: Cliente[]) => clientes.find(c => c.id === id)?.nome ?? 'Cliente excluído';
 
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
@@ -29,9 +32,9 @@ export default function AdminDashboardPage() {
     const carregarDados = async () => {
       setLoading(true);
       const [clientes, agendamentos, servicos] = await Promise.all([
-        getClientes(),
-        getAgendamentos(),
-        getServicos(),
+        fetchClientes(),
+        fetchAgendamentos(),
+        fetchServicos(),
       ]);
       setClientesData(clientes);
       setAgendamentosData(agendamentos);
@@ -71,7 +74,7 @@ export default function AdminDashboardPage() {
     // Distribuição por serviço no mês
     const porServicoMap = new Map<string, number>();
     faturamentos.filter(a => a.data.slice(0, 7) === mesAtual).forEach(a => {
-      const nome = getServicoNome(a.servico_id);
+      const nome = getServicoNome(a.servico_id, servicosData);
       porServicoMap.set(nome, (porServicoMap.get(nome) ?? 0) + a.valor);
     });
     const porServico = [...porServicoMap.entries()].map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 6);
@@ -88,8 +91,8 @@ export default function AdminDashboardPage() {
     setPendentesManuais(
       agendamentosDoDia.filter(a => a.status === 'pendente').map(a => ({
         ...a,
-        clienteNome: getClienteNome(a.cliente_id),
-        servicoNome: getServicoNome(a.servico_id)
+        clienteNome: getClienteNome(a.cliente_id, clientesData),
+        servicoNome: getServicoNome(a.servico_id, servicosData)
       }))
     );
   }, [agendamentosDoDia]);
