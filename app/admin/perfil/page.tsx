@@ -4,8 +4,40 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { User, Mail, Lock, Shield, Phone, Camera } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
 
 export default function AdminPerfilPage() {
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userInitials, setUserInitials] = useState('AG');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const email = user.email || '';
+        const name = user.user_metadata?.name || user.user_metadata?.nome || 'Administrador';
+        setUserEmail(email);
+        setUserName(name);
+        
+        if (name && name !== 'Administrador') {
+          const parts = name.split(' ');
+          if (parts.length >= 2) {
+            setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+          } else {
+            setUserInitials(name.substring(0, 2).toUpperCase());
+          }
+        } else {
+          setUserInitials(email.substring(0, 2).toUpperCase());
+        }
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="p-8 text-center text-foreground/50">Carregando perfil...</div>;
+
   return (
     <div className="py-4">
       <SectionTitle title="Meu Perfil" subtitle="Configurações da sua conta de administrador" align="left" size="sm" />
@@ -16,7 +48,7 @@ export default function AdminPerfilPage() {
           <CardGlass className="flex flex-col items-center p-6 text-center">
             <div className="relative group cursor-pointer mb-4">
               <div className="w-24 h-24 rounded-full bg-primary/20 text-primary flex items-center justify-center text-3xl font-bold shadow-inner">
-                AG
+                {userInitials}
               </div>
               <div className="absolute inset-0 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity">
                 <Camera size={20} className="mb-1" />
@@ -24,7 +56,7 @@ export default function AdminPerfilPage() {
               </div>
             </div>
             
-            <h3 className="text-xl font-bold text-foreground">Agnaldo Gomes</h3>
+            <h3 className="text-xl font-bold text-foreground">{userName}</h3>
             <p className="text-sm text-foreground/50 mb-4">Administrador do Sistema</p>
 
             <div className="w-full border-t border-[var(--border-subtle)] pt-4 flex flex-col gap-3">
@@ -34,7 +66,7 @@ export default function AdminPerfilPage() {
               </div>
               <div className="flex items-center gap-3 text-sm text-foreground/70">
                 <Mail size={16} className="text-foreground/40" />
-                admin@agnaldo.com
+                {userEmail}
               </div>
             </div>
           </CardGlass>
@@ -55,7 +87,7 @@ export default function AdminPerfilPage() {
                   <label className="text-xs font-semibold uppercase tracking-wider text-foreground/60">Nome Completo</label>
                   <input 
                     type="text" 
-                    defaultValue="Agnaldo Gomes" 
+                    defaultValue={userName}
                     className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -73,8 +105,9 @@ export default function AdminPerfilPage() {
                 <label className="text-xs font-semibold uppercase tracking-wider text-foreground/60">E-mail de Acesso</label>
                 <input 
                   type="email" 
-                  defaultValue="admin@agnaldo.com" 
-                  className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                  defaultValue={userEmail}
+                  disabled
+                  className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm text-foreground/60 cursor-not-allowed transition-colors"
                 />
               </div>
 
