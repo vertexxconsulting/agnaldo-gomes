@@ -78,7 +78,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const auth = await requireAcademyAuth();
   if (auth.error) return auth.error;
 
-  const { id } = await params;
+  await params; // Acknowledge params but not used - modules contain their own IDs
 
   try {
     const body = await req.json();

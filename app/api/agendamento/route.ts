@@ -9,6 +9,7 @@ import { sincronizarAgendamentoComBolten } from '@/lib/bolten';
 const ALLOWED_ORIGINS = [
   'https://agnaldogomes.com.br',
   'https://www.agnaldogomes.com.br',
+  'https://agnaldogomes.vercel.app',
   'http://localhost:3000',
 ];
 

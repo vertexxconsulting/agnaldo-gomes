@@ -192,7 +192,24 @@ function AgendaContent() {
     try {
       const { atualizarStatusAgendamento } = await import('@/lib/supabase-queries');
       const success = await atualizarStatusAgendamento(id, status);
-      setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+      
+      if (success) {
+        // Atualizar estado local
+        setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+        
+        // Sincronizar com Bolten CRM (background, não bloqueia UI)
+        try {
+          await fetch('/api/bolten/sync-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agendamentoId: id, status }),
+          });
+        } catch (syncErr) {
+          console.warn('[bolten-sync] Falha ao sincronizar status:', syncErr);
+        }
+      } else {
+        setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+      }
     } catch (err) {
       console.error('Erro ao atualizar status:', err);
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));

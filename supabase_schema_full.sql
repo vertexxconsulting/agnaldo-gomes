@@ -23,13 +23,33 @@ $$ language 'plpgsql';
 -- ==========================================
 -- 2. TIPOS CUSTOMIZADOS (ENUMS)
 -- ==========================================
-CREATE TYPE user_role AS ENUM ('ADMIN', 'PROFESSIONAL', 'STUDENT', 'CUSTOMER');
-CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
-CREATE TYPE appointment_channel AS ENUM ('ONLINE', 'RECEPTION');
-CREATE TYPE product_type AS ENUM ('LOCAL_STOCK', 'AFFILIATE_ML');
-CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED');
-CREATE TYPE shipping_type AS ENUM ('MOTOBOY', 'CORREIOS', 'JADLOG', 'RETIRADA');
-CREATE TYPE course_status AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('ADMIN', 'PROFESSIONAL', 'STUDENT', 'CUSTOMER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE appointment_channel AS ENUM ('ONLINE', 'RECEPTION');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE product_type AS ENUM ('LOCAL_STOCK', 'AFFILIATE_ML');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE shipping_type AS ENUM ('MOTOBOY', 'CORREIOS', 'JADLOG', 'RETIRADA');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE course_status AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 -- ==========================================
@@ -208,6 +228,7 @@ CREATE TABLE salon_customers (
     email TEXT,
     birth_date DATE,
     notes TEXT,
+    loyalty_points INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );

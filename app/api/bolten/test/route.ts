@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getBoltenConfig, boltenListProjects, boltenCreateOpportunity } from '@/lib/bolten';
 import { requireAdminAuth } from '@/lib/api-auth';
 
-export async function POST(_req: Request) {
+export async function POST(req: Request) {
   const auth = await requireAdminAuth();
   if (auth.error) return auth.error;
 

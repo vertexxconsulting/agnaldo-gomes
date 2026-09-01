@@ -1,5 +1,35 @@
 import { NextResponse } from 'next/server';
 
+interface MLProductData {
+  title?: string;
+  description?: string;
+  price?: number | null;
+  currency?: string;
+  image?: string;
+  thumbnail?: string;
+  pictures?: Array<{ url: string }>;
+  images?: string[];
+  name?: string;
+  offers?: { price?: string | number; priceCurrency?: string; availability?: string };
+  item?: MLProductData;
+  product?: MLProductData;
+  data?: { item?: MLProductData };
+  priceMetadata?: { amount?: number };
+  [key: string]: unknown;
+}
+
+interface ExtractedProduct {
+  name: string;
+  description: string;
+  price: number | null;
+  image_url: string;
+  images: string[];
+  ml_link: string;
+  category: string;
+  ml_id: string;
+  raw_data: MLProductData;
+}
+
 /**
  * Extrai ID do produto Mercado Livre de várias URLs possíveis
  * Exemplos suportados:
@@ -39,8 +69,7 @@ function extractMLId(url: string): string | null {
  * Busca dados do produto via API pública do Mercado Livre
  * Usa a API oficial não autenticada (limitada)
  */
-async function fetchFromMLAPI(mlId: string): Promise<any> {
-  const id = mlId.replace('MLB-', '');
+async function fetchFromMLAPI(mlId: string): Promise<MLProductData | null> {
   const url = `https://api.mercadolibre.com/items/${mlId}`;
   
   try {
@@ -58,7 +87,7 @@ async function fetchFromMLAPI(mlId: string): Promise<any> {
     }
     
     const data = await response.json();
-    return data;
+    return data as MLProductData;
   } catch (error) {
     console.warn('[ML Extract] API oficial falhou, tentando scraping:', error);
     return null;
@@ -68,7 +97,7 @@ async function fetchFromMLAPI(mlId: string): Promise<any> {
 /**
  * Fallback: scraping da página do produto
  */
-async function scrapeMLProduct(mlId: string): Promise<any> {
+async function scrapeMLProduct(mlId: string): Promise<MLProductData | null> {
   const url = `https://produto.mercadolivre.com.br/${mlId}`;
   
   try {
@@ -88,7 +117,7 @@ async function scrapeMLProduct(mlId: string): Promise<any> {
     const html = await response.text();
     
     // Extrai dados do JSON-LD ou meta tags
-    const data: any = { mlId };
+    const data: MLProductData = { mlId, price: null };
     
     // 1. Tenta JSON-LD (Schema.org Product)
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
@@ -96,8 +125,8 @@ async function scrapeMLProduct(mlId: string): Promise<any> {
       for (const script of jsonLdMatch) {
         try {
           const json = JSON.parse(script.replace('<script type="application/ld+json">', '').replace('</script>', '').trim());
-          if (json['@type'] === 'Product' || (Array.isArray(json) && json.some((j: any) => j['@type'] === 'Product'))) {
-            const product = json['@type'] === 'Product' ? json : json.find((j: any) => j['@type'] === 'Product');
+          if (json['@type'] === 'Product' || (Array.isArray(json) && json.some((j: MLProductData) => j['@type'] === 'Product'))) {
+            const product = json['@type'] === 'Product' ? json : json.find((j: MLProductData) => j['@type'] === 'Product');
             if (product) {
               data.title = product.name;
               data.description = product.description;
@@ -138,23 +167,26 @@ async function scrapeMLProduct(mlId: string): Promise<any> {
       const preloadMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*({[\s\S]*?});/);
       if (preloadMatch) {
         try {
-          const state = JSON.parse(preloadMatch[1]);
+          const state = JSON.parse(preloadMatch[1]) as Record<string, unknown>;
           // Navega no objeto para achar dados do produto
-          const findProduct = (obj: any): any => {
+          const findProduct = (obj: Record<string, unknown>): MLProductData | null => {
             if (!obj || typeof obj !== 'object') return null;
-            if (obj.item || obj.product || obj.data?.item) {
-              return obj.item || obj.product || obj.data?.item;
+            if (obj.item || obj.product || (obj.data as Record<string, unknown>)?.item) {
+              return (obj.item || obj.product || (obj.data as Record<string, unknown>)?.item) as MLProductData;
             }
             for (const key of Object.keys(obj)) {
-              const found = findProduct(obj[key]);
-              if (found) return found;
+              const val = obj[key];
+              if (val && typeof val === 'object') {
+                const found = findProduct(val as Record<string, unknown>);
+                if (found) return found;
+              }
             }
             return null;
           };
           const productData = findProduct(state);
           if (productData) {
             data.title = data.title || productData.title || productData.name;
-            data.price = data.price || productData.price?.amount || productData.price;
+            data.price = data.price ?? (typeof productData.price === 'object' && productData.price ? (productData.price as { amount?: number }).amount : productData.price);
             data.image = data.image || productData.pictures?.[0]?.url || productData.thumbnail;
             data.description = data.description || productData.description;
           }
@@ -248,7 +280,7 @@ export async function POST(req: Request) {
       description: productData.description?.trim() || '',
       price: productData.price ? Number(productData.price) : null,
       image_url: productData.image || productData.thumbnail || productData.pictures?.[0]?.url || productData.images?.[0] || '',
-      images: productData.images || (productData.pictures?.map((p: any) => p.url) || []),
+      images: productData.images || (productData.pictures?.map((p: MLProductData) => p.url) || []),
       ml_link: `https://produto.mercadolivre.com.br/${mlId}`,
       category: 'Geral', // Será ajustado manualmente
       ml_id: mlId,

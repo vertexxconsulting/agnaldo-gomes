@@ -24,6 +24,19 @@ export interface BoltenConfig {
   ativo?: boolean;
 }
 
+export type StatusSyncPayload = {
+  opportunityId: string;
+  status: 'confirmado' | 'em_atendimento' | 'concluido' | 'cancelado' | 'no_show';
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  servico: string;
+  profissional: string;
+  data: string;
+  hora: string;
+  valor: number;
+};
+
 // Armazenamento em memória/servidor para persistência dinâmica
 let dynamicBoltenConfig: BoltenConfig | null = null;
 
@@ -110,6 +123,14 @@ export async function boltenCreateOpportunity(config: BoltenConfig, componentId:
     config,
     `/kanban/api/v1/${componentId}/opportunities`,
     { method: 'POST', body: JSON.stringify({ attributes }) }
+  );
+}
+
+export async function boltenUpdateOpportunity(config: BoltenConfig, componentId: string, oppId: string, attributes: Record<string, any>) {
+  return boltenFetch<any>(
+    config,
+    `/kanban/api/v1/${componentId}/opportunities/${oppId}`,
+    { method: 'PATCH', body: JSON.stringify({ attributes }) }
   );
 }
 
@@ -223,6 +244,79 @@ export async function sincronizarAgendamentoComBolten(payload: AgendamentoSyncPa
   // Modo simulação quando ainda não configurado
   console.log(`[bolten-simulado] Agendamento registrado localmente: ${payload.nome} (${payload.servico}) - R$ ${payload.valor}`);
   return { sucesso: true, modo: 'simulado' };
+}
+
+// ── Sincronização de Status de Agendamento com Bolten CRM ──────────
+const STATUS_TO_BOLTEN: Record<string, string> = {
+  confirmado: 'Confirmado',
+  em_atendimento: 'Em Atendimento',
+  concluido: 'Atendimento Concluído',
+  cancelado: 'Cancelado',
+  no_show: 'No-Show',
+};
+
+export async function sincronizarStatusAgendamentoComBolten(payload: StatusSyncPayload): Promise<{
+  sucesso: boolean;
+  modo: 'real' | 'simulado';
+  error?: string | null;
+}> {
+  const config = getBoltenConfig();
+
+  if (!config?.apiKey || !config?.projectId || !config?.kanbanComponentId) {
+    console.log(`[bolten-simulado] Status atualizado localmente: ${payload.nome} -> ${payload.status}`);
+    return { sucesso: true, modo: 'simulado' };
+  }
+
+  try {
+    const statusBolten = STATUS_TO_BOLTEN[payload.status] || payload.status;
+
+    // Atualizar oportunidade no Kanban
+    const oppRes = await boltenUpdateOpportunity(config, config.kanbanComponentId!, payload.opportunityId, {
+      Status: statusBolten,
+    });
+
+    // Também disparar webhook se configurado
+    if (config.webhookUrl) {
+      try {
+        await fetch(config.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(config.webhookKey ? { 'x-api-key': config.webhookKey } : {}),
+          },
+          body: JSON.stringify({
+            event: `agendamento.status_${payload.status}`,
+            timestamp: new Date().toISOString(),
+            data: {
+              opportunityId: payload.opportunityId,
+              nome: payload.nome,
+              servico: payload.servico,
+              profissional: payload.profissional,
+              data: payload.data,
+              hora: payload.hora,
+              valor: payload.valor,
+              status: payload.status,
+              statusBolten,
+            },
+          }),
+        });
+        console.log(`[bolten] Webhook de status disparado: ${payload.status} para ${payload.nome}`);
+      } catch (err: any) {
+        console.warn(`[bolten] Falha ao enviar webhook de status: ${err?.message || err}`);
+      }
+    }
+
+    if (oppRes.error) {
+      console.error('[bolten] Erro ao atualizar oportunidade no Bolten:', oppRes.error);
+      return { sucesso: false, modo: 'real', error: oppRes.error };
+    }
+
+    console.log(`[bolten] Status atualizado no Bolten CRM: ${payload.nome} -> ${statusBolten}`);
+    return { sucesso: true, modo: 'real' };
+  } catch (err: any) {
+    console.error('[bolten] Erro na sincronização de status com a API:', err);
+    return { sucesso: false, modo: 'real', error: err?.message || 'Erro de comunicação' };
+  }
 }
 
 // ── Sincronização de Cliente com Bolten CRM ───────────────────

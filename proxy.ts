@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { getArea, getUserRole, LOGIN_BY_AREA, AREA_ROLES, ROLES, Role } from '@/lib/auth';
+import { getArea, getUserRole, isOwner, LOGIN_BY_AREA, AREA_ROLES, ROLES, Role } from '@/lib/auth';
 
 /**
  * Proxy de proteção de rotas (Next.js 16 — antigo middleware).
@@ -102,7 +102,9 @@ export async function proxy(request: NextRequest) {
   const allowedHubRoles =
     area === '/hub' ? [ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA] : null;
 
-  if (!user || (allowedHubRoles ? !(allowedHubRoles as Role[]).includes(role as Role) : role !== requiredRole)) {
+  const userIsOwner = isOwner(user);
+
+  if (!user || (!userIsOwner && (allowedHubRoles ? !(allowedHubRoles as Role[]).includes(role as Role) : role !== requiredRole))) {
     const url = request.nextUrl.clone();
     url.pathname = LOGIN_BY_AREA[area];
     url.search = '';

@@ -1,0 +1,1 @@
+ALTER TABLE salon_customers ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0;
