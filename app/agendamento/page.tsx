@@ -39,8 +39,7 @@ export default function AgendamentoPage() {
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Ordem: telefone -> profissional -> servico -> confirmacao
-  // (Step 'data' oculto: data/hora definida pela secretaria do salão)
+  // Ordem: telefone -> profissional -> servico -> data -> confirmacao
   const [step, setStep] = useState<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
@@ -93,11 +92,11 @@ export default function AgendamentoPage() {
     carregarDados();
   }, [servicoParam]);
 
-  // Step 'data' removido do fluxo público — data/hora são definidas pela secretaria
-  const steps: Array<'telefone' | 'profissional' | 'servico' | 'confirmacao'> = [
+  const steps: Array<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao'> = [
     'telefone', 
     'profissional', 
     'servico', 
+    'data',
     'confirmacao'
   ];
 
@@ -764,7 +763,7 @@ export default function AgendamentoPage() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-[var(--border-subtle)]">
                   <span className="text-foreground/60">Data & Hora:</span>
-                  <span className="font-semibold text-amber-600 text-xs text-right leading-tight">A definir pela secretaria</span>
+                  <span className="font-bold text-foreground">{new Date(formData.data).toLocaleDateString('pt-BR')} às {formData.hora}</span>
                 </div>
                 <div className="flex justify-between py-1.5 text-base">
                   <span className="font-bold text-foreground">Valor:</span>
@@ -774,7 +773,7 @@ export default function AgendamentoPage() {
 
               <div className="bg-primary/8 border border-primary/20 rounded-xl p-3 flex items-start gap-2 text-xs text-foreground/70">
                 <MessageCircle size={16} className="shrink-0 mt-0.5 text-primary" />
-                <p>Após confirmar, nossa secretaria entrará em contato pelo seu WhatsApp para definir a melhor data e horário disponível para você.</p>
+                <p>Após confirmar, nossa secretaria poderá entrar em contato pelo seu WhatsApp para confirmar os detalhes.</p>
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-[var(--border-subtle)]">
