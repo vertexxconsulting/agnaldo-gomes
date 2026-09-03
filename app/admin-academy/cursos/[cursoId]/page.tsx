@@ -515,7 +515,6 @@ function AulaCard({
               value={editData.title}
               onChange={e => setEditData(prev => ({ ...prev, title: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleSave()}
-              onBlur={handleSave}
               autoFocus
               className="w-full bg-[var(--background)] border border-primary px-2 py-1 rounded text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -525,6 +524,7 @@ function AulaCard({
                 placeholder="URL do vídeo (Vimeo/YouTube/MP4)"
                 value={editData.video_url}
                 onChange={e => setEditData(prev => ({ ...prev, video_url: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
                 className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] px-2 py-1 rounded text-sm text-foreground focus:border-primary outline-none"
               />
               <input
@@ -533,6 +533,7 @@ function AulaCard({
                 min="0"
                 value={editData.duration_minutes}
                 onChange={e => setEditData(prev => ({ ...prev, duration_minutes: Number(e.target.value) || 0 }))}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
                 className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] px-2 py-1 rounded text-sm text-foreground focus:border-primary outline-none"
               />
             </div>
@@ -550,13 +551,23 @@ function AulaCard({
         )}
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button 
-          className="p-1.5 text-foreground/50 hover:text-primary transition-colors" 
-          onClick={() => setEditing(!editing)}
-          title={editing ? 'Cancelar' : 'Editar'}
-        >
-          <Edit2 size={14} />
-        </button>
+        {editing ? (
+          <button 
+            className="p-1.5 text-green-500 hover:text-green-600 transition-colors" 
+            onClick={handleSave}
+            title="Salvar Alterações"
+          >
+            <Save size={14} />
+          </button>
+        ) : (
+          <button 
+            className="p-1.5 text-foreground/50 hover:text-primary transition-colors" 
+            onClick={() => setEditing(true)}
+            title="Editar"
+          >
+            <Edit2 size={14} />
+          </button>
+        )}
         <button 
           className="p-1.5 text-foreground/50 hover:text-primary transition-colors" 
           title="Materiais Anexos"
