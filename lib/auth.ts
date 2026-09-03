@@ -48,10 +48,10 @@ export function getArea(pathname: string): string | null {
 export function getUserRole(
   user: { user_metadata?: Record<string, unknown> } | null | undefined
 ): Role | null {
-  let role = user?.user_metadata?.role;
-  if (typeof role !== 'string') return null;
-  if (role === 'admin') role = 'ADMIN';
-  return (Object.values(ROLES) as string[]).includes(role) ? (role as Role) : null;
+  const metaRole = user?.user_metadata?.role;
+  if (typeof metaRole !== 'string') return null;
+  const roleStr = metaRole === 'admin' ? 'ADMIN' : metaRole;
+  return (Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null;
 }
 
 /** Se o usuário é o dono do salão (vê todos os módulos no hub) */
