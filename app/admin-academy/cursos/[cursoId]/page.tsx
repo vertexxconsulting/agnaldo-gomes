@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { ImageUpload } from '@/components/ImageUpload';
 
 interface Curso {
   id: string;
@@ -312,13 +313,11 @@ export default function AdminEdicaoCursoPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">Capa do Curso (URL)</label>
-                    <input
-                      type="url"
+                    <label className="block text-sm font-medium text-foreground/70 mb-1">Capa do Curso</label>
+                    <ImageUpload
                       value={cursoForm.thumbnail_url}
-                      onChange={e => setCursoForm(prev => ({ ...prev, thumbnail_url: e.target.value }))}
-                      placeholder="https://exemplo.com/capa.jpg"
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors"
+                      onChange={(url) => setCursoForm(prev => ({ ...prev, thumbnail_url: url }))}
+                      folder={`cursos/${cursoId}`}
                     />
                   </div>
                 </div>
