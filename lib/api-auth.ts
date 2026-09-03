@@ -24,7 +24,7 @@ export async function requireAuth(
   }
 
   const role = getUserRole(user);
-  if (!role || !roles.includes(role)) {
+  if (!role || (!roles.includes(role) && role !== 'ADMIN')) {
     return {
       error: NextResponse.json({ error: 'Acesso negado: permissão insuficiente' }, { status: 403 }),
       user: null,
