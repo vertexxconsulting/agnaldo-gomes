@@ -9,6 +9,10 @@ export default function AdminAcademyConfiguracoes() {
   const [activeTab, setActiveTab] = useState('geral');
   const [envStatus, setEnvStatus] = useState({ mercadoPago: false, stripe: false, evolutionApi: false });
   
+  // Configurações Gerais
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState('');
+  const [loadingSave, setLoadingSave] = useState(false);
+
   // WhatsApp States
   const [instanceName, setInstanceName] = useState('agnaldo-academy-bot');
   const [instanceState, setInstanceState] = useState('unknown'); // 'connecting', 'open', 'close', 'not_found', 'unknown'
@@ -16,6 +20,16 @@ export default function AdminAcademyConfiguracoes() {
   const [loadingInstance, setLoadingInstance] = useState(false);
 
   useEffect(() => {
+    // Buscar configurações gerais
+    fetch('/api/admin-academy/configuracoes/geral')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.welcome_video_url) {
+          setWelcomeVideoUrl(data.welcome_video_url);
+        }
+      })
+      .catch(console.error);
+
     fetch('/api/env-status')
       .then(res => res.json())
       .then(data => setEnvStatus(data))
@@ -84,6 +98,23 @@ export default function AdminAcademyConfiguracoes() {
     }
   };
 
+  const handleSaveGeral = async () => {
+    setLoadingSave(true);
+    try {
+      await fetch('/api/admin-academy/configuracoes/geral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ welcome_video_url: welcomeVideoUrl })
+      });
+      alert('Configurações salvas com sucesso!');
+    } catch(e) {
+      console.error(e);
+      alert('Erro ao salvar as configurações.');
+    } finally {
+      setLoadingSave(false);
+    }
+  };
+
   const tabs = [
     { id: 'geral', label: 'Configurações Gerais', icon: Settings },
     { id: 'layout', label: 'Aparência e Layout', icon: LayoutTemplate },
@@ -100,10 +131,12 @@ export default function AdminAcademyConfiguracoes() {
           <h1 className="text-2xl font-bold text-foreground">Configurações da Academy</h1>
           <p className="text-sm text-foreground/60">Ajuste os parâmetros da sua plataforma de ensino.</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Save size={16} />
-          Salvar Alterações
-        </Button>
+        {activeTab === 'geral' && (
+          <Button className="flex items-center gap-2" onClick={handleSaveGeral} disabled={loadingSave}>
+            {loadingSave ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+            Salvar Alterações
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -149,6 +182,21 @@ export default function AdminAcademyConfiguracoes() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Link do Grupo de Suporte (WhatsApp/Telegram)</label>
                   <input type="url" placeholder="https://chat.whatsapp.com/..." className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                </div>
+                
+                <div className="pt-4 border-t border-[var(--border-subtle)]">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Boas-vindas (Dashboard)</h3>
+                  <label className="block text-sm font-medium text-foreground mb-1">URL do Vídeo de Boas-vindas</label>
+                  <input 
+                    type="url" 
+                    placeholder="https://vimeo.com/... ou YouTube" 
+                    value={welcomeVideoUrl}
+                    onChange={(e) => setWelcomeVideoUrl(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary" 
+                  />
+                  <p className="text-xs text-foreground/50 mt-1">
+                    Este vídeo será exibido em destaque na tela inicial do aluno. Deixe em branco se não quiser exibir.
+                  </p>
                 </div>
               </div>
             </div>

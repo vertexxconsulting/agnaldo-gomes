@@ -6,24 +6,28 @@ import Link from 'next/link';
 import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
 import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
+import { LessonPlayer } from '@/components/LessonPlayer';
 
 export default function AlunoDashboardPage() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [progressoAluno, setProgressoAluno] = useState<Progresso[]>([]);
   const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      const [cursosData, progressoData, produtosData] = await Promise.all([
+      const [cursosData, progressoData, produtosData, configData] = await Promise.all([
         getCursos(),
         getProgressoAluno(),
         supabase.from('products').select('*').eq('active', true).limit(4),
+        supabase.from('academy_settings').select('welcome_video_url').eq('id', 1).single()
       ]);
       setCursos(cursosData);
       setProgressoAluno(progressoData);
       if (produtosData.data) setProdutosLoja(produtosData.data);
+      if (configData.data?.welcome_video_url) setWelcomeVideoUrl(configData.data.welcome_video_url);
       setLoading(false);
     };
     carregarDados();
@@ -78,8 +82,18 @@ export default function AlunoDashboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#141414] pb-20">
-      {/* Banner Principal Estilo Netflix */}
-      <div className="relative w-full h-[55vh] sm:h-[68vh] bg-black">
+      
+      {/* Vídeo de Boas-vindas ou Banner Principal Estilo Netflix */}
+      {welcomeVideoUrl ? (
+        <div className="relative w-full aspect-video md:h-[68vh] md:aspect-auto bg-black">
+          <LessonPlayer 
+            videoUrl={welcomeVideoUrl}
+            title="Vídeo de Boas-vindas"
+            className="w-full h-full"
+          />
+        </div>
+      ) : (
+        <div className="relative w-full h-[55vh] sm:h-[68vh] bg-black">
         {/* Imagem de Fundo */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-60"
@@ -114,10 +128,10 @@ export default function AlunoDashboardPage() {
             </Link>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Trilhas / Carrosséis */}
-      <div className="flex flex-col gap-7 px-4 sm:px-6 lg:px-14 -mt-10 relative z-10">
+      <div className={`flex flex-col gap-7 px-4 sm:px-6 lg:px-14 relative z-10 ${welcomeVideoUrl ? 'mt-8' : '-mt-10'}`}>
 
         {/* Barra de status do aluno no ecossistema */}
         <section className="flex flex-wrap items-center gap-3">
