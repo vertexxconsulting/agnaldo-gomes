@@ -1,17 +1,17 @@
-'use client';
-
-import { Users, PlayCircle, Star, TrendingUp, Clock, CalendarDays, ShoppingBag, Sparkles } from 'lucide-react';
-import { MOCK_CURSOS } from '@/lib/mock-data';
+import { Users, PlayCircle, Star, Clock, CalendarDays, ShoppingBag, Sparkles } from 'lucide-react';
+import { getCursos } from '@/lib/mock-data';
 import { Button } from '@/components/Button';
-import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
+import { SectionHeader, Panel } from '@/components/ui/Panel';
 import Link from 'next/link';
 
-export default function AdminAcademyDashboard() {
+export default async function AdminAcademyDashboard() {
+  const cursos = await getCursos();
+
   const stats = [
-    { label: 'Alunos Ativos', value: '1,204', icon: Users, trend: '+12% este mês' },
-    { label: 'Cursos Publicados', value: MOCK_CURSOS.length.toString(), icon: PlayCircle, trend: 'Estável' },
-    { label: 'Taxa de Conclusão', value: '68%', icon: Star, trend: '+5% este mês' },
-    { label: 'Tempo Médio', value: '12h/aluno', icon: Clock, trend: 'Estável' },
+    { label: 'Alunos Ativos', value: '0', icon: Users, trend: '-' },
+    { label: 'Cursos Publicados', value: cursos.length.toString(), icon: PlayCircle, trend: '-' },
+    { label: 'Taxa de Conclusão', value: '0%', icon: Star, trend: '-' },
+    { label: 'Tempo Médio', value: '0h/aluno', icon: Clock, trend: '-' },
   ];
 
   return (
@@ -92,21 +92,27 @@ export default function AdminAcademyDashboard() {
         {/* Últimos Cursos Acessados */}
         <Panel title="Cursos em Destaque">
           <div className="space-y-2.5">
-            {MOCK_CURSOS.slice(0, 3).map((curso) => (
-              <div key={curso.id} className="flex items-center gap-3 p-2.5 hover:bg-[var(--background)] rounded-lg transition-colors border border-transparent hover:border-[var(--border-subtle)]">
-                <div
-                  className="w-14 h-10 rounded-lg bg-cover bg-center border border-[var(--border-subtle)] shrink-0"
-                  style={{ backgroundImage: `url(${curso.capaUrl})` }}
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[13px] font-semibold text-foreground line-clamp-1">{curso.titulo}</h3>
-                  <p className="text-[11px] text-foreground/50">{curso.totalAulas} aulas</p>
+            {cursos.length > 0 ? (
+              cursos.slice(0, 3).map((curso) => (
+                <div key={curso.id} className="flex items-center gap-3 p-2.5 hover:bg-[var(--background)] rounded-lg transition-colors border border-transparent hover:border-[var(--border-subtle)]">
+                  <div
+                    className="w-14 h-10 rounded-lg bg-cover bg-center border border-[var(--border-subtle)] shrink-0 bg-primary/10"
+                    style={curso.capaUrl ? { backgroundImage: `url(${curso.capaUrl})` } : {}}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[13px] font-semibold text-foreground line-clamp-1">{curso.titulo}</h3>
+                    <p className="text-[11px] text-foreground/50">{curso.totalAulas} aulas</p>
+                  </div>
+                  <Link href={`/admin-academy/cursos/${curso.id}`}>
+                    <button className="text-[11px] font-semibold text-primary hover:underline">Editar</button>
+                  </Link>
                 </div>
-                <Link href={`/admin-academy/cursos/${curso.id}`}>
-                  <button className="text-[11px] font-semibold text-primary hover:underline">Editar</button>
-                </Link>
+              ))
+            ) : (
+              <div className="flex items-center justify-center p-6 bg-[var(--background)] rounded-lg border border-[var(--border-subtle)] border-dashed">
+                <p className="text-sm text-foreground/50">Nenhum curso cadastrado no momento.</p>
               </div>
-            ))}
+            )}
           </div>
         </Panel>
 

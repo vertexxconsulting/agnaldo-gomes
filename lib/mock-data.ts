@@ -431,31 +431,21 @@ export const MOCK_PROGRESSO_ALUNO: Progresso[] = [
 // ADAPTERS ASSYNC PARA CURSOS (fallback automático)
 // ────────────────────────────────────────────
 export async function getCursos(): Promise<Curso[]> {
-  const real = await fetchCursos();
-  return real.length > 0 ? real : MOCK_CURSOS;
+  return await fetchCursos();
 }
 
 export async function getModulos(cursoId?: string): Promise<Modulo[]> {
   const real = await fetchModulos();
-  if (real.length > 0) {
-    return cursoId ? real.filter(m => m.curso_id === cursoId) : real;
-  }
-  const fallback = MOCK_MODULOS;
-  return cursoId ? fallback.filter(m => m.curso_id === cursoId) : fallback;
+  return cursoId ? real.filter(m => m.curso_id === cursoId) : real;
 }
 
 export async function getAulas(moduloId?: string): Promise<Aula[]> {
   const real = await fetchAulas();
-  if (real.length > 0) {
-    return moduloId ? real.filter(a => a.modulo_id === moduloId) : real;
-  }
-  const fallback = MOCK_AULAS;
-  return moduloId ? fallback.filter(a => a.modulo_id === moduloId) : fallback;
+  return moduloId ? real.filter(a => a.modulo_id === moduloId) : real;
 }
 
 export async function getProgressoAluno(): Promise<Progresso[]> {
-  const real = await fetchProgressoAluno();
-  return real.length > 0 ? real : MOCK_PROGRESSO_ALUNO;
+  return await fetchProgressoAluno();
 }
 
 // ────────────────────────────────────────────
