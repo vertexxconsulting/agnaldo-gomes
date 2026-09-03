@@ -83,8 +83,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         title: String(title).trim(),
         video_url: video_url || '',
         duration_minutes: Number(duration_minutes) || 0,
-        description: description || '',
-        materials: Array.isArray(materials) ? materials : [],
         order_index: order_index ?? nextOrder,
       })
       .select('*')
@@ -125,8 +123,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           title: l.title,
           video_url: l.video_url,
           duration_minutes: l.duration_minutes,
-          description: l.description,
-          materials: l.materials,
         })
         .eq('id', l.id)
     );

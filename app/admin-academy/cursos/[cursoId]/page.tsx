@@ -29,8 +29,6 @@ interface Aula {
   title: string;
   video_url: string;
   duration_minutes: number;
-  description: string;
-  materials: Array<{ titulo: string; url: string; tipo: 'pdf' | 'link' }>;
   order_index: number;
 }
 
@@ -44,7 +42,7 @@ export default function AdminEdicaoCursoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'detalhes' | 'modulos'>('detalhes');
-  const [cursoForm, setCursoForm] = useState({ title: '', description: '', level: 'Iniciante', thumbnail_url: '', duration_hours: 0 });
+  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '' });
 
   const carregarDados = useCallback(async () => {
     setLoading(true);
@@ -60,10 +58,8 @@ export default function AdminEdicaoCursoPage() {
         setCurso(c);
         setCursoForm({
           title: c.title,
-          description: c.description,
-          level: c.level,
-          thumbnail_url: c.thumbnail_url,
-          duration_hours: c.duration_hours,
+          description: c.description || '',
+          thumbnail_url: c.thumbnail_url || '',
         });
       }
 
@@ -304,18 +300,6 @@ export default function AdminEdicaoCursoPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">Nível</label>
-                    <select
-                      value={cursoForm.level}
-                      onChange={e => setCursoForm(prev => ({ ...prev, level: e.target.value }))}
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors"
-                    >
-                      <option value="Iniciante">Iniciante</option>
-                      <option value="Intermediário">Intermediário</option>
-                      <option value="Avançado">Avançado</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-foreground/70 mb-1">Descrição</label>
                     <textarea
                       value={cursoForm.description}
@@ -334,16 +318,6 @@ export default function AdminEdicaoCursoPage() {
                       value={cursoForm.thumbnail_url}
                       onChange={e => setCursoForm(prev => ({ ...prev, thumbnail_url: e.target.value }))}
                       placeholder="https://exemplo.com/capa.jpg"
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground/70 mb-1">Duração Total (horas)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={cursoForm.duration_hours}
-                      onChange={e => setCursoForm(prev => ({ ...prev, duration_hours: Number(e.target.value) || 0 }))}
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:border-primary outline-none transition-colors"
                     />
                   </div>
@@ -521,7 +495,6 @@ function AulaCard({
     title: aula.title,
     video_url: aula.video_url,
     duration_minutes: aula.duration_minutes,
-    description: aula.description,
   });
 
   const handleSave = () => {
@@ -563,13 +536,6 @@ function AulaCard({
                 className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] px-2 py-1 rounded text-sm text-foreground focus:border-primary outline-none"
               />
             </div>
-            <textarea
-              placeholder="Descrição da aula"
-              value={editData.description}
-              onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))}
-              rows={2}
-              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] px-2 py-1 rounded text-sm text-foreground focus:border-primary outline-none resize-none"
-            />
           </div>
         ) : (
           <>

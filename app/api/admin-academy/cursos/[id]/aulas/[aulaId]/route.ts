@@ -15,8 +15,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (title !== undefined) payload.title = String(title).trim();
     if (video_url !== undefined) payload.video_url = video_url;
     if (duration_minutes !== undefined) payload.duration_minutes = Number(duration_minutes) || 0;
-    if (description !== undefined) payload.description = description;
-    if (materials !== undefined) payload.materials = Array.isArray(materials) ? materials : [];
     if (order_index !== undefined) payload.order_index = order_index;
     if (module_id !== undefined) payload.module_id = module_id;
 
