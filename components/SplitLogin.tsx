@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { supabase } from '@/lib/supabase';
-import { getUserRole, AREA_LABELS, type Role } from '@/lib/auth';
+import { getUserRole, AREA_LABELS, ROLES, type Role } from '@/lib/auth';
 
 /**
  * Variants inspirados no Clerk SignIn de https://examples.motion.dev/react/clerk-sign-in
@@ -81,7 +81,7 @@ export function SplitLogin({
     if (!requiredRole) return;
     supabase.auth.getUser().then(({ data }: { data: { user: any } }) => {
       const role = getUserRole(data.user);
-      if (role === requiredRole) {
+      if (role === requiredRole || role === ROLES.ADMIN) {
         router.replace(redirectTo);
       } else if (role) {
         supabase.auth.signOut();
@@ -131,7 +131,7 @@ export function SplitLogin({
 
     // Valida se a conta tem permissão para esta área (login dedicado)
     const role = getUserRole(data.user);
-    if (requiredRole && role !== requiredRole) {
+    if (requiredRole && role !== requiredRole && role !== ROLES.ADMIN) {
       await supabase.auth.signOut();
       setErrors({
         form: role
