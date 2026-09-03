@@ -8,11 +8,10 @@ import { Button } from '@/components/Button';
 interface Curso {
   id: string;
   title: string;
+  slug: string;
   description: string;
   thumbnail_url: string;
-  duration_hours: number;
-  level: string;
-  tags: string[];
+  status: string;
   created_at: string;
 }
 
@@ -173,12 +172,10 @@ export default function AdminCursosPage() {
               </div>
             </div>
 
-            {/* Infos */}
             <div className="p-4 flex flex-col flex-1">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-primary uppercase tracking-wider">{curso.level}</span>
                 <span className="text-[10px] text-foreground/50 bg-[var(--background)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)]">
-                  Rascunho
+                  {curso.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
                 </span>
               </div>
 
@@ -187,8 +184,7 @@ export default function AdminCursosPage() {
               </h3>
 
               <div className="flex items-center justify-between text-xs text-foreground/50 mt-auto pt-4 border-t border-[var(--border-subtle)]">
-                <span>Aulas: —</span>
-                <span>Horas: {curso.duration_hours}</span>
+                <span>Criado em: {new Date(curso.created_at).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>
           </div>

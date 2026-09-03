@@ -35,13 +35,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Título do curso é obrigatório.' }, { status: 400 });
     }
 
+    // Simple slug generator
+    const slug = String(title)
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^\w-]+/g, '') + '-' + Date.now().toString().slice(-4);
+
     const payload = {
       title: String(title).trim(),
+      slug: slug,
       description: description || '',
       thumbnail_url: thumbnail_url || '',
-      duration_hours: Number(duration_hours) || 0,
-      level: level || 'Iniciante',
-      tags: Array.isArray(tags) ? tags : [],
+      status: 'DRAFT',
     };
 
     const { data, error } = await auth.supabase!
