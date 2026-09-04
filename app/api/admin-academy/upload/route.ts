@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getServerSession } from '@/lib/api-auth';
+import { requireAcademyAuth } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 // Usar Service Role Key para garantir que possamos fazer upload
@@ -12,12 +12,8 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    
-    // Validar se o usuário é admin
-    if (!session || (session.role !== 'academy_admin' && session.role !== 'ADMIN')) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const auth = await requireAcademyAuth();
+    if (auth.error) return auth.error;
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

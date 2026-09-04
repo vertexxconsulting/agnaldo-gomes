@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getServerSession } from '@/lib/api-auth';
+import { requireAcademyAuth } from '@/lib/api-auth';
 
 // Buscar a configuração atual
 export async function GET() {
@@ -25,11 +25,8 @@ export async function GET() {
 // Salvar/Atualizar a configuração
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    
-    if (!session || (session.role !== 'academy_admin' && session.role !== 'ADMIN')) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const auth = await requireAcademyAuth();
+    if (auth.error) return auth.error;
 
     const body = await request.json();
     const { welcome_video_url } = body;

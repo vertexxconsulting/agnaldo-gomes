@@ -128,6 +128,7 @@ export default function AlunoDashboardPage() {
             </Link>
           </div>
         </div>
+      </div>
       )}
 
       {/* Trilhas / Carrosséis */}
