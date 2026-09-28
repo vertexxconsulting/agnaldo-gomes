@@ -33,7 +33,7 @@ async function fetchCart() {
   return res.json();
 }
 
-async function apiCall(method: string, body?: any) {
+async function apiCall(method: string, body?: { productId?: string; quantity?: number }) {
   const res = await fetch(`${API_BASE}/api/cart`, {
     method,
     headers: { 'Content-Type': 'application/json' },
