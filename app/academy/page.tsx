@@ -256,8 +256,8 @@ export default function AcademyPage() {
   ];
 
   // Seção separa cursos em "Cursos em Destaque" (destaque: true) do resto
-  const destaqueComStatus = cursosComStatus.filter(c => c.destaque && c.purchasable) as (CursoVenda & { enrolled: boolean; purchasable: boolean })[];
-  const complementaresComStatus = cursosComStatus.filter(c => !c.destaque) as (CursoVenda & { enrolled: boolean; purchasable: boolean })[];
+  const destaqueComStatus = cursosComStatus.filter(c => c.destaque && c.purchasable) as any;
+  const complementaresComStatus = cursosComStatus.filter(c => !c.destaque) as any;
 
   return (
     <div className="flex flex-col w-full bg-background text-foreground min-h-screen">
@@ -499,7 +499,7 @@ export default function AcademyPage() {
                     </div>
                     <div className="text-xs text-foreground/60 mt-1">Horário: {sched.time || 'A definir'} • Local: {sched.location || 'A definir'}</div>
                   </div>
-                  <Button variant="primary" className="text-xs py-1.5 px-3">
+                  <Button variant="gold" className="text-xs py-1.5 px-3">
                     Selecionar
                   </Button>
                 </div>

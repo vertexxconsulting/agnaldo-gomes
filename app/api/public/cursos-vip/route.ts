@@ -15,7 +15,7 @@ export async function GET() {
     if (error) throw error;
     
     // Filter out inactive schedules
-    const filteredCourses = courses?.map(c => ({
+    const filteredCourses = courses?.map((c: any) => ({
       ...c,
       schedules: c.schedules.filter((s: any) => s.is_active && new Date(s.date) > new Date())
     })) || [];
