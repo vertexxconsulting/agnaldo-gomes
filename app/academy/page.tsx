@@ -348,7 +348,7 @@ export default function AcademyPage() {
               viewport={{ once: true }}
               className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide mb-16"
             >
-              {destaqueComStatus.map((c) => (
+              {destaqueComStatus.map((c: any) => (
                 <motion.div
                   key={c.id}
                   className="snap-start w-72 sm:w-80 flex-shrink-0"
@@ -422,7 +422,7 @@ export default function AcademyPage() {
           viewport={{ once: true }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
         >
-          {complementaresComStatus.map((c) => (
+          {complementaresComStatus.map((c: any) => (
             <motion.div
               key={c.id}
               variants={fadeInUp}
