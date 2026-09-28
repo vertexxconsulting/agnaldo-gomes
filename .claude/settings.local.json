@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(convert *)",
+      "Bash(ffmpeg *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Anderson\\\\Agnaldo Gomes\" -Force -Depth 1)",
+      "Bash(Format-Table Name, FullName, PSIsContainer)",
+      "Bash(Sort-Object PSIsContainer, Name)"
+    ]
+  }
+}

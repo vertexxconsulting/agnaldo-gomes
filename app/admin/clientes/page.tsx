@@ -63,31 +63,70 @@ export default function ClienteModule() {
     (c.email ?? '').toLowerCase().includes(busca.toLowerCase())
   );
 
-  const salvar = (e: React.FormEvent<HTMLFormElement>) => {
+  const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const novo: Cliente = {
-      id: editando?.id ?? `c${Date.now()}`,
+    const payload = {
+      id: editando?.id,
       nome: form.get('nome') as string,
       telefone: form.get('telefone') as string,
       email: (form.get('email') as string) || null,
       nascimento: (form.get('nascimento') as string) || null,
       observacoes: (form.get('observacoes') as string) || null,
-      criado_em: editando?.criado_em ?? new Date().toISOString()
     };
 
-    if (editando) {
-      setClientes(prev => prev.map(c => c.id === editando.id ? novo : c));
-    } else {
-      setClientes(prev => [novo, ...prev]);
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar cliente');
+
+      const savedCliente: Cliente = data.cliente ? {
+        id: data.cliente.id,
+        nome: data.cliente.name,
+        telefone: data.cliente.phone,
+        email: data.cliente.email,
+        nascimento: data.cliente.birth_date,
+        observacoes: data.cliente.notes,
+        criado_em: data.cliente.created_at,
+      } : {
+        id: editando?.id ?? `c${Date.now()}`,
+        nome: payload.nome,
+        telefone: payload.telefone,
+        email: payload.email,
+        nascimento: payload.nascimento,
+        observacoes: payload.observacoes,
+        criado_em: editando?.criado_em ?? new Date().toISOString()
+      };
+
+      if (editando) {
+        setClientes(prev => prev.map(c => c.id === editando.id ? savedCliente : c));
+      } else {
+        setClientes(prev => [savedCliente, ...prev]);
+      }
+      setEditando(null);
+      setShowForm(false);
+    } catch (err: any) {
+      console.error('Erro ao salvar cliente:', err);
+      alert(`Erro ao salvar no banco: ${err.message}`);
     }
-    setEditando(null);
-    setShowForm(false);
   };
 
-  const excluir = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este cliente?")) {
+  const excluir = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
+    try {
+      const res = await fetch(`/api/clientes?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erro ao excluir');
+      }
       setClientes(prev => prev.filter(c => c.id !== id));
+    } catch (err: any) {
+      console.error('Erro ao excluir cliente:', err);
+      alert(`Erro ao excluir no banco: ${err.message}`);
     }
   };
 
@@ -123,24 +162,24 @@ export default function ClienteModule() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Nome Completo *</label>
-                <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Telefone / WhatsApp *</label>
-                <input name="telefone" required defaultValue={editando?.telefone ?? ''} placeholder="Ex: 11999999999" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="telefone" required defaultValue={editando?.telefone ?? ''} placeholder="Ex: 11999999999" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">E-mail <span className="text-foreground/30">(opcional)</span></label>
-                <input name="email" type="email" defaultValue={editando?.email ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="email" type="email" defaultValue={editando?.email ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Data de Nascimento <span className="text-foreground/30">(opcional)</span></label>
-                <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary [color-scheme:dark]" />
+                <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold [color-scheme:dark]" />
               </div>
             </div>
             <div>
               <label className="block text-xs text-foreground/60 mb-1">Observações / Preferências <span className="text-foreground/30">(opcional)</span></label>
-              <textarea name="observacoes" rows={3} defaultValue={editando?.observacoes ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary resize-none" placeholder="Alergias, formato de rosto, preferências de corte..." />
+              <textarea name="observacoes" rows={3} defaultValue={editando?.observacoes ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold resize-none" placeholder="Alergias, formato de rosto, preferências de corte..." />
             </div>
             <div className="flex gap-2 justify-end mt-2">
               <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); }}>Cancelar</Button>
@@ -172,7 +211,7 @@ export default function ClienteModule() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
                       {c.nome}
-                      {stats.visitas >= 5 && <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/20 text-primary uppercase tracking-wider font-bold border border-primary/30">VIP</span>}
+                      {stats.visitas >= 5 && <span className="px-2 py-0.5 rounded-full text-[10px] bg-gold/20 text-gold uppercase tracking-wider font-bold border border-gold/30">VIP</span>}
                     </h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/60">
                       <span className="font-mono">{c.telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</span>
@@ -188,7 +227,7 @@ export default function ClienteModule() {
                     </div>
                     <div className="text-center">
                       <div className="text-xs text-foreground/40 uppercase tracking-wider">Ticket Médio</div>
-                      <div className="font-bold text-primary">R$ {stats.ticketMedio}</div>
+                      <div className="font-bold text-gold">R$ {stats.ticketMedio}</div>
                     </div>
                   </div>
 

@@ -5,7 +5,7 @@ export const metadata = {
 
 export default function PropostaLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="dark min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#d4af37]/30 selection:text-white">
+    <div className="min-h-screen bg-[var(--background)] text-foreground font-sans selection:bg-[#d4af37]/30 selection:text-foreground">
       {children}
     </div>
   );

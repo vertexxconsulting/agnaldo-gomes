@@ -1,163 +1,293 @@
 'use client';
 
-import { useState } from 'react';
-import { Upload, Download, FileSignature, ImageIcon, CheckCircle, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, RotateCcw, XCircle, Eye, Download, Award, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { SectionHeader, Panel } from '@/components/ui/Panel';
 
-// Mock de dados de alunos que receberam certificado
-const mockCertificados = [
-  { id: 1, aluno: 'Mariana Silva', curso: 'Especialista em Loiras', data: '05/08/2026', progresso: '100%' },
-  { id: 2, aluno: 'João Pedro Costa', curso: 'Cortes Geométricos Avançados', data: '02/08/2026', progresso: '100%' },
-  { id: 3, aluno: 'Amanda Oliveira', curso: 'Visagismo Essencial', data: '28/07/2026', progresso: '100%' },
-  { id: 4, aluno: 'Fernanda Lima', curso: 'Especialista em Loiras', data: '25/07/2026', progresso: '100%' },
-];
+interface Certificado {
+  id: string;
+  user_id: string;
+  course_id: string;
+  issued_at: string;
+  certificate_number: string;
+  pdf_url: string | null;
+  verification_hash: string;
+  status: string;
+  profiles: {
+    full_name: string | null;
+    email: string;
+  };
+  courses: {
+    title: string;
+  };
+}
 
-export default function CertificadosAdminPage() {
-  const [templateUploaded, setTemplateUploaded] = useState(false);
-  const [signatureUploaded, setSignatureUploaded] = useState(false);
+export default function AdminCertificadosPage() {
+  const [certificados, setCertificados] = useState<Certificado[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'issued' | 'revoked' | 'reissued'>('issued');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 20;
 
-  return (
-    <div className="p-6 md:p-6 animate-fade-in max-w-6xl mx-auto pb-24">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Gestão de Certificados</h1>
-          <p className="text-foreground/60 mt-1 max-w-xl">
-            Configure o design base do certificado e acompanhe as emissões automáticas para alunos que concluíram 100% dos cursos.
-          </p>
-        </div>
-        <Button className="shrink-0 gap-2">
-          <Download size={18} />
-          Exportar Relatório
-        </Button>
-      </div>
+  useEffect(() => {
+    const carregarCertificados = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          status: statusFilter,
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+        if (searchTerm) params.append('search', searchTerm);
+        
+        const res = await fetch(`/api/admin-academy/certificados?${params}`);
+        const data = await res.json();
+        if (!data.error) {
+          setCertificados(data.certificados);
+          setTotalPages(data.totalPages);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar certificados:', error);
+      }
+      setLoading(false);
+    };
+    carregarCertificados();
+  }, [page, statusFilter, searchTerm]);
 
-      {/* Configuração do Certificado */}
-      <h2 className="text-xl font-bold mb-4">Configuração Automática</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
-        {/* Upload de Template */}
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
-              <ImageIcon size={24} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg">Template Base (Design)</h3>
-              <p className="text-sm text-foreground/60 mb-4">Faça upload da arte do certificado sem o nome do aluno ou assinatura. (Formato A4, PNG ou PDF).</p>
-              
-              {!templateUploaded ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                  <Upload className="mx-auto text-foreground/40 mb-3" size={32} />
-                  <p className="font-medium text-foreground/80 mb-1">Clique para enviar o arquivo</p>
-                  <p className="text-xs text-foreground/50">PNG, JPG ou PDF (Máx 5MB)</p>
-                  <button 
-                    className="mt-4 text-primary text-sm font-semibold"
-                    onClick={() => setTemplateUploaded(true)}
-                  >
-                    Simular Upload
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500" size={20} />
-                    <span className="font-medium text-foreground">template-certificado-ag.png</span>
-                  </div>
-                  <button onClick={() => setTemplateUploaded(false)} className="text-sm text-red-500 font-medium">Remover</button>
-                </div>
-              )}
-            </div>
+  const handleAction = async (cert: Certificado, action: 'reissue' | 'revoke') => {
+    try {
+      const res = await fetch('/api/admin-academy/certificados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: cert.user_id, course_id: cert.course_id, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        // Recarregar
+        const params = new URLSearchParams({
+          status: statusFilter,
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+        const res = await fetch(`/api/admin-academy/certificados?${params}`);
+        const newData = await res.json();
+        if (!newData.error) setCertificados(newData.certificados);
+      } else {
+        alert(data.error || 'Erro ao processar');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao processar ação');
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'issued':
+        return <span className="bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Emitido</span>;
+      case 'revoked':
+        return <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Revogado</span>;
+      case 'reissued':
+        return <span className="bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Reemitido</span>;
+      default:
+        return <span className="bg-foreground/10 text-foreground/50 border border-foreground/20 text-[10px] font-bold px-2 py-1 rounded-md">{status}</span>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Certificados</h1>
+            <p className="text-sm text-foreground/60">Gerencie certificados emitidos.</p>
           </div>
         </div>
-
-        {/* Upload de Assinatura */}
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
-              <FileSignature size={24} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg">Assinatura Digital (PNG)</h3>
-              <p className="text-sm text-foreground/60 mb-4">Faça upload da sua assinatura realizada em fundo transparente para o sistema inserir automaticamente.</p>
-              
-              {!signatureUploaded ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                  <Upload className="mx-auto text-foreground/40 mb-3" size={32} />
-                  <p className="font-medium text-foreground/80 mb-1">Clique para enviar assinatura</p>
-                  <p className="text-xs text-foreground/50">PNG com Fundo Transparente</p>
-                  <button 
-                    className="mt-4 text-primary text-sm font-semibold"
-                    onClick={() => setSignatureUploaded(true)}
-                  >
-                    Simular Upload
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-500" size={20} />
-                    <span className="font-medium text-foreground">assinatura-agnaldo.png</span>
-                  </div>
-                  <button onClick={() => setSignatureUploaded(false)} className="text-sm text-red-500 font-medium">Remover</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Histórico de Emissões */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold">Histórico de Emissões</h2>
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar por aluno ou curso..." 
-            className="w-full bg-card border border-border rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary/50"
-          />
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-foreground/5 text-sm uppercase tracking-wider text-foreground/60 border-b border-border">
-                <th className="p-4 font-semibold">Aluno</th>
-                <th className="p-4 font-semibold">Curso Concluído</th>
-                <th className="p-4 font-semibold">Data da Emissão</th>
-                <th className="p-4 font-semibold text-center">Status</th>
-                <th className="p-4 font-semibold text-right">Ação</th>
+              <tr className="border-b border-[var(--border-subtle)] bg-[var(--background)]/50">
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Aluno</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Curso</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Número</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Data</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Status</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border text-sm">
-              {mockCertificados.map((cert) => (
-                <tr key={cert.id} className="hover:bg-foreground/5 transition-colors">
-                  <td className="p-4 font-medium text-foreground">{cert.aluno}</td>
-                  <td className="p-4 text-foreground/80">{cert.curso}</td>
-                  <td className="p-4 text-foreground/80">{cert.data}</td>
-                  <td className="p-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400">
-                      Gerado Automático
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="text-primary hover:text-primary/80 font-medium">Baixar PDF</button>
-                  </td>
+            <tbody>
+              {[...Array(5)].map((_, i) => (
+                <tr key={i} className="border-b border-[var(--border-subtle)]">
+                  <td className="py-4 px-6"><div className="h-4 bg-white/10 rounded animate-pulse w-32 mb-1" /><div className="h-3 bg-white/10 rounded animate-pulse w-48" /></td>
+                  <td className="py-4 px-6"><div className="h-4 bg-white/10 rounded animate-pulse w-20" /></td>
+                  <td className="py-4 px-6"><div className="h-4 bg-white/10 rounded animate-pulse w-24" /></td>
+                  <td className="py-4 px-6"><div className="h-4 bg-white/10 rounded animate-pulse w-16" /></td>
+                  <td className="py-4 px-6"><div className="h-4 bg-white/10 rounded animate-pulse w-16" /></td>
+                  <td className="py-4 px-6 text-right"><div className="h-4 bg-white/10 rounded animate-pulse w-8" /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-border flex items-center justify-between text-sm text-foreground/60 bg-foreground/[0.02]">
-          <span>Mostrando 4 certificados recentes</span>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 bg-card border border-border rounded-md hover:bg-foreground/5 disabled:opacity-50" disabled>Anterior</button>
-            <button className="px-3 py-1 bg-card border border-border rounded-md hover:bg-foreground/5 disabled:opacity-50" disabled>Próxima</button>
-          </div>
+      </div>
+    );
+  }
+
+  const filteredCertificados = certificados.filter(cert =>
+    cert.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.courses?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.certificate_number.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Certificados</h1>
+          <p className="text-sm text-foreground/60">Gerencie certificados emitidos.</p>
         </div>
       </div>
 
+      {/* Barra de Ferramentas */}
+      <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar por aluno, e-mail, curso ou número..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-10 pr-4 text-sm text-foreground focus:outline-none focus:border-gold transition-colors"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 px-4 text-sm text-foreground focus:outline-none focus:border-gold"
+          >
+            <option value="issued">Emitidos</option>
+            <option value="revoked">Revogados</option>
+            <option value="reissued">Reemitidos</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Tabela de Certificados */}
+      <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] bg-[var(--background)]/50">
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Aluno</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Curso</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Número</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Data</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider">Status</th>
+                <th className="py-4 px-6 text-xs font-bold text-foreground/50 uppercase tracking-wider text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {filteredCertificados.map((cert) => (
+                <tr key={cert.id} className="hover:bg-[var(--background)]/30 transition-colors">
+                  <td className="py-4 px-6">
+                    <div>
+                      <p className="font-medium text-foreground">{cert.profiles?.full_name || 'Sem nome'}</p>
+                      <p className="text-xs text-foreground/50">{cert.profiles?.email}</p>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <p className="text-foreground">{cert.courses?.title}</p>
+                  </td>
+                  <td className="py-4 px-6">
+                    <code className="text-sm font-mono text-foreground/70">{cert.certificate_number}</code>
+                  </td>
+                  <td className="py-4 px-6 text-foreground/70">{formatDate(cert.issued_at)}</td>
+                  <td className="py-4 px-6">{getStatusBadge(cert.status)}</td>
+                  <td className="py-4 px-6 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        className="p-2 text-foreground/50 hover:text-gold transition-colors rounded-lg hover:bg-gold/10" 
+                        title="Ver verificação pública"
+                        onClick={() => window.open(`/verificar-certificado?hash=${cert.verification_hash}`, '_blank')}
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        className="p-2 text-foreground/50 hover:text-gold transition-colors rounded-lg hover:bg-gold/10" 
+                        title="Download PDF"
+                        disabled={!cert.pdf_url}
+                        onClick={() => cert.pdf_url && window.open(cert.pdf_url, '_blank')}
+                      >
+                        <Download size={16} />
+                      </button>
+                      {cert.status === 'issued' && (
+                        <>
+                          <button 
+                            className="p-2 text-foreground/50 hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/10" 
+                            title="Reemitir"
+                            onClick={() => handleAction(cert, 'reissue')}
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                          <button 
+                            className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10" 
+                            title="Revogar"
+                            onClick={() => handleAction(cert, 'revoke')}
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredCertificados.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-foreground/50">
+                    Nenhum certificado encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginação */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-[var(--border-subtle)]">
+            <p className="text-sm text-foreground/50">
+              Página {page} de {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                Anterior
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                Próxima
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,11 @@ export default function AdminAcademyConfiguracoes() {
   const [activeTab, setActiveTab] = useState('geral');
   const [envStatus, setEnvStatus] = useState({ mercadoPago: false, stripe: false, evolutionApi: false });
   
+  // Configurações Gerais
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [loadingSave, setLoadingSave] = useState(false);
+
   // WhatsApp States
   const [instanceName, setInstanceName] = useState('agnaldo-academy-bot');
   const [instanceState, setInstanceState] = useState('unknown'); // 'connecting', 'open', 'close', 'not_found', 'unknown'
@@ -16,6 +21,19 @@ export default function AdminAcademyConfiguracoes() {
   const [loadingInstance, setLoadingInstance] = useState(false);
 
   useEffect(() => {
+    // Buscar configurações gerais
+    fetch('/api/admin-academy/configuracoes/geral')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.welcome_video_url) {
+          setWelcomeVideoUrl(data.welcome_video_url);
+        }
+        if (data && data.whatsapp_number) {
+          setWhatsappNumber(data.whatsapp_number);
+        }
+      })
+      .catch(console.error);
+
     fetch('/api/env-status')
       .then(res => res.json())
       .then(data => setEnvStatus(data))
@@ -84,6 +102,23 @@ export default function AdminAcademyConfiguracoes() {
     }
   };
 
+  const handleSaveGeral = async () => {
+    setLoadingSave(true);
+    try {
+      await fetch('/api/admin-academy/configuracoes/geral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ welcome_video_url: welcomeVideoUrl, whatsapp_number: whatsappNumber })
+      });
+      alert('Configurações salvas com sucesso!');
+    } catch(e) {
+      console.error(e);
+      alert('Erro ao salvar as configurações.');
+    } finally {
+      setLoadingSave(false);
+    }
+  };
+
   const tabs = [
     { id: 'geral', label: 'Configurações Gerais', icon: Settings },
     { id: 'layout', label: 'Aparência e Layout', icon: LayoutTemplate },
@@ -100,10 +135,12 @@ export default function AdminAcademyConfiguracoes() {
           <h1 className="text-2xl font-bold text-foreground">Configurações da Academy</h1>
           <p className="text-sm text-foreground/60">Ajuste os parâmetros da sua plataforma de ensino.</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Save size={16} />
-          Salvar Alterações
-        </Button>
+        {activeTab === 'geral' && (
+          <Button className="flex items-center gap-2" onClick={handleSaveGeral} disabled={loadingSave}>
+            {loadingSave ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+            Salvar Alterações
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -117,7 +154,7 @@ export default function AdminAcademyConfiguracoes() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
                   activeTab === tab.id 
-                    ? 'bg-primary/10 text-primary' 
+                    ? 'bg-gold/10 text-gold' 
                     : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground'
                 }`}
               >
@@ -137,18 +174,48 @@ export default function AdminAcademyConfiguracoes() {
               <div className="space-y-5 max-w-2xl">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Nome da Plataforma</label>
-                  <input type="text" defaultValue="Agnaldo Gomes Academy" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                  <input type="text" defaultValue="Agnaldo Gomes Academy" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">E-mail de Suporte</label>
-                  <input type="email" defaultValue="suporte@agnaldogomes.com" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                  <input type="email" defaultValue="suporte@agnaldogomes.com" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
                   <p className="text-xs text-foreground/50 mt-1">Os alunos usarão este e-mail para tirar dúvidas de acesso.</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Link do Grupo de Suporte (WhatsApp/Telegram)</label>
-                  <input type="url" placeholder="https://chat.whatsapp.com/..." className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                  <input type="url" placeholder="https://chat.whatsapp.com/..." className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
+                </div>
+                
+                <div className="pt-4 border-t border-[var(--border-subtle)]">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Cursos VIP (Presenciais)</h3>
+                  <label className="block text-sm font-medium text-foreground mb-1">Número de WhatsApp (Vendas)</label>
+                  <input 
+                    type="text" 
+                    placeholder="ex: 5511999999999" 
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" 
+                  />
+                  <p className="text-xs text-foreground/50 mt-1">
+                    Número para onde os clientes serão redirecionados ao finalizarem o agendamento de um curso presencial VIP.
+                  </p>
+                </div>
+                
+                <div className="pt-4 border-t border-[var(--border-subtle)]">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Boas-vindas (Dashboard)</h3>
+                  <label className="block text-sm font-medium text-foreground mb-1">URL do Vídeo de Boas-vindas</label>
+                  <input 
+                    type="url" 
+                    placeholder="https://vimeo.com/... ou YouTube" 
+                    value={welcomeVideoUrl}
+                    onChange={(e) => setWelcomeVideoUrl(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" 
+                  />
+                  <p className="text-xs text-foreground/50 mt-1">
+                    Este vídeo será exibido em destaque na tela inicial do aluno. Deixe em branco se não quiser exibir.
+                  </p>
                 </div>
               </div>
             </div>
@@ -162,7 +229,7 @@ export default function AdminAcademyConfiguracoes() {
               <div className="space-y-4">
                 <div className="p-4 border border-[var(--border-subtle)] rounded-lg bg-[var(--background)]">
                   <h3 className="font-medium text-sm text-foreground mb-2">Tema Padrão</h3>
-                  <select className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary">
+                  <select className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold">
                     <option>Modo Escuro (Netflix)</option>
                     <option>Modo Claro (Clean)</option>
                     <option>Deixar o aluno escolher</option>
@@ -176,7 +243,7 @@ export default function AdminAcademyConfiguracoes() {
             <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-foreground">Disparos Automáticos</h2>
-                <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Evolution API</span>
+                <span className="bg-gold/20 text-gold px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Evolution API</span>
               </div>
               <p className="text-sm text-foreground/60 mb-6">Configure o envio de WhatsApp exclusivo para alunos da Academy (boas-vindas, suporte, certificados).</p>
               
@@ -195,10 +262,10 @@ export default function AdminAcademyConfiguracoes() {
               ) : (
                 <div className="space-y-6 max-w-2xl">
                   {/* Fluxo de Conexão WhatsApp */}
-                  <div className="p-5 border border-primary/30 bg-primary/5 rounded-xl">
+                  <div className="p-5 border border-gold/30 bg-gold/5 rounded-xl">
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h3 className="font-bold text-primary mb-1 text-sm">Instância WhatsApp da Academy</h3>
+                        <h3 className="font-bold text-gold mb-1 text-sm">Instância WhatsApp da Academy</h3>
                         <p className="text-xs text-foreground/70">Gerencie a conexão do número que fará o atendimento exclusivo dos cursos.</p>
                       </div>
                       
@@ -228,7 +295,7 @@ export default function AdminAcademyConfiguracoes() {
                               value={instanceName}
                               onChange={(e) => setInstanceName(e.target.value)}
                               disabled={instanceState === 'open' || instanceState === 'connecting'}
-                              className="flex-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary font-mono disabled:opacity-50" 
+                              className="flex-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-gold font-mono disabled:opacity-50" 
                             />
                             {instanceState === 'open' || instanceState === 'connecting' ? (
                               <Button size="sm" variant="outline" className="text-red-500 border-red-500 hover:bg-red-500/10" onClick={handleDeleteInstance} disabled={loadingInstance}>
@@ -251,8 +318,8 @@ export default function AdminAcademyConfiguracoes() {
                                 <Image src={qrCode} alt="QR Code" fill className="object-contain p-2" />
                               ) : (
                                 <div className="text-center p-4">
-                                  <RefreshCw size={24} className="mx-auto text-gray-300 mb-2 animate-spin" />
-                                  <p className="text-[10px] text-gray-400 font-medium">Carregando QR Code...</p>
+                                  <RefreshCw size={24} className="mx-auto text-foreground/50 mb-2 animate-spin" />
+                                  <p className="text-[10px] text-foreground/60 font-medium">Carregando QR Code...</p>
                                 </div>
                               )}
                             </div>
@@ -287,7 +354,7 @@ export default function AdminAcademyConfiguracoes() {
                       </label>
                       <textarea 
                         rows={3} 
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold font-mono text-xs"
                         defaultValue={`Olá {nome_aluno}! Seja bem-vindo à Agnaldo Gomes Academy. Seu acesso já está liberado em: {link_acesso}`}
                       />
                     </div>
@@ -299,7 +366,7 @@ export default function AdminAcademyConfiguracoes() {
                       </label>
                       <textarea 
                         rows={3} 
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold font-mono text-xs"
                         defaultValue={`Ei {nome_aluno}, acabamos de liberar o módulo "{nome_modulo}" no seu curso! Corre lá na plataforma pra conferir.`}
                       />
                     </div>
@@ -311,7 +378,7 @@ export default function AdminAcademyConfiguracoes() {
                       </label>
                       <textarea 
                         rows={3} 
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold font-mono text-xs"
                         defaultValue={`Parabéns {nome_aluno}! Você concluiu o curso {nome_curso}. Seu certificado já está disponível na plataforma.`}
                       />
                     </div>
@@ -331,7 +398,7 @@ export default function AdminAcademyConfiguracoes() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#009EE3] rounded flex items-center justify-center">
-                        <CreditCard className="text-white" />
+                        <CreditCard className="text-foreground" />
                       </div>
                       <div>
                         <h3 className="font-bold text-foreground text-sm">Mercado Pago</h3>
@@ -364,7 +431,7 @@ export default function AdminAcademyConfiguracoes() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#635BFF] rounded flex items-center justify-center">
-                        <CreditCard className="text-white" />
+                        <CreditCard className="text-foreground" />
                       </div>
                       <div>
                         <h3 className="font-bold text-foreground text-sm">Stripe</h3>
@@ -395,7 +462,7 @@ export default function AdminAcademyConfiguracoes() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
                     <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>
 
@@ -406,7 +473,7 @@ export default function AdminAcademyConfiguracoes() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
                     <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>
 
@@ -417,7 +484,7 @@ export default function AdminAcademyConfiguracoes() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
                     <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>
               </div>

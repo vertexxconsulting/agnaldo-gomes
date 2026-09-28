@@ -18,19 +18,12 @@ export interface SidebarLink {
 
 interface AdminSidebarProps {
   links: SidebarLink[];
-  /** Conteúdo opcional do rodapé (ex.: botão de logout da loja) */
   footerItems?: React.ReactNode;
-  /** URL de retorno exibida no item superior ("Voltar ao Site" etc.) */
   backLabel?: string;
   backHref?: string;
-  /** Marca exibida na topbar (ícone + rótulo) para painéis com branding próprio */
   brand?: { icon: React.ComponentType<{ size?: number; className?: string }>; text: string };
 }
 
-/**
- * Sidebar administrativa compartilhada do novo design:
- * estreita (240px), colapsável, itens compactos e alinhados.
- */
 export function AdminSidebar({
   links,
   footerItems,
@@ -46,7 +39,6 @@ export function AdminSidebar({
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('ag-sessao');
-    // Redireciona para a raiz do painel onde está
     const base =
       pathname.startsWith('/admin-academy')
         ? '/admin-academy/login'
@@ -56,29 +48,42 @@ export function AdminSidebar({
     router.push(base);
   };
 
-  const renderLinkItem = (link: SidebarLink) => {
-    // Verificar papel do usuário para links restritos
-    // No modo demo/deslogado, permitimos ver tudo para visualização
+  const renderLinkItem = (link: SidebarLink, onNavigate?: () => void) => {
     const userRole = typeof window !== 'undefined' ? localStorage.getItem('ag-user-role') : null;
     if (link.adminOnly && userRole && userRole !== 'studio_admin') {
       return null;
     }
 
     const Icon = link.icon;
-    const active = link.href === '/hub' ? false : pathname === link.href || (link.href !== '/hub' && pathname.startsWith(link.href));
+    const isRoot = links.some(other => other.href !== link.href && other.href.startsWith(link.href + '/'));
+    const active = link.href === '/hub'
+      ? pathname === '/hub'
+      : isRoot
+      ? pathname === link.href
+      : pathname === link.href || pathname.startsWith(link.href + '/');
+
     const base = `flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap group ${
       active
-        ? 'bg-primary/10 text-primary'
+        ? 'bg-gold/10 text-gold font-semibold'
         : 'text-foreground/60 hover:bg-foreground/5 hover:text-foreground'
     }`;
+
     return (
-      <Link key={link.href} href={link.href} className={base} title={isCollapsed ? link.label : undefined}>
+      <Link
+        key={link.href}
+        href={link.href}
+        onClick={() => {
+          if (typeof onNavigate === 'function') onNavigate();
+        }}
+        className={base}
+        title={isCollapsed ? link.label : undefined}
+      >
         <Icon size={17} className="shrink-0" />
         {!isCollapsed && (
           <>
             <span className="truncate">{link.label}</span>
             {link.hub && (
-              <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">
+              <span className="ml-auto text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-gold/15 text-gold shrink-0">
                 Hub
               </span>
             )}
@@ -90,7 +95,6 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* Sidebar Desktop */}
       <motion.aside
         initial={false}
         animate={{ width: isCollapsed ? 72 : 240 }}
@@ -98,7 +102,7 @@ export function AdminSidebar({
       >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 bg-background border border-[var(--border-subtle)] rounded-full p-1 text-foreground/40 hover:text-primary hover:border-primary transition-colors z-30"
+          className="absolute -right-3 top-6 bg-background border border-[var(--border-subtle)] rounded-full p-1 text-foreground/40 hover:text-gold hover:border-gold transition-colors z-30"
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -106,7 +110,7 @@ export function AdminSidebar({
         <div className="px-4 h-16 flex items-center justify-between border-b border-[var(--border-subtle)]">
           {brand ? (
             <Link href={links.find(l => !l.hub)?.href ?? '/'} className="flex items-center gap-2 min-w-0">
-              <span className="text-primary shrink-0">
+              <span className="text-gold shrink-0">
                 <brand.icon size={22} />
               </span>
               <AnimatePresence>
@@ -126,11 +130,11 @@ export function AdminSidebar({
             <Link href="/" className="flex items-center gap-2 min-w-0">
               {!isCollapsed ? (
                 <div className="relative h-8 w-24 shrink-0">
-                  <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" priority />
+                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" priority />
                 </div>
               ) : (
                 <div className="relative h-9 w-9 shrink-0">
-                  <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" priority />
+                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" priority />
                 </div>
               )}
             </Link>
@@ -153,7 +157,7 @@ export function AdminSidebar({
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          {links.map(renderLinkItem)}
+          {links.map(link => renderLinkItem(link))}
         </nav>
 
         <div className="px-3 py-2 border-t border-[var(--border-subtle)] space-y-1">
@@ -185,7 +189,6 @@ export function AdminSidebar({
         )}
       </motion.aside>
 
-      {/* Mobile Header */}
       <div className="md:hidden fixed top-0 inset-x-0 h-14 bg-[var(--color-card)] border-b border-[var(--border-subtle)] z-50 flex items-center justify-between px-4">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
@@ -195,13 +198,12 @@ export function AdminSidebar({
         </button>
         <Link href="/" className="flex items-center">
           <div className="relative h-7 w-24">
-            <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" />
+            <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" />
           </div>
         </Link>
         <div className="w-8" />
       </div>
 
-      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -221,7 +223,7 @@ export function AdminSidebar({
             >
               <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-subtle)]">
                 <div className="relative h-8 w-28">
-                  <Image src="/logo-agnaldo.png" alt="Agnaldo Gomes" fill className="object-contain" />
+                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" />
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -237,11 +239,7 @@ export function AdminSidebar({
                     {backLabel}
                   </div>
                 </Link>
-                {links.map(link => (
-                  <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}>
-                    {renderLinkItem(link)}
-                  </Link>
-                ))}
+                {links.map(link => renderLinkItem(link, () => setIsMobileMenuOpen(false)))}
               </nav>
               <div className="p-3 border-t border-[var(--border-subtle)] space-y-1">
                 {footerItems}
@@ -252,7 +250,7 @@ export function AdminSidebar({
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 transition-colors"
                 >
-                  <LogOut size={17} />
+                  <LogOut size={17} className="shrink-0" />
                   Sair
                 </button>
               </div>
@@ -262,32 +260,4 @@ export function AdminSidebar({
       </AnimatePresence>
     </>
   );
-}
-
-/**
- * Shell do painel admin com sidebar compartilhada.
- */
-export function AdminShell({
-  children,
-  sidebar,
-  className,
-}: {
-  children: React.ReactNode;
-  sidebar: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className="flex h-screen bg-[var(--background)] overflow-hidden">
-      {sidebar}
-      <main className="flex-1 overflow-y-auto relative">
-        <div className={cnWrap('pt-20 md:pt-8 px-4 sm:px-6 lg:px-8 pb-12 max-w-6xl mx-auto', className)}>
-          {children}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function cnWrap(a: string, b?: string) {
-  return b ? `${a} ${b}` : a;
 }

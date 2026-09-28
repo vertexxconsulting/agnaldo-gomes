@@ -7,6 +7,8 @@
   --color-primary: #a8862a;
   --color-primary-foreground: #ffffff;
   --color-primary-hover: #93751f;
+  --color-gold: #a8862a;
+  --color-gold-dim: #93751f;
   --color-secondary: #eae3d1;
   --color-card: #ffffff;
   --color-success: #10b981;
@@ -32,6 +34,8 @@
   --color-primary: #d4af37;
   --color-primary-foreground: #0d0d0d;
   --color-primary-hover: #b5952f;
+  --color-gold: #d4af37;
+  --color-gold-dim: #b5952f;
   --color-secondary: #f5f5dc;
   --color-card: #1a1a1d;
   --background: #0f0f11;
@@ -76,6 +80,8 @@ body {
   --color-primary: #d4af37;
   --color-primary-foreground: #0d0d0d;
   --color-primary-hover: #b5952f;
+  --color-gold: #d4af37;
+  --color-gold-dim: #b5952f;
   --color-card: #1a1a1d;
   --background: #0f0f11;
   --foreground: #ebebeb;

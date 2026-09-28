@@ -1,0 +1,116 @@
+import { NextResponse } from 'next/server';
+import { requireStudioAuth } from '@/lib/api-auth';
+
+export async function GET(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const data = searchParams.get('data');
+    const profissional_id = searchParams.get('profissional_id');
+
+    let query = auth.supabase!
+      .from('salon_appointments')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('start_time');
+
+    if (data) query = query.eq('date', data);
+    if (profissional_id) query = query.eq('professional_id', profissional_id);
+
+    const { data: agendamentos, error } = await query;
+    if (error) {
+      console.error('[api/agendamentos/admin] Erro ao buscar agendamentos:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(agendamentos || []);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const body = await req.json();
+    const { cliente_id, profissional_id, servico_id, data, hora_inicio, hora_fim, status, canal } = body;
+
+    if (!cliente_id || !profissional_id || !servico_id || !data || !hora_inicio) {
+      return NextResponse.json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' }, { status: 400 });
+    }
+
+    // 1. VALIDAÇÃO DE CONFLITO DE HORÁRIO (Double-Booking Check)
+    // Busca agendamentos existentes para o mesmo profissional na mesma data que não foram cancelados
+    const { data: conflicts, error: conflictError } = await auth.supabase!
+      .from('salon_appointments')
+      .select('start_time, end_time')
+      .eq('professional_id', profissional_id)
+      .eq('date', data)
+      .neq('status', 'CANCELLED');
+
+    if (conflictError) {
+      console.error('[api/agendamentos/admin] Erro ao verificar conflitos:', conflictError);
+      return NextResponse.json({ error: 'Erro ao verificar disponibilidade' }, { status: 500 });
+    }
+
+    // Verifica se o novo horário sobrepõe qualquer agendamento existente
+    // Lógica de sobreposição: (InícioA < FimB) AND (FimA > InícioB)
+    const hasOverlap = conflicts?.some((app: any) => {
+    const startA = hora_inicio;
+    const endA = hora_fim || hora_inicio;
+    const startB = app.start_time;
+    const endB = app.end_time;
+    return startA < endB && endA > startB;
+    });
+    // ^ not used anywhere — kept for clarity
+
+    if (hasOverlap) {
+      return NextResponse.json({ 
+        error: 'Este horário já está ocupado por outro agendamento. Por favor, escolha outro slot.' 
+      }, { status: 409 });
+    }
+
+    const canalDb = (canal === 'online' || canal === 'ONLINE') ? 'ONLINE' : 'RECEPTION';
+    
+    let statusDb = 'CONFIRMED';
+    const statusClean = String(status || '').toLowerCase();
+    if (statusClean === 'pendente' || statusClean === 'pending') statusDb = 'PENDING';
+    else if (statusClean === 'em_atendimento' || statusClean === 'in_progress') statusDb = 'IN_PROGRESS';
+    else if (statusClean === 'concluido' || statusClean === 'completed') statusDb = 'COMPLETED';
+    else if (statusClean === 'cancelado' || statusClean === 'cancelled') statusDb = 'CANCELLED';
+    else if (statusClean === 'no_show') statusDb = 'NO_SHOW';
+
+    const insertPayload = {
+      customer_id: cliente_id,
+      professional_id: profissional_id,
+      service_id: servico_id,
+      date: data,
+      start_time: hora_inicio,
+      end_time: hora_fim || hora_inicio,
+      status: statusDb,
+      channel: canalDb,
+    };
+
+    const { data: agendamento, error } = await auth.supabase!
+      .from('salon_appointments')
+      .insert(insertPayload)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[api/agendamentos/admin] Erro ao salvar agendamento:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, agendamento });
+  } catch (err) {
+    console.error('[api/agendamentos/admin] Erro inesperado:', err);
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

@@ -77,7 +77,7 @@ export default function AdminLojaDashboard() {
           const Icon = e.icon;
           return (
             <Link key={e.href} href={e.href}>
-              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r from-primary/5 to-transparent p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
+              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r from-gold/5 to-transparent p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
                 <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
                   <Icon size={17} className={e.cor} />
                 </div>
@@ -85,7 +85,7 @@ export default function AdminLojaDashboard() {
                   <p className="text-[13px] font-semibold text-foreground truncate">{e.label}</p>
                   <p className="text-[11px] text-foreground/50">{e.desc}</p>
                 </div>
-                <ArrowRight size={14} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight size={14} className="ml-auto text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             </Link>
           );
@@ -106,7 +106,7 @@ export default function AdminLojaDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Recent Orders */}
         <Panel className="lg:col-span-2" title="Pedidos Recentes" action={
-          <Link href="/admin-loja/pedidos" className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1">
+          <Link href="/admin-loja/pedidos" className="text-[11px] font-semibold text-gold hover:underline flex items-center gap-1">
             Ver todos <ArrowRight size={13} />
           </Link>
         }>
@@ -145,8 +145,8 @@ export default function AdminLojaDashboard() {
         {/* Quick Actions */}
         <Panel title="Ações Rápidas">
           <div className="space-y-2.5">
-            <Link href="/admin-loja/produtos/novo" className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] hover:border-primary/40 hover:bg-primary/5 transition-colors group">
-              <div className="p-2.5 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-background transition-colors">
+            <Link href="/admin-loja/produtos/novo" className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] hover:border-gold/40 hover:bg-gold/5 transition-colors group">
+              <div className="p-2.5 bg-gold/10 text-gold rounded-lg group-hover:bg-gold group-hover:text-background transition-colors">
                 <Package size={17} />
               </div>
               <div>

@@ -1,0 +1,152 @@
+import React, { useState } from 'react';
+import Link from 'next/link';
+
+// Mock data for the course internal page
+const COURSE_DATA = {
+  title: 'Marketing Digital de Elite',
+  instructor: 'Agnaldo Gomes',
+  description: 'Aprenda as estratégias exatas para escalar seu negócio e atrair clientes de alto valor utilizando funis automatizados e tráfego pago.',
+  progress: 42,
+  totalLessons: 42,
+  completedLessons: 18,
+  cover: 'https://images.unsplash.com/photo-1460925895917-afbe65ae8364?w=1200&q=80',
+  modules: [
+    {
+      id: 'm1',
+      title: 'Módulo 1 — Fundamentos do Marketing',
+      lessons: [
+        { id: 'l1', title: 'Boas-vindas e Mentalidade', duration: '08:20', status: 'completed' },
+        { id: 'l2', title: 'Conceitos Principais de Escala', duration: '14:35', status: 'completed' },
+        { id: 'l3', title: 'Definindo seu Avatar Ideal', duration: '22:10', status: 'current' },
+        { id: 'l4', title: 'Análise de Mercado e Concorrência', duration: '18:40', status: 'locked' },
+      ],
+    },
+    {
+      id: 'm2',
+      title: 'Módulo 2 — Estrutura de Funis',
+      lessons: [
+        { id: 'l5', title: 'O que é um Funil de Vendas?', duration: '12:15', status: 'locked' },
+        { id: 'l6', title: 'Landing Pages de Alta Conversão', duration: '25:40', status: 'locked' },
+        { id: 'l7', title: 'Automação de E-mail e WhatsApp', duration: '30:10', status: 'locked' },
+      ],
+    },
+    {
+      id: 'm3',
+      title: 'Módulo 3 — Tráfego Pago Avançado',
+      lessons: [
+        { id: 'l8', title: 'Facebook Ads para Iniciantes', duration: '45:00', status: 'locked' },
+        { id: 'l9', title: 'Google Ads e Intenção de Busca', duration: '40:20', status: 'locked' },
+      ],
+    },
+  ],
+};
+
+export default function CoursePage() {
+  const [expandedModules, setExpandedModules] = useState<string[]>(['m1']);
+
+  const toggleModule = (id: string) => {
+    setExpandedModules(prev => 
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <div className="pb-20 px-4 sm:px-8 max-w-5xl mx-auto">
+      {/* Course Header */}
+      <div className="relative w-full h-[300px] rounded-3xl overflow-hidden my-6 group">
+        <img src={COURSE_DATA.cover} alt={COURSE_DATA.title} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 p-8 w-full">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-3xl sm:text-5xl font-bold mb-2">{COURSE_DATA.title}</h1>
+              <p className="text-gray-300 text-sm sm:text-base max-w-2xl line-clamp-2">{COURSE_DATA.description}</p>
+            </div>
+            <div className="flex flex-col items-end gap-3">
+              <div className="flex items-center gap-3 text-sm font-medium">
+                <span className="text-gray-400">Progresso: {COURSE_DATA.progress}%</span>
+                <div className="w-32 h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#B8860B]" style={{ width: `${COURSE_DATA.progress}%` }} />
+                </div>
+              </div>
+              <Link 
+                href={`/academy/aula/l3`} 
+                className="bg-[#B8860B] text-black px-6 py-2 rounded-full font-bold hover:bg-white transition-all"
+              >
+                Continuar de onde parei
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Course Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-2xl font-bold flex items-center gap-2 mb-6">
+            <span className="w-1 h-6 bg-[#B8860B] rounded-full" />
+            Conteúdo do Curso
+          </h2>
+
+          {COURSE_DATA.modules.map((module) => (
+            <div key={module.id} className="border border-white/10 rounded-2xl overflow-hidden bg-white/[0.02]">
+              <button 
+                onClick={() => toggleModule(module.id)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <span className={`transition-transform duration-300 ${expandedModules.includes(module.id) ? 'rotate-90' : ''}`}>
+                    ▶
+                  </span>
+                  <span className="font-bold text-lg">{module.title}</span>
+                </div>
+                <span className="text-xs text-gray-500">{module.lessons.length} aulas</span>
+              </button>
+
+              {expandedModules.includes(module.id) && (
+                <div className="px-6 pb-4 space-y-2">
+                  {module.lessons.map((lesson) => (
+                    <Link 
+                      key={lesson.id} 
+                      href={`/academy/aula/${lesson.id}`}
+                      className={`flex items-center justify-between p-3 rounded-xl transition-all ${
+                        lesson.status === 'current' ? 'bg-[#B8860B]/10 border border-[#B8860B]/30' : 'hover:bg-white/[0.05] border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm">
+                          {lesson.status === 'completed' ? '✅' : lesson.status === 'current' ? '▶' : '🔒'}
+                        </span>
+                        <span className={`text-sm ${lesson.status === 'current' ? 'text-[#B8860B] font-bold' : 'text-gray-300'}`}>
+                          {lesson.title}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">{lesson.duration}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-8">
+          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+            <h3 className="font-bold text-lg mb-4">Recursos Adicionais</h3>
+            <div className="space-y-3">
+              <button className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm flex items-center gap-3">
+                <span>📄</span> Material de Apoio (PDF)
+              </button>
+              <button className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm flex items-center gap-3">
+                <span>💬</span> Fórum da Turma
+              </button>
+              <button className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm flex items-center gap-3">
+                <span>🎓</span> Emitir Certificado
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

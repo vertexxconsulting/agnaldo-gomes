@@ -11,10 +11,12 @@ import { ROLES } from '@/lib/auth';
 export default function AdminAcademyLoginPage() {
   return (
     <SplitLogin
-      logoSrc="/logo-agnaldo.png"
+      logoSrc="/opt/logo-hero.png"
       sideBg="dark"
-      title="Admin Academy"
-      subtitle="Painel de gestão de cursos e alunos — Agnaldo Gomes Academy"
+      sideBgImage="/Metodo-AG.webp"
+      centeredCard={true}
+      title="Gestão Academy"
+      subtitle="Controle total sobre alunos, cursos, aulas e relatórios financeiros da plataforma educacional."
       formTitle="Administração Academy"
       formSubtitle="Acesse o painel administrativo de cursos, alunos e certificados"
       cta="Acessar Painel"

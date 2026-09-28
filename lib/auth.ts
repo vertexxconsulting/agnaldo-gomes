@@ -1,26 +1,36 @@
 export const ROLES = {
+  ADMIN: 'ADMIN',
   STUDIO_ADMIN: 'studio_admin',
   ACADEMY_ADMIN: 'academy_admin',
   LOJA_ADMIN: 'loja_admin',
-  ALUNO: 'aluno',
-  /** Secretária do salão: acesso somente ao Studio (sem Academy/Loja) */
+  ALUNO: 'STUDENT',
   STUDIO_SECRETARIA: 'studio_secretaria',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  ADMIN: 'Administrador Geral',
+  studio_admin: 'Gestor do Studio',
+  academy_admin: 'Gestor da Academy',
+  loja_admin: 'Gestor da Loja',
+  STUDENT: 'Aluno',
+  studio_secretaria: 'Secretária do Studio',
+};
+
 export const AREA_LABELS: Record<Role, string> = {
+  ADMIN: 'Administrador Geral',
   studio_admin: 'Studio (painel do salão)',
   academy_admin: 'Academy (administração de cursos)',
   loja_admin: 'Loja (e-commerce)',
-  aluno: 'Aluno (área de cursos)',
+  STUDENT: 'Aluno (área de cursos)',
   studio_secretaria: 'Secretaria (Studio)',
 };
 
 /** Rotas de área e o papel exigido para acessá-las */
 export const AREA_ROLES: Record<string, Role> = {
   '/admin': ROLES.STUDIO_ADMIN,
-  '/hub': ROLES.STUDIO_SECRETARIA, // secretária e admin do Studio entram; o hub filtra módulos por papel
+  '/hub': ROLES.STUDIO_SECRETARIA,
   '/admin-academy': ROLES.ACADEMY_ADMIN,
   '/admin-loja': ROLES.LOJA_ADMIN,
   '/aluno': ROLES.ALUNO,
@@ -46,9 +56,10 @@ export function getArea(pathname: string): string | null {
 export function getUserRole(
   user: { user_metadata?: Record<string, unknown> } | null | undefined
 ): Role | null {
-  const role = user?.user_metadata?.role;
-  if (typeof role !== 'string') return null;
-  return (Object.values(ROLES) as string[]).includes(role) ? (role as Role) : null;
+  const metaRole = user?.user_metadata?.role;
+  if (typeof metaRole !== 'string') return null;
+  const roleStr = metaRole === 'admin' ? 'ADMIN' : metaRole;
+  return (Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null;
 }
 
 /** Se o usuário é o dono do salão (vê todos os módulos no hub) */
@@ -58,7 +69,9 @@ export function isOwner(
   const meta = user?.user_metadata;
   if (!meta) return false;
   if (meta.isOwner === true || meta.is_owner === true) return true;
-  return getUserRole(user) === ROLES.STUDIO_ADMIN;
+  const role = getUserRole(user);
+  if (role === ROLES.ADMIN || role === ROLES.STUDIO_ADMIN) return true;
+  return false;
 }
 
 /** Módulos que cada papel pode ver no Command Center (/hub) */
@@ -69,11 +82,10 @@ export function getHubModules(
 ): HubModule[] {
   const role = getUserRole(user);
   if (role === ROLES.STUDIO_SECRETARIA) return ['studio'];
-  if (role === ROLES.ACADEMY_ADMIN || role === ROLES.LOJA_ADMIN || role === ROLES.STUDIO_ADMIN) {
+  if (role === ROLES.ADMIN || role === ROLES.ACADEMY_ADMIN || role === ROLES.LOJA_ADMIN || role === ROLES.STUDIO_ADMIN) {
     return ['studio', 'academy', 'loja'];
   }
   if (role === ROLES.ALUNO) return ['academy'];
-  // Sem sessão (demo) exibe todos os módulos
   return ['studio', 'academy', 'loja'];
 }
 

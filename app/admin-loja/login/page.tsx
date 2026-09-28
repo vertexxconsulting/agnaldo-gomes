@@ -6,9 +6,11 @@ import { ROLES } from '@/lib/auth';
 export default function AdminLojaLoginPage() {
   return (
     <SplitLogin
-      logoSrc="/logo-agnaldo.png"
+      logoSrc="/logo-agnaldo.svg"
       sideBg="dark"
-      title="Store Admin"
+      sideBgImage="/Metodo-AG.webp"
+      centeredCard={true}
+      title="Loja Admin AG"
       subtitle="Painel de controle do e-commerce Agnaldo Gomes."
       formTitle="Acesso Administrativo"
       formSubtitle="Gerencie produtos, pedidos e integrações."

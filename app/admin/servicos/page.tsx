@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Clock, Eye, EyeOff } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -162,20 +162,20 @@ export default function ServicosPage() {
             <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Nome</label>
-                <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Categoria</label>
-                <input name="categoria" required defaultValue={editando?.categoria ?? ''} list="categorias-list" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="categoria" required defaultValue={editando?.categoria ?? ''} list="categorias-list" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 <datalist id="categorias-list">{categorias.map(c => <option key={c} value={c} />)}</datalist>
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Duração (min)</label>
-                <input name="duracao_min" type="number" min={5} required defaultValue={editando?.duracao_min ?? 30} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="duracao_min" type="number" min={5} required defaultValue={editando?.duracao_min ?? 30} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
-                <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div className="flex items-end gap-2">
                 <Button type="submit" variant="primary" size="md" className="flex-1">Salvar</Button>
@@ -203,9 +203,9 @@ export default function ServicosPage() {
               {filtrados.map(s => (
                 <tr key={s.id} className={`border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5 ${!s.ativo ? 'opacity-50' : ''}`}>
                   <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
-                  <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary">{s.categoria}</span></td>
+                  <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{s.categoria}</span></td>
                   <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
-                  <td className="py-3 pr-4 text-primary font-semibold"><DollarSign size={13} className="inline" />R$ {Number(s.preco).toFixed(2)}</td>
+                  <td className="py-3 pr-4 text-gold font-semibold">R$ {Number(s.preco).toFixed(2)}</td>
                   <td className="py-3 pr-4 text-foreground/60 text-xs">
                     {(() => {
                       const profs = profsPorServico(s.id);
@@ -226,7 +226,7 @@ export default function ServicosPage() {
                   </td>
                   <td className="py-3 pr-4 text-right">
                     <div className="inline-flex gap-1">
-                      <button onClick={() => { setEditando(s); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-primary transition-colors"><Edit size={14} /></button>
+                      <button onClick={() => { setEditando(s); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
                       <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </td>
@@ -249,7 +249,7 @@ export default function ServicosPage() {
           ].map((item, i) => (
             <CardGlass key={i} className="text-center py-4">
               <span className="text-xs text-foreground/50 uppercase tracking-wider">{item.label}</span>
-              <div className="text-2xl font-bold text-primary mt-1">{item.value}</div>
+              <div className="text-2xl font-bold text-gold mt-1">{item.value}</div>
             </CardGlass>
           ))}
         </div>

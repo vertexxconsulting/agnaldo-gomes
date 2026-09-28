@@ -172,7 +172,7 @@ export default function ComunidadePage() {
       <div className="max-w-3xl mx-auto w-full">
 
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-white mb-2">Comunidade</h1>
+          <h1 className="text-3xl font-black text-foreground mb-2">Comunidade</h1>
           <p className="text-white/60">Troque experiências, tire dúvidas e compartilhe seus resultados.</p>
         </div>
 
@@ -187,10 +187,10 @@ export default function ComunidadePage() {
                 value={newPost}
                 onChange={e => setNewPost(e.target.value)}
                 placeholder="Compartilhe algo com a comunidade..."
-                className="w-full bg-transparent text-white resize-none outline-none min-h-[80px] placeholder:text-white/40 custom-scrollbar"
+                className="w-full bg-transparent text-foreground resize-none outline-none min-h-[80px] placeholder:text-white/40 custom-scrollbar"
               />
               <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-2">
-                <button className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-sm">
+                <button className="text-white/50 hover:text-foreground transition-colors flex items-center gap-2 text-sm">
                   <ImageIcon size={18} />
                   <span>Foto/Vídeo</span>
                 </button>
@@ -219,15 +219,15 @@ export default function ComunidadePage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-sm">{post.author.name}</span>
+                      <span className="font-bold text-foreground text-sm">{post.author.name}</span>
                       {post.author.isProfessor && (
-                        <span className="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Professor</span>
+                        <span className="bg-gold/20 text-gold text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Professor</span>
                       )}
                     </div>
                     <div className="text-xs text-white/40">{post.time}</div>
                   </div>
                 </div>
-                <button className="text-white/30 hover:text-white">
+                <button className="text-white/30 hover:text-foreground">
                   <MoreHorizontal size={20} />
                 </button>
               </div>
@@ -239,14 +239,14 @@ export default function ComunidadePage() {
               <div className="flex items-center gap-6 border-t border-white/10 pt-4">
                 <button
                   onClick={() => handleCurtir(post.id, post.likes)}
-                  className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 text-white/50 hover:text-foreground transition-colors text-sm font-medium"
                 >
                   <Heart size={18} /> {post.likes}
                 </button>
-                <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm font-medium">
+                <button className="flex items-center gap-2 text-white/50 hover:text-foreground transition-colors text-sm font-medium">
                   <MessageSquare size={18} /> {post.comments}
                 </button>
-                <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm font-medium">
+                <button className="flex items-center gap-2 text-white/50 hover:text-foreground transition-colors text-sm font-medium">
                   <Share2 size={18} /> Compartilhar
                 </button>
               </div>

@@ -36,18 +36,10 @@ export async function getMPConfig(): Promise<ConfiguracaoMP> {
     mpConfigUpdatedAt = Date.now();
     return cfg;
   } catch {
-    /* fallback localStorage */
+    // Log error but don't crash
+    console.error('Failed to fetch MP config from DB');
   }
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const cfg = JSON.parse(raw);
-      return {
-        accessToken: String(cfg?.accessToken ?? ENV_TOKEN),
-        ativo: Boolean(cfg?.ativo) && String(cfg?.accessToken || ENV_TOKEN).length > 0,
-      };
-    }
-  } catch {}
+  
   return { accessToken: ENV_TOKEN, ativo: ENV_TOKEN.length > 0 };
 }
 
@@ -58,13 +50,10 @@ export async function saveMPConfig(cfg: ConfiguracaoMP) {
       access_token: cfg.accessToken || null,
       enabled: cfg.ativo,
     });
-    // Mantém o localStorage em sincronia para quem ainda o lê
-    localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-    mpConfigCache = null; // invalida o cache
-  } catch {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-    } catch {}
+    // Invalida o cache para forçar a nova leitura do banco
+    mpConfigCache = null; 
+  } catch (e) {
+    console.error('Error saving MP config:', e);
   }
 }
 

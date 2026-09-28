@@ -12,9 +12,10 @@ export default function AcademyLoginPage() {
   return (
     <SplitLogin
       logoSrc="/opt/logo-hero.png"
-      sideBg="light"
+      sideBg="dark"
+      sideBgImage="/Metodo-AG.webp"
+      centeredCard={true}
       title="Academy AG"
-      titleClassName="text-gradient"
       subtitle="Formação e educação de elite. Acesse seus cursos e certificados."
       formTitle="Área do Aluno"
       formSubtitle="Acesse seus cursos online e acompanhe seu progresso"

@@ -1,0 +1,105 @@
+import React from 'react';
+import Link from 'next/link';
+
+// Mock data for a specific lesson
+const LESSON_DATA = {
+  title: 'Definindo seu Avatar Ideal',
+  course: 'Marketing Digital de Elite',
+  module: 'Módulo 1 — Fundamentos',
+  duration: '22:10',
+  videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Placeholder
+  description: 'Nesta aula, vamos mergulhar na criação da Persona. Você aprenderá a diferenciar Público-Alvo de Avatar e como usar a psicologia do consumidor para criar ofertas irresistíveis.',
+  materials: [
+    { name: 'Planilha de Persona.xlsx', type: 'xls' },
+    { name: 'Guia de Perguntas para Entrevista.pdf', type: 'pdf' },
+  ],
+};
+
+export default function LessonPage() {
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white pb-20">
+      {/* Breadcrumbs */}
+      <div className="max-w-7xl mx-auto px-4 py-6 flex items-center gap-2 text-xs text-gray-500">
+        <Link href="/academy" className="hover:text-[#B8860B]">Início</Link>
+        <span>/</span>
+        <Link href="/academy/curso/marketing-digital" className="hover:text-[#B8860B]">Marketing Digital</Link>
+        <span>/</span>
+        <span className="text-gray-300">{LESSON_DATA.module}</span>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Player Section */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="relative aspect-video w-full rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black">
+            <iframe 
+              className="w-full h-full"
+              src={LESSON_DATA.videoUrl}
+              title={LESSON_DATA.title}
+              frameBorder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowFullScreen
+            ></iframe>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">{LESSON_DATA.title}</h1>
+              <p className="text-gray-400 text-sm">{LESSON_DATA.duration} • {LESSON_DATA.module}</p>
+            </div>
+            <button className="bg-[#B8860B] text-black px-6 py-3 rounded-full font-bold hover:bg-white transition-all flex items-center justify-center gap-2">
+              <span>✅</span> Marcar como Concluída
+            </button>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+            <h3 className="font-bold text-lg mb-3">Sobre esta aula</h3>
+            <p className="text-gray-300 leading-relaxed">
+              {LESSON_DATA.description}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-6">
+            <Link href="#" className="text-sm text-gray-400 hover:text-white flex items-center gap-2 transition-colors">
+              <span>←</span> Aula Anterior
+            </Link>
+            <Link href="#" className="text-sm text-[#B8860B] hover:text-white flex items-center gap-2 font-bold transition-colors">
+              Próxima Aula <span>→</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Sidebar / Materials */}
+        <div className="space-y-6">
+          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <span>📎</span> Materiais da Aula
+            </h3>
+            <div className="space-y-3">
+              {LESSON_DATA.materials.map((file, idx) => (
+                <button key={idx} className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm flex items-center justify-between group">
+                  <span className="text-gray-300 group-hover:text-white transition-colors">{file.name}</span>
+                  <span className="text-[10px] bg-white/10 px-2 py-1 rounded uppercase">{file.type}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <span>📝</span> Minhas Anotações
+            </h3>
+            <textarea 
+              placeholder="Digite suas anotações sobre esta aula..."
+              className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B] transition-all resize-none"
+            />
+            <button className="w-full mt-3 py-2 text-xs font-bold text-gray-400 hover:text-white transition-colors">
+              Salvar anotação
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

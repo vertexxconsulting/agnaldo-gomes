@@ -98,9 +98,9 @@ export function AcademyCheckout({
         className="bg-[var(--color-card)] rounded-2xl w-full max-w-md overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-primary/20">
+        <div className="p-6 border-b border-gold/20">
           <h3 className="font-serif text-xl font-bold flex items-center gap-2">
-            <CreditCard className="text-primary" size={20} />
+            <CreditCard className="text-gold" size={20} />
             Matricular-se — {curso}
           </h3>
           <p className="text-xs text-foreground/60 mt-1">
@@ -120,7 +120,7 @@ export function AcademyCheckout({
             </p>
             <button
               onClick={onClose}
-              className="bg-primary text-background px-6 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+              className="bg-gold text-background px-6 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
             >
               Fechar
             </button>
@@ -136,12 +136,12 @@ export function AcademyCheckout({
                     onClick={() => setPlano({ curso, label: p.label, valor: p.valor })}
                     className={`flex items-center justify-between border rounded-lg px-4 py-2.5 text-sm transition-colors ${
                       plano?.label === p.label
-                        ? 'border-primary bg-primary/10 font-bold'
-                        : 'border-foreground/15 hover:border-primary/50'
+                        ? 'border-gold bg-gold/10 font-bold'
+                        : 'border-foreground/15 hover:border-gold/50'
                     }`}
                   >
                     <span>{p.label}</span>
-                    <span className="text-primary">{p.valor}</span>
+                    <span className="text-gold">{p.valor}</span>
                   </button>
                 ))}
               </div>
@@ -154,7 +154,7 @@ export function AcademyCheckout({
                   value={nome}
                   onChange={e => setNome(e.target.value)}
                   placeholder="Seu nome"
-                  className="mt-1 w-full bg-background border border-foreground/15 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-primary"
+                  className="mt-1 w-full bg-background border border-foreground/15 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-gold"
                 />
               </div>
               <div>
@@ -164,7 +164,7 @@ export function AcademyCheckout({
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="voce@email.com"
-                  className="mt-1 w-full bg-background border border-foreground/15 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-primary"
+                  className="mt-1 w-full bg-background border border-foreground/15 px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:border-gold"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ export function AcademyCheckout({
               <button
                 onClick={confirmar}
                 disabled={loading}
-                className="flex-1 bg-primary text-background px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-60 transition-opacity inline-flex items-center justify-center gap-2"
+                className="flex-1 bg-gold text-background px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-60 transition-opacity inline-flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <><Loader2 size={14} className="animate-spin" /> Abrindo pagamento...</>

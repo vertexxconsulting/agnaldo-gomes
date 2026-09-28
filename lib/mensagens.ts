@@ -17,9 +17,47 @@ function primeiroNome(nomeCompleto: string): string {
   return (nomeCompleto || '').trim().split(/\s+/)[0] || '';
 }
 
+/**
+ * Lista de primeiros nomes masculinos comuns no Brasil.
+ * Usada para detectar gênero e adaptar a mensagem de aniversário.
+ */
+const NOMES_MASCULINOS = new Set([
+  'anderson', 'andre', 'antonio', 'arthur', 'bernardo', 'breno', 'bruno', 'caio', 'carlos',
+  'cauã', 'caua', 'celso', 'christian', 'cristian', 'daniel', 'davi', 'dario', 'diego',
+  'douglas', 'eder', 'eduardo', 'elias', 'emerson', 'enrique', 'enzo', 'fabio', 'felipe',
+  'fernado', 'flavio', 'francisco', 'gabriel', 'gilberto', 'giovanni', 'guilherme', 'gustavo',
+  'heitor', 'henrique', 'hugo', 'igor', 'isaias', 'iago', 'ivan', 'joao', 'jose', 'jorge',
+  'junior', 'kaio', 'kaique', 'kevin', 'laercio', 'luan', 'lucas', 'luiz', 'luís', 'luis',
+  'marcelo', 'marcos', 'mario', 'mateus', 'matheus', 'miguel', 'murilo', 'nicolas', 'noel',
+  'otavio', 'pablo', 'patrick', 'paulo', 'pedro', 'rafael', 'raphael', 'raul', 'renan',
+  'renato', 'ricardo', 'roberto', 'rodrigo', 'rogerio', 'ruan', 'samuel', 'sergio', 'tiago',
+  'thiago', 'thomas', 'thales', 'victor', 'vinicius', 'vinícius', 'vitor', 'wagner', 'wellington',
+  'willian', 'william', 'yan', 'yuri',
+]);
+
+/** Detecta se um nome completo é provavelmente masculino pelo primeiro nome */
+export function isMasculino(nomeCompleto: string): boolean {
+  const primeiro = primeiroNome(nomeCompleto).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos para comparar
+  return NOMES_MASCULINOS.has(primeiro);
+}
+
 /** Aniversário — disparo no dia, às 08h */
 export function msgAniversario(nomeCompleto: string): string {
   const nome = primeiroNome(nomeCompleto);
+  const masculino = isMasculino(nomeCompleto);
+
+  if (masculino) {
+    // Mensagem sem o mimo da hidratação (serviço feminino)
+    return (
+      `🎂 *Feliz Aniversário, ${nome}*! 🥳\n\n` +
+      `A equipe ${STUDIO} deseja que este dia seja incrível — cheio de conquistas, alegria e muita energia positiva! 💛\n\n` +
+      `Qualquer serviço que precisar, estamos aqui para cuidar do melhor de você!\n` +
+      `Responda esta mensagem e garantimos o melhor horário. ✨`
+    );
+  }
+
+  // Mensagem com o mimo da hidratação — para clientes mulheres
   return (
     `🌸 *Feliz Aniversário, ${nome}*! 🎂\n\n` +
     `A equipe ${STUDIO} deseja que este dia seja tão especial quanto você — cheio de beleza, alegria e boas energias.\n\n` +

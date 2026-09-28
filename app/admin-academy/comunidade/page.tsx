@@ -138,13 +138,13 @@ export default function AdminAcademyComunidade() {
       <div className="flex items-center gap-4 mb-6 border-b border-[var(--border-subtle)] pb-4">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`font-medium text-sm transition-colors ${activeTab === 'pending' ? 'text-primary' : 'text-foreground/50 hover:text-foreground'}`}
+          className={`font-medium text-sm transition-colors ${activeTab === 'pending' ? 'text-gold' : 'text-foreground/50 hover:text-foreground'}`}
         >
           Pendentes de Resposta ({comentarios.filter(c => c.status === 'pending').length})
         </button>
         <button
           onClick={() => setActiveTab('all')}
-          className={`font-medium text-sm transition-colors ${activeTab === 'all' ? 'text-primary' : 'text-foreground/50 hover:text-foreground'}`}
+          className={`font-medium text-sm transition-colors ${activeTab === 'all' ? 'text-gold' : 'text-foreground/50 hover:text-foreground'}`}
         >
           Todos os Comentários
         </button>
@@ -158,7 +158,7 @@ export default function AdminAcademyComunidade() {
             placeholder="Buscar por aluno ou palavra-chave..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-sm focus:outline-none focus:border-primary text-foreground"
+            className="w-full pl-10 pr-4 py-2 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-sm focus:outline-none focus:border-gold text-foreground"
           />
         </div>
         <Button variant="outline" className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function AdminAcademyComunidade() {
           <div key={comment.id} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl p-5">
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center text-gold font-bold">
                   {comment.student.charAt(0)}
                 </div>
                 <div>

@@ -118,8 +118,10 @@ export default function ProfissionaisPage() {
     for (let d = 0; d <= 6; d++) {
       const inicio = form.get(`jornada_${d}_inicio`) as string;
       const fim = form.get(`jornada_${d}_fim`) as string;
+      const intervalo_inicio = form.get(`jornada_${d}_intervalo_inicio`) as string;
+      const intervalo_fim = form.get(`jornada_${d}_intervalo_fim`) as string;
       if (inicio && fim) {
-        jornada[d] = { inicio, fim };
+        jornada[d] = { inicio, fim, intervalo_inicio, intervalo_fim };
       }
     }
     const profissionalData = {
@@ -179,6 +181,10 @@ export default function ProfissionaisPage() {
   };
 
   const abrirForm = (prof?: Profissional) => {
+    // Recolhe todas as categorias de serviços por padrão para deixar a tela limpa
+    const todasCategorias = Array.from(new Set(servicosCache.map(s => s.categoria || 'Outros')));
+    setCategoriasColapsadas(todasCategorias);
+
     if (prof) {
       setEditando(prof);
       setFotoLocal(prof.foto_url ?? null);
@@ -236,11 +242,11 @@ export default function ProfissionaisPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
-                  <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" />
+                  <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Especialidades <span className="text-foreground/30">(separar por vírgula)</span></label>
-                  <input name="especialidades" defaultValue={editando?.especialidades?.join(', ') ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-primary" placeholder="Corte, Coloração" />
+                  <input name="especialidades" defaultValue={editando?.especialidades?.join(', ') ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" placeholder="Corte, Coloração" />
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Foto <span className="text-foreground/30">(opcional)</span></label>
@@ -250,7 +256,7 @@ export default function ProfissionaisPage() {
                         <Image src={fotoLocal} alt="Prévia" fill className="object-cover" />
                       </div>
                     )}
-                    <label className="flex-1 flex items-center gap-2 cursor-pointer bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm hover:border-primary transition-colors">
+                    <label className="flex-1 flex items-center gap-2 cursor-pointer bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm hover:border-gold transition-colors">
                       <span className="truncate flex-1">{fotoLocal ? 'Trocar Foto...' : 'Selecionar Arquivo...'}</span>
                       <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
                     </label>
@@ -276,7 +282,7 @@ export default function ProfissionaisPage() {
                     <div key={categoria} className="bg-[var(--background)] p-3 rounded-lg border border-[var(--border-subtle)]">
                       <button
                         type="button"
-                        className="w-full text-xs font-bold uppercase tracking-wider text-primary flex items-center justify-between cursor-pointer"
+                        className="w-full text-xs font-bold uppercase tracking-wider text-gold flex items-center justify-between cursor-pointer"
                         onClick={() => setCategoriasColapsadas(prev =>
                           prev.includes(categoria)
                             ? prev.filter(c => c !== categoria)
@@ -295,7 +301,7 @@ export default function ProfissionaisPage() {
                       {!categoriasColapsadas.includes(categoria) && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
                           {servicos.map(servico => (
-                            <label key={servico.id} className="flex items-center gap-2 text-sm text-foreground bg-[var(--color-card)] border border-[var(--border-subtle)] p-2 rounded cursor-pointer hover:border-primary transition-colors">
+                            <label key={servico.id} className="flex items-center gap-2 text-sm text-foreground bg-[var(--color-card)] border border-[var(--border-subtle)] p-2 rounded cursor-pointer hover:border-gold transition-colors">
                               <input 
                                 type="checkbox" 
                                 checked={servicosSelecionados.includes(servico.id)} 
@@ -326,7 +332,7 @@ export default function ProfissionaisPage() {
                     const isAtivo = diasAtivos.includes(i);
                     const jornada = editando?.jornada_semanal?.[i];
                     return (
-                      <div key={i} className={`rounded-lg p-3 border transition-colors ${isAtivo ? 'bg-[var(--background)] border-primary/50' : 'bg-foreground/5 border-[var(--border-subtle)]'}`}>
+                      <div key={i} className={`rounded-lg p-3 border transition-colors ${isAtivo ? 'bg-[var(--background)] border-gold/50' : 'bg-foreground/5 border-[var(--border-subtle)]'}`}>
                         <label className="flex items-center justify-center gap-2 cursor-pointer mb-2">
                           <input 
                             type="checkbox" 
@@ -337,13 +343,18 @@ export default function ProfissionaisPage() {
                             }}
                             className="accent-primary"
                           />
-                          <span className={`text-sm font-bold ${isAtivo ? 'text-primary' : 'text-foreground/60'}`}>{dia}</span>
+                          <span className={`text-sm font-bold ${isAtivo ? 'text-gold' : 'text-foreground/60'}`}>{dia}</span>
                         </label>
                         
                         {isAtivo ? (
                           <div className="space-y-1 animate-in fade-in">
-                            <input name={`jornada_${i}_inicio`} type="time" defaultValue={jornada?.inicio ?? '09:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-primary [color-scheme:dark]" required />
-                            <input name={`jornada_${i}_fim`} type="time" defaultValue={jornada?.fim ?? '18:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-primary [color-scheme:dark]" required />
+                            <input name={`jornada_${i}_inicio`} type="time" defaultValue={jornada?.inicio ?? '09:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-gold" required />
+                            <input name={`jornada_${i}_fim`} type="time" defaultValue={jornada?.fim ?? '18:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-gold" required />
+                            <div className="pt-2 border-t border-[var(--border-subtle)] mt-1">
+                              <span className="text-[9px] text-foreground/50 block text-center mb-1">Intervalo</span>
+                              <input name={`jornada_${i}_intervalo_inicio`} type="time" defaultValue={jornada?.intervalo_inicio ?? '12:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-gold mb-1" />
+                              <input name={`jornada_${i}_intervalo_fim`} type="time" defaultValue={jornada?.intervalo_fim ?? '13:00'} className="w-full bg-transparent border border-[var(--border-subtle)] rounded px-2 py-1 text-xs text-center text-foreground focus:outline-none focus:border-gold" />
+                            </div>
                           </div>
                         ) : (
                           <div className="text-[10px] text-foreground/40 text-center py-2">Folga</div>
@@ -371,10 +382,10 @@ export default function ProfissionaisPage() {
             return (
               <CardGlass key={prof.id} className={`transition-all duration-300 ${!prof.ativo ? 'opacity-50' : ''}`}>
                 <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                  {/* Avatar compacto */}
+                  <div className="relative w-14 h-14 rounded-full bg-gold/10 flex items-center justify-center text-gold shrink-0 overflow-hidden border border-gold/20">
                     {prof.foto_url ? (
-                      <Image src={prof.foto_url} alt={prof.nome} fill className="object-cover" />
+                      <Image src={prof.foto_url} alt={prof.nome} fill className="object-cover" sizes="56px" />
                     ) : (
                       <User2 size={24} />
                     )}
@@ -393,7 +404,7 @@ export default function ProfissionaisPage() {
                     {prof.especialidades && prof.especialidades.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {prof.especialidades.map(esp => (
-                          <span key={esp} className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-medium">{esp}</span>
+                          <span key={esp} className="px-2 py-0.5 rounded-full text-[10px] bg-gold/10 text-gold font-medium">{esp}</span>
                         ))}
                       </div>
                     )}
@@ -423,9 +434,14 @@ export default function ProfissionaisPage() {
                             {DIAS_SEMANA.map((dia, i) => {
                               const j = prof.jornada_semanal[i];
                               return (
-                                <div key={i} className={`text-center rounded p-1.5 text-[10px] ${j ? 'bg-primary/10 text-primary' : 'bg-foreground/5 text-foreground/30'}`}>
+                                <div key={i} className={`text-center rounded p-1.5 text-[10px] ${j ? 'bg-gold/10 text-gold' : 'bg-foreground/5 text-foreground/30'}`}>
                                   <div className="font-bold">{dia}</div>
-                                  {j ? <div>{j.inicio}-{j.fim}</div> : <div>Folga</div>}
+                                  {j ? (
+                                    <>
+                                      <div>{j.inicio}-{j.fim}</div>
+                                      {(j.intervalo_inicio && j.intervalo_fim) && <div className="text-[8.5px] opacity-70 mt-0.5">Pausa: {j.intervalo_inicio}-{j.intervalo_fim}</div>}
+                                    </>
+                                  ) : <div>Folga</div>}
                                 </div>
                               );
                             })}
@@ -438,7 +454,7 @@ export default function ProfissionaisPage() {
                   {/* Ações */}
                   <div className="flex flex-col gap-1 shrink-0">
                     <button onClick={() => setExpandido(isExpanded ? null : prof.id)} className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/40 hover:text-foreground/70 text-xs">{isExpanded ? '▲' : '▼'}</button>
-                    <button onClick={() => abrirForm(prof)} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-primary transition-colors"><Edit size={14} /></button>
+                    <button onClick={() => abrirForm(prof)} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
                     <button onClick={() => toggleAtivo(prof.id)} title={prof.ativo ? 'Desativar' : 'Ativar'} className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-amber-400 transition-colors"><User2 size={14} /></button>
                     <button onClick={() => excluir(prof.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                   </div>

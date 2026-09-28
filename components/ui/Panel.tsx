@@ -22,17 +22,17 @@ export function Panel({
   return (
     <section
       className={cn(
-        'rounded-2xl bg-[var(--color-card)] border border-[var(--border-subtle)]',
-        'shadow-[0_1px_2px_rgba(20,18,14,0.04)]',
-        'transition-shadow duration-300 hover:shadow-[0_4px_16px_rgba(20,18,14,0.07)]',
+        'rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)]',
+        'shadow-sm',
+        'transition-shadow duration-300 hover:shadow-md',
         compact ? 'p-4' : 'p-6',
         className
       )}
     >
       {(title || action) && (
-        <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center justify-between gap-3 mb-4">
           {title && (
-            <h3 className="text-sm font-semibold text-foreground tracking-tight">{title}</h3>
+            <h3 className="text-sm font-bold text-foreground">{title}</h3>
           )}
           {action && <div className="shrink-0">{action}</div>}
         </div>
@@ -59,12 +59,21 @@ export function StatCard({
   className?: string;
 }) {
   const tones: Record<string, string> = {
-    default: 'bg-primary/8 border-primary/25',
-    primary: 'bg-primary/10 border-primary/35',
-    success: 'bg-success/8 border-success/25',
-    warning: 'bg-warning/8 border-warning/25',
-    danger: 'bg-danger/8 border-danger/25',
+    default: 'border-[var(--border-subtle)]',
+    primary: 'border-primary/30 shadow-[0_4px_12px_rgba(212,175,55,0.05)]',
+    success: 'border-success/30 shadow-[0_4px_12px_rgba(16,185,129,0.05)]',
+    warning: 'border-warning/30 shadow-[0_4px_12px_rgba(245,158,11,0.05)]',
+    danger: 'border-danger/30 shadow-[0_4px_12px_rgba(239,68,68,0.05)]',
   };
+  
+  const iconBg: Record<string, string> = {
+    default: 'bg-foreground/5 text-foreground/70',
+    primary: 'bg-primary/10 text-primary',
+    success: 'bg-success/10 text-success',
+    warning: 'bg-warning/10 text-warning',
+    danger: 'bg-danger/10 text-danger',
+  };
+
   const valueTone: Record<string, string> = {
     default: 'text-foreground',
     primary: 'text-primary',
@@ -72,24 +81,27 @@ export function StatCard({
     warning: 'text-warning',
     danger: 'text-danger',
   };
+  
   return (
     <div
       className={cn(
-        'rounded-xl border px-3.5 py-3 flex items-center gap-3',
+        'rounded-xl border bg-[var(--color-card)] p-4 flex flex-col gap-3 transition-shadow hover:shadow-md',
         tones[tone],
         className
       )}
     >
-      {Icon && (
-        <span className="text-primary/70 shrink-0">
-          <Icon size={17} />
-        </span>
-      )}
-      <div className="min-w-0">
-        <p className="text-[10.5px] uppercase tracking-[0.08em] font-medium text-foreground/45 truncate">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wider font-semibold text-foreground/50 truncate">
           {label}
         </p>
-        <p className={cn('text-lg font-bold leading-tight tracking-tight', valueTone[tone])}>
+        {Icon && (
+          <div className={cn('p-1.5 rounded-lg shrink-0', iconBg[tone])}>
+            <Icon size={16} />
+          </div>
+        )}
+      </div>
+      <div>
+        <p className={cn('text-2xl font-bold tracking-tight', valueTone[tone])}>
           {value}
         </p>
       </div>

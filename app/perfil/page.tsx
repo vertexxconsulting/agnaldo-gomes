@@ -83,7 +83,7 @@ export default function PerfilClientePage() {
 
     if (diffHoras < 2) {
       alert('O cancelamento online só é permitido com até 2 horas de antecedência. Por favor, entre em contato diretamente com o Studio via WhatsApp para solicitar o reagendamento.');
-      window.location.href = `https://wa.me/5544999999999?text=Olá, gostaria de solicitar o reagendamento do meu horário de ${agendamento.servico} no dia ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora_inicio}.`;
+      window.location.href = `https://wa.me/5542998271222?text=Olá, gostaria de solicitar o reagendamento do meu horário de ${agendamento.servico} no dia ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora_inicio}.`;
       return;
     }
 
@@ -136,7 +136,7 @@ export default function PerfilClientePage() {
       <div className="flex flex-col w-full py-12 md:py-20 bg-[var(--background)] min-h-[80vh] items-center justify-center">
         <div className="container mx-auto px-4 sm:px-6 max-w-md">
           <CardGlass className="p-8 animate-in zoom-in duration-300">
-            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><User className="text-primary"/> Acesso Rápido</h2>
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><User className="text-gold"/> Acesso Rápido</h2>
             <p className="text-foreground/70 mb-8">
               Acesse com seu WhatsApp para visualizar agendamentos (modo demonstração).
             </p>
@@ -147,10 +147,10 @@ export default function PerfilClientePage() {
                 type="tel" 
                 autoFocus
                 required
-                placeholder="(42) 99999-9999"
+                placeholder="(42) 99129-5941"
                 value={telefone}
                 onChange={e => setTelefone(e.target.value)}
-                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-4 text-foreground text-lg focus:outline-none focus:border-primary mb-6" 
+                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-4 text-foreground text-lg focus:outline-none focus:border-gold mb-6" 
               />
               <Button type="submit" variant="primary" size="lg" className="w-full uppercase tracking-widest">
                 Entrar
@@ -175,14 +175,14 @@ export default function PerfilClientePage() {
           <div className="flex items-center gap-6">
             {/* Foto Local */}
             <div className="relative group">
-              <div className="w-24 h-24 rounded-full bg-foreground/5 flex items-center justify-center border-2 border-primary/50 overflow-hidden relative shadow-lg">
+              <div className="w-24 h-24 rounded-full bg-foreground/5 flex items-center justify-center border-2 border-gold/50 overflow-hidden relative shadow-lg">
                 {fotoLocal ? (
                   <Image src={fotoLocal} alt="Perfil" fill className="object-cover" />
                 ) : (
                   <User size={36} className="text-foreground/30" />
                 )}
               </div>
-              <label className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-md">
+              <label className="absolute -bottom-2 -right-2 bg-gold text-primary-foreground p-2 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-md">
                 <Camera size={16} />
                 <input type="file" accept="image/*" className="hidden" onChange={handleFotoUpload} />
               </label>
@@ -220,14 +220,14 @@ export default function PerfilClientePage() {
                   const srv = MOCK_SERVICOS.find(s => s.id === ag.servico_id);
                   const prof = MOCK_PROFISSIONAIS.find(p => p.id === ag.profissional_id);
                   return (
-                    <CardGlass key={ag.id} className="p-5 flex flex-col gap-4 border-primary/20">
+                    <CardGlass key={ag.id} className="p-5 flex flex-col gap-4 border-gold/20">
                       <div className="flex justify-between items-start">
                         <div>
                           <h4 className="font-bold text-lg text-foreground">{srv?.nome}</h4>
-                          <p className="text-primary font-bold">R$ {srv?.preco}</p>
+                          <p className="text-gold font-bold">R$ {srv?.preco}</p>
                         </div>
-                        <div className="text-right bg-primary/10 px-3 py-1 rounded">
-                          <p className="text-sm font-bold text-primary">{ag.data.split('-').reverse().join('/')}</p>
+                        <div className="text-right bg-gold/10 px-3 py-1 rounded">
+                          <p className="text-sm font-bold text-gold">{ag.data.split('-').reverse().join('/')}</p>
                           <p className="text-xs text-primary/80">{ag.hora_inicio}</p>
                         </div>
                       </div>
@@ -310,7 +310,7 @@ export default function PerfilClientePage() {
               </Button>
               <Button 
                 variant="primary" 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-none"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-foreground border-none"
                 onClick={confirmarCancelamento}
                 disabled={loadingAction}
               >

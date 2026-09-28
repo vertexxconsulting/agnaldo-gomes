@@ -135,7 +135,7 @@ export default function CadastroPage() {
           <p className="text-foreground/70 mb-4">
             Redirecionando para o seu perfil...
           </p>
-          <div className="w-8 h-8 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 mx-auto border-2 border-gold border-t-transparent rounded-full animate-spin" />
         </CardGlass>
       </div>
     );
@@ -167,7 +167,7 @@ export default function CadastroPage() {
               placeholder="Seu nome e sobrenome"
               value={formData.fullName}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-gold transition-colors"
               aria-label="Nome completo"
               aria-invalid={!!errors.fullName}
             />
@@ -188,7 +188,7 @@ export default function CadastroPage() {
               placeholder="seu@email.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-gold transition-colors"
               aria-label="E-mail"
               aria-invalid={!!errors.email}
             />
@@ -206,10 +206,10 @@ export default function CadastroPage() {
               id="phone"
               type="tel"
               name="phone"
-              placeholder="+55 (11) 99999-9999"
+              placeholder="+55 (11) 99129-5941"
               value={formData.phone}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              className="w-full px-4 py-3 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-gold transition-colors"
               aria-label="Telefone"
               aria-invalid={!!errors.phone}
             />
@@ -231,7 +231,7 @@ export default function CadastroPage() {
                 placeholder="Mínimo 6 caracteres"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 pr-12 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                className="w-full px-4 py-3 pr-12 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-gold transition-colors"
                 aria-label="Senha"
                 aria-invalid={!!errors.password}
                 autoComplete="new-password"
@@ -263,7 +263,7 @@ export default function CadastroPage() {
                 placeholder="Repita a senha"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 pr-12 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                className="w-full px-4 py-3 pr-12 bg-[var(--color-card)] border border-white/10 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-gold transition-colors"
                 aria-label="Confirmar senha"
                 aria-invalid={!!errors.confirmPassword}
                 autoComplete="new-password"
@@ -306,7 +306,7 @@ export default function CadastroPage() {
           <div className="text-center pt-2">
             <p className="text-sm text-foreground/60">
               Já tem conta?{' '}
-              <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              <Link href="/login" className="text-gold hover:text-primary/80 font-medium transition-colors">
                 Fazer login
               </Link>
             </p>

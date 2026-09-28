@@ -53,27 +53,67 @@ CREATE POLICY "Admins manage orders" ON orders FOR ALL USING (
   public.get_user_role() = 'ADMIN'
 );
 
--- SALON
-CREATE POLICY "Admins manage salon_customers" ON salon_customers FOR ALL USING (
-  public.get_user_role() IN ('ADMIN', 'PROFESSIONAL')
+-- SALON (ADMIN, STUDIO_SECRETARIA E PROFESSIONAL RESTRITO)
+DROP POLICY IF EXISTS "Admins manage salon_customers" ON salon_customers;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_customers" ON salon_customers;
+CREATE POLICY "Admins and secretaria manage salon_customers" ON salon_customers FOR ALL USING (
+  public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+  OR public.get_user_role() = 'studio_secretaria'
 );
 
+DROP POLICY IF EXISTS "Admins manage salon_services" ON salon_services;
 CREATE POLICY "Admins manage salon_services" ON salon_services FOR ALL USING (
   public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
 );
 
+DROP POLICY IF EXISTS "Secretaria manage salon_services" ON salon_services;
+CREATE POLICY "Secretaria manage salon_services" ON salon_services FOR ALL USING (
+  (auth.jwt() -> 'user_metadata' ->> 'role') = 'studio_secretaria'
+  OR public.get_user_role() = 'studio_secretaria'
+);
+
+DROP POLICY IF EXISTS "Admins manage salon_professionals" ON salon_professionals;
 CREATE POLICY "Admins manage salon_professionals" ON salon_professionals FOR ALL USING (
   public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
 );
 
+DROP POLICY IF EXISTS "Admins manage salon_professional_services" ON salon_professional_services;
 CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services FOR ALL USING (
   public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
 );
 
-CREATE POLICY "Admins manage salon_appointments" ON salon_appointments FOR ALL USING (
-  public.get_user_role() IN ('ADMIN', 'PROFESSIONAL')
+DROP POLICY IF EXISTS "Admins manage salon_appointments" ON salon_appointments;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_appointments" ON salon_appointments;
+CREATE POLICY "Admins and secretaria manage salon_appointments" ON salon_appointments FOR ALL USING (
+  public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+  OR public.get_user_role() = 'studio_secretaria'
 );
 
-CREATE POLICY "Admins manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (
-  public.get_user_role() IN ('ADMIN', 'PROFESSIONAL')
+DROP POLICY IF EXISTS "Professionals update own appointments" ON salon_appointments;
+CREATE POLICY "Professionals update own appointments" ON salon_appointments FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM salon_professionals 
+    WHERE salon_professionals.id = salon_appointments.professional_id 
+      AND salon_professionals.user_id = auth.uid()
+  )
+) WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM salon_professionals 
+    WHERE salon_professionals.id = salon_appointments.professional_id 
+      AND salon_professionals.user_id = auth.uid()
+  )
 );
+
+DROP POLICY IF EXISTS "Admins manage salon_schedule_blocks" ON salon_schedule_blocks;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_schedule_blocks" ON salon_schedule_blocks;
+CREATE POLICY "Admins and secretaria manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (
+  public.get_user_role() = 'ADMIN'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+  OR public.get_user_role() = 'studio_secretaria'
+);
+

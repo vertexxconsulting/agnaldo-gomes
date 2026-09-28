@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,28 +9,37 @@ import {
   Scissors, GraduationCap, ShoppingBag,
   CalendarDays, Users, UserCircle, TrendingUp, Wallet,
   PlayCircle, Award, ChevronRight,
-  BarChart3, Package, ArrowUpRight, ExternalLink
+  Package, ArrowUpRight, ExternalLink, Command, Settings, Moon, Sun,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
-import { Panel, StatCard, SectionHeader } from '@/components/ui/Panel';
-import { AdminSidebar, AdminShell } from '@/components/AdminSidebar';
+import { Panel, StatCard, SectionHeader, StatusBadge } from '@/components/ui/Panel';
+import { AdminSidebar } from '@/components/AdminSidebar';
+import AdminShell from '@/components/AdminShell';
 import {
   getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome,
   getProfissionalNome, getCursos, getProgressoAluno, MOCK_PROFISSIONAIS,
 } from '@/lib/mock-data';
-import type { Cliente, Agendamento, Servico, Curso, Progresso } from '@/lib/mock-data';
+import type { Cliente, Agendamento, Servico, Progresso } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
-import { ROLES, getHubModules, type HubModule } from '@/lib/auth';
-import { StatusBadge } from '@/components/ui/Panel';
-import { Command } from 'lucide-react';
+import { ROLES, type Role } from '@/lib/auth';
+
+interface CursoType {
+  id: string;
+  titulo: string;
+  descricao: string;
+  capaUrl: string;
+  duracaoH: number;
+  totalAulas: number;
+  nivel: string;
+}
 
 const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
-const CORES = ['#d4af37', '#c9a84c', '#b5952f', '#a8862a', '#d4af37', '#c9a84c'];
+const CORES = ['#B8860B', '#8C6A06', '#A8860B', '#d4af37', '#B8860B', '#8C6A06'];
 
-const MODULOS: Array<{ id: HubModule | string; nome: string; descricao: string; href: string; icon: typeof Scissors; stat: string }> = [
+const MODULOS: Array<{ id: string; nome: string; descricao: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; stat: string }> = [
   {
     id: 'studio',
     nome: 'Studio de Beleza',
@@ -67,6 +77,7 @@ const NAVEGACAO_RAPIDA = [
   { label: 'Produtos & Estoque', href: '/admin-loja/produtos', icon: ShoppingBag },
   { label: 'Área do Aluno', href: '/aluno/dashboard', icon: GraduationCap },
   { label: 'Catálogo da Loja', href: '/loja', icon: ExternalLink },
+  { label: 'Health Check', href: '/admin/sistema', icon: Settings },
 ];
 
 export default function HubCentralPage() {
@@ -75,20 +86,31 @@ export default function HubCentralPage() {
   const [clientesData, setClientesData] = useState<Cliente[]>([]);
   const [agendamentosData, setAgendamentosData] = useState<Agendamento[]>([]);
   const [servicosData, setServicosData] = useState<Servico[]>([]);
-  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [cursos, setCursos] = useState<CursoType[]>([]);
   const [progresso, setProgresso] = useState<Progresso[]>([]);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
       const meta = data?.user?.user_metadata;
-      if (meta && typeof meta.role === 'string') setRole(meta.role);
-      else setRole(null);
+      if (meta && typeof meta.role === 'string') {
+        const roleStr = meta.role === 'admin' ? 'ADMIN' : meta.role;
+        setRole((Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null);
+      } else {
+        setRole(null);
+      }
     });
   }, []);
 
-  const modulosVisiveis = getHubModules(role ? { user_metadata: { role } } : null);
-  const temModulo = (m: HubModule) => modulosVisiveis.includes(m);
+  const modulosVisiveis = useMemo(() => {
+    if (!role) return ['studio', 'academy', 'loja'];
+    if (role === ROLES.STUDIO_SECRETARIA) return ['studio'];
+    if (role === ROLES.ADMIN || role === ROLES.ACADEMY_ADMIN || role === ROLES.LOJA_ADMIN || role === ROLES.STUDIO_ADMIN) return ['studio', 'academy', 'loja'];
+    if (role === ROLES.ALUNO) return ['academy'];
+    return ['studio', 'academy', 'loja'];
+  }, [role]);
+
+  const temModulo = (m: string) => modulosVisiveis.includes(m);
 
   useEffect(() => {
     (async () => {
@@ -98,7 +120,15 @@ export default function HubCentralPage() {
       setClientesData(clientes);
       setAgendamentosData(agendamentos);
       setServicosData(servicos);
-      setCursos(cursosData);
+      setCursos(cursosData.map((c) => ({
+        id: c.id,
+        titulo: c.titulo,
+        descricao: c.descricao,
+        capaUrl: c.capaUrl,
+        duracaoH: c.duracaoHoras,
+        totalAulas: c.totalAulas,
+        nivel: c.nivel,
+      })));
       setProgresso(progressoData);
       setLoading(false);
     })();
@@ -110,25 +140,25 @@ export default function HubCentralPage() {
 
   const kpis = useMemo(() => {
     const valorServico = (id: string) => servicosData.find(s => s.id === id)?.preco ?? 0;
-    const concluidos = agendamentosData.filter(a => a.status === 'concluido');
-    const faturamentos = concluidos.map(a => ({ ...a, valor: valorServico(a.servico_id) }));
-    const hojeV = faturamentos.filter(a => a.data === hoje).reduce((s, a) => s + a.valor, 0);
-    const mesV = faturamentos.filter(a => a.data.slice(0, 7) === mesAtual).reduce((s, a) => s + a.valor, 0);
+    const concluidos = agendamentosData.filter((a) => a.status === 'concluido');
+    const faturamentos = concluidos.map((a) => ({ ...a, valor: valorServico(a.servico_id) }));
+    const hojeV = faturamentos.filter((a) => a.data === hoje).reduce((s, a) => s + a.valor, 0);
+    const mesV = faturamentos.filter((a) => a.data.slice(0, 7) === mesAtual).reduce((s, a) => s + a.valor, 0);
     const porMes = Array.from({ length: 12 }, (_, i) => {
       const m = String(i + 1).padStart(2, '0');
       const chave = `${anoAtual}-${m}`;
-      const valor = faturamentos.filter(a => a.data.slice(0, 7) === chave).reduce((s, a) => s + a.valor, 0);
+      const valor = faturamentos.filter((a) => a.data.slice(0, 7) === chave).reduce((s, a) => s + a.valor, 0);
       return { label: mesNome(i), valor };
     });
-    const agendadosHoje = agendamentosData.filter(a => a.data === hoje).length;
-    const concluidas = progresso.filter(p => p.concluida).length;
+    const agendadosHoje = agendamentosData.filter((a) => a.data === hoje).length;
+    const concluidas = progresso.filter((p) => p.concluida).length;
     const totalAulas = progresso.length;
     return { hojeV, mesV, porMes, agendadosHoje, concluidas, totalAulas, clientesCount: clientesData.length };
   }, [agendamentosData, clientesData, servicosData, progresso, hoje, mesAtual, anoAtual]);
 
   const proximosAgendamentos = useMemo(() => {
-    const hojeAg = agendamentosData.filter(a => a.data === hoje).slice(0, 5);
-    return hojeAg.map(a => ({
+    const hojeAg = agendamentosData.filter((a) => a.data === hoje).slice(0, 5);
+    return hojeAg.map((a) => ({
       ...a,
       cliente: getClienteNome(a.cliente_id),
       profissional: getProfissionalNome(a.profissional_id),
@@ -151,29 +181,38 @@ export default function HubCentralPage() {
           links={sidebarLinks}
           backLabel="Voltar ao Site Público"
           backHref="/"
-          brand={{ icon: Command, text: 'Command Center' }}
+          brand={{ icon: Command, text: 'Gestão AG' }}
         />
       }
     >
       <div className="space-y-7">
-        {/* Boas-vindas */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.22em] text-primary font-bold mb-1.5">Agnaldo Gomes • Ecossistema Digital</p>
+        {/* ===== HEADER: Greeting + Theme Toggle ===== */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="flex flex-wrap items-end justify-between gap-4"
+        >
+          <div className="text-left">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-gold font-bold mb-1.5">Agnaldo Gomes • Ecossistema Digital</p>
             <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">
               Olá, Agnaldo. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
             </h1>
-            <p className="text-sm text-foreground/55 mt-1.5 max-w-2xl">
+            <p className="text-sm text-foreground/70 mt-1.5 max-w-2xl">
               {role === ROLES.STUDIO_SECRETARIA
                 ? 'Painel da secretaria do Studio: agenda, clientes, profissionais e serviços do salão.'
                 : 'Gerencie o Studio, a Academy e a Loja em um único lugar — com visão em tempo real de cada frente do negócio.'}
             </p>
           </div>
+          {/* Theme Toggle (dark / light) */}
+          <div className="shrink-0">
+            {/* Removido ThemeToggle conforme solicitação */}
+          </div>
         </motion.div>
 
-        {/* Módulos */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {MODULOS.filter((mod) => modulosVisiveis.includes(mod.id as HubModule)).map((mod, i) => {
+        {/* ===== MODULES: 3 navigation cards ===== */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {MODULOS.filter((mod) => modulosVisiveis.includes(mod.id)).map((mod, i) => {
             const Icon = mod.icon;
             return (
               <motion.div
@@ -183,16 +222,16 @@ export default function HubCentralPage() {
                 transition={{ duration: 0.4, delay: i * 0.08 }}
               >
                 <Link href={mod.href}>
-                  <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-primary/8 to-primary/[0.03] hover:border-primary/50 p-5 h-full transition-all duration-300 hover:shadow-[0_8px_24px_rgba(168,134,42,0.12)] hover:-translate-y-0.5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shadow-sm">
-                        <Icon size={18} className="text-primary" />
+                  <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-card)] hover:border-gold/50 p-6 h-full transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
+                        <Icon size={20} className="text-gold" />
                       </div>
-                      <ChevronRight size={16} className="text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight size={18} className="text-foreground/20 group-hover:text-gold group-hover:translate-x-1 transition-all" />
                     </div>
-                    <h3 className="text-base font-serif font-bold tracking-tight">{mod.nome}</h3>
-                    <p className="text-xs text-foreground/55 mt-1 leading-relaxed">{mod.descricao}</p>
-                    <p className="text-[9.5px] uppercase tracking-[0.14em] text-foreground/35 mt-2 font-semibold">{mod.stat}</p>
+                    <h3 className="text-lg font-bold tracking-tight text-foreground">{mod.nome}</h3>
+                    <p className="text-xs text-foreground/60 mt-1.5 leading-relaxed">{mod.descricao}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gold mt-3 font-semibold">{mod.stat}</p>
                   </div>
                 </Link>
               </motion.div>
@@ -200,15 +239,15 @@ export default function HubCentralPage() {
           })}
         </section>
 
-        {/* KPIs em linha */}
+        {/* ===== KPIS ===== */}
         <section>
           <SectionHeader eyebrow="Indicadores consolidados" title="Visão Geral do Negócio" />
           {loading ? (
             <div className="text-center py-8 text-foreground/50 text-sm">Carregando visão geral...</div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <StatCard label="Faturamento hoje" value={formatPrice(kpis.hojeV)} icon={Wallet} tone="primary" />
-              <StatCard label="Faturamento do mês" value={formatPrice(kpis.mesV)} icon={TrendingUp} tone="success" />
+              <StatCard label="Faturamento do mês" value={formatPrice(kpis.mesV)} icon={TrendingUp} tone="primary" />
               <StatCard label="Agendamentos hoje" value={`${kpis.agendadosHoje}`} icon={CalendarDays} />
               <StatCard label="Clientes cadastrados" value={`${kpis.clientesCount}`} icon={Users} />
               <StatCard label="Aulas concluídas" value={`${kpis.concluidas}/${kpis.totalAulas}`} icon={PlayCircle} tone="warning" />
@@ -216,38 +255,39 @@ export default function HubCentralPage() {
           )}
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Agenda de hoje */}
-          <section className="lg:col-span-2">
+        {/* ===== MAIN GRID: Agenda (2/3) + Academy Progress (1/3) ===== */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {/* Agenda de Hoje */}
+          <section className="xl:col-span-2">
             <SectionHeader
               eyebrow="Próximos atendimentos no Studio"
               title="Agenda de Hoje"
               action={
                 <Link href="/admin/agenda">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Ver agenda completa <ArrowUpRight size={12} /></span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">Ver agenda completa <ArrowUpRight size={12} /></span>
                 </Link>
               }
             />
             {loading ? (
               <Panel className="py-10 text-center text-sm text-foreground/50">Carregando agenda...</Panel>
             ) : proximosAgendamentos.length === 0 ? (
-              <Panel className="py-8 text-center text-sm text-foreground/50">
+              <Panel className="py-8 text-center text-sm text-foreground/60">
                 Nenhum agendamento para hoje.{' '}
-                <Link href="/admin/agenda" className="text-primary font-medium hover:underline">Organizar a semana</Link>
+                <Link href="/admin/agenda" className="text-gold font-medium hover:underline">Organizar a semana</Link>
               </Panel>
             ) : (
               <div className="space-y-2">
                 {proximosAgendamentos.map((a) => (
                   <Panel key={a.id} className="flex items-center gap-3 py-3 px-4">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <UserCircle size={18} className="text-primary" />
+                    <div className="w-9 h-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                      <UserCircle size={18} className="text-gold" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold truncate">{a.cliente}</p>
-                      <p className="text-[11px] text-foreground/45 truncate">{a.servico} • com {a.profissional}</p>
+                      <p className="text-[13px] font-semibold text-foreground truncate">{a.cliente}</p>
+                      <p className="text-[11px] text-foreground/55 truncate">{a.servico} • com {a.profissional}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[13px] font-bold text-primary">{a.hora_inicio.slice(0, 5)}</p>
+                      <p className="text-[13px] font-bold text-gold">{a.hora_inicio.slice(0, 5)}</p>
                       <StatusBadge status={a.status} />
                     </div>
                   </Panel>
@@ -256,7 +296,7 @@ export default function HubCentralPage() {
             )}
           </section>
 
-          {/* Progresso Academy */}
+          {/* Academy Progress */}
           {temModulo('academy') && (
             <section>
               <SectionHeader
@@ -264,21 +304,21 @@ export default function HubCentralPage() {
                 title="Academy"
                 action={
                   <Link href="/admin-academy">
-                    <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Admin <ArrowUpRight size={12} /></span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">Admin <ArrowUpRight size={12} /></span>
                   </Link>
                 }
               />
               <Panel className="mb-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <GraduationCap size={16} className="text-primary" />
+                  <div className="w-9 h-9 rounded-xl bg-gold/10 flex items-center justify-center">
+                    <GraduationCap size={16} className="text-gold" />
                   </div>
-                  <div>
-                    <p className="text-[13px] font-semibold">Taxa de conclusão</p>
-                    <p className="text-[10px] text-foreground/45">{kpis.concluidas} de {kpis.totalAulas} aulas</p>
+                  <div className="flex-1">
+                    <p className="text-[13px] font-semibold text-foreground">Taxa de conclusão</p>
+                    <p className="text-[10px] text-foreground/55">{kpis.concluidas} de {kpis.totalAulas} aulas</p>
                   </div>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-foreground/8 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-foreground/10 overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${kpis.totalAulas ? Math.round((kpis.concluidas / kpis.totalAulas) * 100) : 0}%` }}
@@ -287,7 +327,7 @@ export default function HubCentralPage() {
                   />
                 </div>
                 <Link href="/aluno/dashboard">
-                  <div className="flex items-center gap-2 text-[11px] text-primary font-semibold hover:underline mt-3">
+                  <div className="flex items-center gap-2 text-[11px] text-gold font-semibold hover:underline mt-3">
                     <PlayCircle size={13} /> Continuar assistindo na Área do Aluno
                   </div>
                 </Link>
@@ -299,20 +339,20 @@ export default function HubCentralPage() {
                 className="mt-5"
                 action={
                   <Link href="/admin-academy/cursos">
-                    <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Gerenciar <ArrowUpRight size={12} /></span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">Gerenciar <ArrowUpRight size={12} /></span>
                   </Link>
                 }
               />
               <div className="space-y-2">
                 {cursos.slice(0, 3).map((c) => (
                   <Link key={c.id} href={`/admin-academy/cursos/${c.id}`}>
-                    <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-card)] p-3 hover:border-primary/50 hover:shadow-sm transition-all">
+                    <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-card)] p-3 hover:border-gold/50 hover:shadow-sm transition-all">
                       <div className="w-12 h-10 rounded-lg overflow-hidden relative shrink-0 bg-foreground/5">
                         <Image src={c.capaUrl} alt={c.titulo} fill className="object-cover" sizes="48px" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold truncate">{c.titulo}</p>
-                        <p className="text-[10px] text-foreground/45">{c.duracaoHoras}h • {c.totalAulas} aulas • {c.nivel}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold text-foreground truncate">{c.titulo}</p>
+                        <p className="text-[10px] text-foreground/55">{c.duracaoH}h • {c.totalAulas} aulas • {c.nivel}</p>
                       </div>
                       <ChevronRight size={13} className="ml-auto text-foreground/25 shrink-0" />
                     </div>
@@ -323,84 +363,88 @@ export default function HubCentralPage() {
           )}
         </div>
 
-        {/* Faturamento mensal */}
-        <section>
-          <SectionHeader eyebrow="Acompanhe a evolução mês a mês" title="Faturamento do Salão" />
-          {!loading && kpis.porMes.some(p => p.valor > 0) ? (
-            <Panel className="mt-0">
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={kpis.porMes}>
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} width={45} />
-                  <Tooltip
-                    formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
-                    contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }}
-                  />
-                  <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                    {kpis.porMes.map((_, i) => (
-                      <Cell key={i} fill={CORES[i % CORES.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </Panel>
-          ) : (
-            <Panel className="py-8 text-center text-sm text-foreground/50">
-              Ainda não há faturamento registrado. Os valores aparecem aqui automaticamente quando agendamentos concluídos
-              são marcados no módulo <Link href="/admin/agenda" className="text-primary font-medium hover:underline">Agenda</Link>.
-            </Panel>
-          )}
-        </section>
-
-        {/* Equipe */}
-        <section>
-          <SectionHeader
-            eyebrow="Seus profissionais e especialidades"
-            title="Equipe do Studio"
-            action={
-              <Link href="/admin/profissionais">
-                <span className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Gerenciar equipe <ArrowUpRight size={12} /></span>
-              </Link>
-            }
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {MOCK_PROFISSIONAIS.map((p) => (
-              <Panel key={p.id} className="text-center py-4">
-                <div className="w-14 h-14 rounded-full mx-auto mb-2.5 overflow-hidden relative bg-secondary">
-                  {p.foto_url ? (
-                    <Image src={p.foto_url} alt={p.nome} fill className="object-cover" sizes="56px" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <UserCircle size={28} className="text-primary/50" />
-                    </div>
-                  )}
-                </div>
-                <p className="text-[13px] font-semibold">{p.nome}</p>
-                <div className="flex flex-wrap justify-center gap-1 mt-2">
-                  {(p.especialidades ?? []).slice(0, 3).map((e) => (
-                    <span key={e} className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{e}</span>
-                  ))}
-                </div>
+        {/* ===== BOTTOM GRID: Chart + Team ===== */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+          <section className="xl:col-span-2">
+            <SectionHeader
+              eyebrow="Acompanhe a evolução mês a mês"
+              title="Faturamento do Salão"
+            />
+            {!loading && kpis.porMes.some((p) => p.valor > 0) ? (
+              <Panel className="mt-0">
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={kpis.porMes}>
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} width={45} />
+                    <Tooltip
+                      formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
+                      contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                    />
+                    <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                      {kpis.porMes.map((_, i) => (
+                        <Cell key={i} fill={CORES[i % CORES.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </Panel>
-            ))}
-          </div>
-        </section>
+            ) : (
+              <Panel className="py-8 text-center text-sm text-foreground/60">
+                Ainda não há faturamento registrado. Os valores aparecem aqui automaticamente quando agendamentos concluídos
+                são marcados no módulo <Link href="/admin/agenda" className="text-gold font-medium hover:underline">Agenda</Link>.
+              </Panel>
+            )}
+          </section>
 
-        {/* CTA Loja */}
+          <section>
+            <SectionHeader
+              eyebrow="Seus profissionais e especialidades"
+              title="Equipe do Studio"
+              action={
+                <Link href="/admin/profissionais">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-gold hover:underline">Gerenciar equipe <ArrowUpRight size={12} /></span>
+                </Link>
+              }
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+              {MOCK_PROFISSIONAIS.slice(0, 4).map((p) => (
+                <Panel key={p.id} className="text-center py-4">
+                  <div className="w-14 h-14 rounded-full mx-auto mb-2.5 overflow-hidden relative bg-secondary">
+                    {p.foto_url ? (
+                      <Image src={p.foto_url} alt={p.nome} fill className="object-cover" sizes="56px" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <UserCircle size={28} className="text-gold/50" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[13px] font-semibold text-foreground">{p.nome}</p>
+                  <div className="flex flex-wrap justify-center gap-1 mt-2">
+                    {(p.especialidades ?? []).slice(0, 3).map((e) => (
+                      <span key={e} className="text-[9px] px-2 py-0.5 rounded-full bg-gold/10 text-gold font-medium">{e}</span>
+                    ))}
+                  </div>
+                </Panel>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* ===== LOJA LINK ===== */}
         {temModulo('loja') && (
           <section>
             <Link href="/admin-loja">
-              <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-primary/8 via-transparent to-primary/[0.05] px-5 py-4 flex flex-col sm:flex-row items-center gap-4 hover:border-primary/50 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-                  <ShoppingBag size={18} className="text-primary" />
+              <div className="group relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--color-card)] px-6 py-5 flex flex-col sm:flex-row items-center gap-5 hover:border-gold/50 transition-all shadow-sm hover:shadow-md">
+                <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+                  <ShoppingBag size={20} className="text-gold" />
                 </div>
                 <div className="flex-1 text-center sm:text-left min-w-0">
-                  <h3 className="text-sm font-serif font-bold">Loja de Produtos</h3>
-                  <p className="text-xs text-foreground/50 mt-0.5 truncate sm:whitespace-normal">
+                  <h3 className="text-sm font-bold text-foreground">Loja de Produtos</h3>
+                  <p className="text-xs text-foreground/60 mt-1 truncate sm:whitespace-normal">
                     Acompanhe pedidos, estoque e vendas de produtos profissionais e afiliados.
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-primary group-hover:gap-2.5 transition-all shrink-0">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-gold group-hover:gap-2.5 transition-all shrink-0">
                   Abrir gestão da loja <ChevronRight size={14} />
                 </div>
               </div>
@@ -408,9 +452,10 @@ export default function HubCentralPage() {
           </section>
         )}
 
+        {/* ===== FOOTER ===== */}
         <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] text-foreground/30">
-            Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy &amp; Loja
+            Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy & Loja
           </p>
         </footer>
       </div>

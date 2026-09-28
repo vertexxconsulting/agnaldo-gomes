@@ -2,18 +2,13 @@
  * Pagamentos da Academy — Stripe.
  *
  * Fluxo:
- * 1. Credenciais (PUBLIC_KEY + SECRET_KEY ou PUBLISHABLE_KEY do servidor)
- *    são salvas pelo admin em /admin-academy/pagamentos.
+ * 1. Credenciais são configuradas via variáveis de ambiente (Vercel / .env.local):
+ *    - STRIPE_SECRET_KEY (sk_live_ ou sk_test_)
+ *    - STRIPE_PUBLIC_KEY (pk_live_ ou pk_test_)
  * 2. Com as chaves configuradas, o aluno é direcionado a um Stripe Checkout
  *    Payment Link real (criado via API com a SECRET_KEY), que faz a cobrança
  *    com qualquer cartão/Pix internacional do Stripe.
- * 3. Sem credenciais, mantém o fluxo de demonstração (inscrição registrada
- *    localmente), garantindo que nada quebra.
- *
- * Por segurança, a SECRET_KEY nunca é exposta ao navegador: quando ela está
- * disponível apenas como NEXT_PUBLIC_STRIPE_SECRET (modo demonstração/dev),
- * o checkout é feito via API do próprio site (/api/academy/checkout), que
- * usa a SECRET_KEY no servidor e devolve a URL do Checkout do Stripe.
+ * 3. Sem credenciais, o checkout não é ativado e o sistema exibe um aviso.
  */
 
 export interface ConfiguracaoStripe {
@@ -22,59 +17,17 @@ export interface ConfiguracaoStripe {
   ativo: boolean;
 }
 
-const LS_KEY = 'academy-stripe-config';
-
-/** Cache das credenciais vindas do Supabase (30s) */
-let stripeConfigCache: ConfiguracaoStripe | null = null;
-let stripeConfigUpdatedAt = 0;
-
 export async function getStripeConfig(): Promise<ConfiguracaoStripe> {
-  if (stripeConfigCache && Date.now() - stripeConfigUpdatedAt < 30_000) return stripeConfigCache;
+  const secretKey = process.env.STRIPE_SECRET_KEY || '';
+  const publicKey = process.env.STRIPE_PUBLIC_KEY || '';
+  const ativo = secretKey.length > 0 && publicKey.length > 0;
 
-  try {
-    const { getPaymentSettings, isPaymentActive } = await import('./payment-settings');
-    const settings = await getPaymentSettings('stripe');
-    const cfg: ConfiguracaoStripe = {
-      publicKey: settings.publishable_key || '',
-      secretKey: settings.secret_key || '',
-      ativo: isPaymentActive(settings),
-    };
-    stripeConfigCache = cfg;
-    stripeConfigUpdatedAt = Date.now();
-    return cfg;
-  } catch {
-    /* fallback localStorage */
-  }
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const cfg = JSON.parse(raw);
-      return {
-        publicKey: String(cfg?.publicKey ?? ''),
-        secretKey: String(cfg?.secretKey ?? ''),
-        ativo: Boolean(cfg?.ativo) && (String(cfg?.publicKey) || '').length > 0,
-      };
-    }
-  } catch {}
-  return { publicKey: '', secretKey: '', ativo: false };
+  return { publicKey, secretKey, ativo };
 }
 
-export async function saveStripeConfig(cfg: ConfiguracaoStripe) {
-  try {
-    const { savePaymentSettings } = await import('./payment-settings');
-    await savePaymentSettings('stripe', {
-      publishable_key: cfg.publicKey || null,
-      secret_key: cfg.secretKey || null,
-      enabled: cfg.ativo,
-    });
-    // Mantém o localStorage em sincronia para quem ainda o lê
-    localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-    stripeConfigCache = null; // invalida o cache
-  } catch {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
-    } catch {}
-  }
+/** @deprecated Chaves agora são gerenciadas via variáveis de ambiente (Vercel). */
+export async function saveStripeConfig(_cfg: ConfiguracaoStripe) {
+  console.warn('saveStripeConfig está desativado. Configure as chaves via variáveis de ambiente no Vercel.');
 }
 
 export async function isStripeAtivo(): Promise<boolean> {

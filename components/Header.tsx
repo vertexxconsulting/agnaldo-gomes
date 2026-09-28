@@ -38,9 +38,9 @@ export function Header() {
           <Image
             src="/logo-agnaldo.png"
             alt="Logo Agnaldo Gomes"
-            width={190}
-            height={54}
-            className="object-contain h-12 w-auto mix-blend-multiply dark:mix-blend-screen"
+            width={280}
+            height={80}
+            className="object-contain h-20 w-auto mix-blend-multiply dark:mix-blend-screen"
             priority
           />
         </Link>

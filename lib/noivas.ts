@@ -51,48 +51,50 @@ export interface AgendamentoNoiva {
 /** Pacotes oficiais Dia da Noiva */
 export const NOIVA_PACOTES: NoivaPacote[] = [
   {
-    id: 'noiva-dia-completo',
-    nome: 'Dia da Noiva Completo',
-    descricao: 'Experiência completa para o grande dia: penteado, makeup profissional, manicure e acompanhamento até a saída para a cerimônia.',
-    preco: 1490,
-    duracao_min: 270,
-    itens: ['Penteado de noiva', 'Makeup profissional', 'Manicure e pedicure', 'Retoque durante o evento', 'Acompanhamento até a saída'],
+    id: 'noiva-essencial',
+    nome: 'Noivas — Cabelo e Maquiagem (sem teste)',
+    descricao: 'Produção completa de penteado e maquiagem profissional no grande dia.',
+    preco: 980,
+    duracao_min: 180,
+    itens: [
+      'Penteado exclusivo para o grande dia',
+      'Maquiagem profissional com produtos premium',
+      'Cílios postiços e fixação de alta durabilidade',
+      'Retoque final antes da saída para a cerimônia',
+    ],
+    ativo: true,
+  },
+  {
+    id: 'noiva-premium-completo',
+    nome: 'Noivas — Pacote Completo Premium',
+    descricao: 'A experiência dos sonhos: Pé e mão, Sobrancelha, teste completo antecipado de maquiagem e cabelo + produção do Dia do Casamento.',
+    preco: 2499,
+    duracao_min: 360,
+    itens: [
+      'Pé e Mão com esmaltação especial',
+      'Design de Sobrancelha personalizado',
+      'Ensaio / Teste prévio de Cabelo e Maquiagem',
+      'Cabelo e Maquiagem definitiva no Dia da Noiva',
+      'Acompanhamento e suporte exclusivo até a saída',
+    ],
     ativo: true,
   },
   {
     id: 'noiva-penteado',
     nome: 'Penteado de Noiva',
-    descricao: 'Penteado exclusivo desenhado no visagismo da noiva, com testes e fixação de alta duração.',
-    preco: 590,
-    duracao_min: 120,
-    itens: ['Visagismo e teste', 'Penteado exclusivo', 'Fixação de alta duração', 'Retoque simples'],
+    descricao: 'Penteado exclusivo desenhado no visagismo da noiva com fixação de alta duração.',
+    preco: 140,
+    duracao_min: 60,
+    itens: ['Visagismo personalizado', 'Penteado exclusivo', 'Fixação profissional de longa duração'],
     ativo: true,
   },
   {
     id: 'noiva-makeup',
-    nome: 'Makeup de Noiva',
-    descricao: 'Maquiagem profissional com produtos premium, de longa duração, resistente a lágrimas e ao calor.',
-    preco: 490,
-    duracao_min: 90,
-    itens: ['Makeup longa duração', 'Produtos premium', 'Cílios postiços inclusos', 'Retoque simples'],
-    ativo: true,
-  },
-  {
-    id: 'noiva-prova',
-    nome: 'Prova de Penteado e Makeup',
-    descricao: 'Ensaio completo antes do casamento para definir o visual perfeito, com fotos para aprovação.',
-    preco: 390,
-    duracao_min: 150,
-    itens: ['Prova de penteado', 'Prova de makeup', 'Fotos para aprovação', 'Ajustes ilimitados na prova'],
-    ativo: true,
-  },
-  {
-    id: 'noiva-vip',
-    nome: 'Noiva VIP — Dia Inteiro',
-    descricao: 'Atendimento exclusivo do dia inteiro: preparativos, penteados e make da noiva e da equipe (madrinhas e damas), com acompanhamento completo.',
-    preco: 2890,
-    duracao_min: 480,
-    itens: ['Dia inteiro de atendimento', 'Noiva + até 3 acompanhantes', 'Penteado e makeup de todas', 'Retouques ilimitados', 'Prioridade absoluta de agenda'],
+    nome: 'Maquiagem Profissional',
+    descricao: 'Maquiagem profissional com produtos premium resistentes a lágrimas e calor.',
+    preco: 160,
+    duracao_min: 60,
+    itens: ['Makeup de longa duração', 'Produtos de alta performance', 'Cílios inclusos'],
     ativo: true,
   },
 ];
@@ -117,45 +119,79 @@ export const NOIVA_STATUS_COLOR: Record<StatusAgendamentoNoiva, string> = {
 export const NOIVA_SINAL_MIN_PCT = 50;
 
 // ─────────────────────────────────────────────────────────────────────
-// Camada de dados: memória (persiste em memória da sessão + localStorage)
-// Quando o Supabase estiver conectado, substituir por queries reais.
+// Camada de dados: Conectado ao Supabase com fallback de memória para UI síncrona
 // ─────────────────────────────────────────────────────────────────────
 
-const LS_KEY = 'ag_noivas_state';
+import { supabase } from './supabase';
 
 interface NoivasState {
   agendamentos: AgendamentoNoiva[];
   pagamentos: PagamentoNoiva[];
 }
 
-function loadState(): NoivasState {
+let state: NoivasState = { agendamentos: [], pagamentos: [] };
+let subscribers: (() => void)[] = [];
+
+export async function fetchNoivaDadosDB() {
+  if (typeof window === 'undefined') return;
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { agendamentos: seedAgendamentos(), pagamentos: [] };
+    const [resAg, resPg] = await Promise.all([
+      supabase.from('salon_bride_appointments').select('*').order('data_agendamento', { ascending: true }),
+      supabase.from('salon_bride_payments').select('*').order('created_at', { ascending: true })
+    ]);
+    
+    if (resAg.data && resPg.data) {
+       state.agendamentos = resAg.data.map((r: any) => ({
+         id: r.id,
+         pacote_id: r.pacote_id,
+         nome_noiva: r.nome_noiva,
+         telefone: r.telefone,
+         email: r.email,
+         data_evento: r.data_evento,
+         data_agendamento: r.data_agendamento,
+         hora: r.hora,
+         profissional_id: r.profissional_id,
+         status: r.status,
+         sinal_percentual: r.sinal_percentual,
+         observacoes: r.observacoes,
+         criado_em: r.created_at,
+       }));
+       state.pagamentos = resPg.data.map((r: any) => ({
+         id: r.id,
+         agendamento_id: r.agendamento_id,
+         tipo: r.tipo,
+         valor: Number(r.valor),
+         forma: r.forma,
+         status: r.status,
+         pixCopiaCola: r.pix_copia_cola,
+         comprovante: r.comprovante_url,
+         data_pagamento: r.data_pagamento,
+         criado_em: r.created_at,
+       }));
+       notifySubscribers();
+    }
+  } catch(e) { console.error('Erro ao buscar dados de noivas', e) }
 }
 
-function saveState(state: NoivasState) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+function notifySubscribers() {
+  subscribers.forEach(cb => cb());
 }
-
-let state: NoivasState =
-  typeof window !== 'undefined' ? loadState() : { agendamentos: [], pagamentos: [] };
 
 export function subscribeNoivas(cb: () => void): () => void {
-  const id = setInterval(() => {
-    if (typeof window !== 'undefined') {
-      const next = loadState();
-      if (next !== state) {
-        state = next;
-        cb();
-      }
+  subscribers.push(cb);
+  fetchNoivaDadosDB();
+  
+  const channel = supabase.channel('noivas_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_bride_appointments' }, () => fetchNoivaDadosDB())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_bride_payments' }, () => fetchNoivaDadosDB())
+    .subscribe();
+
+  return () => {
+    subscribers = subscribers.filter(s => s !== cb);
+    if (subscribers.length === 0) {
+       supabase.removeChannel(channel);
     }
-  }, 1500);
-  return () => clearInterval(id);
+  };
 }
 
 export function getNoivaPacotes(): NoivaPacote[] {
@@ -163,47 +199,68 @@ export function getNoivaPacotes(): NoivaPacote[] {
 }
 
 export function getNoivaAgendamentos(): AgendamentoNoiva[] {
-  state = typeof window !== 'undefined' ? loadState() : state;
   return state.agendamentos;
 }
 
 export function getNoivaPagamentos(agendamentoId: string): PagamentoNoiva[] {
-  state = typeof window !== 'undefined' ? loadState() : state;
   return state.pagamentos.filter(p => p.agendamento_id === agendamentoId);
 }
 
-function setState(next: NoivasState) {
-  state = next;
-  saveState(next);
-}
-
-export function criarAgendamentoNoiva(
+export async function criarAgendamentoNoiva(
   params: Omit<AgendamentoNoiva, 'id' | 'status' | 'criado_em'>
-): AgendamentoNoiva {
-  const novo: AgendamentoNoiva = {
-    ...params,
-    id: `n${Date.now()}`,
+): Promise<AgendamentoNoiva> {
+  const { data, error } = await supabase.from('salon_bride_appointments').insert({
+    pacote_id: params.pacote_id,
+    nome_noiva: params.nome_noiva,
+    telefone: params.telefone,
+    email: params.email,
+    data_evento: params.data_evento,
+    data_agendamento: params.data_agendamento,
+    hora: params.hora,
+    profissional_id: params.profissional_id,
     status: 'sinal_pendente',
-    criado_em: new Date().toISOString(),
-  };
-  const next = { agendamentos: [...state.agendamentos, novo], pagamentos: state.pagamentos };
-  setState(next);
+    sinal_percentual: params.sinal_percentual,
+    observacoes: params.observacoes,
+  }).select().single();
+
+  if (error || !data) throw new Error(error?.message || 'Erro ao criar agendamento');
+  
+  const novo = { ...data, criado_em: data.created_at } as unknown as AgendamentoNoiva;
+  await fetchNoivaDadosDB();
   return novo;
 }
 
-export function atualizarStatusNoiva(id: string, status: StatusAgendamentoNoiva) {
-  const next = {
-    agendamentos: state.agendamentos.map(a => (a.id === id ? { ...a, status } : a)),
-    pagamentos: state.pagamentos,
-  };
-  setState(next);
+export async function atualizarStatusNoiva(id: string, status: StatusAgendamentoNoiva) {
+  await supabase.from('salon_bride_appointments').update({ status }).eq('id', id);
+  
+  // Sincronizar com a agenda principal se for confirmado ou sinal pago
+  if (status === 'confirmado' || status === 'sinal_pago') {
+    const { data: noiva } = await supabase.from('salon_bride_appointments').select('telefone, data_agendamento, hora, nome_noiva').eq('id', id).maybeSingle();
+    if (noiva) {
+      try {
+        await fetch('/api/noivas/sync-agenda', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telefone: noiva.telefone,
+            nome_noiva: noiva.nome_noiva,
+            data_agendamento: noiva.data_agendamento,
+            hora: noiva.hora,
+            status: status
+          })
+        });
+      } catch (e) {
+        console.error('Erro ao sincronizar agenda geral:', e);
+      }
+    }
+  }
+
+  await fetchNoivaDadosDB();
 }
 
-export function excluirAgendamentoNoiva(id: string) {
-  setState({
-    agendamentos: state.agendamentos.filter(a => a.id !== id),
-    pagamentos: state.pagamentos.filter(p => p.agendamento_id !== id),
-  });
+export async function excluirAgendamentoNoiva(id: string) {
+  await supabase.from('salon_bride_appointments').delete().eq('id', id);
+  await fetchNoivaDadosDB();
 }
 
 /** Valor total já pago de um agendamento */
@@ -214,12 +271,18 @@ export function totalPago(agendamentoId: string): number {
 }
 
 /** Regra: sinal mínimo de 50% — o agendamento só pode ser confirmado se o total pago ≥ 50% do pacote */
-export function podeConfirmar(agendamentoId: string): boolean {
+export function podeConfirmar(agendamentoId: string, pacote_preco?: number): boolean {
   const ag = state.agendamentos.find(a => a.id === agendamentoId);
   if (!ag) return false;
-  const pacote = NOIVA_PACOTES.find(p => p.id === ag.pacote_id);
-  if (!pacote) return false;
-  return totalPago(agendamentoId) >= (pacote.preco * NOIVA_SINAL_MIN_PCT) / 100;
+  
+  let preco = pacote_preco;
+  if (preco === undefined) {
+    const pacote = NOIVA_PACOTES.find(p => p.id === ag.pacote_id);
+    if (!pacote) return false;
+    preco = pacote.preco;
+  }
+  
+  return totalPago(agendamentoId) >= (preco * NOIVA_SINAL_MIN_PCT) / 100;
 }
 
 /** Gera código PIX copia e cola simulado (BR Code) para o sinal */
@@ -250,70 +313,44 @@ export function gerarPixCopiaCola(valor: number, descricao: string): string {
   return payload + crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-export function registrarPagamentoNoiva(params: {
+export async function registrarPagamentoNoiva(params: {
   agendamento_id: string;
   tipo: 'sinal' | 'complemento' | 'final';
   valor: number;
   forma: 'pix' | 'cartao' | 'dinheiro' | 'transferencia';
   comprovante?: string | null;
   pixCopiaCola?: string | null;
-}): PagamentoNoiva {
-  const pagamento: PagamentoNoiva = {
-    id: `pg${Date.now()}`,
+  pacote_preco?: number;
+}): Promise<PagamentoNoiva> {
+  const { data, error } = await supabase.from('salon_bride_payments').insert({
+    agendamento_id: params.agendamento_id,
+    tipo: params.tipo,
+    valor: params.valor,
+    forma: params.forma,
     status: 'pago',
-    criado_em: new Date().toISOString(),
-    data_pagamento: new Date().toISOString(),
-    ...params,
-  };
-  setState({ agendamentos: state.agendamentos, pagamentos: [...state.pagamentos, pagamento] });
+    pix_copia_cola: params.pixCopiaCola || null,
+    comprovante_url: params.comprovante || null,
+    data_pagamento: new Date().toISOString()
+  }).select().single();
+
+  if (error || !data) throw new Error(error?.message || 'Erro ao registrar pagamento');
+
+  await fetchNoivaDadosDB();
 
   // Auto-atualizar status do agendamento conforme a regra do sinal de 50%
-  const ag = state.agendamentos.find(a => a.id === pagamento.agendamento_id);
-  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(pagamento.agendamento_id)) {
-    setState({
-      agendamentos: state.agendamentos.map(a =>
-        a.id === pagamento.agendamento_id ? { ...a, status: 'sinal_pago' as StatusAgendamentoNoiva } : a
-      ),
-      pagamentos: state.pagamentos,
-    });
+  const ag = state.agendamentos.find(a => a.id === params.agendamento_id);
+  if (ag && ag.status === 'sinal_pendente' && podeConfirmar(params.agendamento_id, params.pacote_preco)) {
+    await atualizarStatusNoiva(params.agendamento_id, 'sinal_pago');
   }
-  return pagamento;
+  
+  return { ...data, criado_em: data.created_at, pixCopiaCola: data.pix_copia_cola } as unknown as PagamentoNoiva;
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // Dados de exemplo (demonstração)
 // ─────────────────────────────────────────────────────────────────────
 function seedAgendamentos(): AgendamentoNoiva[] {
-  return [
-    {
-      id: 'n-seed-1',
-      pacote_id: 'noiva-dia-completo',
-      nome_noiva: 'Juliana Ribeiro',
-      telefone: '(42) 99876-5432',
-      email: 'juliana@email.com',
-      data_evento: '2026-11-14',
-      data_agendamento: '2026-11-14',
-      hora: '08:00',
-      profissional_id: 'p1',
-      status: 'sinal_pendente',
-      sinal_percentual: NOIVA_SINAL_MIN_PCT,
-      criado_em: '2026-08-15T10:00:00Z',
-    },
-    {
-      id: 'n-seed-2',
-      pacote_id: 'noiva-prova',
-      nome_noiva: 'Fernanda Souza',
-      telefone: '(42) 98765-1234',
-      email: 'fernanda@email.com',
-      data_evento: '2026-09-20',
-      data_agendamento: '2026-09-05',
-      hora: '14:00',
-      profissional_id: 'p2',
-      status: 'confirmado',
-      sinal_percentual: NOIVA_SINAL_MIN_PCT,
-      criado_em: '2026-08-10T09:00:00Z',
-    },
-  ];
+  return [];
 }
 
 export function formatBRL(v: number): string {

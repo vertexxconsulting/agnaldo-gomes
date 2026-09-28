@@ -22,6 +22,33 @@ export function AdminUserButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userInitials, setUserInitials] = useState('AG');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+      if (user) {
+        const email = user.email || 'admin@agnaldo.com';
+        const name = user.user_metadata?.name || user.user_metadata?.nome || 'Administrador';
+        setUserEmail(email);
+        setUserName(name);
+        
+        // Calcular iniciais
+        if (name && name !== 'Administrador') {
+          const parts = name.split(' ');
+          if (parts.length >= 2) {
+            setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+          } else {
+            setUserInitials(name.substring(0, 2).toUpperCase());
+          }
+        } else {
+          setUserInitials(email.substring(0, 2).toUpperCase());
+        }
+      }
+    });
+  }, []);
+
   // Close when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -55,16 +82,16 @@ export function AdminUserButton({
           onClick={() => setIsOpen(true)}
           className={`flex items-center gap-3 transition-colors rounded-full ${
             isCollapsed 
-              ? 'p-2 bg-primary/10 hover:bg-primary/20 text-primary' 
+              ? 'p-2 bg-gold/10 hover:bg-gold/20 text-gold' 
               : 'p-2 w-full hover:bg-foreground/5'
           }`}
           style={{ borderRadius: isCollapsed ? 9999 : 12 }}
         >
           <motion.div 
             layoutId="user-avatar"
-            className="w-10 h-10 rounded-full bg-primary/20 text-primary flex flex-shrink-0 items-center justify-center font-bold"
+            className="w-10 h-10 rounded-full bg-gold/20 text-gold flex flex-shrink-0 items-center justify-center font-bold"
           >
-            AG
+            {userInitials}
           </motion.div>
           {!isCollapsed && (
             <motion.div 
@@ -72,8 +99,8 @@ export function AdminUserButton({
               animate={{ opacity: 1 }}
               className="flex flex-col items-start overflow-hidden whitespace-nowrap"
             >
-              <span className="text-sm font-medium text-foreground">Admin</span>
-              <span className="text-xs text-foreground/50">admin@agnaldo.com</span>
+              <span className="text-sm font-medium text-foreground">{userName}</span>
+              <span className="text-xs text-foreground/50">{userEmail}</span>
             </motion.div>
           )}
         </motion.button>
@@ -90,12 +117,12 @@ export function AdminUserButton({
             <div className="p-4 border-b border-[var(--border-subtle)] flex items-center gap-3 relative">
               <motion.div 
                 layoutId="user-avatar"
-                className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold"
+                className="w-12 h-12 rounded-full bg-gold/20 text-gold flex items-center justify-center font-bold"
               >
-                AG
+                {userInitials}
               </motion.div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">Agnaldo Gomes</span>
+                <span className="text-sm font-bold text-foreground">{userName}</span>
                 <span className="text-xs text-foreground/50">Administrador</span>
               </div>
               <button 

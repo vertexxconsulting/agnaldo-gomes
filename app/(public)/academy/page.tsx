@@ -56,6 +56,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Colorimetria Avançada",
@@ -71,6 +76,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Escova Perfeita",
@@ -86,6 +96,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Barbearia",
@@ -101,6 +116,11 @@ const cursos: Curso[] = [
     ],
     formato: "Presencial · 6h",
     certificado: true,
+    investimento: [
+      { label: "VIP · 1 pessoa", valor: "R$ 0" },
+      { label: "VIP · 3 pessoas", valor: "R$ 0" },
+      { label: "Curso 6h", valor: "R$ 0" },
+    ],
   },
   {
     titulo: "Gestão de Salão",
@@ -116,6 +136,9 @@ const cursos: Curso[] = [
     ],
     formato: "Online · 8h",
     certificado: false,
+    investimento: [
+      { label: "Online", valor: "R$ 0" },
+    ],
   },
 ];
 
@@ -133,15 +156,16 @@ export default function AcademyPage() {
       <section className="relative w-full min-h-[56vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/agnaldo3.webp"
+            src="/agnaldo_hero.jpg"
             alt="Agnaldo Gomes — Academy"
             fill
-            className="object-cover object-top"
-            sizes="100vw"
             priority
+            fetchPriority="high"
+            className="object-cover object-center"
+            sizes="100vw"
           />
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-background" />
+          <div className="absolute inset-0 bg-black/40" aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-background" aria-hidden />
         </div>
         <div className="container relative z-10 mx-auto px-6 text-center py-24">
           <p className="text-primary font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs">

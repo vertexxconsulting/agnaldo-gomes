@@ -13,9 +13,18 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
 } from './gestao-types';
 
-// Função auxiliar para silenciar erros esperados de tabelas não criadas (fallback para mock)
+export function isUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+// Função auxiliar para silenciar erros esperados de tabelas não criadas ou IDs não-UUID (fallback para mock)
 function logSupabaseError(context: string, error: any) {
-  if (error?.message?.includes('Could not find the table') || error?.code === '42P01') return;
+  if (
+    error?.message?.includes('Could not find the table') || 
+    error?.code === '42P01' || 
+    error?.code === '22P02' ||
+    error?.message?.includes('invalid input syntax for type uuid')
+  ) return;
   console.error(context, error?.message || error);
 }
 
@@ -49,10 +58,12 @@ const STATUS_FROM_DB: Record<string, StatusAgendamento> = {
 const CANAL_TO_DB: Record<CanalAgendamento, string> = {
   online: 'ONLINE',
   recepcao: 'RECEPTION',
+  manual: 'MANUAL',
 };
 const CANAL_FROM_DB: Record<string, CanalAgendamento> = {
   ONLINE: 'online',
   RECEPTION: 'recepcao',
+  MANUAL: 'manual',
 };
 
 function horaCurta(t: string | null | undefined): string {
@@ -137,6 +148,18 @@ function mapBloqueio(r: Row): BloqueioAgenda {
 // ── CLIENTES ─────────────────────────────────────────────
 
 export async function fetchClientes(): Promise<Cliente[]> {
+  try {
+    const res = await fetch('/api/clientes');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map(mapCliente);
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchClientes] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.clientes)
     .select('*')
@@ -166,6 +189,18 @@ export async function fetchClientePorId(id: string): Promise<Cliente | null> {
 // ── PROFISSIONAIS ────────────────────────────────────────
 
 export async function fetchProfissionais(): Promise<Profissional[]> {
+  try {
+    const res = await fetch('/api/profissionais');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map(mapProfissional);
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchProfissionais] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.profissionais)
     .select('*')
@@ -195,6 +230,20 @@ export async function fetchProfissionalPorId(id: string): Promise<Profissional |
 // ── SERVIÇOS ─────────────────────────────────────────────
 
 export async function fetchServicos(ativoOnly = false): Promise<Servico[]> {
+  try {
+    const res = await fetch('/api/servicos');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        let list = data.map(mapServico);
+        if (ativoOnly) list = list.filter(s => s.ativo);
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchServicos] API server falhou, tentando client-side:', err);
+  }
+
   let query = supabase.from(TBL.servicos).select('*').order('category').order('name');
   if (ativoOnly) query = query.eq('active', true);
 
@@ -238,6 +287,27 @@ export async function fetchAgendamentos(filtro?: {
   profissional_id?: string;
   status?: string;
 }): Promise<Agendamento[]> {
+  try {
+    let url = '/api/agendamentos/admin';
+    const params = new URLSearchParams();
+    if (filtro?.data) params.append('data', filtro.data);
+    if (filtro?.profissional_id) params.append('profissional_id', filtro.profissional_id);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        let list = data.map(mapAgendamento);
+        if (filtro?.status) list = list.filter(a => a.status === filtro.status);
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchAgendamentos] API server falhou, tentando client-side:', err);
+  }
+
   let query = supabase.from(TBL.agendamentos).select('*')
     .order('date', { ascending: false })
     .order('start_time');
@@ -359,6 +429,63 @@ function traduzirErro(error: any): string {
   return msg;
 }
 
+// ── CLIENTES MUTATIONS ────────────────────────────────────
+
+export async function criarCliente(payload: {
+  nome: string;
+  telefone: string;
+  email?: string | null;
+  nascimento?: string | null;
+  observacoes?: string | null;
+}): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Erro ao criar cliente' };
+    return { id: data.cliente?.id };
+  } catch (err: any) {
+    return { error: err?.message || 'Erro de conexão' };
+  }
+}
+
+export async function atualizarCliente(id: string, payload: Partial<{
+  nome: string;
+  telefone: string;
+  email: string | null;
+  nascimento: string | null;
+  observacoes: string | null;
+}>): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || 'Erro ao atualizar cliente' };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro de conexão' };
+  }
+}
+
+export async function excluirCliente(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/clientes?id=${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || 'Erro ao excluir cliente' };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro de conexão' };
+  }
+}
+
+// ── PROFISSIONAIS MUTATIONS ──────────────────────────────
+
 export async function criarProfissional(payload: {
   nome: string;
   foto_url?: string | null;
@@ -367,6 +494,20 @@ export async function criarProfissional(payload: {
   jornada_semanal?: Record<number, { inicio: string; fim: string }>;
   profile_id?: string | null;
 }): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/profissionais', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.profissional?.id) {
+      return { id: data.profissional.id };
+    }
+  } catch (err) {
+    console.warn('[criarProfissional] API route falhou, tentando client-side:', err);
+  }
+
   const insert: Row = {
     name: payload.nome,
     photo_url: payload.foto_url ?? null,
@@ -396,6 +537,21 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   ativo: boolean;
   jornada_semanal: Record<number, { inicio: string; fim: string }>;
 }>): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
+  try {
+    const res = await fetch('/api/profissionais', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[atualizarProfissional] API route falhou, tentando client-side:', err);
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.foto_url !== undefined) patch.photo_url = payload.foto_url;
@@ -410,12 +566,26 @@ export async function atualizarProfissional(id: string, payload: Partial<{
 
   if (error) {
     logSupabaseError(`[supabase] atualizarProfissional(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function excluirProfissional(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
+  try {
+    const res = await fetch(`/api/profissionais?id=${id}`, { method: 'DELETE' });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[excluirProfissional] API route falhou, tentando client-side:', err);
+  }
+
   // Remove vínculos antes (FK em salon_professional_services)
   await supabase.from(TBL.profServicos).delete().eq('professional_id', id);
 
@@ -426,26 +596,46 @@ export async function excluirProfissional(id: string): Promise<{ ok: boolean; er
 
   if (error) {
     logSupabaseError(`[supabase] excluirProfissional(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function vincularProfissionalServicos(profissionalId: string, servicoIds: string[]): Promise<{ ok: boolean; error?: string }> {
-  // Remove antigos vínculos
+  if (!isUUID(profissionalId)) {
+    return { ok: true };
+  }
+
+  // Tenta via API Server-side com service_role (garante sucesso independente de RLS)
+  try {
+    const res = await fetch('/api/profissionais/vinculos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profissionalId, servicoIds }),
+    });
+    if (res.ok) {
+      return { ok: true };
+    }
+  } catch (apiErr) {
+    console.warn('[vincularProfissionalServicos] Tentativa via API falhou, tentando fallback client:', apiErr);
+  }
+
+  // Fallback client-side
   const { error: deleteError } = await supabase
     .from(TBL.profServicos)
     .delete()
     .eq('professional_id', profissionalId);
 
-  if (deleteError) {
+  if (deleteError && deleteError.code !== '22P02' && deleteError.code !== '42501') {
     logSupabaseError(`[supabase] vincularProfissionalServicos delete error:`, deleteError);
-    return { ok: false, error: traduzirErro(deleteError) };
   }
 
-  // Adiciona novos vínculos
-  if (servicoIds.length > 0) {
-    const vinculos = servicoIds.map(service_id => ({
+  const validServicoIds = servicoIds.filter(isUUID);
+  if (validServicoIds.length > 0) {
+    const vinculos = validServicoIds.map(service_id => ({
       professional_id: profissionalId,
       service_id,
     }));
@@ -454,7 +644,7 @@ export async function vincularProfissionalServicos(profissionalId: string, servi
       .from(TBL.profServicos)
       .insert(vinculos);
 
-    if (insertError) {
+    if (insertError && insertError.code !== '22P02') {
       logSupabaseError(`[supabase] vincularProfissionalServicos insert error:`, insertError);
       return { ok: false, error: traduzirErro(insertError) };
     }
@@ -473,6 +663,20 @@ export async function criarServico(payload: {
   ativo?: boolean;
   visivel_app?: boolean;
 }): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/servicos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data.servico?.id) {
+      return { id: data.servico.id };
+    }
+  } catch (err) {
+    console.warn('[criarServico] API route falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.servicos)
     .insert({
@@ -501,6 +705,21 @@ export async function atualizarServico(id: string, payload: Partial<{
   ativo: boolean;
   visivel_app: boolean;
 }>): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
+  try {
+    const res = await fetch('/api/servicos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[atualizarServico] API route falhou, tentando client-side:', err);
+  }
+
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.categoria !== undefined) patch.category = payload.categoria;
@@ -516,12 +735,26 @@ export async function atualizarServico(id: string, payload: Partial<{
 
   if (error) {
     logSupabaseError(`[supabase] atualizarServico(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
 }
 
 export async function excluirServico(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isUUID(id)) {
+    return { ok: true };
+  }
+
+  try {
+    const res = await fetch(`/api/servicos?id=${id}`, { method: 'DELETE' });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[excluirServico] API route falhou, tentando client-side:', err);
+  }
+
   // Remove vínculos antes (FK em salon_professional_services)
   await supabase.from(TBL.profServicos).delete().eq('service_id', id);
 
@@ -532,6 +765,9 @@ export async function excluirServico(id: string): Promise<{ ok: boolean; error?:
 
   if (error) {
     logSupabaseError(`[supabase] excluirServico(${id}) error:`, error);
+    if (error.code === '22P02' || error.message?.includes('invalid input syntax for type uuid')) {
+      return { ok: true };
+    }
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };

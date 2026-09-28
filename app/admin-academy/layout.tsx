@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, GraduationCap, PlayCircle, Settings, Users, BookOpen, Award, Command, CreditCard, Video } from 'lucide-react';
+import { Command, LayoutDashboard, GraduationCap, PlayCircle, Users, BookOpen, Award, Settings, CreditCard, Video, Calendar, Star } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
@@ -9,6 +10,8 @@ const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true },
   { href: '/admin-academy', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin-academy/cursos', label: 'Gestão de Cursos', icon: PlayCircle },
+  { href: '/admin-academy/cursos-vip', label: 'Cursos VIP (Presencial)', icon: Star },
+  { href: '/admin-academy/agenda-vip', label: 'Agenda VIP', icon: Calendar },
   { href: '/admin-academy/alunos', label: 'Gestão de Alunos', icon: GraduationCap },
   { href: '/admin-academy/comunidade', label: 'Comunidade', icon: Users },
   { href: '/admin-academy/certificados', label: 'Certificados', icon: Award },
@@ -38,6 +41,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
     <div className="flex h-screen bg-[var(--background)] overflow-hidden">
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
+        {/* Removido ThemeToggle conforme solicitação */}
         <div className="pt-16 md:pt-0 px-4 sm:px-6 lg:px-8 pb-12 max-w-6xl mx-auto">
           {children}
         </div>

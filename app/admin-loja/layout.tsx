@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Package, ShoppingCart, Settings, Command, Store } from 'lucide-react';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true },
@@ -24,7 +25,6 @@ export default function AdminLojaLayout({ children }: { children: React.ReactNod
       backLabel="Voltar à Loja"
       backHref="/loja"
       brand={{ icon: Store, text: 'Loja' }}
-      footerItems={null}
     />
   );
 
@@ -32,6 +32,7 @@ export default function AdminLojaLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen bg-[var(--background)] overflow-hidden">
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
+        {/* Removido ThemeToggle conforme solicitação */}
         <div className="pt-16 md:pt-0 px-4 sm:px-6 lg:px-8 pb-12 max-w-6xl mx-auto">
           {children}
         </div>

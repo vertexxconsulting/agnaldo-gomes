@@ -30,10 +30,10 @@ export default function AdminAcademyPerfilPage() {
         {/* Avatar Card */}
         <CardGlass className="p-6 flex flex-col items-center text-center space-y-4">
           <div className="relative group">
-            <div className="w-32 h-32 rounded-full bg-primary/10 border-4 border-[var(--background)] shadow-xl flex items-center justify-center overflow-hidden">
-              <span className="text-4xl font-serif font-bold text-primary">AG</span>
+            <div className="w-32 h-32 rounded-full bg-gold/10 border-4 border-[var(--background)] shadow-xl flex items-center justify-center overflow-hidden">
+              <span className="text-4xl font-serif font-bold text-gold">AG</span>
               {/* Overlay edit */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-foreground cursor-pointer">
                 <Camera size={24} className="mb-1" />
                 <span className="text-xs font-medium">Trocar Foto</span>
               </div>
@@ -41,7 +41,7 @@ export default function AdminAcademyPerfilPage() {
           </div>
           <div>
             <h3 className="font-bold text-lg text-foreground">{formData.name}</h3>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium mt-2">
               <Shield size={12} /> Produtor / Admin
             </span>
           </div>
@@ -67,7 +67,7 @@ export default function AdminAcademyPerfilPage() {
                   value={formData.name}
                   disabled={!isEditing}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-70 disabled:bg-foreground/5"
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-gold focus:outline-none disabled:opacity-70 disabled:bg-foreground/5"
                 />
               </div>
               <div className="space-y-1.5">
@@ -79,7 +79,7 @@ export default function AdminAcademyPerfilPage() {
                   value={formData.email}
                   disabled={!isEditing}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-70 disabled:bg-foreground/5"
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-gold focus:outline-none disabled:opacity-70 disabled:bg-foreground/5"
                 />
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function AdminAcademyPerfilPage() {
                 disabled={!isEditing}
                 rows={3}
                 onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-70 disabled:bg-foreground/5 resize-none"
+                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:border-gold focus:outline-none disabled:opacity-70 disabled:bg-foreground/5 resize-none"
               />
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function AdminAcademyPerfilPage() {
                 value={formData.instagram}
                 disabled={!isEditing}
                 onChange={(e) => setFormData({...formData, instagram: e.target.value})}
-                className="w-full bg-transparent border-b border-[var(--border-subtle)] pb-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-70"
+                className="w-full bg-transparent border-b border-[var(--border-subtle)] pb-2 text-sm text-foreground focus:border-gold focus:outline-none disabled:opacity-70"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export default function AdminAcademyPerfilPage() {
                 value={formData.youtube}
                 disabled={!isEditing}
                 onChange={(e) => setFormData({...formData, youtube: e.target.value})}
-                className="w-full bg-transparent border-b border-[var(--border-subtle)] pb-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:opacity-70"
+                className="w-full bg-transparent border-b border-[var(--border-subtle)] pb-2 text-sm text-foreground focus:border-gold focus:outline-none disabled:opacity-70"
               />
             </div>
           </div>

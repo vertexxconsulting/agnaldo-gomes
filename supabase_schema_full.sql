@@ -23,13 +23,33 @@ $$ language 'plpgsql';
 -- ==========================================
 -- 2. TIPOS CUSTOMIZADOS (ENUMS)
 -- ==========================================
-CREATE TYPE user_role AS ENUM ('ADMIN', 'PROFESSIONAL', 'STUDENT', 'CUSTOMER');
-CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
-CREATE TYPE appointment_channel AS ENUM ('ONLINE', 'RECEPTION');
-CREATE TYPE product_type AS ENUM ('LOCAL_STOCK', 'AFFILIATE_ML');
-CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED');
-CREATE TYPE shipping_type AS ENUM ('MOTOBOY', 'CORREIOS', 'JADLOG', 'RETIRADA');
-CREATE TYPE course_status AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('ADMIN', 'PROFESSIONAL', 'STUDENT', 'CUSTOMER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE appointment_channel AS ENUM ('ONLINE', 'RECEPTION');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE product_type AS ENUM ('LOCAL_STOCK', 'AFFILIATE_ML');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE order_status AS ENUM ('PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE shipping_type AS ENUM ('MOTOBOY', 'CORREIOS', 'JADLOG', 'RETIRADA');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE course_status AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 -- ==========================================
@@ -208,6 +228,7 @@ CREATE TABLE salon_customers (
     email TEXT,
     birth_date DATE,
     notes TEXT,
+    loyalty_points INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
@@ -342,7 +363,7 @@ CREATE POLICY "Users view own order items" ON order_items FOR SELECT USING (
 CREATE POLICY "Users insert own order items" ON order_items FOR INSERT WITH CHECK (true);
 
 
--- 7.6. SALON
+-- 7.6. SALON (RLS CORRIGIDO - ADMIN, STUDIO_SECRETARIA E PROFESSIONAL RESTRITO)
 ALTER TABLE salon_customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE salon_services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE salon_professionals ENABLE ROW LEVEL SECURITY;
@@ -350,31 +371,164 @@ ALTER TABLE salon_professional_services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE salon_appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE salon_schedule_blocks ENABLE ROW LEVEL SECURITY;
 
--- Serviços e Profissionais são públicos
-CREATE POLICY "Salon services are visible to everyone" ON salon_services FOR SELECT USING (active = true AND visible_in_app = true);
-CREATE POLICY "Salon professionals are visible to everyone" ON salon_professionals FOR SELECT USING (active = true);
-CREATE POLICY "Salon professional services are visible to everyone" ON salon_professional_services FOR SELECT USING (true);
+-- 7.6.1. SERVIÇOS (salon_services & salon_professional_services)
+-- Público: visualização de serviços ativos
+DROP POLICY IF EXISTS "Salon services are visible to everyone" ON salon_services;
+CREATE POLICY "Salon services are visible to everyone" ON salon_services 
+  FOR SELECT USING (active = true AND visible_in_app = true);
 
--- Agendamentos: Clientes veem os próprios
-CREATE POLICY "Customers view own appointments" ON salon_appointments FOR SELECT USING (
-  EXISTS (SELECT 1 FROM salon_customers WHERE salon_customers.id = salon_appointments.customer_id AND salon_customers.user_id = auth.uid())
-);
-CREATE POLICY "Customers insert own appointments" ON salon_appointments FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM salon_customers WHERE salon_customers.id = salon_appointments.customer_id AND salon_customers.user_id = auth.uid())
-);
+DROP POLICY IF EXISTS "Salon professional services are visible to everyone" ON salon_professional_services;
+CREATE POLICY "Salon professional services are visible to everyone" ON salon_professional_services 
+  FOR SELECT USING (true);
 
--- Profissionais veem seus próprios agendamentos e bloqueios
-CREATE POLICY "Professionals view own appointments" ON salon_appointments FOR SELECT USING (
-  EXISTS (SELECT 1 FROM salon_professionals WHERE salon_professionals.id = salon_appointments.professional_id AND salon_professionals.user_id = auth.uid())
-);
-CREATE POLICY "Professionals view own blocks" ON salon_schedule_blocks FOR SELECT USING (
-  EXISTS (SELECT 1 FROM salon_professionals WHERE salon_professionals.id = salon_schedule_blocks.professional_id AND salon_professionals.user_id = auth.uid())
-);
+-- ADMIN: CRUD total
+DROP POLICY IF EXISTS "Admins manage salon_services" ON salon_services;
+CREATE POLICY "Admins manage salon_services" ON salon_services 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN' 
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
+  );
 
--- Admins gerenciam tudo do Salão
-CREATE POLICY "Admins manage salon_customers" ON salon_customers FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));
-CREATE POLICY "Admins manage salon_services" ON salon_services FOR ALL USING (public.get_user_role() = 'ADMIN');
-CREATE POLICY "Admins manage salon_professionals" ON salon_professionals FOR ALL USING (public.get_user_role() = 'ADMIN');
-CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services FOR ALL USING (public.get_user_role() = 'ADMIN');
-CREATE POLICY "Admins manage salon_appointments" ON salon_appointments FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));
-CREATE POLICY "Admins manage salon_schedule_blocks" ON salon_schedule_blocks FOR ALL USING (public.get_user_role() IN ('ADMIN', 'PROFESSIONAL'));
+DROP POLICY IF EXISTS "Admins manage salon_professional_services" ON salon_professional_services;
+CREATE POLICY "Admins manage salon_professional_services" ON salon_professional_services 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN' 
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
+  );
+
+-- STUDIO_SECRETARIA: CRUD em serviços
+DROP POLICY IF EXISTS "Secretaria manage salon_services" ON salon_services;
+CREATE POLICY "Secretaria manage salon_services" ON salon_services 
+  FOR ALL USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'studio_secretaria'
+    OR public.get_user_role() = 'studio_secretaria'
+  );
+
+
+-- 7.6.2. PROFISSIONAIS (salon_professionals)
+-- Público: visualização de profissionais ativos
+DROP POLICY IF EXISTS "Salon professionals are visible to everyone" ON salon_professionals;
+CREATE POLICY "Salon professionals are visible to everyone" ON salon_professionals 
+  FOR SELECT USING (active = true);
+
+-- PROFESSIONAL: visualiza o próprio perfil completo
+DROP POLICY IF EXISTS "Professionals view own profile" ON salon_professionals;
+CREATE POLICY "Professionals view own profile" ON salon_professionals 
+  FOR SELECT USING (user_id = auth.uid());
+
+-- STUDIO_SECRETARIA: visualização de todos os profissionais (readonly)
+DROP POLICY IF EXISTS "Secretaria view all professionals" ON salon_professionals;
+CREATE POLICY "Secretaria view all professionals" ON salon_professionals 
+  FOR SELECT USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'studio_secretaria'
+    OR public.get_user_role() = 'studio_secretaria'
+  );
+
+-- ADMIN: CRUD total em profissionais
+DROP POLICY IF EXISTS "Admins manage salon_professionals" ON salon_professionals;
+CREATE POLICY "Admins manage salon_professionals" ON salon_professionals 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN' 
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin')
+  );
+
+
+-- 7.6.3. CLIENTES (salon_customers)
+-- Clientes visualizam o próprio cadastro
+DROP POLICY IF EXISTS "Customers view own profile" ON salon_customers;
+CREATE POLICY "Customers view own profile" ON salon_customers 
+  FOR SELECT USING (user_id = auth.uid());
+
+-- ADMIN e STUDIO_SECRETARIA: CRUD total em clientes (PROFESSIONAL não gerencia clientes)
+DROP POLICY IF EXISTS "Admins manage salon_customers" ON salon_customers;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_customers" ON salon_customers;
+CREATE POLICY "Admins and secretaria manage salon_customers" ON salon_customers 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+    OR public.get_user_role() = 'studio_secretaria'
+  );
+
+
+-- 7.6.4. AGENDAMENTOS (salon_appointments)
+-- Clientes: visualizam e inserem próprios agendamentos
+DROP POLICY IF EXISTS "Customers view own appointments" ON salon_appointments;
+CREATE POLICY "Customers view own appointments" ON salon_appointments 
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM salon_customers 
+      WHERE salon_customers.id = salon_appointments.customer_id 
+        AND salon_customers.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Customers insert own appointments" ON salon_appointments;
+CREATE POLICY "Customers insert own appointments" ON salon_appointments 
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM salon_customers 
+      WHERE salon_customers.id = salon_appointments.customer_id 
+        AND salon_customers.user_id = auth.uid()
+    )
+  );
+
+-- PROFESSIONAL: SELECT e UPDATE apenas dos seus próprios agendamentos
+DROP POLICY IF EXISTS "Professionals view own appointments" ON salon_appointments;
+CREATE POLICY "Professionals view own appointments" ON salon_appointments 
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM salon_professionals 
+      WHERE salon_professionals.id = salon_appointments.professional_id 
+        AND salon_professionals.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Professionals update own appointments" ON salon_appointments;
+CREATE POLICY "Professionals update own appointments" ON salon_appointments 
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM salon_professionals 
+      WHERE salon_professionals.id = salon_appointments.professional_id 
+        AND salon_professionals.user_id = auth.uid()
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM salon_professionals 
+      WHERE salon_professionals.id = salon_appointments.professional_id 
+        AND salon_professionals.user_id = auth.uid()
+    )
+  );
+
+-- ADMIN e STUDIO_SECRETARIA: CRUD total em agendamentos
+DROP POLICY IF EXISTS "Admins manage salon_appointments" ON salon_appointments;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_appointments" ON salon_appointments;
+CREATE POLICY "Admins and secretaria manage salon_appointments" ON salon_appointments 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+    OR public.get_user_role() = 'studio_secretaria'
+  );
+
+
+-- 7.6.5. BLOQUEIOS DE AGENDA (salon_schedule_blocks)
+-- PROFESSIONAL: SELECT apenas dos seus próprios bloqueios
+DROP POLICY IF EXISTS "Professionals view own blocks" ON salon_schedule_blocks;
+CREATE POLICY "Professionals view own blocks" ON salon_schedule_blocks 
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM salon_professionals 
+      WHERE salon_professionals.id = salon_schedule_blocks.professional_id 
+        AND salon_professionals.user_id = auth.uid()
+    )
+  );
+
+-- ADMIN e STUDIO_SECRETARIA: CRUD total em bloqueios de agenda
+DROP POLICY IF EXISTS "Admins manage salon_schedule_blocks" ON salon_schedule_blocks;
+DROP POLICY IF EXISTS "Admins and secretaria manage salon_schedule_blocks" ON salon_schedule_blocks;
+CREATE POLICY "Admins and secretaria manage salon_schedule_blocks" ON salon_schedule_blocks 
+  FOR ALL USING (
+    public.get_user_role() = 'ADMIN'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_secretaria')
+    OR public.get_user_role() = 'studio_secretaria'
+  );
+

@@ -12,8 +12,11 @@ import {
 import Link from 'next/link';
 import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
-import { getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome } from '@/lib/mock-data';
-import type { Cliente, Agendamento, Servico } from '@/lib/mock-data';
+import { fetchClientes, fetchAgendamentos, fetchServicos } from '@/lib/supabase-queries';
+import type { Cliente, Agendamento, Servico } from '@/lib/gestao-types';
+
+const getServicoNome = (id: string, servicos: Servico[]) => servicos.find(s => s.id === id)?.nome ?? 'Serviço excluído';
+const getClienteNome = (id: string, clientes: Cliente[]) => clientes.find(c => c.id === id)?.nome ?? 'Cliente excluído';
 
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
@@ -29,9 +32,9 @@ export default function AdminDashboardPage() {
     const carregarDados = async () => {
       setLoading(true);
       const [clientes, agendamentos, servicos] = await Promise.all([
-        getClientes(),
-        getAgendamentos(),
-        getServicos(),
+        fetchClientes(),
+        fetchAgendamentos(),
+        fetchServicos(),
       ]);
       setClientesData(clientes);
       setAgendamentosData(agendamentos);
@@ -71,7 +74,7 @@ export default function AdminDashboardPage() {
     // Distribuição por serviço no mês
     const porServicoMap = new Map<string, number>();
     faturamentos.filter(a => a.data.slice(0, 7) === mesAtual).forEach(a => {
-      const nome = getServicoNome(a.servico_id);
+      const nome = getServicoNome(a.servico_id, servicosData);
       porServicoMap.set(nome, (porServicoMap.get(nome) ?? 0) + a.valor);
     });
     const porServico = [...porServicoMap.entries()].map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 6);
@@ -88,8 +91,8 @@ export default function AdminDashboardPage() {
     setPendentesManuais(
       agendamentosDoDia.filter(a => a.status === 'pendente').map(a => ({
         ...a,
-        clienteNome: getClienteNome(a.cliente_id),
-        servicoNome: getServicoNome(a.servico_id)
+        clienteNome: getClienteNome(a.cliente_id, clientesData),
+        servicoNome: getServicoNome(a.servico_id, servicosData)
       }))
     );
   }, [agendamentosDoDia]);
@@ -123,7 +126,7 @@ export default function AdminDashboardPage() {
             purple: 'from-[#8b5cf6]/15 to-[#8b5cf6]/5 hover:border-[#8b5cf6]/60',
             green: 'from-[#10B981]/15 to-[#10B981]/5 hover:border-[#10B981]/60',
           };
-          const icoCores: Record<string, string> = { primary: 'text-primary', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
+          const icoCores: Record<string, string> = { primary: 'text-gold', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
           return (
             <Link key={e.href} href={e.href}>
               <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
@@ -134,7 +137,7 @@ export default function AdminDashboardPage() {
                   <p className="text-[13px] font-semibold truncate">{e.label}</p>
                   <p className="text-[11px] text-foreground/50">{e.desc}</p>
                 </div>
-                <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             </Link>
           );

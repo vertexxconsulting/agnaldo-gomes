@@ -1,3 +1,5 @@
+'use client';
+
 import { SystemTutorial } from '@/components/SystemTutorial';
 
 export default function AdminAcademyTutorialPage() {

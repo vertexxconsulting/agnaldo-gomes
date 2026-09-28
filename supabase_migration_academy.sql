@@ -49,28 +49,36 @@ ALTER TABLE community_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesson_notes ENABLE ROW LEVEL SECURITY;
 
 -- Posts: qualquer usuário autenticado vê; só o autor insere/atualiza o próprio
+DROP POLICY IF EXISTS "Authenticated users view posts" ON community_posts;
 CREATE POLICY "Authenticated users view posts" ON community_posts
   FOR SELECT USING (auth.uid() IS NOT NULL);
 
+DROP POLICY IF EXISTS "Users insert own posts" ON community_posts;
 CREATE POLICY "Users insert own posts" ON community_posts
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users update own posts" ON community_posts;
 CREATE POLICY "Users update own posts" ON community_posts
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users delete own posts" ON community_posts;
 CREATE POLICY "Users delete own posts" ON community_posts
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Comentários: aluno cria o próprio; admin modera tudo
+DROP POLICY IF EXISTS "Authenticated users view comments" ON community_comments;
 CREATE POLICY "Authenticated users view comments" ON community_comments
   FOR SELECT USING (auth.uid() IS NOT NULL OR public.get_user_role() = 'ADMIN');
 
+DROP POLICY IF EXISTS "Users insert own comments" ON community_comments;
 CREATE POLICY "Users insert own comments" ON community_comments
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins manage comments" ON community_comments;
 CREATE POLICY "Admins manage comments" ON community_comments
   FOR ALL USING (public.get_user_role() = 'ADMIN');
 
 -- Anotações: cada aluno só acessa as próprias
+DROP POLICY IF EXISTS "Users manage own notes" ON lesson_notes;
 CREATE POLICY "Users manage own notes" ON lesson_notes
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

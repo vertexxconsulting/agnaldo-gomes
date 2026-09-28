@@ -15,35 +15,33 @@ interface UserProfile {
   medalhas: { nome: string; cor: string }[];
 }
 
-// Fallback mock
-const MOCK_PROFILE: UserProfile = {
-  nome: 'Mariana Silva',
-  email: 'mariana@example.com',
-  telefone: '(11) 99999-9999',
-  pontos: 1450,
-  nivel: 'Ouro',
-  streak: 4,
-  medalhas: [
-    { nome: 'Primeiro Passo', cor: 'yellow' },
-    { nome: 'Estudioso', cor: 'blue' },
-  ],
+// Fallback vazio
+const DEFAULT_PROFILE: UserProfile = {
+  nome: 'Carregando...',
+  email: '',
+  telefone: '',
+  pontos: 0,
+  nivel: 'Iniciante',
+  streak: 0,
+  medalhas: [],
 };
 
 export default function PerfilAlunoPage() {
-  const [profile, setProfile] = useState<UserProfile>(MOCK_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [nome, setNome] = useState(profile.nome);
-  const [email, setEmail] = useState(profile.email);
-  const [telefone, setTelefone] = useState(profile.telefone);
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
 
   useEffect(() => {
     const carregarPerfil = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          setProfile(MOCK_PROFILE);
+          // O layout de servidor já bloqueia acesso não logado, 
+          // mas por segurança mantemos.
           return;
         }
 
@@ -53,21 +51,24 @@ export default function PerfilAlunoPage() {
           .eq('id', user.id)
           .single();
 
-        if (perfisError || !perfilData) {
-          setProfile(MOCK_PROFILE);
-        } else {
+        if (perfilData) {
+          const nomeDb = perfilData.full_name || 'Aluno(a)';
+          const emailDb = perfilData.email || user.email || '';
+          
           setProfile({
-            nome: perfilData.full_name || MOCK_PROFILE.nome,
-            email: perfilData.email || user.email || MOCK_PROFILE.email,
-            telefone: MOCK_PROFILE.telefone,
-            pontos: MOCK_PROFILE.pontos,
-            nivel: MOCK_PROFILE.nivel,
-            streak: MOCK_PROFILE.streak,
-            medalhas: MOCK_PROFILE.medalhas,
+            nome: nomeDb,
+            email: emailDb,
+            telefone: '',
+            pontos: 0,
+            nivel: 'Iniciante',
+            streak: 0,
+            medalhas: [],
           });
+          setNome(nomeDb);
+          setEmail(emailDb);
         }
-      } catch {
-        setProfile(MOCK_PROFILE);
+      } catch (err) {
+        console.error(err);
       }
       setLoading(false);
     };
@@ -120,7 +121,7 @@ export default function PerfilAlunoPage() {
       <div className="max-w-4xl mx-auto w-full">
 
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-white mb-2">Minha Conta</h1>
+          <h1 className="text-3xl font-black text-foreground mb-2">Minha Conta</h1>
           <p className="text-white/60">Gerencie seus dados pessoais e acompanhe suas conquistas.</p>
         </div>
 
@@ -130,7 +131,7 @@ export default function PerfilAlunoPage() {
           <div className="lg:col-span-2 flex flex-col gap-6">
 
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-white mb-6">Dados Pessoais</h2>
+              <h2 className="text-xl font-bold text-foreground mb-6">Dados Pessoais</h2>
 
               <div className="flex flex-col gap-4">
                 <div>
@@ -143,7 +144,7 @@ export default function PerfilAlunoPage() {
                       type="text"
                       value={nome}
                       onChange={e => setNome(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-primary transition-colors"
+                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
                     />
                   </div>
                 </div>
@@ -159,7 +160,7 @@ export default function PerfilAlunoPage() {
                         type="email"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-primary transition-colors"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
                       />
                     </div>
                   </div>
@@ -174,7 +175,7 @@ export default function PerfilAlunoPage() {
                         type="tel"
                         value={telefone}
                         onChange={e => setTelefone(e.target.value)}
-                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-primary transition-colors"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
                       />
                     </div>
                   </div>
@@ -192,32 +193,26 @@ export default function PerfilAlunoPage() {
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Lock size={20} /> Segurança</h2>
-              <p className="text-white/60 text-sm mb-4">Atualize sua senha de acesso periodicamente para manter sua conta segura.</p>
-              <Button variant="outline" className="text-sm">Alterar Senha</Button>
-            </div>
-
           </div>
 
           {/* Lado Direito - Gamificação */}
           <div className="flex flex-col gap-6">
 
             {/* Box de Pontuação */}
-            <div className="bg-gradient-to-br from-primary/20 to-black border border-primary/30 rounded-xl p-6 text-center relative overflow-hidden">
+            <div className="bg-gradient-to-br from-gold/20 to-foreground border border-gold/30 rounded-xl p-6 text-center relative overflow-hidden">
               <div className="absolute -top-10 -right-10 text-primary/10">
                 <Trophy size={120} />
               </div>
 
               <div className="relative z-10">
                 <h3 className="text-white/80 font-medium mb-1">Seus Pontos</h3>
-                <div className="text-4xl font-black text-white mb-2 flex items-center justify-center gap-2">
+                <div className="text-4xl font-black text-foreground mb-2 flex items-center justify-center gap-2">
                   {profile.pontos.toLocaleString('pt-BR')} <Star size={24} className="text-yellow-500 fill-yellow-500" />
                 </div>
-                <p className="text-xs text-white/50">Você está no <strong className="text-primary">Nível {profile.nivel}</strong></p>
+                <p className="text-xs text-white/50">Você está no <strong className="text-gold">Nível {profile.nivel}</strong></p>
 
                 <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden mt-4 mb-2">
-                  <div className="bg-primary h-full" style={{ width: '75%' }} />
+                  <div className="bg-gold h-full" style={{ width: '75%' }} />
                 </div>
                 <p className="text-[10px] text-white/40 text-right">Faltam 550 pts para o Nível Diamante</p>
               </div>
@@ -226,7 +221,7 @@ export default function PerfilAlunoPage() {
             {/* Streak / Ofensiva */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 flex items-center justify-between">
               <div>
-                <h3 className="text-white font-bold mb-1">Ofensiva Atual</h3>
+                <h3 className="text-foreground font-bold mb-1">Ofensiva Atual</h3>
                 <p className="text-xs text-white/50">Dias seguidos estudando</p>
               </div>
               <div className="flex items-center gap-1 text-2xl font-black text-orange-500">
@@ -236,7 +231,7 @@ export default function PerfilAlunoPage() {
 
             {/* Medalhas */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <h3 className="text-white font-bold mb-4">Suas Medalhas</h3>
+              <h3 className="text-foreground font-bold mb-4">Suas Medalhas</h3>
               <div className="grid grid-cols-3 gap-3 text-center">
                 {profile.medalhas.map((medalha, idx) => (
                   <div
@@ -252,7 +247,7 @@ export default function PerfilAlunoPage() {
                 {/* Medalha bloqueada */}
                 <div className="flex flex-col items-center gap-2 opacity-30 grayscale">
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                    <Award size={24} className="text-white" />
+                    <Award size={24} className="text-foreground" />
                   </div>
                   <span className="text-[10px] text-white/80">Mestre</span>
                 </div>
