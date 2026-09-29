@@ -136,17 +136,17 @@ async function scrapeMLProduct(mlId: string, htmlStr?: string, originalUrl?: str
     // 1. Extração do PREÇO EXATO da Buy Box principal
     // No Mercado Livre, o preço principal com desconto fica em <div class="ui-pdp-price__second-line">
     // ou diretamente no primeiro meta tag do produto.
-    const fractionMatch = html.match(/<span class="andes-money-amount__fraction">([^<]+)<\/span>/);
-    const centsMatch = html.match(/<span class="andes-money-amount__cents">([^<]+)<\/span>/);
+    const fractionMatch = html.match(/<span[^>]*class="[^"]*andes-money-amount__fraction[^"]*"[^>]*>([^<]+)<\/span>/i);
+    const centsMatch = html.match(/<span[^>]*class="[^"]*andes-money-amount__cents[^"]*"[^>]*>([^<]+)<\/span>/i);
     
     if (fractionMatch) {
-       const fraction = fractionMatch[1].replace(/\./g, ''); // 503
-       const cents = centsMatch ? centsMatch[1] : '00'; // 13
+       const fraction = fractionMatch[1].replace(/\D/g, ''); // 503
+       const cents = centsMatch ? centsMatch[1].replace(/\D/g, '') : '00'; // 13
        data.price = parseFloat(`${fraction}.${cents}`);
     } else {
        // Tenta meta tag se não achar os spans
-       const metaPrice = html.match(/<meta itemprop="price" content="([0-9.]+)"/i) || 
-                         html.match(/<meta property="product:price:amount" content="([0-9.]+)"/i);
+       const metaPrice = html.match(/<meta[^>]+(?:itemprop="price"|property="product:price:amount")[^>]+content="([0-9.]+)"/i) || 
+                         html.match(/<meta[^>]+content="([0-9.]+)"[^>]+(?:itemprop="price"|property="product:price:amount")/i);
        if (metaPrice) data.price = parseFloat(metaPrice[1]);
     }
 
