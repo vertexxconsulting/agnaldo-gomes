@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Package, ShoppingCart, Settings, Command, Store } from 'lucide-react';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AdminUserButton } from '@/components/AdminUserButton';
 
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true },
@@ -25,6 +26,7 @@ export default function AdminLojaLayout({ children }: { children: React.ReactNod
       backLabel="Voltar à Loja"
       backHref="/loja"
       brand={{ icon: Store, text: 'Loja' }}
+      footerItems={<AdminUserButton isCollapsed={false} logoutHref="/admin-loja/login" />}
     />
   );
 

@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { Panel, StatCard, SectionHeader, StatusBadge } from '@/components/ui/Panel';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminUserButton } from '@/components/AdminUserButton';
 import AdminShell from '@/components/AdminShell';
 import {
   getClientes, getAgendamentos, getServicos, getServicoNome, getClienteNome,
@@ -182,6 +183,7 @@ export default function HubCentralPage() {
           backLabel="Voltar ao Site Público"
           backHref="/"
           brand={{ icon: Command, text: 'Gestão AG' }}
+          footerItems={<AdminUserButton isCollapsed={false} logoutHref="/login" />}
         />
       }
     >
