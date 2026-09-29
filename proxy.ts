@@ -95,9 +95,18 @@ export async function proxy(request: NextRequest) {
   let targetUrl = request.nextUrl.clone();
   let willRewrite = false;
 
+  // Rotas que NÃO devem ser reescritas para /admin/* no subdomínio admin
+  const ADMIN_SKIP_REWRITES = [
+    '/login', '/hub', '/loja', '/agendamento', '/academy', '/aluno',
+    '/studio', '/sobre', '/contato', '/perfil', '/proposta',
+    '/esqueci-senha', '/atualizar-senha', '/signup', '/reset-password',
+    '/politica-de-privacidade', '/termos-de-uso', '/maintenance',
+  ];
+  const skipAdminRewrite = ADMIN_SKIP_REWRITES.some(r => pathname === r || pathname.startsWith(r + '/'));
+
   if (isAdmin) {
     if (!pathname.startsWith('/admin-academy') && !pathname.startsWith('/admin-loja') && !pathname.startsWith('/admin-secretaria')) {
-      if (!pathname.startsWith('/admin') && pathname !== '/login' && !pathname.startsWith('/hub')) {
+      if (!pathname.startsWith('/admin') && !skipAdminRewrite) {
         targetUrl.pathname = `/admin${pathname === '/' ? '' : pathname}`;
         willRewrite = true;
       }
