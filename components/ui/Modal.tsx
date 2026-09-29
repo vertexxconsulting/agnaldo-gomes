@@ -19,7 +19,7 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
       onClick={onClose}
     >
       <div
-        className="bg-card-bg border border-gold/20 rounded-xl shadow-elev-lg w-full max-w-md mx-4 p-6"
+        className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

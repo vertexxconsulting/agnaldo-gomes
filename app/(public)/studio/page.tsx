@@ -21,35 +21,33 @@ function StudioCarouselHero() {
     <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
       {/* Carrossel de fundo — colunas verticais (retrato) transicionando lateralmente */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0 flex">
-        <motion.div
-          className="flex h-full items-stretch"
+        <div
+          className="flex h-full items-stretch animate-carousel"
           style={{ width: 'fit-content' }}
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ ease: 'linear', duration: 40, repeat: Infinity }}
         >
           {[...studioImages, ...studioImages].map((src, i) => (
             <div
               key={i}
               className="relative flex-shrink-0 h-full"
-              style={{ width: '20vw', minWidth: 200 }}
+              style={{ width: '25vw', minWidth: 250 }}
             >
               <Image
                 src={src}
                 alt="Studio Agnaldo Gomes"
                 fill
                 className="object-cover object-center"
-                sizes="20vw"
+                sizes="25vw"
+                quality={50}
                 priority={i < 3}
               />
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
 
-      {/* Overlay gradientes luxury */}
+      {/* Overlay gradientes luxury (sem o esfumaçado claro na base) */}
       <div className="absolute inset-0 bg-black/50" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
 
       {/* Conteúdo do Hero */}
       <motion.div
@@ -181,7 +179,7 @@ export default function StudioPage() {
   ];
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full -mt-[80px]">
       {/* ===== HERO COM CARROSSEL ===== */}
       <StudioCarouselHero />
 

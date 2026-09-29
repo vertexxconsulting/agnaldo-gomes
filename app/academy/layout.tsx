@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 
 export default function AcademyLayout({
   children,
@@ -28,16 +30,23 @@ export default function AcademyLayout({
     fetchProfile();
   }, []);
 
-  // Não exibe a barra no login
-  if (pathname?.startsWith('/academy/login')) {
-    return <>{children}</>;
+  // Não exibe a barra no login e checkout
+  if (pathname?.startsWith('/academy/login') || pathname?.startsWith('/academy/checkout')) {
+    return (
+      <div className="min-h-screen bg-background text-foreground font-sans">
+        {children}
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
-      <main>
+    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
+      {/* O Header já é position: fixed no CSS dele, por isso só chamamos aqui */}
+      <Header />
+      <main className="flex-1">
         {children}
       </main>
+      <Footer />
     </div>
   );
 }

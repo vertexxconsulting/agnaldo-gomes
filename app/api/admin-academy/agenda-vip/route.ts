@@ -31,14 +31,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // Validate required fields
-    if (!body.course_id || !body.date) {
-      return NextResponse.json({ error: 'Course ID and Date are required' }, { status: 400 });
+    if (!body.date) {
+      return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
       .from('academy_vip_schedules')
       .insert({
-        course_id: body.course_id,
+        course_id: body.course_id || null,
         date: body.date,
         time: body.time || null,
         location: body.location || '',

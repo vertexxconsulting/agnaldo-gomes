@@ -5,19 +5,25 @@ export async function GET() {
   try {
     const { data: courses, error } = await supabase
       .from('academy_vip_courses')
-      .select(`
-        *,
-        schedules:academy_vip_schedules(*)
-      `)
+      .select('*')
       .eq('is_published', true)
       .order('is_featured', { ascending: false });
 
     if (error) throw error;
     
-    // Filter out inactive schedules
+    // Fetch all active schedules regardless of course
+    const { data: allSchedules } = await supabase
+      .from('academy_vip_schedules')
+      .select('*')
+      .eq('is_active', true)
+      .order('date', { ascending: true });
+      
+    const activeSchedules = allSchedules?.filter((s: any) => new Date(s.date) > new Date()) || [];
+
+    // Inject the same universal free dates into every course
     const filteredCourses = courses?.map((c: any) => ({
       ...c,
-      schedules: c.schedules.filter((s: any) => s.is_active && new Date(s.date) > new Date())
+      schedules: activeSchedules
     })) || [];
 
     return NextResponse.json(filteredCourses);

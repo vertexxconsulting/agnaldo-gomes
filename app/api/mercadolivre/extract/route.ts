@@ -109,8 +109,8 @@ async function fetchFromMLAPI(mlId: string): Promise<MLProductData | null> {
 /**
  * Fallback: scraping da página do produto
  */
-async function scrapeMLProduct(mlId: string, htmlStr?: string): Promise<MLProductData | null> {
-  const url = `https://produto.mercadolivre.com.br/${mlId}`;
+async function scrapeMLProduct(mlId: string, htmlStr?: string, originalUrl?: string): Promise<MLProductData | null> {
+  const url = originalUrl || `https://produto.mercadolivre.com.br/${mlId}`;
   let html = htmlStr || '';
   
   try {
@@ -131,121 +131,64 @@ async function scrapeMLProduct(mlId: string, htmlStr?: string): Promise<MLProduc
       html = await response.text();
     }
     
-    // Extrai dados do JSON-LD ou meta tags
-    const data: MLProductData = { mlId, price: null };
+    const data: MLProductData = { mlId, price: null, images: [] };
     
-    // 1. Tenta JSON-LD (Schema.org Product)
-    const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
-    if (jsonLdMatch) {
-      for (const script of jsonLdMatch) {
-        try {
-          const json = JSON.parse(script.replace('<script type="application/ld+json">', '').replace('</script>', '').trim());
-          if (json['@type'] === 'Product' || (Array.isArray(json) && json.some((j: MLProductData) => j['@type'] === 'Product'))) {
-            const product = json['@type'] === 'Product' ? json : json.find((j: MLProductData) => j['@type'] === 'Product');
-            if (product) {
-              data.title = product.name;
-              data.description = product.description;
-              data.price = product.offers?.price ? parseFloat(product.offers.price) : null;
-              data.currency = product.offers?.priceCurrency || 'BRL';
-              data.image = product.image;
-              data.availability = product.offers?.availability;
-              break;
-            }
-          }
-        } catch {
-          // Continua tentando
+    // 1. Extração do PREÇO EXATO da Buy Box principal
+    // No Mercado Livre, o preço principal com desconto fica em <div class="ui-pdp-price__second-line">
+    // ou diretamente no primeiro meta tag do produto.
+    const fractionMatch = html.match(/<span class="andes-money-amount__fraction">([^<]+)<\/span>/);
+    const centsMatch = html.match(/<span class="andes-money-amount__cents">([^<]+)<\/span>/);
+    
+    if (fractionMatch) {
+       const fraction = fractionMatch[1].replace(/\./g, ''); // 503
+       const cents = centsMatch ? centsMatch[1] : '00'; // 13
+       data.price = parseFloat(`${fraction}.${cents}`);
+    } else {
+       // Tenta meta tag se não achar os spans
+       const metaPrice = html.match(/<meta itemprop="price" content="([0-9.]+)"/i) || 
+                         html.match(/<meta property="product:price:amount" content="([0-9.]+)"/i);
+       if (metaPrice) data.price = parseFloat(metaPrice[1]);
+    }
+
+    // 2. Extrai título
+    const titleMatch = html.match(/<h1 class="ui-pdp-title">([^<]+)<\/h1>/i) || 
+                       html.match(/<meta property="og:title" content="([^"]+)"/i);
+    if (titleMatch) data.title = titleMatch[1].replace(' | Mercado Livre', '').trim();
+
+    // 3. Extrai imagens (Galeria completa)
+    // Procuramos pelas imagens de alta resolução no array de imagens (ui-pdp-gallery)
+    const galleryMatches = html.matchAll(/data-zoom="([^"]+)"/gi);
+    const zoomImages = Array.from(galleryMatches).map(m => m[1]);
+    
+    if (zoomImages.length > 0) {
+      data.images = [...new Set(zoomImages)].slice(0, 10);
+      data.image = data.images[0];
+    } else {
+      // Fallback para og:image e regex de imagens
+      const imgMatches = html.matchAll(/"url"\s*:\s*"([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
+      const images = Array.from(imgMatches).map(m => m[1]).filter(url => !url.includes('svg')).filter((v, i, a) => a.indexOf(v) === i);
+      if (images.length > 0) {
+        // Tenta pegar a versão maior das imagens
+        data.images = images.slice(0, 10);
+        data.image = data.images[0];
+      }
+      
+      if (!data.image) {
+        const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/i);
+        if (ogImage) {
+          data.image = ogImage[1];
+          data.images = [ogImage[1]];
         }
       }
     }
     
-    // 2. Meta tags Open Graph
-    if (!data.title) {
-      const ogTitle = html.match(/<meta property="og:title" content="([^"]+)"/i);
-      if (ogTitle) data.title = ogTitle[1];
-    }
-    if (!data.image) {
-      const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/i);
-      if (ogImage) data.image = ogImage[1];
-    }
-    if (!data.description) {
+    // 4. Extrai descrição
+    const descMatch = html.match(/<p class="ui-pdp-description__content">([\s\S]*?)<\/p>/i);
+    if (descMatch) {
+      data.description = descMatch[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+    } else {
       const ogDesc = html.match(/<meta property="og:description" content="([^"]+)"/i);
       if (ogDesc) data.description = ogDesc[1];
-    }
-    if (!data.price) {
-      const priceMatch = html.match(/<meta property="product:price:amount" content="([^"]+)"/i) ||
-                         html.match(/<meta itemprop="price" content="([^"]+)"/i);
-      if (priceMatch) data.price = parseFloat(priceMatch[1]);
-    }
-    
-    // 3. Procura por dados no window.__PRELOADED_STATE__ ou similares
-    if (!data.title || !data.price) {
-      const preloadMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*({[\s\S]*?});/);
-      if (preloadMatch) {
-        try {
-          const state = JSON.parse(preloadMatch[1]) as Record<string, unknown>;
-          // Navega no objeto para achar dados do produto
-          const findProduct = (obj: Record<string, unknown>): MLProductData | null => {
-            if (!obj || typeof obj !== 'object') return null;
-            if (obj.item || obj.product || (obj.data as Record<string, unknown>)?.item) {
-              return (obj.item || obj.product || (obj.data as Record<string, unknown>)?.item) as MLProductData;
-            }
-            for (const key of Object.keys(obj)) {
-              const val = obj[key];
-              if (val && typeof val === 'object') {
-                const found = findProduct(val as Record<string, unknown>);
-                if (found) return found;
-              }
-            }
-            return null;
-          };
-          const productData = findProduct(state);
-          if (productData) {
-            data.title = data.title || productData.title || productData.name;
-            data.price = data.price ?? (typeof productData.price === 'object' && productData.price ? (productData.price as { amount?: number }).amount : productData.price);
-            data.image = data.image || productData.pictures?.[0]?.url || productData.thumbnail;
-            data.description = data.description || productData.description;
-          }
-        } catch {
-          // Ignora erro de parsing
-        }
-      }
-    }
-    
-    // 4. Regex fallback para preço no HTML
-    if (!data.price) {
-      const pricePatterns = [
-        { regex: /"price":\s*(\d+\.\d+)/, isFloat: true },
-        { regex: /"amount":\s*(\d+\.\d+)/, isFloat: true },
-        { regex: /priceMetadata.*?"amount":\s*(\d+\.\d+)/, isFloat: true },
-        { regex: /R\$\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)/, isFloat: false },
-      ];
-      for (const pattern of pricePatterns) {
-        const match = html.match(pattern.regex);
-        if (match) {
-          if (pattern.isFloat) {
-            data.price = parseFloat(match[1]);
-          } else {
-            const val = match[1].replace(/\./g, '').replace(',', '.');
-            data.price = parseFloat(val);
-          }
-          break;
-        }
-      }
-    }
-    
-    // 5. Extrai título do <title> se não tiver
-    if (!data.title) {
-      const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        data.title = titleMatch[1].replace(' | Mercado Livre', '').trim();
-      }
-    }
-    
-    // 6. Extrai imagens da galeria
-    if (!data.images) {
-      const imgMatches = html.matchAll(/"url"\s*:\s*"([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
-      const images = Array.from(imgMatches).map(m => m[1]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 10);
-      if (images.length > 0) data.images = images;
     }
     
     return data;
@@ -315,12 +258,37 @@ export async function POST(req: Request) {
     
     console.log(`[ML Extract] Processando: ${mlId}`);
     
-    // 2. Tenta API oficial primeiro
-    let productData = await fetchFromMLAPI(mlId);
+    // 2. Tenta Scraping primeiro (para pegar o preço exato da Buy Box e todas as imagens)
+    // Buscamos o HTML se já não tivermos buscado
+    if (!fetchedHtml) {
+      try {
+        const response = await fetch(finalUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+          signal: AbortSignal.timeout(10000),
+        });
+        fetchedHtml = await response.text();
+      } catch (e) {
+        console.warn('Erro ao buscar HTML principal:', e);
+      }
+    }
     
-    // 3. Se falhar, tenta scraping. Passa o HTML já baixado para evitar ser bloqueado novamente
-    if (!productData || !productData.title) {
-      productData = await scrapeMLProduct(mlId, fetchedHtml);
+    let productData = await scrapeMLProduct(mlId, fetchedHtml, finalUrl);
+    
+    // 3. Se o scraping falhar ou faltar dados vitais, tenta a API oficial como fallback
+    if (!productData || !productData.title || !productData.price) {
+      const apiData = await fetchFromMLAPI(mlId);
+      if (apiData) {
+        if (!productData) productData = apiData;
+        else {
+          productData.title = productData.title || apiData.title;
+          productData.price = productData.price || (apiData.price ? Number(apiData.price) : null);
+          productData.description = productData.description || apiData.description;
+          if (!productData.image) productData.image = apiData.thumbnail || apiData.pictures?.[0]?.url;
+          if (!productData.images || productData.images.length === 0) {
+            productData.images = apiData.pictures?.map((p: any) => p.url) || [];
+          }
+        }
+      }
     }
     
     // 4. Se ainda não tiver dados mínimos, retorna erro

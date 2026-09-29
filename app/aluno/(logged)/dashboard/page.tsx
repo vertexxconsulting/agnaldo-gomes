@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Play, Info, Award, Flame, ChevronRight, Lock } from 'lucide-react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
 import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
@@ -15,6 +16,7 @@ export default function AlunoDashboardPage() {
   const [welcomeVideoUrl, setWelcomeVideoUrl] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -56,7 +58,15 @@ export default function AlunoDashboardPage() {
     carregarDados();
   }, []);
 
-  const featuredCourse = cursos.length > 0 ? cursos[0] : null;
+  useEffect(() => {
+    if (cursos.length <= 1) return;
+    const interval = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % Math.min(cursos.length, 5)); // cycle top 5
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [cursos.length]);
+
+  const featuredCourse = cursos.length > 0 ? cursos[featuredIndex] : null;
   // Encontrar onde o aluno parou (última aula assistida não concluída, ou a última assistida)
   const aulaParou = progressoAluno.find(p => !p.concluida) || progressoAluno[progressoAluno.length - 1];
   // Mapear aulas e módulos para lookup
@@ -106,7 +116,7 @@ export default function AlunoDashboardPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-20">
+    <div className="flex flex-col min-h-screen bg-background pb-20 -mt-20">
       {/* Vídeo de Boas-vindas ou Banner Principal Estilo Netflix */}
       {welcomeVideoUrl ? (
         <div className="relative w-full aspect-video md:h-[68vh] md:aspect-auto bg-foreground">
@@ -118,37 +128,49 @@ export default function AlunoDashboardPage() {
         </div>
       ) : (
         <div className="relative w-full h-[65vh] sm:h-[80vh] bg-black">
-        {/* Imagem de Fundo com Escurecimento Sutil */}
+        {/* Imagem de Fundo Estática */}
         <div
-          className="absolute inset-0 bg-cover bg-top opacity-80"
-          style={{ backgroundImage: `url(${featuredCourse?.capaUrl|| ''})` }}
+          className="absolute inset-0 bg-cover bg-[center_20%] opacity-80"
+          style={{ backgroundImage: `url('/agnaldohero.webp')` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/30 to-transparent" />
 
         {/* Conteúdo do Banner */}
-        <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col justify-end">
-          <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 max-w-2xl drop-shadow-lg">
-            {featuredCourse?.titulo|| 'Bem-vindo'}
-          </h1>
-          <p className="text-white/80 text-sm sm:text-base max-w-xl mb-6 drop-shadow-md line-clamp-3">
-            {featuredCourse?.descricao|| 'Explore nossos cursos disponíveis.'}
-          </p>
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/aluno/cursos/${featuredCourse?.id|| ''}/aulas/${aulaParou?.aula_id|| 'aula_1'}`}
-              className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold"
+        <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col justify-end overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={featuredCourse?.id || 'empty'}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-2xl"
             >
-              <Play size={18} className="fill-black" />
-              Assistir Agora
-            </Link>
-            <Link
-              href={`/aluno/cursos/${featuredCourse?.id|| ''}`}
-              className="bg-white/10 text-white hover:bg-white/20 border border-white/20 flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-colors shadow-sm"
-            >
-              <Info size={18} />
-              Mais Informações
-            </Link>
-          </div>
+              <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 drop-shadow-lg">
+                {featuredCourse?.titulo|| 'Bem-vindo à Academy'}
+              </h1>
+              <p className="text-white/80 text-sm sm:text-base max-w-xl mb-6 drop-shadow-md line-clamp-3">
+                {featuredCourse?.descricao|| 'Explore nossos cursos disponíveis.'}
+              </p>
+              <div className="flex items-center gap-4">
+                <Link
+                  href={`/aluno/cursos/${featuredCourse?.id|| ''}/aulas/${aulaParou?.aula_id|| 'aula_1'}`}
+                  className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <Play size={18} className="fill-black" />
+                  Assistir Agora
+                </Link>
+                <Link
+                  href={`/aluno/cursos/${featuredCourse?.id|| ''}`}
+                  className="bg-white/10 text-white hover:bg-white/20 border border-white/20 flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-colors shadow-sm"
+                >
+                  <Info size={18} />
+                  Mais Informações
+                </Link>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
       )}

@@ -27,9 +27,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-gold/30 selection:text-foreground">
+    <div className="min-h-screen academy-dark bg-background text-foreground font-sans selection:bg-gold/30 selection:text-foreground">
       {/* Header Estilo Netflix */}
-      <header className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-foreground/80 to-transparent z-50 transition-all duration-300">
+      <header className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/80 to-transparent z-50 transition-all duration-300">
         <div className="container mx-auto px-6 h-full flex items-center justify-between">
 
           <div className="flex items-center gap-10">
@@ -55,8 +55,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-foreground/80 ${
-                    pathname === link.href ? 'text-foreground' : 'text-foreground/50'
+                  className={`text-sm font-medium transition-colors hover:text-white ${
+                    pathname === link.href ? 'text-white font-bold drop-shadow-md' : 'text-white/70'
                   }`}
                 >
                   {link.name}
@@ -69,25 +69,25 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             {/* Perfil Dropdown */}
             <div className="relative group">
               <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <div className="w-10 h-10 rounded-md bg-foreground/10 flex items-center justify-center border border-gold/20 overflow-hidden">
-                  <User size={20} className="text-foreground/70" />
+                <div className="w-10 h-10 rounded-md bg-white/10 flex items-center justify-center border border-gold/20 overflow-hidden">
+                  <User size={20} className="text-white" />
                 </div>
               </button>
 
               {/* Dropdown Menu */}
-              <div className="absolute right-0 top-full mt-2 w-48 bg-card-bg border border-gold/20 rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
-                <Link href="/aluno/perfil" className="flex items-center gap-3 px-4 py-2 text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/5">
+              <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1d] border border-gold/20 rounded-md shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
+                <Link href="/aluno/perfil" className="flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5">
                   <Settings size={16} /> Minha Conta
                 </Link>
                 <div className="h-px bg-gold/20 my-2" />
-                <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10">
+                <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10">
                   <LogOut size={16} /> Sair
                 </button>
               </div>
             </div>
 
             {/* Mobile Menu Toggle */}
-            <button className="md:hidden text-foreground" onClick={() => setMenuOpen(!menuOpen)}>
+            <button className="md:hidden text-white" onClick={() => setMenuOpen(!menuOpen)}>
               <Menu size={24} />
             </button>
           </div>
@@ -95,12 +95,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         {/* Mobile Nav */}
         {menuOpen && (
-          <div className="md:hidden absolute top-20 left-0 right-0 bg-background border-b border-gold/20 p-4 flex flex-col gap-4">
+          <div className="md:hidden absolute top-20 left-0 right-0 bg-[#0f0f11] border-b border-gold/20 p-4 flex flex-col gap-4">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm font-medium text-foreground/70 hover:text-foreground"
+                className="text-sm font-medium text-white/70 hover:text-white"
                 onClick={() => setMenuOpen(false)}
               >
                 {link.name}

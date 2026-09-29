@@ -13,19 +13,29 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
   const [mounted, setMounted] = useState(false);
   const itemCount = useCartStore((state) => state.getItemCount());
 
+  const [settings, setSettings] = useState<any>(null);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
+    fetch('/api/admin/loja/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setSettings(data);
+      })
+      .catch(console.error);
   }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-amber-200">
       
       {/* Topbar / Aviso - Escuro elegante no lugar do verde */}
-      <div className="bg-[#1A1A1A] text-white text-[11px] md:text-xs uppercase tracking-widest text-center py-2 font-medium flex items-center justify-center gap-4">
-        <span>FRETE GRÁTIS NAS COMPRAS ACIMA DE R$ 299,00</span>
-        <Link href="/loja" className="border border-white/40 px-3 py-0.5 hover:bg-white hover:text-black transition-colors text-[10px]">Saiba Mais</Link>
-      </div>
+      {settings?.frete_gratis && (
+        <div className="bg-[#1A1A1A] text-white text-[11px] md:text-xs uppercase tracking-widest text-center py-2 font-medium flex items-center justify-center gap-4">
+          <span>FRETE GRÁTIS NAS COMPRAS ACIMA DE R$ {settings.frete_gratis_acima_de}</span>
+          <Link href="/loja" className="border border-white/40 px-3 py-0.5 hover:bg-white hover:text-black transition-colors text-[10px]">Saiba Mais</Link>
+        </div>
+      )}
 
       {/* Header E-commerce - Tom Bege/Areia */}
       <header className="bg-[#F4F1EA] border-b border-[#E5E0D8] sticky top-0 z-50 shadow-sm">

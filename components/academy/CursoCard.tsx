@@ -55,7 +55,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
   };
 
   return (
-    <div className="group relative flex flex-col rounded-xl bg-card-bg border border-border transition-all duration-300 hover:translate-y-[--space-2] hover:shadow-elev-md">
+    <div className="group relative flex flex-col rounded-xl bg-white shadow-md border border-[var(--border-subtle)] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
       {/* Thumbnail */}
       <div className="aspect-video relative overflow-hidden rounded-t-xl bg-foreground/5">
         {curso.thumbnail_url ? (

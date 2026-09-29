@@ -73,7 +73,7 @@ const marqueeItems = [
 export default function Home() {
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full -mt-[80px]">
       {/* ===== HERO: autoridade nos primeiros 3 segundos ===== */}
       <section className="relative w-full min-h-[92vh] flex items-center overflow-hidden" aria-label="Hero">
         {/* Foto de fundo: Agnaldo trabalhando — presença humana e autoridade */}

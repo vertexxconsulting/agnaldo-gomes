@@ -57,7 +57,7 @@ export default function AdminAgendaVipPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSchedule.course_id || !newSchedule.date) return;
+    if (!newSchedule.date) return;
 
     setSaving(true);
     try {
@@ -115,23 +115,10 @@ export default function AdminAgendaVipPage() {
               <Calendar size={18} className="text-gold" /> Nova Data
             </h2>
 
+            {/* Curso VIP removido - as datas são universais para qualquer curso VIP */}
+            
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Curso VIP</label>
-              <select
-                required
-                value={newSchedule.course_id}
-                onChange={e => setNewSchedule({...newSchedule, course_id: e.target.value})}
-                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 px-3 text-foreground focus:border-gold outline-none"
-              >
-                <option value="">Selecione um curso...</option>
-                {cursos.map(c => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Data</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Data Livre</label>
               <input
                 type="date"
                 required
@@ -152,26 +139,56 @@ export default function AdminAgendaVipPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Local</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-2">Formato</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="formato" 
+                    value="GRUPO" 
+                    checked={newSchedule.available_spots > 1}
+                    onChange={() => setNewSchedule({...newSchedule, available_spots: 10})}
+                    className="accent-gold"
+                  />
+                  Turma em Grupo
+                </label>
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="formato" 
+                    value="VIP" 
+                    checked={newSchedule.available_spots === 1}
+                    onChange={() => setNewSchedule({...newSchedule, available_spots: 1})}
+                    className="accent-gold"
+                  />
+                  VIP Individual
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Local / Cidade</label>
               <input
                 type="text"
                 value={newSchedule.location}
                 onChange={e => setNewSchedule({...newSchedule, location: e.target.value})}
                 className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 px-3 text-foreground focus:border-gold outline-none"
-                placeholder="São Paulo, SP"
+                placeholder="Ex: Telêmaco Borba, São Paulo, etc."
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">Vagas Totais</label>
-              <input
-                type="number"
-                min="1"
-                value={newSchedule.available_spots}
-                onChange={e => setNewSchedule({...newSchedule, available_spots: parseInt(e.target.value)})}
-                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 px-3 text-foreground focus:border-gold outline-none"
-              />
-            </div>
+            {newSchedule.available_spots > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-1">Vagas Totais</label>
+                <input
+                  type="number"
+                  min="2"
+                  value={newSchedule.available_spots}
+                  onChange={e => setNewSchedule({...newSchedule, available_spots: parseInt(e.target.value) || 2})}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 px-3 text-foreground focus:border-gold outline-none"
+                />
+              </div>
+            )}
 
             <Button type="submit" variant="primary" className="w-full flex justify-center gap-2" disabled={saving}>
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Adicionar Data
@@ -185,19 +202,15 @@ export default function AdminAgendaVipPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--background)]">
-                  <th className="p-4 text-sm font-semibold text-foreground/70">Curso</th>
                   <th className="p-4 text-sm font-semibold text-foreground/70">Data / Horário</th>
                   <th className="p-4 text-sm font-semibold text-foreground/70">Local</th>
-                  <th className="p-4 text-sm font-semibold text-foreground/70 w-24">Vagas</th>
+                  <th className="p-4 text-sm font-semibold text-foreground/70 w-32">Formato / Vagas</th>
                   <th className="p-4 w-16"></th>
                 </tr>
               </thead>
               <tbody>
                 {schedules.map(schedule => (
                   <tr key={schedule.id} className="border-b border-[var(--border-subtle)]/50 hover:bg-white/5 transition-colors">
-                    <td className="p-4 text-sm font-medium text-foreground">
-                      {schedule.course?.title}
-                    </td>
                     <td className="p-4 text-sm text-foreground/80">
                       <div>{new Date(schedule.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>
                       <div className="text-xs text-foreground/50">{schedule.time}</div>
@@ -206,7 +219,11 @@ export default function AdminAgendaVipPage() {
                       {schedule.location || '-'}
                     </td>
                     <td className="p-4 text-sm text-foreground/80">
-                      {schedule.available_spots}
+                      {schedule.available_spots === 1 ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded bg-gold/20 text-gold text-xs font-bold">VIP Individual</span>
+                      ) : (
+                        `${schedule.available_spots} Vagas`
+                      )}
                     </td>
                     <td className="p-4">
                       <button 

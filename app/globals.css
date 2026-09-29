@@ -92,3 +92,14 @@ body {
 .academy-dark .text-gradient {
   background-image: linear-gradient(to right, #d4af37, #f5f5dc);
 }
+
+/* ============ ANIMAÇÕES NATIVAS (PERFORMANCE) ============ */
+@keyframes slide-carousel {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-carousel {
+  animation: slide-carousel 40s linear infinite;
+  will-change: transform;
+}

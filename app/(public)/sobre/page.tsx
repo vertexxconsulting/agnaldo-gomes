@@ -33,13 +33,13 @@ const valores = [
 
 export default function SobrePage() {
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full -mt-[80px]">
 
       {/* ===== HERO COM FOTO ===== */}
-      <section className="relative w-full min-h-[75vh] flex items-end overflow-hidden">
+      <section className="relative w-full min-h-[90vh] flex items-end overflow-hidden">
         {/* Foto de fundo */}
         <Image
-          src="/agnaldo9.webp"
+          src="/agnaldohero.webp"
           alt="Agnaldo Gomes"
           fill
           className="object-cover object-[center_10%]"
@@ -47,12 +47,12 @@ export default function SobrePage() {
           sizes="100vw"
         />
         {/* Overlays */}
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-black/30" />
+        {/* Um gradiente mais suave apenas para garantir leitura do texto, sem criar uma barra preta pesada no fundo */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
         {/* Conteúdo sobre a foto */}
-        <div className="relative z-10 container mx-auto px-6 lg:px-12 pb-16 pt-32 flex flex-col gap-4">
+        <div className="relative z-10 container mx-auto px-6 lg:px-12 pb-20 pt-32 flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-white/80 font-bold tracking-[0.3em] uppercase text-xs ml-1">
               Sobre
@@ -71,9 +71,9 @@ export default function SobrePage() {
           </p>
 
           {/* Badge +30 anos */}
-          <div className="mt-2 inline-flex items-center gap-3 glass border border-primary/40 rounded-2xl px-6 py-3 w-fit">
-            <span className="text-3xl font-bold text-primary">+30</span>
-            <span className="text-xs text-white/70 uppercase tracking-widest leading-tight">anos de<br/>experiência</span>
+          <div className="mt-4 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-primary/50 shadow-xl shadow-black/20 rounded-2xl px-6 py-4 w-fit">
+            <span className="text-4xl font-black text-primary drop-shadow-md">+30</span>
+            <span className="text-[13px] text-white font-bold uppercase tracking-[0.15em] leading-tight">anos de<br/>experiência</span>
           </div>
         </div>
       </section>
