@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Agendamento - Agnaldo Gomes',
-    short_name: 'Agendar',
+    name: 'Studio Hair Style',
+    short_name: 'Studio Hair Style',
     description: 'Agende seu horário com Agnaldo Gomes Studio.',
     start_url: '/',
     display: 'standalone',
