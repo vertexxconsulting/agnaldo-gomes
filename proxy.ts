@@ -50,21 +50,85 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const url = request.nextUrl;
+  const hostname = request.headers.get('host') || '';
+  const pathname = url.pathname;
+
+  const isAcademy = hostname.includes('academy.agnaldogomes.com') || hostname.includes('academy.localhost');
+  const isLoja = hostname.includes('loja.agnaldogomes.com') || hostname.includes('loja.localhost');
+  const isAgenda = hostname.includes('agenda.agnaldogomes.com') || hostname.includes('agenda.localhost');
+  const isAdmin = hostname.includes('admin.agnaldogomes.com') || hostname.includes('admin.localhost');
+  const isMain = !isAcademy && !isLoja && !isAgenda && !isAdmin;
+
+  // --- REDIRECIONAMENTOS DE DOMÍNIO PRINCIPAL ---
+  if (isMain && !hostname.includes('vercel.app')) {
+    const scheme = hostname.includes('localhost') ? 'http' : 'https';
+    let baseDomain = hostname.replace('www.', ''); 
+    
+    if (pathname === '/academy') {
+      return NextResponse.redirect(`${scheme}://academy.${baseDomain}/`);
+    }
+    if (pathname.startsWith('/aluno') || pathname.startsWith('/admin-academy') || pathname === '/login') {
+      return NextResponse.redirect(`${scheme}://academy.${baseDomain}${pathname}`);
+    }
+    if (pathname.startsWith('/loja')) {
+      const newPath = pathname.replace('/loja', '') || '/';
+      return NextResponse.redirect(`${scheme}://loja.${baseDomain}${newPath}`);
+    }
+    if (pathname.startsWith('/agendamento')) {
+      const newPath = pathname.replace('/agendamento', '') || '/';
+      return NextResponse.redirect(`${scheme}://agenda.${baseDomain}${newPath}`);
+    }
+    if (pathname.startsWith('/admin')) {
+      const isPrincipal = pathname === '/admin' || pathname.startsWith('/admin/');
+      const newPath = isPrincipal ? (pathname.replace('/admin', '') || '/') : pathname;
+      return NextResponse.redirect(`${scheme}://admin.${baseDomain}${newPath}`);
+    }
+  }
+
+  // --- REWRITES PARA SUBDOMÍNIOS ---
+  let targetUrl = request.nextUrl.clone();
+  let willRewrite = false;
+
+  if (isAdmin) {
+    if (!pathname.startsWith('/admin-academy') && !pathname.startsWith('/admin-loja') && !pathname.startsWith('/admin-secretaria')) {
+      if (!pathname.startsWith('/admin')) {
+        targetUrl.pathname = `/admin${pathname === '/' ? '' : pathname}`;
+        willRewrite = true;
+      }
+    }
+  } else if (isAgenda) {
+    if (!pathname.startsWith('/agendamento')) {
+      targetUrl.pathname = `/agendamento${pathname === '/' ? '' : pathname}`;
+      willRewrite = true;
+    }
+  } else if (isLoja) {
+    if (!pathname.startsWith('/loja')) {
+      targetUrl.pathname = `/loja${pathname === '/' ? '' : pathname}`;
+      willRewrite = true;
+    }
+  } else if (isAcademy) {
+    if (pathname === '/') {
+      targetUrl.pathname = '/academy';
+      willRewrite = true;
+    }
+  }
+
+  const finalPathname = willRewrite ? targetUrl.pathname : pathname;
 
   // --- GATE DE MANUTENÇÃO ---
   // Se manutenção está ativa e a rota NÃO é pública → redireciona para /maintenance
-  if (maintenanceMode && !isPublicRoute(pathname)) {
+  if (maintenanceMode && !isPublicRoute(finalPathname)) {
     const maintenanceUrl = new URL('/maintenance', request.url);
     return NextResponse.redirect(maintenanceUrl);
   }
 
-  if (isPublicRoute(pathname)) {
-    return NextResponse.next();
+  if (isPublicRoute(finalPathname)) {
+    return willRewrite ? NextResponse.rewrite(targetUrl) : NextResponse.next();
   }
 
   // Client Supabase server-side
-  let supabaseResponse: NextResponse = NextResponse.next({ request });
+  let supabaseResponse = willRewrite ? NextResponse.rewrite(targetUrl) : NextResponse.next({ request });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -92,7 +156,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = willRewrite ? NextResponse.rewrite(targetUrl) : NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -103,7 +167,7 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const area = getArea(pathname);
+  const area = getArea(finalPathname);
 
   if (!area) {
     return supabaseResponse;
@@ -111,7 +175,7 @@ export async function proxy(request: NextRequest) {
 
   if (!user) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', pathname);
+    loginUrl.searchParams.set('next', finalPathname);
     return NextResponse.redirect(loginUrl);
   }
 
