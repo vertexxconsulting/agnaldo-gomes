@@ -333,12 +333,23 @@ export default function AgendamentoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gold/5 via-transparent to-gold/5 py-8 lg:py-12">
-      <PWAInstallPrompt />
-      <div className="max-w-5xl mx-auto px-4">
-        
-        {/* Header Centralizado acima das colunas */}
-        <div className="text-center mb-8 lg:mb-10">
+    <div 
+      className="min-h-screen py-8 lg:py-12 relative flex flex-col"
+      style={{
+        backgroundImage: 'url(/agnaldohero.webp)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-md" />
+      
+      <div className="relative z-10 flex-1 flex flex-col">
+        <PWAInstallPrompt />
+        <div className="max-w-5xl mx-auto px-4 w-full">
+          
+          {/* Header Centralizado acima das colunas */}
+          <div className="text-center mb-8 lg:mb-10">
           <h1 className="text-3xl font-black text-foreground mb-2 flex flex-col items-center justify-center gap-2">
             {formData.nome && step !== 'telefone' && (
               <span className="text-xl font-bold text-gold tracking-tight">Olá, {formData.nome}!</span>
@@ -866,6 +877,7 @@ export default function AgendamentoPage() {
             </form>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
