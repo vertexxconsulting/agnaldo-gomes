@@ -23,7 +23,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Agnaldo Gomes | Cabeleireiro • Educador • Apaixonado pela Beleza',
   description: 'Mais de 30 anos transformando vidas através da beleza. Agnaldo Gomes é cabeleireiro, educador e embaixador de marcas premium — Studio de Beleza e Academy em Telêmaco Borba/PR.',
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

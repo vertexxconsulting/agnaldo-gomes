@@ -13,6 +13,20 @@ export function PWAInstallPrompt() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
+    // Registrar o Service Worker silenciosamente para habilitar o PWA no Chrome
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(
+          function(registration) {
+            console.log('Service Worker registrado com sucesso: ', registration.scope);
+          },
+          function(err) {
+            console.log('Falha ao registrar o Service Worker: ', err);
+          }
+        );
+      });
+    }
+
     // Já está rodando como app instalado? Não mostrar.
     const standalone = window.matchMedia('(display-mode: standalone)').matches ||
                        (window.navigator as any).standalone === true;
