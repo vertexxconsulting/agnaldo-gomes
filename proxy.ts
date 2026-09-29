@@ -108,8 +108,8 @@ export async function proxy(request: NextRequest) {
       willRewrite = true;
     }
   } else if (isAcademy) {
-    if (pathname === '/') {
-      targetUrl.pathname = '/academy';
+    if (!pathname.startsWith('/academy') && !pathname.startsWith('/aluno')) {
+      targetUrl.pathname = `/academy${pathname === '/' ? '' : pathname}`;
       willRewrite = true;
     }
   }
