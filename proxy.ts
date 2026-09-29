@@ -97,7 +97,7 @@ export async function proxy(request: NextRequest) {
 
   if (isAdmin) {
     if (!pathname.startsWith('/admin-academy') && !pathname.startsWith('/admin-loja') && !pathname.startsWith('/admin-secretaria')) {
-      if (!pathname.startsWith('/admin') && pathname !== '/login') {
+      if (!pathname.startsWith('/admin') && pathname !== '/login' && !pathname.startsWith('/hub')) {
         targetUrl.pathname = `/admin${pathname === '/' ? '' : pathname}`;
         willRewrite = true;
       }
