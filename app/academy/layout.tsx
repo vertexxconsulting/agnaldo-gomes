@@ -31,7 +31,7 @@ export default function AcademyLayout({
   }, []);
 
   // Não exibe a barra no login e checkout
-  if (pathname?.startsWith('/academy/login') || pathname?.startsWith('/academy/checkout')) {
+  if (pathname === '/login' || pathname?.startsWith('/academy/login') || pathname?.startsWith('/academy/checkout')) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans">
         {children}
