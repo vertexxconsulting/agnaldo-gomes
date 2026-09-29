@@ -277,26 +277,20 @@ export function SplitLogin({
           animate="animate"
           variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         >
-          {/* Logo visível apenas no mobile quando NÃO estiver em modo centralizado */}
-          {!centeredCard && (
+          {/* Logo exibida no modo centralizado ou no mobile */}
+          {(centeredCard || !centeredCard) && (
             <motion.div
-              className="lg:hidden flex flex-col items-center gap-4 mb-10"
+              className={`${centeredCard ? 'flex' : 'lg:hidden flex'} flex-col items-center gap-4 mb-6`}
               variants={ITEM_VARIANTS}
             >
-              <div className="p-6 rounded-2xl bg-gradient-to-b from-gold/15 to-gold/5 border border-gold/25">
-                <Image src="/logo-branca.png" alt={title} width={120} height={120} />
+              <div className="p-4 rounded-2xl bg-gradient-to-b from-gold/15 to-gold/5 border border-gold/25 shadow-inner">
+                <Image src={logoSrc === '/opt/logo-hero.png' ? '/logo-branca.png' : logoSrc} alt={title} width={120} height={120} className="object-contain w-auto h-20" />
               </div>
-              <motion.h1
-                className={`text-2xl font-serif font-bold text-center ${titleClassName ?? 'text-foreground'}`}
-                variants={TEXT_VARIANTS}
-              >
-                {title}
-              </motion.h1>
             </motion.div>
           )}
 
           <motion.h2
-            className={`text-3xl font-bold mb-1 ${
+            className={`text-2xl font-bold mb-1 ${
               centeredCard ? 'text-center text-white' : sideBgImage ? 'text-white' : 'text-foreground'
             }`}
             variants={TEXT_VARIANTS}
