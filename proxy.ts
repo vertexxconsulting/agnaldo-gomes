@@ -23,6 +23,11 @@ import { maintenanceMode } from '@/lib/maintenance';
 const PUBLIC_ROUTES = [
   '/',
   '/login',
+  '/admin/login',
+  '/admin-academy/login',
+  '/admin-loja/login',
+  '/admin-secretaria/login',
+  '/academy/login',
   '/reset-password',
   '/signup',
   '/esqueci-senha',
@@ -92,7 +97,7 @@ export async function proxy(request: NextRequest) {
 
   if (isAdmin) {
     if (!pathname.startsWith('/admin-academy') && !pathname.startsWith('/admin-loja') && !pathname.startsWith('/admin-secretaria')) {
-      if (!pathname.startsWith('/admin')) {
+      if (!pathname.startsWith('/admin') && pathname !== '/login') {
         targetUrl.pathname = `/admin${pathname === '/' ? '' : pathname}`;
         willRewrite = true;
       }
