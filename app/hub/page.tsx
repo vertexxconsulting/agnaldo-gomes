@@ -260,7 +260,7 @@ export default function HubCentralPage() {
         {/* ===== MAIN GRID: Agenda (2/3) + Academy Progress (1/3) ===== */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {/* Agenda de Hoje */}
-          <section className="xl:col-span-2">
+          <section className="xl:col-span-2 flex flex-col">
             <SectionHeader
               eyebrow="Próximos atendimentos no Studio"
               title="Agenda de Hoje"
@@ -271,11 +271,11 @@ export default function HubCentralPage() {
               }
             />
             {loading ? (
-              <Panel className="py-10 text-center text-sm text-foreground/50">Carregando agenda...</Panel>
+              <Panel className="py-10 flex-1 flex items-center justify-center text-sm text-foreground/50">Carregando agenda...</Panel>
             ) : proximosAgendamentos.length === 0 ? (
-              <Panel className="py-8 text-center text-sm text-foreground/60">
-                Nenhum agendamento para hoje.{' '}
-                <Link href="/admin/agenda" className="text-gold font-medium hover:underline">Organizar a semana</Link>
+              <Panel className="py-8 flex-1 flex flex-col items-center justify-center text-center text-sm text-foreground/60">
+                <p>Nenhum agendamento para hoje.</p>
+                <Link href="/admin/agenda" className="text-gold font-medium hover:underline mt-1">Organizar a semana</Link>
               </Panel>
             ) : (
               <div className="space-y-2">
@@ -366,14 +366,14 @@ export default function HubCentralPage() {
         </div>
 
         {/* ===== BOTTOM GRID: Chart + Team ===== */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
-          <section className="xl:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <section className="xl:col-span-2 flex flex-col">
             <SectionHeader
               eyebrow="Acompanhe a evolução mês a mês"
               title="Faturamento do Salão"
             />
             {!loading && kpis.porMes.some((p) => p.valor > 0) ? (
-              <Panel className="mt-0">
+              <Panel className="mt-0 flex-1">
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={kpis.porMes}>
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
@@ -391,14 +391,16 @@ export default function HubCentralPage() {
                 </ResponsiveContainer>
               </Panel>
             ) : (
-              <Panel className="py-8 text-center text-sm text-foreground/60">
-                Ainda não há faturamento registrado. Os valores aparecem aqui automaticamente quando agendamentos concluídos
-                são marcados no módulo <Link href="/admin/agenda" className="text-gold font-medium hover:underline">Agenda</Link>.
+              <Panel className="py-8 flex-1 flex flex-col items-center justify-center text-center text-sm text-foreground/60">
+                <p className="max-w-md mx-auto">
+                  Ainda não há faturamento registrado. Os valores aparecem aqui automaticamente quando agendamentos concluídos
+                  são marcados no módulo <Link href="/admin/agenda" className="text-gold font-medium hover:underline">Agenda</Link>.
+                </p>
               </Panel>
             )}
           </section>
 
-          <section>
+          <section className="flex flex-col">
             <SectionHeader
               eyebrow="Seus profissionais e especialidades"
               title="Equipe do Studio"
