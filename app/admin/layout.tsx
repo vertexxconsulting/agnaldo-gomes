@@ -21,7 +21,6 @@ const links = [
   // Gestão & Ferramentas
   { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, adminOnly: true },
   { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone },
-  { href: '/admin/bolten', label: 'Bolten CRM', icon: GitMerge },
   { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];

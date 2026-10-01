@@ -68,7 +68,7 @@ export default function PerfilAlunoPage() {
           setEmail(emailDb);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Erro ao carregar perfil');
       }
       setLoading(false);
     };

@@ -154,7 +154,9 @@ export default function TeamManagementPage() {
                     disabled={updatingId === profile.id}
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >
-                    {Object.entries(ROLES).map(([key, value]) => (
+                    {Object.entries(ROLES)
+                      .filter(([_, value]) => value !== ROLES.ALUNO)
+                      .map(([key, value]) => (
                       <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
                     ))}
                   </select>
@@ -218,7 +220,9 @@ export default function TeamManagementPage() {
                   onChange={e => setNewUser({...newUser, role: e.target.value as Role})}
                   className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all"
                 >
-                  {Object.entries(ROLES).map(([key, value]) => (
+                  {Object.entries(ROLES)
+                    .filter(([_, value]) => value !== ROLES.ALUNO)
+                    .map(([key, value]) => (
                     <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
                   ))}
                 </select>

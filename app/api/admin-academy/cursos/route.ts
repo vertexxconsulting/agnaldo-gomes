@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAcademyAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const auth = await requireAcademyAuth();
   if (auth.error) return auth.error;

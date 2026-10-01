@@ -1,22 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SectionTitle } from "@/components/SectionTitle";
 import { Button } from "@/components/Button";
 import { CardGlass } from "@/components/CardGlass";
 import { User, Mail, Shield, Camera, Link as LinkIcon, Lock, PlayCircle, Image as ImageIcon } from "lucide-react";
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminAcademyPerfilPage() {
   const [formData, setFormData] = useState({
-    name: 'Agnaldo Gomes',
-    email: 'admin@agnaldogomes.com.br',
+    name: 'Carregando...',
+    email: 'Carregando...',
     bio: 'Especialista em Colorimetria, Visagismo e Gestão de Salões de Beleza. Criador do método Premium Academy para formação de profissionais de elite.',
-    instagram: '@agnaldogomes',
-    youtube: 'Agnaldo Gomes Oficial',
+    instagram: '@',
+    youtube: '',
+    show_socials: true,
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          name: user.user_metadata?.full_name || 'Admin',
+          email: user.email || '',
+          bio: user.user_metadata?.bio || 'Sua biografia aparecerá aqui...',
+          instagram: user.user_metadata?.instagram || '@',
+          youtube: user.user_metadata?.youtube || '',
+          show_socials: user.user_metadata?.show_socials !== false, // default true
+        }));
+      }
+      setLoading(false);
+    };
+    fetchUser();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: formData.name,
+          bio: formData.bio,
+          instagram: formData.instagram,
+          youtube: formData.youtube,
+          show_socials: formData.show_socials
+        }
+      });
+
+      if (error) throw error;
+      
+      setIsEditing(false);
+      alert('Perfil salvo com sucesso!');
+    } catch (e: any) {
+      console.error(e);
+      alert(`Erro ao salvar perfil: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    if (!name || name === 'Carregando...') return 'AG';
+    const parts = name.split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
@@ -31,7 +91,7 @@ export default function AdminAcademyPerfilPage() {
         <CardGlass className="p-6 flex flex-col items-center text-center space-y-4">
           <div className="relative group">
             <div className="w-32 h-32 rounded-full bg-gold/10 border-4 border-[var(--background)] shadow-xl flex items-center justify-center overflow-hidden">
-              <span className="text-4xl font-serif font-bold text-gold">AG</span>
+              <span className="text-4xl font-serif font-bold text-gold">{getInitials(formData.name)}</span>
               {/* Overlay edit */}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-foreground cursor-pointer">
                 <Camera size={24} className="mb-1" />
@@ -51,8 +111,13 @@ export default function AdminAcademyPerfilPage() {
         <CardGlass className="p-6 md:col-span-2">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-foreground">Informações Pessoais</h3>
-            <Button variant={isEditing ? 'primary' : 'outline'} size="sm" onClick={() => setIsEditing(!isEditing)}>
-              {isEditing ? 'Salvar Alterações' : 'Editar Perfil'}
+            <Button 
+              variant={isEditing ? 'primary' : 'outline'} 
+              size="sm" 
+              onClick={handleSaveProfile}
+              disabled={saving}
+            >
+              {saving ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Editar Perfil')}
             </Button>
           </div>
 
@@ -103,7 +168,25 @@ export default function AdminAcademyPerfilPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Redes Sociais */}
         <CardGlass className="p-6">
-          <h3 className="font-bold text-foreground mb-4">Redes Sociais</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-foreground">Redes Sociais</h3>
+            
+            {/* Toggle Switch */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={formData.show_socials}
+                disabled={!isEditing}
+                onChange={(e) => setFormData({...formData, show_socials: e.target.checked})}
+              />
+              <div className="w-9 h-5 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gold disabled:opacity-50"></div>
+              <span className="ml-2 text-xs font-medium text-foreground/70">
+                {formData.show_socials ? 'Visível' : 'Oculto'}
+              </span>
+            </label>
+          </div>
+          
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-pink-500/10 text-pink-500 flex items-center justify-center flex-shrink-0">

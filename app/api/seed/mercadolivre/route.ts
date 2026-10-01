@@ -100,7 +100,7 @@ export async function GET() {
         if (toInsert.length >= 50) break;
       }
     } catch (err) {
-      console.error(`Erro na busca "${query}":`, err);
+      console.error('Erro na busca', query, ':', err);
     }
 
     if (toInsert.length >= 50) break;

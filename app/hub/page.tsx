@@ -40,30 +40,33 @@ const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'O
 const mesNome = (i: number) => meses[i] ?? `M${i + 1}`;
 const CORES = ['#B8860B', '#8C6A06', '#A8860B', '#d4af37', '#B8860B', '#8C6A06'];
 
-const MODULOS: Array<{ id: string; nome: string; descricao: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; stat: string }> = [
+const MODULOS: Array<{ id: string; nome: string; descricao: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; stat: string; cor: string }> = [
   {
     id: 'studio',
     nome: 'Studio de Beleza',
-    descricao: 'Gestão completa do salão: agenda, clientes (CRM), profissionais e serviços.',
+    descricao: 'Gestão completa do salão: agenda e CRM',
     href: '/admin',
     icon: Scissors,
-    stat: 'Agendamentos e atendimento premium',
+    stat: 'Agendamentos',
+    cor: 'primary',
   },
   {
     id: 'academy',
     nome: 'Academy',
-    descricao: 'Plataforma de cursos estilo streaming: aulas, módulos, certificados e comunidade.',
+    descricao: 'Cursos, alunos e certificados online',
     href: '/admin-academy',
     icon: GraduationCap,
-    stat: 'Cursos, alunos e certificados',
+    stat: 'Cursos',
+    cor: 'purple',
   },
   {
     id: 'loja',
     nome: 'Loja de Produtos',
-    descricao: 'Catálogo, pedidos, estoque e pagamentos integrados ao Mercado Pago.',
+    descricao: 'Pedidos, estoque e vendas integradas',
     href: '/admin-loja',
     icon: ShoppingBag,
-    stat: 'Vendas de produtos profissionais',
+    stat: 'Produtos',
+    cor: 'green',
   },
 ];
 
@@ -213,9 +216,16 @@ export default function HubCentralPage() {
         </motion.div>
 
         {/* ===== MODULES: 3 navigation cards ===== */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {MODULOS.filter((mod) => modulosVisiveis.includes(mod.id)).map((mod, i) => {
             const Icon = mod.icon;
+            const cores: Record<string, string> = {
+              primary: 'from-[#a8862a]/15 to-[#a8862a]/5 hover:border-[#a8862a]/60',
+              purple: 'from-[#8b5cf6]/15 to-[#8b5cf6]/5 hover:border-[#8b5cf6]/60',
+              green: 'from-[#10B981]/15 to-[#10B981]/5 hover:border-[#10B981]/60',
+            };
+            const icoCores: Record<string, string> = { primary: 'text-gold', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
+            
             return (
               <motion.div
                 key={mod.id}
@@ -224,16 +234,15 @@ export default function HubCentralPage() {
                 transition={{ duration: 0.4, delay: i * 0.08 }}
               >
                 <Link href={mod.href}>
-                  <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--color-card)] hover:border-gold/50 p-6 h-full transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
-                        <Icon size={20} className="text-gold" />
-                      </div>
-                      <ChevronRight size={18} className="text-foreground/20 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+                  <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[mod.cor]} p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
+                    <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                      <Icon size={17} className={icoCores[mod.cor]} />
                     </div>
-                    <h3 className="text-lg font-bold tracking-tight text-foreground">{mod.nome}</h3>
-                    <p className="text-xs text-foreground/60 mt-1.5 leading-relaxed">{mod.descricao}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-gold mt-3 font-semibold">{mod.stat}</p>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold truncate">{mod.nome}</p>
+                      <p className="text-[11px] text-foreground/50">{mod.descricao}</p>
+                    </div>
+                    <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
                   </div>
                 </Link>
               </motion.div>

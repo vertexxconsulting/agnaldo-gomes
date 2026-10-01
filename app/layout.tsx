@@ -4,12 +4,12 @@ import './globals.css';
 import Script from 'next/script';
 
 const inter = Inter({
-  variable: '--font-geist-sans',
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
 const playfair = Playfair_Display({
-  variable: '--font-geist-mono',
+  variable: '--font-playfair',
   subsets: ['latin'],
 });
 
@@ -22,13 +22,20 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Agnaldo Gomes | Cabeleireiro • Educador • Apaixonado pela Beleza',
-  description: 'Mais de 30 anos transformando vidas através da beleza. Agnaldo Gomes é cabeleireiro, educador e embaixador de marcas premium — Studio de Beleza e Academy em Telêmaco Borba/PR.',
+  description: 'Mais de 30 anos transformando vidas através da beleza. Agnaldo Gomes é cabeleireiro, educador e artista de marcas premium — Studio de Beleza e Academy em Telêmaco Borba/PR.',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Agnaldo',
+    title: 'Studio Hair Style',
   },
 };
+
+import { SessionEnforcer } from '@/components/SessionEnforcer';
 
 /**
  * RootLayout neutro: NÃO inclui Header/Footer — apenas html, fonts e children.
@@ -50,6 +57,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white">
+        <SessionEnforcer />
         {children}
       </body>
     </html>

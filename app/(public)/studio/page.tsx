@@ -146,12 +146,7 @@ export default function StudioPage() {
       desc: "Finalização impecável para o dia a dia, eventos e ocasiões especiais.",
       grupo: "Finalização",
     },
-    {
-      name: "Barba",
-      icon: User,
-      desc: "Modelagem, hidratação e cuidado tradicional com a barba.",
-      grupo: "Barbearia",
-    },
+
     {
       name: "Unhas & Podologia",
       icon: Hand,
@@ -164,12 +159,7 @@ export default function StudioPage() {
       desc: "Design de sobrancelhas e maquiagens elegantes e duradouras para eventos.",
       grupo: "Face",
     },
-    {
-      name: "Estética & Drenagem",
-      icon: Droplets,
-      desc: "Drenagem linfática e cuidados faciais para renovar seu bem-estar.",
-      grupo: "Estética",
-    },
+
   ];
 
   const horarios = [

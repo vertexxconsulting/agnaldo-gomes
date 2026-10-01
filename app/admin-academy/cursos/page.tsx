@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/Button';
+import { Modal } from '@/components/ui/Modal';
 
 interface Curso {
   id: string;
@@ -16,6 +18,7 @@ interface Curso {
 }
 
 export default function AdminCursosPage() {
+  const router = useRouter();
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,7 +28,7 @@ export default function AdminCursosPage() {
   const carregar = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin-academy/cursos');
+      const res = await fetch('/api/admin-academy/cursos', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setCursos(data || []);
@@ -40,19 +43,24 @@ export default function AdminCursosPage() {
     carregar();
   }, []);
 
-  const handleCreate = async () => {
-    const titulo = prompt('Título do novo curso:');
-    if (!titulo?.trim()) return;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cursoTitleInput, setCursoTitleInput] = useState('');
 
+  const handleCreateSubmit = async () => {
+    if (!cursoTitleInput.trim()) return;
+
+    setIsModalOpen(false);
     setCreating(true);
     try {
       const res = await fetch('/api/admin-academy/cursos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titulo.trim() }),
+        body: JSON.stringify({ title: cursoTitleInput.trim() }),
       });
       if (res.ok) {
-        carregar();
+        const data = await res.json();
+        setCursoTitleInput('');
+        router.push(`/admin-academy/cursos/${data.curso.id}`);
       } else {
         const err = await res.json();
         alert('Erro ao criar: ' + (err.error || 'Erro desconhecido'));
@@ -64,9 +72,16 @@ export default function AdminCursosPage() {
     setCreating(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este curso? Isso removerá todos os módulos e aulas.')) return;
+  const [courseToDelete, setCourseToDelete] = useState<Curso | null>(null);
 
+  const confirmDelete = (curso: Curso) => {
+    setCourseToDelete(curso);
+  };
+
+  const executeDelete = async () => {
+    if (!courseToDelete) return;
+    const id = courseToDelete.id;
+    setCourseToDelete(null);
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin-academy/cursos/${id}`, {
@@ -125,7 +140,7 @@ export default function AdminCursosPage() {
           <p className="text-sm text-foreground/60">Gerencie o catálogo de cursos e os conteúdos gravados.</p>
         </div>
 
-        <Button variant="primary" className="flex items-center gap-2" onClick={handleCreate} disabled={creating}>
+        <Button variant="primary" className="flex items-center gap-2" onClick={() => setIsModalOpen(true)} disabled={creating}>
           <Plus size={18} /> {creating ? <Loader2 size={16} className="animate-spin" /> : 'Novo Curso'}
         </Button>
       </div>
@@ -164,7 +179,7 @@ export default function AdminCursosPage() {
                 </Link>
                 <button 
                   className="bg-black/60 backdrop-blur border border-white/20 p-1.5 rounded text-white hover:text-red-500 transition-colors"
-                  onClick={() => handleDelete(curso.id)}
+                  onClick={() => confirmDelete(curso)}
                   disabled={deletingId === curso.id}
                 >
                   {deletingId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -196,6 +211,66 @@ export default function AdminCursosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Novo Curso */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Novo Curso"
+        description="Dê um título inicial ao seu novo curso."
+      >
+        <div className="space-y-4 pt-2">
+          <input
+            type="text"
+            placeholder="Título do novo curso"
+            value={cursoTitleInput}
+            onChange={e => setCursoTitleInput(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border-subtle)] text-foreground focus:border-gold outline-none text-sm"
+            onKeyDown={e => e.key === 'Enter' && handleCreateSubmit()}
+          />
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 py-2 rounded-lg border border-[var(--border-subtle)] text-foreground/70 hover:bg-white/5 text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleCreateSubmit}
+              disabled={!cursoTitleInput.trim() || creating}
+              className="flex-1 py-2 rounded-lg bg-gold text-foreground font-semibold text-sm hover:bg-gold-dim disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              {creating ? 'Criando...' : 'Criar Curso'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Exclusão */}
+      <Modal
+        isOpen={!!courseToDelete}
+        onClose={() => setCourseToDelete(null)}
+        title="Excluir Curso"
+        description="Tem certeza que deseja excluir este curso? Isso removerá todos os módulos e aulas permanentemente."
+      >
+        <div className="space-y-4 pt-2">
+          <p className="font-bold text-red-500">{courseToDelete?.title}</p>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setCourseToDelete(null)}
+              className="flex-1 py-2 rounded-lg border border-[var(--border-subtle)] text-foreground/70 hover:bg-white/5 text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={executeDelete}
+              className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

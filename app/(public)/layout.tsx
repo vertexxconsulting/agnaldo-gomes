@@ -1,5 +1,6 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 /**
  * Layout das ROTAS PÚBLICAS (institucional light).
@@ -18,6 +19,7 @@ export default function PublicLayout({
         {children}
       </main>
       <Footer />
+      <ScrollToTop />
     </>
   );
 }

@@ -39,7 +39,7 @@ function toProduct(p: any): ShopProduct {
     price: p.price ?? null,
     stock_quantity: p.stock_quantity ?? 0,
     rating: p.rating ?? 4.8,
-    reviews: p.reviews ?? Math.floor(Math.random() * 100) + 20,
+    reviews: p.reviews ?? (Date.now() % 100) + 20,
     tagline: p.tagline ?? null,
   };
 }

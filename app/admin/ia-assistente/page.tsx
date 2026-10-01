@@ -97,7 +97,7 @@ export default function IAAssistentePage() {
     }
   };
 
-  const handleEnviarSimulacao = (e?: React.FormEvent) => {
+  const handleEnviarSimulacao = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!perguntaPlayground.trim()) return;
 
@@ -106,31 +106,45 @@ export default function IAAssistentePage() {
     setPerguntaPlayground('');
     setPensandoIA(true);
 
-    setTimeout(() => {
-      let resposta = '';
-      const pLower = pergunta.toLowerCase();
-
+    try {
       if (!config.ativa) {
-        resposta = '⚠️ [AVISO]: A IA Assistente está atualmente DESATIVADA nas configurações do painel.';
-      } else if (pLower.includes('relat') || pLower.includes('fatur')) {
-        resposta = `📊 *RESUMO EXECUTIVO DO STUDIO AGNALDO GOMES*\n\nPrezado Agnaldo, segue o balanço consolidado:\n• Faturamento estimado: R$ 60,00+\n• Serviços em destaque: Corte Masculino, Mechas e Ozonioterapia.\n• Regra de Noivas: 50% de sinal garantido.\n\n💡 *Dica da IA:* Excelente procura por cortes hoje. Recomendamos reforçar o combo de Terapia Capilar para clientes de mechas.`;
-      } else if (pLower.includes('recep') || pLower.includes('atendente') || pLower.includes('cheg')) {
-        resposta = `🛎️ *Script para Atendente Física:*\n"${config.atendenteFisica.scriptBoasVindas}"\n\n💡 *Sugestão de Upsell:*\n"${config.atendenteFisica.scriptUpsell}"`;
-      } else if (pLower.includes('noiva') || pLower.includes('casamento')) {
-        resposta = `💍 *Diretriz para Noivas:*\n${config.atendenteFisica.scriptNoivas}\n\nLembre-se: O pacote Dia da Noiva Completo é a partir de R$ 2.499,00 e exige sinal obrigatório de 50% via PIX para bloqueio da data.`;
-      } else if (pLower.includes('curso') || pLower.includes('academy') || pLower.includes('aula')) {
-        resposta = `🎓 *Suporte Academy:*\n${config.modulos.academy.regrasCursos}\n${config.modulos.academy.regrasSuporteAlunos}`;
-      } else if (pLower.includes('loja') || pLower.includes('produto') || pLower.includes('shampoo')) {
-        resposta = `🛍️ *Loja & Afiliados:*\n${config.modulos.loja.regrasProdutos}\n${config.modulos.loja.regrasAfiliadosML}`;
-      } else if (pLower.includes('agendamento') || pLower.includes('marcar') || pLower.includes('manual')) {
-        resposta = `📅 *Agendamentos e Encaixes:*\n\nPara agendamentos manuais, acesse a aba "Agenda" no painel. Lembre-se que de acordo com as diretrizes, encaixes só podem ser feitos com aprovação do gerente de relacionamento caso ultrapassem o horário limite da jornada (ex: após 19h de sexta-feira).`;
-      } else {
-        resposta = `🤖 *Simulador:* Entendi sua mensagem, mas como este é apenas um simulador visual de testes (sem a chave do ChatGPT conectada ainda), eu não consigo interpretar textos complexos. Tente me perguntar sobre "relatório", "noivas", "cursos", "loja" ou "agendamentos".`;
+        setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: '⚠️ [AVISO]: A IA Assistente está atualmente DESATIVADA nas configurações do painel.' }]);
+        setPensandoIA(false);
+        return;
       }
 
-      setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: resposta }]);
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensagem: pergunta, config })
+      });
+
+      const data = await res.json();
+
+      if (res.status === 503 && data.missingApiKey) {
+        // Fallback local se a chave da API não estiver configurada
+        let respostaLocal = '';
+        const pLower = pergunta.toLowerCase();
+        
+        if (pLower.includes('relat') || pLower.includes('fatur')) {
+          respostaLocal = `📊 *RESUMO EXECUTIVO (MOCK LOCAL)*\n\n[API NÃO CONFIGURADA] Prezado Agnaldo, segue o balanço consolidado:\n• Faturamento estimado: R$ 60,00+\n• Serviços em destaque: Corte Masculino, Mechas e Ozonioterapia.\n• Regra de Noivas: 50% de sinal garantido.`;
+        } else if (pLower.includes('recep') || pLower.includes('atendente') || pLower.includes('cheg')) {
+          respostaLocal = `🛎️ *Script para Atendente Física (MOCK LOCAL):*\n"${config.atendenteFisica.scriptBoasVindas}"`;
+        } else {
+          respostaLocal = `🤖 *Aviso de Integração:* Entendi sua mensagem, mas a chave da OpenAI (OPENAI_API_KEY) ainda não foi inserida nas variáveis de ambiente da Vercel.\n\nPara a IA real responder dinamicamente usando suas diretrizes, adicione a chave na hospedagem.`;
+        }
+        setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: respostaLocal }]);
+      } else if (!res.ok) {
+        throw new Error(data.error || 'Erro ao conectar com a IA');
+      } else {
+        // Resposta Real da IA
+        setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: data.resposta }]);
+      }
+    } catch (err: any) {
+      setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: `❌ Erro: ${err.message}` }]);
+    } finally {
       setPensandoIA(false);
-    }, 600);
+    }
   };
 
   const handleTestarWhatsAppAgnaldo = () => {
@@ -317,39 +331,98 @@ export default function IAAssistentePage() {
                       </div>
 
                       {info.aberto && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-foreground/50">Das:</span>
-                          <input
-                            type="time"
-                            value={info.inicio}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setConfig(prev => ({
-                                ...prev,
-                                horariosSalao: {
-                                  ...prev.horariosSalao,
-                                  [diaNum]: { ...info, inicio: v }
-                                }
-                              }));
-                            }}
-                            className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
-                          />
-                          <span className="text-[11px] text-foreground/50">às:</span>
-                          <input
-                            type="time"
-                            value={info.fim}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setConfig(prev => ({
-                                ...prev,
-                                horariosSalao: {
-                                  ...prev.horariosSalao,
-                                  [diaNum]: { ...info, fim: v }
-                                }
-                              }));
-                            }}
-                            className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
-                          />
+                        <div className="flex flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                          <div className="flex items-center gap-2 sm:justify-end">
+                            <span className="text-[11px] text-foreground/50">Das:</span>
+                            <input
+                              type="time"
+                              value={info.inicio}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setConfig(prev => ({
+                                  ...prev,
+                                  horariosSalao: {
+                                    ...prev.horariosSalao,
+                                    [diaNum]: { ...info, inicio: v }
+                                  }
+                                }));
+                              }}
+                              className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
+                            />
+                            <span className="text-[11px] text-foreground/50">às:</span>
+                            <input
+                              type="time"
+                              value={info.fim}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setConfig(prev => ({
+                                  ...prev,
+                                  horariosSalao: {
+                                    ...prev.horariosSalao,
+                                    [diaNum]: { ...info, fim: v }
+                                  }
+                                }));
+                              }}
+                              className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
+                            />
+                          </div>
+                          
+                          <div className="flex items-center gap-2 sm:justify-end border-t border-[var(--border-subtle)] pt-2 sm:border-none sm:pt-0">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-foreground/70">
+                              <input 
+                                type="checkbox" 
+                                checked={info.temPausa || false}
+                                onChange={(e) => {
+                                  const v = e.target.checked;
+                                  setConfig(prev => ({
+                                    ...prev,
+                                    horariosSalao: {
+                                      ...prev.horariosSalao,
+                                      [diaNum]: { ...info, temPausa: v, pausaInicio: info.pausaInicio || '12:00', pausaFim: info.pausaFim || '13:00' }
+                                    }
+                                  }));
+                                }}
+                                className="accent-gold w-3 h-3"
+                              />
+                              Pausa
+                            </label>
+
+                            {info.temPausa && (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="time"
+                                  value={info.pausaInicio || '12:00'}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      horariosSalao: {
+                                        ...prev.horariosSalao,
+                                        [diaNum]: { ...info, pausaInicio: v }
+                                      }
+                                    }));
+                                  }}
+                                  className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
+                                />
+                                <span className="text-[11px] text-foreground/50">às:</span>
+                                <input
+                                  type="time"
+                                  value={info.pausaFim || '13:00'}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      horariosSalao: {
+                                        ...prev.horariosSalao,
+                                        [diaNum]: { ...info, pausaFim: v }
+                                      }
+                                    }));
+                                  }}
+                                  className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

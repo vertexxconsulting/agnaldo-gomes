@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, AlertTriangle, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -243,10 +243,9 @@ export default function AdminEdicaoCursoPage() {
     }
   };
 
-  // MODAL: substitui prompt() para criar aula
   const handleCreateAulaSubmit = async () => {
-    if (!aulaTitleInput.trim()) return;
-    const moduloId = aulaTitleInput; // will use the selected module below
+    if (!aulaTitleInput.trim() || !aulaModuleId) return;
+    const moduloId = aulaModuleId;
     // Reset
     setIsAulaModalOpen(false);
     try {
@@ -763,6 +762,8 @@ function AulaCard({
   onDelete: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [editData, setEditData] = useState({
     title: aula.title,
     video_url: aula.video_url,
@@ -772,6 +773,66 @@ function AulaCard({
   const handleSave = () => {
     onUpdate(aula, editData);
     setEditing(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // 1. Criar o registro do vídeo no Bunny através da nossa API segura
+      const res = await fetch('/api/admin-academy/bunny/create-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editData.title || aula.title })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Falha ao iniciar upload');
+      }
+
+      const { guid, libraryId, apiKey } = await res.json();
+
+      // 2. Fazer o upload do binário direto pro BunnyCDN via XMLHttpRequest para ter barra de progresso
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', `https://video.bunnycdn.com/library/${libraryId}/videos/${guid}`, true);
+        xhr.setRequestHeader('AccessKey', apiKey);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setEditData(prev => ({ ...prev, video_url: guid }));
+            resolve(true);
+          } else {
+            reject(new Error('Falha no envio para o BunnyCDN'));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error('Erro de rede durante o upload'));
+        };
+
+        xhr.send(file);
+      });
+
+    } catch (err: any) {
+      alert('Erro no upload: ' + err.message);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   return (
@@ -790,15 +851,32 @@ function AulaCard({
               autoFocus
               className="w-full bg-background border border-gold px-2 py-1 rounded text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
-                type="url"
-                placeholder="URL do vídeo (Vimeo/YouTube/MP4)"
+                type="text"
+                placeholder="ID do vídeo no Bunny.net (ou URL Vimeo/MP4)"
                 value={editData.video_url}
                 onChange={e => setEditData(prev => ({ ...prev, video_url: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && handleSave()}
                 className="flex-1 bg-background border border-gold/20 px-2 py-1 rounded text-sm text-foreground focus:border-gold outline-none"
+                disabled={uploading}
               />
+              
+              <label className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium cursor-pointer transition-colors ${uploading ? 'bg-gold/20 text-gold cursor-not-allowed' : 'bg-gold text-foreground hover:bg-gold-dim'}`}>
+                {uploading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>{uploadProgress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={14} />
+                    <span>Subir Vídeo</span>
+                    <input type="file" accept="video/mp4,video/mov,video/avi" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                  </>
+                )}
+              </label>
+
               <input
                 type="number"
                 placeholder="Min"
@@ -806,7 +884,8 @@ function AulaCard({
                 value={editData.duration_minutes}
                 onChange={e => setEditData(prev => ({ ...prev, duration_minutes: Number(e.target.value) || 0 }))}
                 onKeyDown={e => e.key === 'Enter' && handleSave()}
-                className="w-20 bg-background border border-gold/20 px-2 py-1 rounded text-sm text-foreground focus:border-gold outline-none"
+                className="w-16 bg-background border border-gold/20 px-2 py-1 rounded text-sm text-foreground focus:border-gold outline-none"
+                disabled={uploading}
               />
             </div>
           </div>

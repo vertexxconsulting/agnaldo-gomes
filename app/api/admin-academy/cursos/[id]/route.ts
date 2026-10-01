@@ -74,10 +74,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   try {
     // Cascade delete: modules -> lessons -> course
-    await auth.supabase!.from('lessons').delete().in('module_id', 
-      (await auth.supabase!.from('modules').select('id').eq('course_id', id)).data?.map((m: { id: string }) => m.id) || []
-    );
-    await auth.supabase!.from('modules').delete().eq('course_id', id);
+    const { data: modules } = await auth.supabase!.from('modules').select('id').eq('course_id', id);
+    if (modules && modules.length > 0) {
+      const moduleIds = modules.map((m: { id: string }) => m.id);
+      await auth.supabase!.from('lessons').delete().in('module_id', moduleIds);
+      await auth.supabase!.from('modules').delete().in('id', moduleIds);
+    }
     
     const { error } = await auth.supabase!
       .from('courses')
@@ -85,8 +87,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       .eq('id', id);
 
     if (error) {
-      console.error('[api/admin-academy/cursos/[id]] Erro ao excluir curso:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[api/admin-academy/cursos/[id]] ERRO DETALHADO AO EXCLUIR:', JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

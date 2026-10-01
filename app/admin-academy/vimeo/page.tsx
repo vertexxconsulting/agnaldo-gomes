@@ -15,13 +15,20 @@ export interface VimeoSettings {
   updated_at: string | null;
 }
 
-export default function AdminVimeoAcademy() {
-  const [settings, setSettings] = useState<VimeoSettings | null>(null);
+export interface BunnySettings {
+  api_key: string | null;
+  library_id: string | null;
+  enabled: boolean;
+}
+
+export interface VideoSettings {
+  vimeo: VimeoSettings;
+  bunny: BunnySettings;
+}
+
+export default function AdminVideoAcademy() {
+  const [settings, setSettings] = useState<VideoSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [mostrarSecret, setMostrarSecret] = useState(false);
-  const [mostrarToken, setMostrarToken] = useState(false);
-  const [salvo, setSalvo] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -32,7 +39,7 @@ export default function AdminVimeoAcademy() {
           setSettings(data);
         }
       } catch (e) {
-        console.error('Erro ao carregar configurações do Vimeo:', e);
+        console.error('Erro ao carregar configurações de vídeo:', e);
       } finally {
         setLoading(false);
       }
@@ -40,77 +47,96 @@ export default function AdminVimeoAcademy() {
     fetchSettings();
   }, []);
 
-  const handleSave = async () => {
-    if (!settings) return;
-    setSaving(true);
-    try {
-      const res = await fetch('/api/admin-academy/vimeo/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-      if (res.ok) {
-        setSalvo(true);
-        setTimeout(() => setSalvo(false), 3000);
-      }
-    } catch (e) {
-      alert('Erro ao salvar configurações.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  if (loading || !settings) return <div className="p-8 text-center text-foreground/50">Carregando configurações de Vídeo...</div>;
 
-  if (loading || !settings) return <div className="p-8 text-center text-foreground/50">Carregando configurações do Vimeo...</div>;
-
-  const isConfigurado = Boolean(settings.access_token && settings.client_id && settings.client_secret);
+  const isVimeoConfigurado = settings.vimeo.enabled;
+  const isBunnyConfigurado = settings.bunny.enabled;
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Video size={24} className="text-gold" /> Hospedagem de Vídeo — Vimeo
+          <Video size={24} className="text-gold" /> Hospedagem de Vídeo
         </h1>
         <p className="text-foreground/60 mt-1">
-          Configure a integração com o Vimeo para alocar e exibir as aulas da Academy com segurança.
+          Acompanhe o status das integrações com o Bunny.net e o Vimeo para armazenamento e exibição segura das suas aulas.
         </p>
       </div>
 
-      <div
-        className={`rounded-lg border p-4 flex items-start gap-3 ${settings.enabled && isConfigurado
-            ? 'bg-emerald-500/10 border-emerald-500/20'
-            : 'bg-amber-500/10 border-amber-500/20'
-          }`}
-      >
-        {settings.enabled && isConfigurado ? (
-          <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
-        ) : (
-          <AlertTriangle size={20} className="text-amber-500 mt-0.5 shrink-0" />
-        )}
-        <div className="text-sm">
-          <p className="font-bold text-foreground">
-            {settings.enabled && isConfigurado ? 'Integração Vimeo ATIVA' : 'Vimeo em modo demonstração'}
-          </p>
-          <p className="text-foreground/70 mt-0.5">
-            {settings.enabled && isConfigurado
-              ? 'Os vídeos da Academy estão sendo carregados diretamente da sua conta Vimeo configurada.'
-              : 'Insira as credenciais abaixo para ativar a integração real. Enquanto isso, o sistema usa vídeos de demonstração.'}
-          </p>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* BUNNY.NET */}
+        <div className="space-y-4">
+          <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
+            🐰 Bunny.net <span className="text-xs bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">Principal</span>
+          </h2>
+          <div
+            className={`rounded-lg border p-4 flex items-start gap-3 ${isBunnyConfigurado
+                ? 'bg-emerald-500/10 border-emerald-500/20'
+                : 'bg-amber-500/10 border-amber-500/20'
+              }`}
+          >
+            {isBunnyConfigurado ? (
+              <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+            ) : (
+              <AlertTriangle size={20} className="text-amber-500 mt-0.5 shrink-0" />
+            )}
+            <div className="text-sm">
+              <p className="font-bold text-foreground">
+                {isBunnyConfigurado ? 'Integração Bunny ATIVA' : 'Bunny.net Não Configurado'}
+              </p>
+              <p className="text-foreground/70 mt-0.5">
+                {isBunnyConfigurado
+                  ? 'O Bunny.net está pronto para proteger e exibir vídeos com o máximo de velocidade (CDN).'
+                  : 'Configure BUNNY_API_KEY e BUNNY_STREAM_LIBRARY_ID na Vercel para ativar.'}
+              </p>
+            </div>
+          </div>
+          
+          <CardGlass className="p-5 text-sm space-y-3">
+            <h3 className="font-bold text-foreground border-b border-[var(--border-subtle)] pb-2 mb-2">Como configurar o Bunny Stream</h3>
+            <p>1. Acesse o <a href="https://bunny.net" target="_blank" className="text-gold underline">painel do Bunny.net</a> e crie uma nova Stream Video Library.</p>
+            <p>2. Copie a <strong>API Key</strong> da aba "API" da Library criada.</p>
+            <p>3. Copie o <strong>Library ID</strong> da URL ou das configurações da Library.</p>
+            <p>4. Adicione na Vercel as variáveis: <code>BUNNY_API_KEY</code> e <code>BUNNY_STREAM_LIBRARY_ID</code>.</p>
+          </CardGlass>
+        </div>
+
+        {/* VIMEO */}
+        <div className="space-y-4">
+          <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
+            <Video size={20} className="text-blue-400" /> Vimeo
+          </h2>
+          <div
+            className={`rounded-lg border p-4 flex items-start gap-3 ${isVimeoConfigurado
+                ? 'bg-emerald-500/10 border-emerald-500/20'
+                : 'bg-[var(--card-bg)] border-[var(--border-subtle)] opacity-80'
+              }`}
+          >
+            {isVimeoConfigurado ? (
+              <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+            ) : (
+              <AlertTriangle size={20} className="text-foreground/40 mt-0.5 shrink-0" />
+            )}
+            <div className="text-sm">
+              <p className="font-bold text-foreground">
+                {isVimeoConfigurado ? 'Integração Vimeo ATIVA' : 'Vimeo Desativado / Demo'}
+              </p>
+              <p className="text-foreground/70 mt-0.5">
+                {isVimeoConfigurado
+                  ? 'Os vídeos estão sendo carregados da sua conta Vimeo (via Vercel Env).'
+                  : 'Caso queira usar o Vimeo, preencha as variáveis de ambiente na Vercel.'}
+              </p>
+            </div>
+          </div>
+
+          <CardGlass className="p-5 text-sm space-y-3">
+            <h3 className="font-bold text-foreground border-b border-[var(--border-subtle)] pb-2 mb-2">Como configurar o Vimeo</h3>
+            <p>1. Acesse o <a href="https://developer.vimeo.com/apps" target="_blank" className="text-gold underline">Vimeo Developer Portal</a> e crie um App.</p>
+            <p>2. Em Authentication, gere um Personal Access Token com as permissões necessárias.</p>
+            <p>3. Adicione na Vercel as variáveis: <code>VIMEO_CLIENT_ID</code>, <code>VIMEO_CLIENT_SECRET</code> e <code>VIMEO_ACCESS_TOKEN</code>.</p>
+          </CardGlass>
         </div>
       </div>
-
-
-      <CardGlass className="p-6 space-y-4">
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3">
-          <PlayCircle size={18} className="text-gold" />
-          <h2 className="font-bold text-foreground">Como configurar o Vimeo</h2>
-        </div>
-        <div className="space-y-3 text-sm text-foreground/70">
-          <p>1. Acesse o <a href="https://developer.vimeo.com/apps" target="_blank" className="text-gold underline">Vimeo Developer Portal</a> e crie um novo App.</p>
-          <p>2. Em **Authentication**, gere um **Personal Access Token** com as permissões necessárias.</p>
-          <p>3. Copie o **Client ID**, **Client Secret** e o **Access Token** para os campos acima.</p>
-          <p>4. Na edição de aulas da Academy, basta colar o ID do vídeo do Vimeo (ex: 123456789) no campo de vídeo.</p>
-        </div>
-      </CardGlass>
     </div>
   );
 }

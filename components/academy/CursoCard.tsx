@@ -76,7 +76,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
         {!isEnrolled && (
           <div className="absolute inset-0 flex items-center justify-center bg-foreground/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <span className="px-3 py-1 rounded-full bg-gold text-foreground text-xs font-bold">
-              {isPurchasable ? 'Comprar' : 'Bloqueado'}
+              {isPurchasable ? 'Consultar' : 'Bloqueado'}
             </span>
           </div>
         )}
@@ -89,17 +89,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
           {curso.description}
         </p>
 
-        {/* Price row */}
-        <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-xl font-bold text-gold">
-            {formatPrice(displayPrice)}
-          </span>
-          {hasDiscount && (
-            <span className="text-xs text-foreground/40 line-through">
-              {formatPrice(curso.original_price)}
-            </span>
-          )}
-        </div>
+
 
         {/* Status badge */}
         <div className="flex items-center gap-2 mb-3 text-xs">
@@ -135,7 +125,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
             className="flex w-full py-2.5 rounded-md bg-gold text-foreground font-bold text-sm hover:bg-gold-dim transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-gold"
           >
             <ShoppingCart size={16} />
-            Adquirir
+            Consultar valores
           </button>
         ) : null}
       </div>

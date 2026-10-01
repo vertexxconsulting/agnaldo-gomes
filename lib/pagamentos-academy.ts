@@ -39,8 +39,8 @@ export async function isStripeAtivo(): Promise<boolean> {
  * Valida o formato das chaves Stripe (sk_live_/pk_live_ ou sk_test_/pk_test_)
  */
 export function validarChavesStripe(publicKey: string, secretKey: string): { ok: boolean; msg: string } {
-  const pkOk = /^pk_(test|live)_[A-Za-z0-9]{20,}$/.test(publicKey.trim());
-  const skOk = secretKey.trim() === '' || /^sk_(test|live)_[A-Za-z0-9]{20,}$/.test(secretKey.trim());
+  const pkOk = /^pk_(test|live)_[A-Za-z0-9]{20,150}$/.test(publicKey.trim());
+  const skOk = secretKey.trim() === '' || /^sk_(test|live)_[A-Za-z0-9]{20,150}$/.test(secretKey.trim());
   if (!pkOk) return { ok: false, msg: 'A Publishable Key deve começar com pk_test_ ou pk_live_.' };
   if (!skOk) return { ok: false, msg: 'A Secret Key (opcional no painel) deve começar com sk_test_ ou sk_live_.' };
   return { ok: true, msg: '' };

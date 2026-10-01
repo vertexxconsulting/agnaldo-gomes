@@ -159,6 +159,12 @@ export function SplitLogin({
     }
 
     if (data.session) {
+      // Registrar sessão única no Supabase (metadados do usuário) e no localStorage
+      const sessionId = crypto.randomUUID();
+      await supabase.auth.updateUser({
+        data: { active_session_id: sessionId }
+      });
+      localStorage.setItem('ag_active_session', sessionId);
       localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
       router.push(redirectTo);
     }
@@ -277,17 +283,7 @@ export function SplitLogin({
           animate="animate"
           variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         >
-          {/* Logo exibida no modo centralizado ou no mobile */}
-          {(centeredCard || !centeredCard) && (
-            <motion.div
-              className={`${centeredCard ? 'flex' : 'lg:hidden flex'} flex-col items-center gap-4 mb-6`}
-              variants={ITEM_VARIANTS}
-            >
-              <div className="p-4 rounded-2xl bg-gradient-to-b from-gold/15 to-gold/5 border border-gold/25 shadow-inner">
-                <Image src={logoSrc === '/opt/logo-hero.png' ? '/logo-branca.png' : logoSrc} alt={title} width={120} height={120} className="object-contain w-auto h-20" />
-              </div>
-            </motion.div>
-          )}
+
 
           <motion.h2
             className={`text-2xl font-bold mb-1 ${

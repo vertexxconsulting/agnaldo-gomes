@@ -16,9 +16,15 @@ export async function GET() {
       access_token: settings.access_token ? '••••••••••••' : null,
     };
 
-    return NextResponse.json(maskedSettings);
+    const bunnySettings = {
+      api_key: process.env.BUNNY_API_KEY ? 'Configurado' : null,
+      library_id: process.env.BUNNY_STREAM_LIBRARY_ID ? 'Configurado' : null,
+      enabled: Boolean(process.env.BUNNY_API_KEY && process.env.BUNNY_STREAM_LIBRARY_ID)
+    };
+
+    return NextResponse.json({ vimeo: maskedSettings, bunny: bunnySettings });
   } catch (error: any) {
-    console.error('Erro na API Vimeo GET:', error);
+    console.error('Erro na API Vimeo/Bunny GET:', error);
     return NextResponse.json({ error: 'Erro interno ao carregar configurações' }, { status: 500 });
   }
 }

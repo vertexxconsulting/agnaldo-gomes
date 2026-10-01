@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
           email,
           email_confirmed: true,
           user_metadata: { role: 'STUDENT', full_name: nome },
-          password: Math.random().toString(36).slice(-12),
+          password: crypto.randomUUID().slice(-12),
         });
 
         if (createError) {

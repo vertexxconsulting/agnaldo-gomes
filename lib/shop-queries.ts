@@ -132,7 +132,7 @@ function mapRowToProduct(row: Record<string, unknown>): ShopProduct {
     reviews:
       row.reviews !== null && row.reviews !== undefined
         ? Number(row.reviews)
-        : Math.floor(Math.random() * 100) + 20,
+        : (Date.now() % 100) + 20,
     featured: Boolean(row.featured ?? false),
     tagline: row.tagline ? String(row.tagline) : undefined,
   };

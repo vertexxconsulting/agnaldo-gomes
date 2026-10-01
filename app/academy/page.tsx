@@ -50,7 +50,7 @@ const cursosVenda: CursoVenda[] = [
     formato: 'Presencial · 24h',
     certificado: true,
     destaque: true,
-    thumbnail_url: null,
+    thumbnail_url: '/cursos/cortes.jpg',
     investimento: [
       { label: 'VIP · 1 pessoa', valor: 'R$ 3.800' },
       { label: 'VIP · 3 pessoas', valor: 'R$ 2.800' },
@@ -73,7 +73,7 @@ const cursosVenda: CursoVenda[] = [
     conteudo: ['Massagem capilar relaxante', 'Prevencao de lesoes e ergonomia', 'Experiencia de luxo e conexao com o cliente', 'Tratamentos capilares especificos', 'Tecnicas de lavagem'],
     formato: 'Presencial · 6h',
     certificado: true,
-    thumbnail_url: null,
+    thumbnail_url: '/cursos/lavatorio.jpg',
     price: 1200,
     original_price: 1500,
     enrolled: false,
@@ -91,7 +91,7 @@ const cursosVenda: CursoVenda[] = [
     conteudo: ['Teoria das cores e identificacao de tons', 'Mistura de pigmentos', 'Tecnicas de descolagem', 'Correcao de cor e manutencao', 'Cuidados pos-coloracao'],
     formato: 'Presencial · 6h',
     certificado: true,
-    thumbnail_url: null,
+    thumbnail_url: '/cursos/colorimetria.jpg',
     price: 1500,
     original_price: 2000,
     enrolled: false,
@@ -109,7 +109,7 @@ const cursosVenda: CursoVenda[] = [
     conteudo: ['Escova Beach Waver e escova enrolada', 'Técnicas modernas de escovação', 'Primeiro para cada tipo de cabelo', 'Precisao e criatividade', 'Penteados incríveis'],
     formato: 'Presencial · 6h',
     certificado: true,
-    thumbnail_url: null,
+    thumbnail_url: '/cursos/escova.jpg',
     price: 1300,
     original_price: 1700,
     enrolled: false,
@@ -117,24 +117,7 @@ const cursosVenda: CursoVenda[] = [
     stripe_payment_link: '',
     hotmart_link: '',
   },
-  {
-    id: 'barbearia',
-    title: 'Barbearia',
-    titulo: 'Barbearia',
-    tituloPdf: 'BARBEARIA',
-    icon: UserRound,
-    description: 'Torne-se referência para o estilo masculino: fades, degradê, navalha e visagismo masculino.',
-    conteudo: ['Tecnicas de fade e degradê', 'Técnica de corte masculino', 'Uso de navalha e tesoura', 'Visagismo masculino e acabamento', 'Higiene e cuidados'],
-    formato: 'Presencial · 6h',
-    certificado: true,
-    thumbnail_url: null,
-    price: 1200,
-    original_price: 1500,
-    enrolled: false,
-    purchasable: true,
-    stripe_payment_link: '',
-    hotmart_link: '',
-  },
+
   {
     id: 'gestao-salao',
     title: 'Gestao de Salao',
@@ -145,7 +128,7 @@ const cursosVenda: CursoVenda[] = [
     conteudo: ['Analise de custos e margem de lucro', 'Precificacao dos servicos', 'Estrutura de comissionamento', 'Ferramentas e softwares de gestao', 'Capacitacao e monitoramento de resultados'],
     formato: 'Online · 8h',
     certificado: false,
-    thumbnail_url: null,
+    thumbnail_url: '/cursos/gestao.jpg',
     price: 997,
     original_price: 1497,
     enrolled: false,
@@ -280,9 +263,8 @@ export default function AcademyPage() {
     ...onlineMapped
   ];
 
-  // Seção separa cursos em "Cursos em Destaque" (destaque: true) do resto
-  const destaqueComStatus = cursosComStatus.filter(c => c.destaque && c.purchasable) as any;
-  const complementaresComStatus = cursosComStatus.filter(c => !c.destaque) as any;
+  // Lista todos os cursos na mesma seção
+  const complementaresComStatus = cursosComStatus as any;
 
   return (
     <div className="flex flex-col w-full bg-background text-foreground min-h-screen">
@@ -294,7 +276,7 @@ export default function AcademyPage() {
           <div className="absolute inset-0 bg-black/60" aria-hidden />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" aria-hidden />
         </div>
-        <div className="relative z-10 container mx-auto px-6 text-center py-32 md:py-40">
+        <div className="relative z-10 container mx-auto px-6 lg:px-12 py-32 md:py-40 flex flex-col items-start text-left">
           <motion.span
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -315,17 +297,18 @@ export default function AcademyPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1], delay: 0.2 }}
-            className="mt-6 max-w-2xl mx-auto text-white/90 text-base md:text-lg leading-relaxed drop-shadow-md"
+            className="mt-6 max-w-xl text-white/90 text-base md:text-lg leading-relaxed drop-shadow-md"
           >
             <strong>Agnaldo Gomes</strong> — 30 anos de experiencia, formado nas academias{' '}
-            <strong className="text-gold">Pivot Point, Toni & Guy e Llongueras</strong>.
+            <strong className="text-gold">Pivot Point, Toni & Guy e Llongueras</strong>.<br className="hidden md:block mt-2" />
+            <br className="hidden md:block" />
             Cursos presenciais e online que formam profissionais de elite e elevam o faturamento do seu salao.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1], delay: 0.3 }}
-            className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+            className="mt-10 flex flex-col sm:flex-row gap-4 justify-start"
           >
             <button
               onClick={() => {
@@ -351,71 +334,7 @@ export default function AcademyPage() {
 
       {/* Catalogo */}
       <div id="catalogo" className="container mx-auto px-6 pt-24 pb-16">
-        {destaqueComStatus.length > 0 && (
-          <>
-            {/* Eyebrow tag + title — Double-Bezel container */}
-            <div className="flex items-baseline justify-between mb-10">
-              <div>
-                <span className="inline-block rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-medium text-gold/80 bg-gold/5 mb-2">
-                  Edicao 2026
-                </span>
-                <h2 className="text-2xl font-serif font-bold text-gold mb-1">Cursos em Destaque</h2>
-                <p className="text-sm text-foreground/70">Formacao e Educacao de Elite</p>
-              </div>
-            </div>
 
-            {/* Carrossel horizontal scrollable — Netflix-style */}
-            <motion.div
-              variants={stagger}
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true }}
-              className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide mb-16"
-            >
-              {destaqueComStatus.map((c: any) => (
-                <motion.div
-                  key={c.id}
-                  className="snap-start w-72 sm:w-80 flex-shrink-0"
-                  variants={fadeInUp}
-                  initial="initial"
-                  whileInView="animate"
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
-                >
-                  <div className="relative group">
-                    {/* Badge de destaque */}
-                    {c.destaque && (
-                      <div className="absolute top-3 left-3 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold/15 border border-gold/30 text-foreground text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm">
-                        <Trophy size={10} className="text-gold" /> Destaque
-                      </div>
-                    )}
-                    <CursoCard
-                      curso={{
-                        id: c.id,
-                        title: c.title,
-                        description: c.description,
-                        thumbnail_url: c.thumbnail_url,
-                        price: c.price,
-                        original_price: c.original_price,
-                        current_price: c.current_price,
-                        stripe_payment_link: c.stripe_payment_link,
-                        hotmart_link: c.hotmart_link,
-                        isVip: c.isVip,
-                        schedules: c.schedules,
-                      }}
-                      isPurchasable={c.purchasable}
-                      isEnrolled={c.enrolled}
-                      onVipSelect={(curso) => {
-                        setSelectedVipCourse(c);
-                        setIsVipModalOpen(true);
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </>
-        )}
 
         {/* Todos os Cursos — grid responsivo separado */}
         <motion.div

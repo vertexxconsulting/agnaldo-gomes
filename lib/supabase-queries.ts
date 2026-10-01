@@ -180,7 +180,7 @@ export async function fetchClientePorId(id: string): Promise<Cliente | null> {
     .single();
 
   if (error) {
-    console.error(`[supabase] fetchClientePorId(${id}) error:`, error.message);
+    console.error('[supabase] fetchClientePorId error for id', id, ':', error.message);
     return null;
   }
   return mapCliente(data);
@@ -221,7 +221,7 @@ export async function fetchProfissionalPorId(id: string): Promise<Profissional |
     .single();
 
   if (error) {
-    console.error(`[supabase] fetchProfissionalPorId(${id}) error:`, error.message);
+    console.error('[supabase] fetchProfissionalPorId error for id', id, ':', error.message);
     return null;
   }
   return mapProfissional(data);
@@ -263,7 +263,7 @@ export async function fetchServicoPorId(id: string): Promise<Servico | null> {
     .single();
 
   if (error) {
-    console.error(`[supabase] fetchServicoPorId(${id}) error:`, error.message);
+    console.error('[supabase] fetchServicoPorId error for id', id, ':', error.message);
     return null;
   }
   return mapServico(data);

@@ -247,7 +247,7 @@ function AgendaContent() {
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar agendamento');
 
       const novoAgendamento: Agendamento = {
-        id: data.agendamento?.id ?? Math.random().toString(36).substring(7),
+        id: data.agendamento?.id ?? Date.now().toString(36),
         cliente_id: formData.cliente_id,
         profissional_id: formData.profissional_id,
         servico_id: formData.servico_id,

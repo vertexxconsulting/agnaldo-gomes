@@ -9,10 +9,17 @@ export default function AdminAcademyConfiguracoes() {
   const [activeTab, setActiveTab] = useState('geral');
   const [envStatus, setEnvStatus] = useState({ mercadoPago: false, stripe: false, evolutionApi: false });
   
-  // Configurações Gerais
   const [welcomeVideoUrl, setWelcomeVideoUrl] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [platformName, setPlatformName] = useState('Agnaldo Gomes Academy');
+  const [supportEmail, setSupportEmail] = useState('suporte@agnaldogomes.com');
+  const [supportGroupLink, setSupportGroupLink] = useState('');
   const [loadingSave, setLoadingSave] = useState(false);
+
+  // Segurança e Acessos
+  const [blockSimultaneous, setBlockSimultaneous] = useState(true);
+  const [admin2FA, setAdmin2FA] = useState(false);
+  const [videoWatermark, setVideoWatermark] = useState(true);
 
   // WhatsApp States
   const [instanceName, setInstanceName] = useState('agnaldo-academy-bot');
@@ -25,20 +32,41 @@ export default function AdminAcademyConfiguracoes() {
     fetch('/api/admin-academy/configuracoes/geral')
       .then(res => res.json())
       .then(data => {
-        if (data && data.welcome_video_url) {
-          setWelcomeVideoUrl(data.welcome_video_url);
-        }
-        if (data && data.whatsapp_number) {
-          setWhatsappNumber(data.whatsapp_number);
-        }
+        if (data && data.welcome_video_url) setWelcomeVideoUrl(data.welcome_video_url);
+        if (data && data.whatsapp_number) setWhatsappNumber(data.whatsapp_number);
+        if (data && data.platform_name) setPlatformName(data.platform_name);
+        if (data && data.support_email) setSupportEmail(data.support_email);
+        if (data && data.support_group_link) setSupportGroupLink(data.support_group_link);
       })
-      .catch(console.error);
+      .catch(() => console.error('Erro geral'));
 
     fetch('/api/env-status')
       .then(res => res.json())
       .then(data => setEnvStatus(data))
-      .catch(console.error);
+      .catch(() => console.error('Erro de status'));
+
+    // Carregar configurações de Segurança do localStorage
+    const savedSecurity = localStorage.getItem('academy_security');
+    if (savedSecurity) {
+      try {
+        const parsed = JSON.parse(savedSecurity);
+        if (typeof parsed.blockSimultaneous === 'boolean') setBlockSimultaneous(parsed.blockSimultaneous);
+        if (typeof parsed.admin2FA === 'boolean') setAdmin2FA(parsed.admin2FA);
+        if (typeof parsed.videoWatermark === 'boolean') setVideoWatermark(parsed.videoWatermark);
+      } catch (e) {
+        console.error('Erro ao ler configs de segurança');
+      }
+    }
   }, []);
+
+  const updateSecurity = (key: 'blockSimultaneous' | 'admin2FA' | 'videoWatermark', value: boolean) => {
+    const newState = { blockSimultaneous, admin2FA, videoWatermark, [key]: value };
+    if (key === 'blockSimultaneous') setBlockSimultaneous(value);
+    if (key === 'admin2FA') setAdmin2FA(value);
+    if (key === 'videoWatermark') setVideoWatermark(value);
+    
+    localStorage.setItem('academy_security', JSON.stringify(newState));
+  };
 
   const logErroStatusWhatsApp = (err: unknown) => {
     console.error('Erro ao buscar status do WhatsApp:', err);
@@ -105,15 +133,25 @@ export default function AdminAcademyConfiguracoes() {
   const handleSaveGeral = async () => {
     setLoadingSave(true);
     try {
-      await fetch('/api/admin-academy/configuracoes/geral', {
+      const res = await fetch('/api/admin-academy/configuracoes/geral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ welcome_video_url: welcomeVideoUrl, whatsapp_number: whatsappNumber })
+        body: JSON.stringify({ 
+          welcome_video_url: welcomeVideoUrl, 
+          whatsapp_number: whatsappNumber,
+          platform_name: platformName,
+          support_email: supportEmail,
+          support_group_link: supportGroupLink
+        })
       });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao salvar');
+      }
       alert('Configurações salvas com sucesso!');
-    } catch(e) {
+    } catch(e: any) {
       console.error(e);
-      alert('Erro ao salvar as configurações.');
+      alert(`Erro ao salvar as configurações: ${e.message}`);
     } finally {
       setLoadingSave(false);
     }
@@ -174,18 +212,34 @@ export default function AdminAcademyConfiguracoes() {
               <div className="space-y-5 max-w-2xl">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Nome da Plataforma</label>
-                  <input type="text" defaultValue="Agnaldo Gomes Academy" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
+                  <input 
+                    type="text" 
+                    value={platformName}
+                    onChange={(e) => setPlatformName(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" 
+                  />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">E-mail de Suporte</label>
-                  <input type="email" defaultValue="suporte@agnaldogomes.com" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
+                  <input 
+                    type="email" 
+                    value={supportEmail}
+                    onChange={(e) => setSupportEmail(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" 
+                  />
                   <p className="text-xs text-foreground/50 mt-1">Os alunos usarão este e-mail para tirar dúvidas de acesso.</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Link do Grupo de Suporte (WhatsApp/Telegram)</label>
-                  <input type="url" placeholder="https://chat.whatsapp.com/..." className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" />
+                  <input 
+                    type="url" 
+                    placeholder="https://chat.whatsapp.com/..." 
+                    value={supportGroupLink}
+                    onChange={(e) => setSupportGroupLink(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:border-gold" 
+                  />
                 </div>
                 
                 <div className="pt-4 border-t border-[var(--border-subtle)]">
@@ -461,7 +515,12 @@ export default function AdminAcademyConfiguracoes() {
                     <p className="text-xs text-foreground/60 mt-1">Impede que a mesma conta seja acessada por múltiplos dispositivos ao mesmo tempo, combatendo o rateio de contas.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={blockSimultaneous} 
+                      onChange={(e) => updateSecurity('blockSimultaneous', e.target.checked)} 
+                    />
                     <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>
@@ -472,7 +531,12 @@ export default function AdminAcademyConfiguracoes() {
                     <p className="text-xs text-foreground/60 mt-1">Exigir código enviado por e-mail ou Autenticador para acessar este painel administrativo.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input type="checkbox" className="sr-only peer" />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={admin2FA} 
+                      onChange={(e) => updateSecurity('admin2FA', e.target.checked)} 
+                    />
                     <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>
@@ -483,7 +547,12 @@ export default function AdminAcademyConfiguracoes() {
                     <p className="text-xs text-foreground/60 mt-1">Exibe o e-mail ou CPF do aluno flutuando no vídeo para inibir gravação de tela.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={videoWatermark} 
+                      onChange={(e) => updateSecurity('videoWatermark', e.target.checked)} 
+                    />
                     <div className="w-11 h-6 bg-[var(--border-subtle)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold"></div>
                   </label>
                 </div>

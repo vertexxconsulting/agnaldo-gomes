@@ -44,7 +44,7 @@ const pillars = [
   {
     title: 'Artista das Marcas',
     description:
-      'Agnaldo Gomes é artista e embaixador das marcas Mirra Cosméticos e Maison Visage, unindo referência técnica e produtos de alto padrão.',
+      'Agnaldo Gomes é artista das marcas Mirra Cosméticos e Maison Visage, unindo referência técnica e produtos de alto padrão.',
     icon: Award,
     href: '/#artista-das-marcas',
     cta: 'Ver Marcas',
@@ -123,7 +123,7 @@ export default function Home() {
             variants={fadeUp}
             className="text-white/75 text-sm md:text-base max-w-md font-light leading-relaxed"
           >
-            Master Hair Stylist, embaixador Mirra Cosméticos e Maison Visage.
+            Master Hair Stylist, artista Mirra Cosméticos e Maison Visage.
             Studio em Telêmaco Borba/PR e formação para quem quer viver bem da beleza.
           </motion.p>
 
@@ -184,7 +184,7 @@ export default function Home() {
             {/* Stat 3 */}
             <div className="flex flex-col gap-0.5">
               <span className="text-primary font-extrabold text-xl md:text-2xl leading-none">2x</span>
-              <span className="text-white/50 text-[11px] uppercase tracking-wider">embaixador oficial</span>
+              <span className="text-white/50 text-[11px] uppercase tracking-wider">artista oficial</span>
             </div>
           </motion.div>
 
@@ -194,7 +194,7 @@ export default function Home() {
             className="flex flex-col gap-2 mt-4"
           >
             <span className="text-white/35 text-[9px] uppercase tracking-[0.25em] font-semibold">
-              ARTISTA E EMBAIXADOR OFICIAL
+              ARTISTA OFICIAL
             </span>
             <div className="flex items-center gap-6">
               {/* Mirra Cosméticos — texto logo (substituir por <Image> quando tiver logo vetorial) */}
@@ -237,16 +237,16 @@ export default function Home() {
       {/* ===== AUTORIDADE COM PARALLAX ===== */}
       <section className="py-16 overflow-hidden">
         <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <Reveal className="relative aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl lg:col-span-5 max-w-md mx-auto w-full">
+          <Reveal className="relative aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl lg:col-span-5 max-w-md mx-auto w-full [transform:translateZ(0)] isolate">
             <Image
               src="/agnaldo4.webp"
               alt="Agnaldo Gomes"
               fill
-              className="object-cover object-[center_20%]"
+              className="object-cover object-[center_20%] rounded-3xl"
               sizes="(max-width: 1024px) 100vw, 40vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />
-            <div className="absolute bottom-6 left-6 right-6">
+            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none rounded-3xl" />
+            <div className="absolute bottom-6 left-6 right-6 z-10">
               <h3 className="text-2xl font-bold text-white mb-1">Agnaldo Gomes</h3>
               <p className="text-primary font-medium text-sm">Master Hair Stylist & Educador</p>
             </div>
@@ -296,9 +296,9 @@ export default function Home() {
       <section id="artista-das-marcas" className="relative py-16 overflow-hidden border-y border-[var(--border-subtle)]">
         <CarouselBackground />
         <div className="container relative z-10 mx-auto px-6">
-          <SectionTitle title="Artista das Marcas" subtitle="Embaixador técnico de referência" align="center" />
+          <SectionTitle title="Artista das Marcas" subtitle="Referência técnica" align="center" />
           <p className="text-center text-foreground/60 text-sm mb-10 max-w-2xl mx-auto">
-            Agnaldo Gomes atua como artista e embaixador das marcas que impulsionam seu trabalho e sua missão de compartilhar beleza e conhecimento.
+            Agnaldo Gomes atua como artista das marcas que impulsionam seu trabalho e sua missão de compartilhar beleza e conhecimento.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8">
             <a

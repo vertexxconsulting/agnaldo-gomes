@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
       .eq('payment_id', paymentId);
 
   } catch (err: any) {
-    console.error(`[mp-webhook] Erro ao processar pedido ${orderId}:`, err?.message);
+    console.error('[mp-webhook] Erro ao processar pedido', orderId, ':', err?.message);
     await supabase
       .from('mp_webhook_logs')
       .update({

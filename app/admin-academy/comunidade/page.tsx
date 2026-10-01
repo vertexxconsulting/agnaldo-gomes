@@ -15,27 +15,7 @@ interface Comentario {
   status: 'pending' | 'approved';
 }
 
-// Fallback mock
-const MOCK_COMMENTS: Comentario[] = [
-  {
-    id: 'mock_1',
-    student: 'Mariana Silva',
-    course: 'Colorimetria',
-    lesson: 'Módulo 2 — Estrela de Oswald',
-    content: 'Professora, tive dificuldade com a técnica de neutralização. O tom ficou mais amarelado do que esperado. Alguma dica?',
-    date: '2 horas atrás',
-    status: 'pending'
-  },
-  {
-    id: 'mock_2',
-    student: 'Carlos Souza',
-    course: 'Cortes Modernos 2026',
-    lesson: 'Módulo 1 — Visagismo',
-    content: 'Excelente aula! Já aplicando no dia a dia. Cliente ficou muito satisfeita.',
-    date: 'ontem',
-    status: 'approved'
-  }
-];
+
 
 export default function AdminAcademyComunidade() {
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
@@ -49,7 +29,7 @@ export default function AdminAcademyComunidade() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          setComentarios(MOCK_COMMENTS);
+          setComentarios([]);
           setLoading(false);
           return;
         }
@@ -60,7 +40,7 @@ export default function AdminAcademyComunidade() {
           .order('created_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
-          setComentarios(MOCK_COMMENTS);
+          setComentarios([]);
         } else {
           // Mapear dados reais com nome genérico (perfil carregado separadamente)
           const mapped: Comentario[] = data.map((c: any) => ({
@@ -77,7 +57,7 @@ export default function AdminAcademyComunidade() {
           setComentarios(mapped);
         }
       } catch {
-        setComentarios(MOCK_COMMENTS);
+        setComentarios([]);
       }
       setLoading(false);
     };

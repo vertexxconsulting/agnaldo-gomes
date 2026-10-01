@@ -4,18 +4,21 @@ export interface HorarioDiaSalao {
   aberto: boolean;
   inicio: string;
   fim: string;
+  temPausa?: boolean;
+  pausaInicio?: string;
+  pausaFim?: string;
 }
 
 export type HorariosFuncionamentoSalao = Record<number, HorarioDiaSalao>;
 
 export const DEFAULT_HORARIOS_SALAO: HorariosFuncionamentoSalao = {
-  0: { dia: 0, nome: 'Domingo', aberto: false, inicio: '09:00', fim: '18:00' },
-  1: { dia: 1, nome: 'Segunda-feira', aberto: false, inicio: '09:00', fim: '19:00' },
-  2: { dia: 2, nome: 'Terça-feira', aberto: true, inicio: '09:00', fim: '19:00' },
-  3: { dia: 3, nome: 'Quarta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
-  4: { dia: 4, nome: 'Quinta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
-  5: { dia: 5, nome: 'Sexta-feira', aberto: true, inicio: '09:00', fim: '19:00' },
-  6: { dia: 6, nome: 'Sábado', aberto: true, inicio: '08:00', fim: '17:00' },
+  0: { dia: 0, nome: 'Domingo', aberto: false, inicio: '09:00', fim: '18:00', temPausa: false, pausaInicio: '12:00', pausaFim: '13:00' },
+  1: { dia: 1, nome: 'Segunda-feira', aberto: false, inicio: '09:00', fim: '19:00', temPausa: false, pausaInicio: '12:00', pausaFim: '13:00' },
+  2: { dia: 2, nome: 'Terça-feira', aberto: true, inicio: '09:00', fim: '19:00', temPausa: true, pausaInicio: '12:00', pausaFim: '13:00' },
+  3: { dia: 3, nome: 'Quarta-feira', aberto: true, inicio: '09:00', fim: '19:00', temPausa: true, pausaInicio: '12:00', pausaFim: '13:00' },
+  4: { dia: 4, nome: 'Quinta-feira', aberto: true, inicio: '09:00', fim: '19:00', temPausa: true, pausaInicio: '12:00', pausaFim: '13:00' },
+  5: { dia: 5, nome: 'Sexta-feira', aberto: true, inicio: '09:00', fim: '19:00', temPausa: true, pausaInicio: '12:00', pausaFim: '13:00' },
+  6: { dia: 6, nome: 'Sábado', aberto: true, inicio: '08:00', fim: '17:00', temPausa: true, pausaInicio: '12:00', pausaFim: '13:00' },
 };
 
 export interface IAConfig {

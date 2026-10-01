@@ -54,6 +54,7 @@ export function Header() {
     { name: 'Studio', href: urls.main === '/' ? '/studio' : `${urls.main}/studio` },
     { name: 'Academy', href: urls.academy },
     { name: 'Sobre', href: urls.main === '/' ? '/sobre' : `${urls.main}/sobre` },
+    { name: 'Loja', href: urls.loja },
   ];
   
   const isDarkPage = pathname === '/academy' || pathname === '/' || pathname === '/studio' || pathname === '/sobre';

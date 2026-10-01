@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAcademyAuth } from '@/lib/api-auth';
 
 // Buscar a configuração atual
 export async function GET() {
   try {
+    const supabase = await getSupabaseServerClient();
     const { data, error } = await supabase
       .from('academy_settings')
       .select('*')
@@ -28,8 +29,10 @@ export async function POST(request: Request) {
     const auth = await requireAcademyAuth();
     if (auth.error) return auth.error;
 
+    const supabase = await getSupabaseServerClient();
+
     const body = await request.json();
-    const { welcome_video_url, whatsapp_number } = body;
+    const { welcome_video_url, whatsapp_number, platform_name, support_email, support_group_link } = body;
 
     // Verificar se já existe (id = 1)
     const { data: existing } = await supabase
@@ -46,6 +49,9 @@ export async function POST(request: Request) {
         .update({
           welcome_video_url,
           whatsapp_number,
+          platform_name,
+          support_email,
+          support_group_link,
           updated_at: new Date().toISOString()
         })
         .eq('id', 1)
@@ -59,6 +65,9 @@ export async function POST(request: Request) {
           id: 1,
           welcome_video_url,
           whatsapp_number,
+          platform_name,
+          support_email,
+          support_group_link
         })
         .select()
         .single();

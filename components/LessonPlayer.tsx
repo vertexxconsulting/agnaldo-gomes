@@ -29,7 +29,7 @@ function extractVimeoData(url: string): { id: string; hash?: string } | null {
   const id = idMatch[1];
 
   const hashParam = url.match(/[?&]h=([a-zA-Z0-9]+)/);
-  const slashHash = url.match(new RegExp(`(?:vimeo\\.com\\/(?:video\\/)?|player\\.vimeo\\.com\\/video\\/)${id}\\/([a-zA-Z0-9]+)`));
+  const slashHash = url.match(/(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/)\d+\/([a-zA-Z0-9]+)/);
   const hash = hashParam?.[1] || slashHash?.[1];
 
   return { id, hash };
