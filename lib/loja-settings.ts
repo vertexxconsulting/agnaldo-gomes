@@ -17,6 +17,8 @@ export interface LojaSettings {
   valor_correios: string;
   envio_automatico: boolean; // Nova opção
   envio_manual: boolean;     // Nova opção
+  fidelidade_ativa: boolean;
+  agendamento_ativo: boolean;
 }
 
 export async function getLojaSettings(): Promise<LojaSettings | null> {
@@ -37,6 +39,8 @@ export async function getLojaSettings(): Promise<LojaSettings | null> {
     valor_correios: data.valor_correios,
     envio_automatico: data.envio_automatico ?? false,
     envio_manual: data.envio_manual ?? true,
+    fidelidade_ativa: data.fidelidade_ativa ?? true,
+    agendamento_ativo: data.agendamento_ativo ?? true,
   };
 }
 

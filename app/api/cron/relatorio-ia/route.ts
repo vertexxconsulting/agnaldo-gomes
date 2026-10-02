@@ -40,7 +40,7 @@ async function carregarConfigRelatorio(supabase: any) {
     frequencia: 'diario',
     diaSemana: 0,
     horarioEnvio: '20:00',
-    whatsappAgnaldo: '5542991534011',
+    whatsappAgnaldo: '5542998271222',
     ativo: true,
   };
 }
@@ -154,7 +154,7 @@ async function processarEnvioRelatorio(supabase: any, opts: { telefoneManual?: s
     .map(([nome, fat]) => ({ nome, faturamento: fat }))
     .sort((a, b) => b.faturamento - a.faturamento);
 
-  const telDestino = opts.telefoneManual || config.whatsappAgnaldo || '5542991534011';
+  const telDestino = opts.telefoneManual || config.whatsappAgnaldo || '5542998271222';
 
   const etiquetaFrequencia =
     config.frequencia === 'semanal' ? 'SEMANAL' :

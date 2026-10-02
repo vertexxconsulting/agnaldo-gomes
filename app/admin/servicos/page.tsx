@@ -22,6 +22,7 @@ export default function ServicosPage() {
   const [catFiltro, setCatFiltro] = useState<string>('todas');
   const [editando, setEditando] = useState<Servico | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [isVariablePrice, setIsVariablePrice] = useState(false);
 
   // Carregar dados do Supabase
   useEffect(() => {
@@ -95,6 +96,8 @@ export default function ServicosPage() {
       categoria: form.get('categoria') as string,
       duracao_min: Number(form.get('duracao_min')),
       preco: Number(form.get('preco')),
+      preco_variavel: isVariablePrice,
+      preco_maximo: isVariablePrice ? Number(form.get('preco_maximo')) : null,
     };
 
     if (editando) {
@@ -116,6 +119,8 @@ export default function ServicosPage() {
         categoria: payload.categoria,
         duracao_min: payload.duracao_min,
         preco: payload.preco,
+        preco_variavel: payload.preco_variavel,
+        preco_maximo: payload.preco_maximo,
         ativo: true,
         visivel_app: true,
       }]);
@@ -146,7 +151,7 @@ export default function ServicosPage() {
             <option value="todas">Todas categorias</option>
             {categorias.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <Button variant="primary" size="md" onClick={() => { setEditando(null); setShowForm(true); }}>
+          <Button variant="primary" size="md" onClick={() => { setEditando(null); setIsVariablePrice(false); setShowForm(true); }}>
             <Plus size={18} className="mr-2" /> Novo Serviço
           </Button>
         </div>
@@ -177,9 +182,18 @@ export default function ServicosPage() {
                 <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
                 <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
-              <div className="flex items-end gap-2">
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1 cursor-pointer flex items-center gap-2">
+                  <input type="checkbox" checked={isVariablePrice} onChange={(e) => setIsVariablePrice(e.target.checked)} className="accent-gold" />
+                  Preço Variável (A partir de)
+                </label>
+                {isVariablePrice && (
+                  <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx (Opcional)" defaultValue={editando?.preco_maximo ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
+                )}
+              </div>
+              <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5">
                 <Button type="submit" variant="primary" size="md" className="flex-1">Salvar</Button>
-                <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); }}>Cancelar</Button>
+                <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
               </div>
             </form>
           </CardGlass>
@@ -205,7 +219,11 @@ export default function ServicosPage() {
                   <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
                   <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{s.categoria}</span></td>
                   <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
-                  <td className="py-3 pr-4 text-gold font-semibold">R$ {Number(s.preco).toFixed(2)}</td>
+                  <td className="py-3 pr-4 text-gold font-semibold">
+                    {s.preco_variavel 
+                      ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
+                      : `R$ ${Number(s.preco).toFixed(2)}`}
+                  </td>
                   <td className="py-3 pr-4 text-foreground/60 text-xs">
                     {(() => {
                       const profs = profsPorServico(s.id);
@@ -226,7 +244,7 @@ export default function ServicosPage() {
                   </td>
                   <td className="py-3 pr-4 text-right">
                     <div className="inline-flex gap-1">
-                      <button onClick={() => { setEditando(s); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
+                      <button onClick={() => { setEditando(s); setIsVariablePrice(s.preco_variavel || false); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
                       <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </td>

@@ -38,6 +38,7 @@ export default function AgendamentoPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
   
   // Ordem: telefone -> profissional -> servico -> confirmacao
   // (Step 'data' oculto: data/hora definida pela secretaria do salão)
@@ -86,6 +87,16 @@ export default function AgendamentoPage() {
         if (vinculo) {
           setFormData(prev => ({ ...prev, profissionalId: vinculo.profissional_id, servicoId: servicoParam }));
         }
+      }
+
+      try {
+        const res = await fetch('/api/admin/loja/settings');
+        if (res.ok) {
+          const lojaData = await res.json();
+          setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar configurações globais:', e);
       }
 
       setLoading(false);
@@ -327,6 +338,28 @@ export default function AgendamentoPage() {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mb-4 mx-auto" />
           <p className="text-foreground/70">Carregando horários e serviços do Studio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!agendamentoAtivo && !loading) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md p-8 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl">
+          <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-serif font-bold text-foreground mb-2">Agendamentos Desabilitados</h1>
+          <p className="text-foreground/70 mb-6 leading-relaxed">
+            Nossos agendamentos online estão temporariamente suspensos para manutenção ou atualização da nossa agenda.
+          </p>
+          <Button 
+            variant="primary" 
+            className="w-full font-bold flex items-center justify-center gap-2"
+            onClick={() => window.open('https://wa.me/5542998271222?text=Olá, gostaria de saber sobre a disponibilidade de horários.', '_blank')}
+          >
+            <MessageCircle size={18} />
+            Falar pelo WhatsApp
+          </Button>
         </div>
       </div>
     );
@@ -616,8 +649,12 @@ export default function AgendamentoPage() {
                         <span className="text-[11px] text-foreground/50 block mt-0.5">{servico.categoria}</span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-bold text-gold text-base">
-                          R$ {Number(servico.preco).toFixed(2).replace('.', ',')}
+                        <span className="font-bold text-gold text-base text-right max-w-[120px] leading-tight block">
+                          {servico.preco_variavel 
+                            ? (servico.preco_maximo 
+                                ? `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')} a R$ ${Number(servico.preco_maximo).toFixed(2).replace('.', ',')}` 
+                                : `A partir de R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`)
+                            : `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`}
                         </span>
                         <span className="text-[11px] text-foreground/50 block">{servico.duracao_min} min</span>
                       </div>
@@ -787,7 +824,13 @@ export default function AgendamentoPage() {
                 </div>
                 <div className="flex justify-between py-1.5 text-base">
                   <span className="font-bold text-foreground">Valor:</span>
-                  <span className="font-extrabold text-gold">R$ {valorTotalServico.toFixed(2).replace('.', ',')}</span>
+                  <span className="font-extrabold text-gold text-right">
+                    {servicoSelecionado?.preco_variavel
+                      ? (servicoSelecionado.preco_maximo 
+                          ? `R$ ${valorTotalServico.toFixed(2).replace('.', ',')} a R$ ${Number(servicoSelecionado.preco_maximo).toFixed(2).replace('.', ',')}` 
+                          : `A partir de R$ ${valorTotalServico.toFixed(2).replace('.', ',')}`)
+                      : `R$ ${valorTotalServico.toFixed(2).replace('.', ',')}`}
+                  </span>
                 </div>
               </div>
 

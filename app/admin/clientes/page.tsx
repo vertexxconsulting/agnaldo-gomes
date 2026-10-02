@@ -219,17 +219,22 @@ export default function ClienteModule() {
                     </div>
                   </div>
 
-                  {/* KPIs Rápidos */}
-                  <div className="flex items-center gap-6 sm:px-4">
-                    <div className="text-center">
-                      <div className="text-xs text-foreground/40 uppercase tracking-wider">Visitas</div>
-                      <div className="font-bold text-foreground">{stats.visitas}</div>
+                    <div className="flex items-center gap-6 sm:px-4">
+                      <div className="text-center">
+                        <div className="text-xs text-foreground/40 uppercase tracking-wider">Pontos</div>
+                        <div className="font-bold text-[var(--accent)] flex items-center gap-1 justify-center">
+                          {c.loyalty_points || 0}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-foreground/40 uppercase tracking-wider">Visitas</div>
+                        <div className="font-bold text-foreground">{stats.visitas}</div>
+                      </div>
+                      <div className="text-center hidden sm:block">
+                        <div className="text-xs text-foreground/40 uppercase tracking-wider">Ticket Médio</div>
+                        <div className="font-bold text-gold">R$ {stats.ticketMedio}</div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-xs text-foreground/40 uppercase tracking-wider">Ticket Médio</div>
-                      <div className="font-bold text-gold">R$ {stats.ticketMedio}</div>
-                    </div>
-                  </div>
 
                   {/* Icon Expandir */}
                   <div className="hidden sm:flex shrink-0 w-8 h-8 items-center justify-center rounded-full bg-foreground/5 text-foreground/50">

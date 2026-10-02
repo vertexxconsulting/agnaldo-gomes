@@ -101,7 +101,7 @@ Suas diretrizes fundamentais e inegociáveis são:
 
   relatorios: {
     ativo: true,
-    whatsappAgnaldo: '5542991534011',
+    whatsappAgnaldo: '5542998271222',
     frequencia: 'diario',
     diaSemana: 0,
     horarioEnvio: '20:00',

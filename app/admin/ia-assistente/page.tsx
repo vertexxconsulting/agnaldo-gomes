@@ -494,7 +494,7 @@ export default function IAAssistentePage() {
                       relatorios: { ...prev.relatorios, whatsappAgnaldo: e.target.value }
                     }))}
                     className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:border-gold"
-                    placeholder="5542991534011"
+                    placeholder="5542998271222"
                   />
                   <Button 
                     variant="outline" 

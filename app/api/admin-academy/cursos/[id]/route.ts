@@ -34,7 +34,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     const body = await req.json();
-    const { title, description, thumbnail_url, duration_hours, level, tags, stripe_payment_link, price } = body;
+    const { title, description, thumbnail_url, duration_hours, level, tags, stripe_payment_link, price, certificate_bg_url } = body;
 
     const payload: Record<string, unknown> = {};
     if (title !== undefined) payload.title = String(title).trim();
@@ -45,6 +45,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (tags !== undefined) payload.tags = Array.isArray(tags) ? tags : [];
     if (stripe_payment_link !== undefined) payload.stripe_payment_link = stripe_payment_link;
     if (price !== undefined) payload.price = Number(price) || 0;
+    if (certificate_bg_url !== undefined) payload.certificate_bg_url = certificate_bg_url;
 
     const { data, error } = await auth.supabase!
       .from('courses')

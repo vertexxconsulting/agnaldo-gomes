@@ -18,6 +18,7 @@ interface Curso {
   tags: string[];
   stripe_payment_link?: string;
   price?: number;
+  certificate_bg_url?: string;
 }
 
 interface Modulo {
@@ -66,7 +67,7 @@ export default function AdminEdicaoCursoPage() {
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; paymentLink?: string; error?: string } | null>(null);
-  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null });
+  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', certificate_bg_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null });
 
   const isCreatingPayment = paymentLoading;
 
@@ -108,6 +109,7 @@ export default function AdminEdicaoCursoPage() {
           title: c.title,
           description: c.description || '',
           thumbnail_url: c.thumbnail_url || '',
+          certificate_bg_url: c.certificate_bg_url || '',
           stripe_payment_link: c.stripe_payment_link || '',
           price: c.price || 0,
           current_price: c.current_price || null,
@@ -421,6 +423,19 @@ export default function AdminEdicaoCursoPage() {
                       value={cursoForm.thumbnail_url}
                       onChange={(url) => setCursoForm(prev => ({ ...prev, thumbnail_url: url }))}
                       folder={`cursos/${cursoId}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground/70 mb-1">
+                      Template do Certificado (Recomendado A4 Paisagem 3508x2480px)
+                    </label>
+                    <p className="text-xs text-foreground/50 mb-2">
+                      Faça o upload do fundo do certificado (sem os nomes). O sistema vai escrever o nome do aluno, curso e data automaticamente.
+                    </p>
+                    <ImageUpload
+                      value={cursoForm.certificate_bg_url}
+                      onChange={(url) => setCursoForm(prev => ({ ...prev, certificate_bg_url: url }))}
+                      folder={`cursos/${cursoId}/certificates`}
                     />
                   </div>
                 </div>

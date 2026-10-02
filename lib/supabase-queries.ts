@@ -85,6 +85,7 @@ function mapCliente(r: Row): Cliente {
     observacoes: r.notes ?? null,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
+    loyalty_points: r.loyalty_points ?? 0,
   };
 }
 
@@ -108,8 +109,12 @@ function mapServico(r: Row): Servico {
     categoria: r.category ?? 'Geral',
     duracao_min: r.duration_minutes ?? 30,
     preco: Number(r.price ?? 0),
+    preco_maximo: r.price_max != null ? Number(r.price_max) : null,
+    preco_variavel: r.is_variable_price ?? false,
     ativo: r.active ?? true,
     visivel_app: r.visible_in_app ?? true,
+    points_reward: r.points_reward ?? 0,
+    points_cost: r.points_cost ?? 0,
   };
 }
 
@@ -662,6 +667,8 @@ export async function criarServico(payload: {
   preco: number;
   ativo?: boolean;
   visivel_app?: boolean;
+  points_reward?: number;
+  points_cost?: number;
 }): Promise<{ id?: string; error?: string }> {
   try {
     const res = await fetch('/api/servicos', {
@@ -686,6 +693,8 @@ export async function criarServico(payload: {
       price: payload.preco,
       active: payload.ativo ?? true,
       visible_in_app: payload.visivel_app ?? true,
+      points_reward: payload.points_reward ?? 0,
+      points_cost: payload.points_cost ?? 0,
     })
     .select('id')
     .single();
@@ -704,6 +713,8 @@ export async function atualizarServico(id: string, payload: Partial<{
   preco: number;
   ativo: boolean;
   visivel_app: boolean;
+  points_reward: number;
+  points_cost: number;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
@@ -727,6 +738,8 @@ export async function atualizarServico(id: string, payload: Partial<{
   if (payload.preco !== undefined) patch.price = payload.preco;
   if (payload.ativo !== undefined) patch.active = payload.ativo;
   if (payload.visivel_app !== undefined) patch.visible_in_app = payload.visivel_app;
+  if (payload.points_reward !== undefined) patch.points_reward = payload.points_reward;
+  if (payload.points_cost !== undefined) patch.points_cost = payload.points_cost;
 
   const { error } = await supabase
     .from(TBL.servicos)

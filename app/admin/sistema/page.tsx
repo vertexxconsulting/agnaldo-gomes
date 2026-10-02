@@ -23,6 +23,8 @@ export default function SistemaPage() {
   const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
+  const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
+  const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
 
   useEffect(() => {
     const carregar = async () => {
@@ -33,17 +35,37 @@ export default function SistemaPage() {
       setDadosReais({ servicos: s, profissionais: p, profissionais_servicos: ps, clientes: c, agendamentos: a, bloqueios: b });
 
       try {
-        const res = await fetch('/api/admin/sistema/config');
-        if (res.ok) {
-          const data = await res.json();
-          setInstance(data.instance || '');
+        const resLoja = await fetch('/api/admin/loja/settings');
+        if (resLoja.ok) {
+          const lojaData = await resLoja.json();
+          setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
         }
       } catch (e) {
-        console.error('Erro ao carregar config da Evolution:', e);
+        console.error('Erro ao carregar loja_settings:', e);
+      } finally {
+        setLoadingLojaSettings(false);
       }
     };
     carregar();
   }, []);
+
+  const toggleAgendamento = async () => {
+    const novoStatus = !agendamentoAtivo;
+    setAgendamentoAtivo(novoStatus);
+    try {
+      const res = await fetch('/api/admin/loja/settings');
+      const current = await res.json();
+
+      await fetch('/api/admin/loja/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...current, agendamento_ativo: novoStatus }),
+      });
+    } catch (e) {
+      console.error('Erro ao salvar config agendamento:', e);
+      setAgendamentoAtivo(!novoStatus); // reverte em caso de erro
+    }
+  };
 
   const checkAllSystems = async () => {
     setCheckingHealth(true);
@@ -97,162 +119,65 @@ export default function SistemaPage() {
           setImportStatus({
             tipo: 'erro',
             msg: 'Arquivo JSON inválido. Certifique-se de que é um backup válido do sistema.'
-          });
-        }
-      } catch (err) {
+    try {
+      const json = JSON.parse(event.target?.result as string);
+      if (json.clientes && json.agendamentos) {
+        setImportStatus({
+          tipo: 'sucesso',
+          msg: `Base importada com sucesso! ${json.clientes.length} clientes encontrados no arquivo de backup.`
+        });
+      } else {
         setImportStatus({
           tipo: 'erro',
-          msg: 'Erro ao processar o arquivo. Verifique se é um arquivo JSON válido.'
+          msg: 'Arquivo JSON inválido. Certifique-se de que é um backup válido do sistema.'
         });
       }
-    };
-    reader.readAsText(file);
-  };
-
-  const testEvolutionConnection = async () => {
-    if (!instance) {
-      setEvoStatus('error');
-      return;
-    }
-
-    setEvoStatus('loading');
-    try {
-      const res = await fetch('/api/admin/sistema/evolution/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instance })
-      });
-
-      if (res.ok) {
-        setEvoStatus('success');
-      } else {
-        setEvoStatus('error');
-      }
     } catch (err) {
-      setEvoStatus('error');
-    }
-  };
-
-  const saveConfig = async () => {
-    try {
-      const res = await fetch('/api/admin/sistema/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instance })
+      setImportStatus({
+        tipo: 'erro',
+        msg: 'Erro ao processar o arquivo. Verifique se é um arquivo JSON válido.'
       });
-      if (res.ok) {
-        alert('Configurações salvas com sucesso!');
-      } else {
-        alert('Erro ao salvar configurações.');
-      }
-    } catch (e) {
-      alert('Erro ao conectar com o servidor.');
     }
   };
+  reader.readAsText(file);
+};
 
-  return (
-    <div className="py-4 space-y-6 max-w-5xl mx-auto">
-      <div className="flex flex-col">
-        <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
-          Gestão do Sistema
-        </h1>
-        <p className="text-sm text-foreground/60 mt-1">
-          Backups de segurança, importação/exportação e configurações de integração.
-        </p>
-      </div>
+return (
+  <div className="py-4 space-y-6 max-w-5xl mx-auto">
+    <div className="flex flex-col">
+      <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
+        Gestão do Sistema
+      </h1>
+      <p className="text-sm text-foreground/60 mt-1">
+        Backups de segurança, importação/exportação e controle de agendamentos.
+      </p>
+    </div>
 
-      {/* Painel de Saúde das APIs — usando componentes existentes */}
-      <CardGlass className="p-6 border-l-4 border-l-primary">
-        <div className="flex items-center justify-between mb-6">
+    {/* Modo de Manutenção / Agendamento Ativo */}
+      <CardGlass className={`p-6 border-l-4 transition-colors duration-300 ${agendamentoAtivo ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gold/10 text-gold rounded-lg">
-              <Activity size={24} />
+            <div className={`p-3 rounded-lg ${agendamentoAtivo ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+              {agendamentoAtivo ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
             </div>
             <div>
-              <h3 className="font-bold text-lg text-foreground">Painel de Saúde das APIs</h3>
-              <p className="text-sm text-foreground/60">Verificação de conectividade de todos os serviços externos.</p>
+              <h3 className="font-bold text-lg text-foreground">Agendamentos Públicos</h3>
+              <p className="text-sm text-foreground/60">
+                {agendamentoAtivo 
+                  ? 'Os clientes podem acessar a página de agendamento e realizar marcações.' 
+                  : 'O sistema está bloqueado para novos agendamentos (Modo de Manutenção).'}
+              </p>
             </div>
           </div>
-          <Button onClick={checkAllSystems} variant="outline" disabled={checkingHealth}>
-            {checkingHealth ? (
-              <span className="flex items-center gap-2">
-                <RefreshCw size={14} className="animate-spin" /> Sincronizando...
-              </span>
-            ) : 'Sincronizar Status'}
-          </Button>
-        </div>
-
-        {healthChecks ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {Object.entries(healthChecks).map(([api, info]) => (
-              <div key={api} className="p-3 rounded-xl border border-[var(--border-subtle)] bg-background/50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    info.status === 'ok' ? 'bg-emerald-500' : 
-                    info.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
-                  }`} />
-                  <span className="text-xs font-bold uppercase text-foreground/70">{api}</span>
-                </div>
-                <span className={`text-[10px] font-medium ${
-                  info.status === 'ok' ? 'text-emerald-500' : 
-                  info.status === 'warning' ? 'text-amber-500' : 'text-red-500'
-                }`}>
-                  {info.msg}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-sm text-foreground/40 italic">
-            Clique em "Sincronizar Status" para validar as conexões.
-          </div>
-        )}
-      </CardGlass>
-
-      {/* Conexão WhatsApp (Evolution API) */}
-      <CardGlass className="p-6 border-l-4 border-l-primary">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-gold/10 text-gold rounded-lg">
-            <LinkIcon size={24} />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-lg text-foreground">Conexão WhatsApp (Evolution API)</h3>
-            <p className="text-sm text-foreground/60">Configurações de segurança movidas para a Vercel. Defina apenas a instância.</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
-          <div className="flex-1 flex flex-col gap-1">
-            <label className="text-xs font-bold text-foreground/60 uppercase ml-1">Instância do WhatsApp</label>
-            <input
-              value={instance}
-              onChange={e => setInstance(e.target.value)}
-              placeholder="Ex: StudioAgnaldo"
-              className="bg-background border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={testEvolutionConnection} variant="outline" disabled={evoStatus === 'loading'}>
-              {evoStatus === 'loading' ? 'Testando...' : 'Testar Conexão'}
+          {!loadingLojaSettings && (
+            <Button 
+              onClick={toggleAgendamento} 
+              variant={agendamentoAtivo ? 'outline' : 'primary'}
+              className={!agendamentoAtivo ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-none' : 'border-red-500 text-red-500 hover:bg-red-500/10'}
+            >
+              {agendamentoAtivo ? 'Desabilitar Agendamento' : 'Habilitar Agendamento'}
             </Button>
-            <Button onClick={saveConfig} variant="primary">
-              Salvar Configuração
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 p-3 rounded-xl bg-foreground/5 border border-[var(--border-subtle)]">
-          <div className="flex-1 flex items-center gap-2 text-sm">
-            <Activity size={16} className="text-foreground/40" />
-            <span className="text-foreground/60">Status da conexão: </span>
-            {evoStatus === 'success' ? (
-              <span className="text-success font-bold flex items-center gap-1"><CheckCircle2 size={14} /> Ativa e Sincronizada</span>
-            ) : evoStatus === 'error' ? (
-              <span className="text-danger font-bold flex items-center gap-1"><AlertTriangle size={14} /> Offline ou Inválida</span>
-            ) : (
-              <span className="text-foreground/40 italic">Aguardando teste...</span>
-            )}
-          </div>
+          )}
         </div>
       </CardGlass>
 

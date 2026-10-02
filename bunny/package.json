@@ -1,0 +1,19 @@
+{
+  "name": "academy-video-uploader",
+  "version": "1.0.0",
+  "description": "Script de upload automatizado para Bunny Video",
+  "main": "bunny-upload-script.ts",
+  "scripts": {
+    "upload": "ts-node bunny-upload-script.ts",
+    "setup": "npm install"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.0",
+    "typescript": "^5.2.0",
+    "@types/node": "^20.5.0"
+  }
+}

@@ -25,6 +25,7 @@ export interface Cliente {
   observacoes?: string | null;
   criado_em: string; // timestamptz
   atualizado_em?: string;
+  loyalty_points?: number;
 }
 
 export interface Profissional {
@@ -49,8 +50,12 @@ export interface Servico {
   categoria: string;
   duracao_min: number;
   preco: number; // BRL, precisão 2
+  preco_maximo?: number | null; // Novo: Preço máximo se for variável
+  preco_variavel?: boolean; // Novo: Indica se o serviço tem faixa de preço
   ativo: boolean;
   visivel_app: boolean;
+  points_reward?: number;
+  points_cost?: number;
 }
 
 export interface ProfissionalServico {

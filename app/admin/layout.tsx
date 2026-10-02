@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon } from 'lucide-react';
+import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
@@ -20,8 +20,11 @@ const links = [
   { href: '/admin/equipe', label: 'Gestão de Equipe', icon: Users },
   // Gestão & Ferramentas
   { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, adminOnly: true },
+  { href: '/admin/fidelidade', label: 'Prog. Fidelidade', icon: Gift },
   { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone },
   { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true },
+  { href: '/admin/api', label: 'Sistema API', icon: Globe, adminOnly: true },
+  { href: '/admin/sistema', label: 'Gestão do Sistema', icon: ShieldCheck, adminOnly: true },
   { href: '/admin/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
 

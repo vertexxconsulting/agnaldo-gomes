@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, categoria, duracao_min, preco, ativo, visivel_app } = body;
+    const { id, nome, categoria, duracao_min, preco, preco_maximo, preco_variavel, ativo, visivel_app, points_reward, points_cost } = body;
 
     if (!nome || preco === undefined) {
       return NextResponse.json({ error: 'Nome e Preço são obrigatórios.' }, { status: 400 });
@@ -40,8 +40,12 @@ export async function POST(req: Request) {
       category: String(categoria || 'Geral').trim(),
       duration_minutes: Number(duracao_min) || 60,
       price: Number(preco),
+      price_max: preco_maximo != null ? Number(preco_maximo) : null,
+      is_variable_price: preco_variavel ?? false,
       active: ativo ?? true,
       visible_in_app: visivel_app ?? true,
+      points_reward: Number(points_reward) || 0,
+      points_cost: Number(points_cost) || 0,
     };
 
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);

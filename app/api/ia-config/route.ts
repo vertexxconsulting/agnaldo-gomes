@@ -20,7 +20,7 @@ export async function GET() {
         frequencia: 'diario',
         diaSemana: 0,
         horarioEnvio: '20:00',
-        whatsappAgnaldo: '5542991534011',
+        whatsappAgnaldo: '5542998271222',
         ativo: true,
       });
     }

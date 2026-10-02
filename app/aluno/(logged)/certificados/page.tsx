@@ -87,11 +87,7 @@ export default function CertificadosPage() {
 
               <div className="flex flex-col gap-2 w-full relative z-10">
                 <Button variant="primary" className="w-full flex items-center justify-center gap-2" onClick={() => {
-                  if (cert.pdf_url) {
-                    window.open(cert.pdf_url, '_blank');
-                  } else {
-                    alert('PDF ainda não gerado. Em breve!');
-                  }
+                  window.open(`/api/aluno/certificados/${cert.id}/pdf`, '_blank');
                 }}>
                   <Download size={18} />
                   Baixar PDF

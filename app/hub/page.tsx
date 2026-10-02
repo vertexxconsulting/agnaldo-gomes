@@ -81,7 +81,8 @@ const NAVEGACAO_RAPIDA = [
   { label: 'Produtos & Estoque', href: '/admin-loja/produtos', icon: ShoppingBag },
   { label: 'Área do Aluno', href: '/aluno/dashboard', icon: GraduationCap },
   { label: 'Catálogo da Loja', href: '/loja', icon: ExternalLink },
-  { label: 'Health Check', href: '/admin/sistema', icon: Settings },
+  { label: 'Sistema API', href: '/admin/api', icon: Settings },
+  { label: 'Gestão do Sistema', href: '/admin/sistema', icon: Settings },
 ];
 
 export default function HubCentralPage() {

@@ -232,8 +232,7 @@ export default function AdminCertificadosPage() {
                       <button 
                         className="p-2 text-foreground/50 hover:text-gold transition-colors rounded-lg hover:bg-gold/10" 
                         title="Download PDF"
-                        disabled={!cert.pdf_url}
-                        onClick={() => cert.pdf_url && window.open(cert.pdf_url, '_blank')}
+                        onClick={() => window.open(`/api/aluno/certificados/${cert.id}/pdf`, '_blank')}
                       >
                         <Download size={16} />
                       </button>

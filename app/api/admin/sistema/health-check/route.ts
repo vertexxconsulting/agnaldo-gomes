@@ -10,6 +10,7 @@ export async function GET() {
     bolten: { status: 'idle', msg: 'Verificando...' },
     stripe: { status: 'idle', msg: 'Verificando...' },
     bunny: { status: 'idle', msg: 'Verificando...' },
+    melhorenvio: { status: 'idle', msg: 'Verificando...' },
   };
 
   try {
@@ -55,6 +56,16 @@ export async function GET() {
     results.bunny = process.env.BUNNY_API_KEY
       ? { status: 'ok', msg: 'Chave detectada' }
       : { status: 'error', msg: 'Chave ausente' };
+
+    // 7. Check Melhor Envio
+    const { data: shippingConfig } = await supabase.from('shipping_config').select('melhor_envio_token').single();
+    if (shippingConfig && shippingConfig.melhor_envio_token) {
+      results.melhorenvio = { status: 'ok', msg: 'Token detectado' };
+    } else if (process.env.MELHOR_ENVIO_TOKEN) {
+      results.melhorenvio = { status: 'ok', msg: 'Via .env' };
+    } else {
+      results.melhorenvio = { status: 'error', msg: 'Token ausente' };
+    }
 
   } catch (error) {
     console.error('Erro no Health Check:', error);
