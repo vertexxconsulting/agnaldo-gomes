@@ -189,13 +189,13 @@ export function SplitLogin({
       {sideBgImage && (
         <>
           <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            className="absolute inset-0 bg-cover bg-top md:bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${sideBgImage})` }}
           />
           <div
             className={`absolute inset-0 ${
               centeredCard
-                ? 'bg-foreground/30'
+                ? 'bg-black/50'
                 : 'bg-background/60 backdrop-blur-[2px]'
             }`}
           />
@@ -277,9 +277,9 @@ export function SplitLogin({
         <motion.div
           className={`w-full max-w-md ${
             centeredCard
-              ? 'bg-black/60 backdrop-blur-md border border-white/10 p-8 sm:p-12 rounded-[2.5rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]'
+              ? 'bg-black/60 backdrop-blur-md border border-white/10 p-6 sm:p-12 rounded-[2.5rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]'
               : sideBgImage
-              ? 'bg-black/60 backdrop-blur-xl border border-white/10 p-8 sm:p-12 rounded-[2rem] shadow-2xl'
+              ? 'bg-black/60 backdrop-blur-xl border border-white/10 p-6 sm:p-12 rounded-[2rem] shadow-2xl'
               : ''
           }`}
           initial="initial"
@@ -287,6 +287,19 @@ export function SplitLogin({
           variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         >
 
+
+          {centeredCard && (
+            <div className="flex justify-center mb-6">
+              <Image
+                src={logoSrc}
+                alt={title}
+                width={120}
+                height={120}
+                priority
+                className="drop-shadow-lg"
+              />
+            </div>
+          )}
 
           <motion.h2
             className={`text-2xl font-bold mb-1 ${
