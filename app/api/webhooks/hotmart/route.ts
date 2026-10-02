@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServiceClient } from '@/lib/supabase/server';
 
 /**
  * Webhook da Hotmart para processar vendas de cursos.
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltando transaction_id' }, { status: 400 });
   }
 
-  const supabase = await getSupabaseServerClient();
+  const supabase = await getSupabaseServiceClient();
   
   const { data: processedEvent } = await supabase
     .from('hotmart_webhook_events')
