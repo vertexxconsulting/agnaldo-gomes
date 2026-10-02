@@ -75,14 +75,12 @@ const NAVEGACAO_RAPIDA = [
   { label: 'Clientes (CRM)', href: '/admin/clientes', icon: Users },
   { label: 'Profissionais', href: '/admin/profissionais', icon: UserCircle },
   { label: 'Serviços e preços', href: '/admin/servicos', icon: Scissors },
-  { label: 'Gestão de Cursos', href: '/admin-academy/cursos', icon: PlayCircle },
-  { label: 'Alunos & Certificados', href: '/admin-academy/alunos', icon: Award },
-  { label: 'Pedidos da Loja', href: '/admin-loja/pedidos', icon: Package },
-  { label: 'Produtos & Estoque', href: '/admin-loja/produtos', icon: ShoppingBag },
-  { label: 'Área do Aluno', href: '/aluno/dashboard', icon: GraduationCap },
-  { label: 'Catálogo da Loja', href: '/loja', icon: ExternalLink },
-  { label: 'Sistema API', href: '/admin/api', icon: Settings },
-  { label: 'Gestão do Sistema', href: '/admin/sistema', icon: Settings },
+  { label: 'Gestão de Cursos', href: '/admin-academy/cursos', icon: PlayCircle, adminOnly: true },
+  { label: 'Alunos & Certificados', href: '/admin-academy/alunos', icon: Award, adminOnly: true },
+  { label: 'Pedidos da Loja', href: '/admin-loja/pedidos', icon: Package, adminOnly: true },
+  { label: 'Produtos & Estoque', href: '/admin-loja/produtos', icon: ShoppingBag, adminOnly: true },
+  { label: 'Sistema API', href: '/admin/api', icon: Settings, adminOnly: true },
+  { label: 'Gestão do Sistema', href: '/admin/sistema', icon: Settings, adminOnly: true },
 ];
 
 export default function HubCentralPage() {
@@ -173,7 +171,9 @@ export default function HubCentralPage() {
 
   const formatPrice = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 });
 
+  const isAdminRole = role === ROLES.ADMIN || role === ROLES.STUDIO_ADMIN;
   const sidebarLinks = NAVEGACAO_RAPIDA.filter((item) => {
+    if ((item as any).adminOnly && !isAdminRole) return false;
     if (item.href.startsWith('/admin-academy')) return temModulo('academy');
     if (item.href.startsWith('/admin-loja')) return temModulo('loja');
     return true;
