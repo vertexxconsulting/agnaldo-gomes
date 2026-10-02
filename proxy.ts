@@ -196,16 +196,18 @@ export async function proxy(request: NextRequest) {
   const requiredRole = AREA_ROLES[area];
   const role = getUserRole(user);
 
-  // /hub aceita tanto o admin quanto a secretária do Studio
+  // /hub e /admin aceitam tanto o admin quanto a secretária do Studio
   // owner tem acesso ilimitado a tudo
-  const allowedHubRoles = area === '/hub' ? [ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA] : null;
+  const allowedStudioRoles = (area === '/hub' || area === '/admin')
+    ? [ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA]
+    : null;
   const userIsOwner = isOwner(user);
 
   // Se o usuário é owner, ou se o role está na lista de permissões da área, deixa passar
   const hasAccess =
     userIsOwner ||
-    (allowedHubRoles !== null
-      ? role === ROLES.STUDIO_ADMIN || role === ROLES.STUDIO_SECRETARIA
+    (allowedStudioRoles !== null
+      ? allowedStudioRoles.includes(role as Role)
       : role === requiredRole);
 
   if (!hasAccess) {
