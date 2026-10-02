@@ -71,14 +71,14 @@ export async function POST(req: NextRequest) {
       let userId = null;
       
       // 1. Tentar encontrar usuário
-      const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email);
-      userId = existingUser?.user?.id;
+      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+      userId = existingProfile?.id;
 
       // 2. Se não existe, cria com senha aleatória
       if (!userId) {
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
           email,
-          email_confirmed: true,
+          email_confirm: true,
           user_metadata: { role: 'STUDENT', full_name: nome },
           password: crypto.randomUUID().slice(-12),
         });
