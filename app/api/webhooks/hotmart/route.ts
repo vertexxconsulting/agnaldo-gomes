@@ -89,6 +89,11 @@ export async function POST(req: NextRequest) {
         }
         userId = newUser.user.id;
       }
+      
+      // GARANTIA: Atualiza a role na tabela profiles para STUDENT (sobrepondo o DEFAULT do banco)
+      if (userId) {
+        await supabase.from('profiles').update({ role: 'STUDENT' }).eq('id', userId);
+      }
 
       // 3. Registrar o pagamento (Isso trigga a liberação do curso no banco)
       if (userId && cursoId) {
