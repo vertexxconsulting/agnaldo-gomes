@@ -5,6 +5,7 @@ export const ROLES = {
   LOJA_ADMIN: 'loja_admin',
   ALUNO: 'STUDENT',
   STUDIO_SECRETARIA: 'studio_secretaria',
+  CUSTOMER: 'CUSTOMER',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -16,6 +17,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   loja_admin: 'Gestor da Loja',
   STUDENT: 'Aluno',
   studio_secretaria: 'Secretária do Studio',
+  CUSTOMER: 'Cliente/Comprador',
 };
 
 export const AREA_LABELS: Record<Role, string> = {

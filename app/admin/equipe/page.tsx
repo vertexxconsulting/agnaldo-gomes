@@ -155,7 +155,7 @@ export default function TeamManagementPage() {
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >
                     {Object.entries(ROLES)
-                      .filter(([_, value]) => value !== ROLES.ALUNO)
+                      .filter(([_, value]) => value === profile.role || (value !== ROLES.ALUNO && value !== ROLES.CUSTOMER))
                       .map(([key, value]) => (
                       <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
                     ))}
@@ -221,7 +221,7 @@ export default function TeamManagementPage() {
                   className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all"
                 >
                   {Object.entries(ROLES)
-                    .filter(([_, value]) => value !== ROLES.ALUNO)
+                    .filter(([_, value]) => value !== ROLES.ALUNO && value !== ROLES.CUSTOMER)
                     .map(([key, value]) => (
                     <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
                   ))}

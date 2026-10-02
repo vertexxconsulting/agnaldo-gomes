@@ -32,12 +32,13 @@ export function SessionEnforcer() {
         
         // Se a sessão remota for diferente da local, força o logout
         if (remoteSessionId && remoteSessionId !== localSessionId) {
-          await supabase.auth.signOut();
-          localStorage.removeItem('ag_active_session');
-          localStorage.removeItem('ag-sessao');
+          console.warn("Sessão simultânea detectada. Sessão Remota:", remoteSessionId, "Local:", localSessionId);
+          // await supabase.auth.signOut();
+          // localStorage.removeItem('ag_active_session');
+          // localStorage.removeItem('ag-sessao');
           
-          alert("Sua sessão foi encerrada porque sua conta foi acessada em outro dispositivo. O rateio de contas não é permitido.");
-          router.replace('/');
+          // alert("Sua sessão foi encerrada porque sua conta foi acessada em outro dispositivo. O rateio de contas não é permitido.");
+          // router.replace('/');
         }
       } catch (err) {
         console.error("Erro ao verificar sessão simultânea:", err);
