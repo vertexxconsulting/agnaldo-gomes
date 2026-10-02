@@ -33,6 +33,7 @@ function AgendaContent() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<string>('dia');
   const [showForm, setShowForm] = useState(false);
+  const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
   
   const [formData, setFormData] = useState({
     cliente_id: '',
@@ -216,6 +217,17 @@ function AgendaContent() {
     }
   }
 
+  const abrirFormNovo = (hora: string, profId: string) => {
+    setFormData({
+      cliente_id: '',
+      profissional_id: profId,
+      servico_id: '',
+      data: dataSelecionada,
+      hora_inicio: hora,
+    });
+    setShowForm(true);
+  };
+
   const handleSalvarAgendamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cliente_id || !formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
@@ -340,87 +352,142 @@ function AgendaContent() {
             </div>
           )}
 
-          {/* Lista de Agendamentos */}
-          <div className="space-y-3">
-            {agendamentosFiltrados.length === 0 ? (
-              <CardGlass className="p-8 text-center text-foreground/50">
-                <p>Nenhum agendamento para esta data ({new Date(`${dataSelecionada}T12:00:00`).toLocaleDateString('pt-BR')}).</p>
-                {agendamentos.length > 0 && (
-                  <div className="mt-3 text-xs text-primary/80">
-                    💡 Existem agendamentos em outras datas:{' '}
-                    {[...new Set(agendamentos.map(a => a.data))].sort().map(d => (
-                      <button 
-                        key={d} 
-                        onClick={() => setDataSelecionada(d)}
-                        className="underline font-bold mr-2 hover:text-gold"
-                      >
-                        {new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR')} ({agendamentos.filter(a => a.data === d).length})
-                      </button>
-                    ))}
+          {/* Agenda Matrix (Semelhante ao Caderno Físico) */}
+          <div className="overflow-x-auto w-full pb-4">
+            <div className="min-w-[800px] border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] overflow-hidden shadow-sm">
+              {/* Cabeçalho */}
+              <div className="flex border-b border-[var(--border-subtle)] bg-black/20">
+                <div className="w-20 shrink-0 p-3 text-center border-r border-[var(--border-subtle)] font-serif font-bold text-gold flex items-center justify-center">
+                  Horário
+                </div>
+                {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => (
+                  <div key={prof.id} className="flex-1 min-w-[180px] p-3 text-center border-r border-[var(--border-subtle)] last:border-0">
+                    <span className="font-bold text-foreground text-sm uppercase tracking-wide">{prof.nome}</span>
                   </div>
-                )}
-              </CardGlass>
-            ) : (
-              agendamentosFiltrados.map((a) => {
-                const cliente = getClienteNome(a.cliente_id, clientes);
-                const servico = getServicoNome(a.servico_id, servicos);
-                const prof = getProfissionalNome(a.profissional_id, profissionais);
-                const valor = getServicoPreco(a.servico_id, servicos);
+                ))}
+              </div>
 
-                return (
-                  <div 
-                    key={a.id}
-                    className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--color-card)] hover:border-gold/40 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-foreground text-base">{cliente}</span>
-                        <span 
-                          className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                          style={{ backgroundColor: `${STATUS_COLORS[a.status]}15`, color: STATUS_COLORS[a.status] }}
-                        >
-                          {STATUS_LABELS[a.status]}
-                        </span>
-                        {a.canal === 'online' && <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[9px] uppercase border border-blue-500/20">App</span>}
+              {/* Corpo da Matriz */}
+              <div className="flex flex-col">
+                {Array.from({ length: 27 }).map((_, i) => {
+                  const h = Math.floor(i / 2) + 8;
+                  const m = i % 2 === 0 ? '00' : '30';
+                  const time = `${String(h).padStart(2, '0')}:${m}`;
+                  const isHour = m === '00';
+
+                  return (
+                    <div key={time} className={`flex border-b border-[var(--border-subtle)] last:border-0 group hover:bg-white/5 transition-colors ${isHour ? 'bg-black/10' : ''}`}>
+                      {/* Célula de Horário */}
+                      <div className="w-20 shrink-0 p-2 text-center border-r border-[var(--border-subtle)] text-foreground/70 font-mono text-xs flex items-center justify-center">
+                        {time}
                       </div>
 
-                      <div className="text-sm text-gold font-medium mb-1">{servico} — R$ {valor}</div>
-                      <div className="text-xs text-foreground/50 flex items-center gap-1.5"><User2 size={12}/> {prof}</div>
+                      {/* Células dos Profissionais */}
+                      {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => {
+                        // Encontrar agendamentos neste bloco de 30min
+                        // Para simplificar, pegamos os que começam exatamente nesta hora.
+                        // (Poderia expandir para checar se cai no intervalo)
+                        const appts = agendamentosFiltrados.filter(a => a.profissional_id === prof.id && a.hora_inicio === time && a.status !== 'cancelado');
+                        
+                        return (
+                          <div 
+                            key={`${prof.id}-${time}`} 
+                            className="flex-1 min-w-[180px] border-r border-[var(--border-subtle)] last:border-0 p-1 flex flex-col relative min-h-[50px]"
+                          >
+                            {appts.length === 0 ? (
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => abrirFormNovo(time, prof.id)} className="text-[10px] text-gold/70 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
+                                  + Agendar
+                                </button>
+                              </div>
+                            ) : (
+                              appts.map(a => {
+                                const cliente = getClienteNome(a.cliente_id, clientes);
+                                const servico = getServicoNome(a.servico_id, servicos);
+                                return (
+                                  <div 
+                                    key={a.id} 
+                                    onClick={() => setSelectedAppt(a)}
+                                    className="text-xs bg-black/40 border border-[var(--border-subtle)] rounded p-2 mb-1 last:mb-0 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden"
+                                  >
+                                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                    <div className="pl-2">
+                                      <div className="flex justify-between items-start mb-1 gap-2">
+                                        <span className="font-bold truncate text-foreground/90" title={cliente}>{cliente}</span>
+                                      </div>
+                                      <div className="text-gold/80 truncate text-[10px] font-medium" title={servico}>{servico}</div>
+                                      <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    {/* Ações Rápidas */}
-                    <div className="flex sm:flex-col gap-2 shrink-0 justify-end sm:justify-start pt-2 sm:pt-0">
-                      {a.status === 'pendente' && (
-                        <button onClick={() => mudarStatus(a.id, 'confirmado')} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-colors"><Check size={14} /> Confirmar</button>
-                      )}
-                      {a.status === 'confirmado' && (
-                        <button onClick={() => mudarStatus(a.id, 'em_atendimento')} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-xs font-medium transition-colors"><User2 size={14} /> Atender</button>
-                      )}
-                      {a.status === 'em_atendimento' && (
-                        <button onClick={() => mudarStatus(a.id, 'concluido')} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 text-xs font-medium transition-colors"><CheckCircle2 size={14} /> Concluir</button>
-                      )}
-
-                      {a.status !== 'concluido' && a.status !== 'cancelado' && a.status !== 'no_show' && (
-                        <div className="flex gap-1 mt-auto">
-                          {servico.toLowerCase().includes('noiva') && (
-                            <Link 
-                              href="/admin/noivas" 
-                              title="Ver na aba Dia da Noiva" 
-                              className="flex-1 flex justify-center items-center p-1.5 rounded bg-pink-500/5 text-pink-400 hover:bg-pink-500/15 transition-colors"
-                            >
-                              <Sparkles size={14} />
-                            </Link>
-                          )}
-                          <button onClick={() => mudarStatus(a.id, 'cancelado')} title="Cancelar" className="flex-1 flex justify-center items-center p-1.5 rounded bg-red-500/5 text-red-400 hover:bg-red-500/15 transition-colors"><X size={14} /></button>
-                          <button onClick={() => mudarStatus(a.id, 'no_show')} title="No-Show (Faltou)" className="flex-1 flex justify-center items-center p-1.5 rounded bg-purple-500/5 text-purple-400 hover:bg-purple-500/15 transition-colors"><AlertCircle size={14} /></button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })}
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Ações do Agendamento */}
+      {selectedAppt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-sm p-6 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-1">
+                  {getClienteNome(selectedAppt.cliente_id, clientes)}
+                </h3>
+                <p className="text-sm text-gold">
+                  {getServicoNome(selectedAppt.servico_id, servicos)}
+                </p>
+              </div>
+              <button onClick={() => setSelectedAppt(null)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-2 mb-6 text-sm text-foreground/80">
+              <p><strong>Data:</strong> {new Date(`${selectedAppt.data}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+              <p><strong>Horário:</strong> {selectedAppt.hora_inicio}</p>
+              <p><strong>Profissional:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
+              <p><strong>Status Atual:</strong> {STATUS_LABELS[selectedAppt.status]}</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {selectedAppt.status === 'pendente' && (
+                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
+                  <Check size={16} className="mr-2"/> Confirmar
+                </Button>
+              )}
+              {selectedAppt.status === 'confirmado' && (
+                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'em_atendimento'); setSelectedAppt(null); }}>
+                  <User2 size={16} className="mr-2"/> Iniciar Atendimento
+                </Button>
+              )}
+              {selectedAppt.status === 'em_atendimento' && (
+                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'concluido'); setSelectedAppt(null); }}>
+                  <CheckCircle2 size={16} className="mr-2"/> Concluir
+                </Button>
+              )}
+
+              {selectedAppt.status !== 'concluido' && selectedAppt.status !== 'cancelado' && selectedAppt.status !== 'no_show' && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button variant="outline" className="text-red-400 border-red-500/20 hover:bg-red-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'cancelado'); setSelectedAppt(null); }}>
+                    Cancelar
+                  </Button>
+                  <Button variant="outline" className="text-purple-400 border-purple-500/20 hover:bg-purple-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
+                    Faltou
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardGlass>
         </div>
       )}
 
