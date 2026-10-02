@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripeConfig } from '@/lib/pagamentos-academy';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServiceClient } from '@/lib/supabase/server';
 
 /**
  * Webhook do Stripe para processar pagamentos confirmados da Academy.
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Idempotência: processar cada evento apenas uma vez
-  const supabase = await getSupabaseServerClient();
+  const supabase = await getSupabaseServiceClient();
   const eventId = event.id;
   
   const { data: processedEvent } = await supabase
@@ -69,14 +69,14 @@ export async function POST(req: NextRequest) {
 
         if (email && cursoId) {
           // 1. Verificar se o usuário já existe no Auth
-          const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email);
-          let userId = existingUser?.user?.id;
+          const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+          let userId = existingProfile?.id;
 
           if (!userId) {
             // 2. Criar usuário se não existir
             const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
               email,
-              email_confirmed: true,
+              email_confirm: true,
               user_metadata: { role: 'STUDENT', full_name: nome },
               password: crypto.randomUUID().slice(-12),
             });
