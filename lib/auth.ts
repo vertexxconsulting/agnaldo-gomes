@@ -27,6 +27,7 @@ export const AREA_LABELS: Record<Role, string> = {
   loja_admin: 'Loja (e-commerce)',
   STUDENT: 'Aluno (área de cursos)',
   studio_secretaria: 'Secretaria (Studio)',
+  CUSTOMER: 'Cliente/Comprador (Loja)',
 };
 
 /** Rotas de área e o papel exigido para acessá-las */
