@@ -119,28 +119,17 @@ export default function SistemaPage() {
           setImportStatus({
             tipo: 'erro',
             msg: 'Arquivo JSON inválido. Certifique-se de que é um backup válido do sistema.'
-    try {
-      const json = JSON.parse(event.target?.result as string);
-      if (json.clientes && json.agendamentos) {
-        setImportStatus({
-          tipo: 'sucesso',
-          msg: `Base importada com sucesso! ${json.clientes.length} clientes encontrados no arquivo de backup.`
-        });
-      } else {
+          });
+        }
+      } catch (err) {
         setImportStatus({
           tipo: 'erro',
-          msg: 'Arquivo JSON inválido. Certifique-se de que é um backup válido do sistema.'
+          msg: 'Erro ao processar o arquivo. Verifique se é um arquivo JSON válido.'
         });
       }
-    } catch (err) {
-      setImportStatus({
-        tipo: 'erro',
-        msg: 'Erro ao processar o arquivo. Verifique se é um arquivo JSON válido.'
-      });
-    }
+    };
+    reader.readAsText(file);
   };
-  reader.readAsText(file);
-};
 
 return (
   <div className="py-4 space-y-6 max-w-5xl mx-auto">
