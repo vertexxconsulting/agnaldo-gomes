@@ -198,7 +198,7 @@ export async function proxy(request: NextRequest) {
 
   // /hub e /admin aceitam tanto o admin quanto a secretária do Studio
   // owner tem acesso ilimitado a tudo
-  const allowedStudioRoles = (area === '/hub' || area === '/admin')
+  const allowedStudioRoles: Role[] | null = (area === '/hub' || area === '/admin')
     ? [ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA]
     : null;
   const userIsOwner = isOwner(user);
