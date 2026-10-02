@@ -47,10 +47,17 @@ export function SessionEnforcer() {
     // Checar imediatamente ao carregar
     checkSession();
 
-    // Checar a cada 15 segundos
-    const interval = setInterval(checkSession, 15000);
+    // Checar a cada 5 minutos (300000ms) para evitar rate limits no Supabase
+    const interval = setInterval(checkSession, 300000);
 
-    return () => clearInterval(interval);
+    // Checar quando a janela ganhar foco (o usuário voltou para a aba)
+    const onFocus = () => checkSession();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [pathname, router]);
 
   return null;

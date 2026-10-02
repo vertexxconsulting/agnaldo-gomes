@@ -161,10 +161,13 @@ export function SplitLogin({
     if (data.session) {
       // Registrar sessão única no Supabase (metadados do usuário) e no localStorage
       const sessionId = crypto.randomUUID();
-      await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         data: { active_session_id: sessionId }
       });
-      localStorage.setItem('ag_active_session', sessionId);
+      
+      if (!updateError) {
+        localStorage.setItem('ag_active_session', sessionId);
+      }
       localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
       router.push(redirectTo);
     }
