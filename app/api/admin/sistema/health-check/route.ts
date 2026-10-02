@@ -3,12 +3,13 @@ import { getSupabaseAdmin } from '@/lib/loja-settings'; // reusing the admin cli
 import { getVimeoSettings } from '@/lib/vimeo-settings';
 
 export async function GET() {
-  const results: Record<string, { status: 'ok' | 'error' | 'idle', msg: string }> = {
+  const results: Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> = {
     evolution: { status: 'idle', msg: 'Verificando...' },
     mercadopago: { status: 'idle', msg: 'Verificando...' },
     vimeo: { status: 'idle', msg: 'Verificando...' },
     bolten: { status: 'idle', msg: 'Verificando...' },
     stripe: { status: 'idle', msg: 'Verificando...' },
+    bunny: { status: 'idle', msg: 'Verificando...' },
   };
 
   try {
@@ -39,8 +40,20 @@ export async function GET() {
       : { status: 'error', msg: 'Chave ausente' };
 
     // 5. Check Stripe
-    results.stripe = process.env.STRIPE_SECRET_KEY 
-      ? { status: 'ok', msg: 'Chave detectada' } 
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (stripeKey) {
+      if (stripeKey.startsWith('sk_test_')) {
+        results.stripe = { status: 'warning', msg: 'Modo Teste' };
+      } else {
+        results.stripe = { status: 'ok', msg: 'Modo Produção' };
+      }
+    } else {
+      results.stripe = { status: 'error', msg: 'Chave ausente' };
+    }
+
+    // 6. Check Bunny
+    results.bunny = process.env.BUNNY_API_KEY
+      ? { status: 'ok', msg: 'Chave detectada' }
       : { status: 'error', msg: 'Chave ausente' };
 
   } catch (error) {

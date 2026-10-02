@@ -21,7 +21,7 @@ export default function SistemaPage() {
 
   const [instance, setInstance] = useState('');
   const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'idle', msg: string }> | null>(null);
+  const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
 
   useEffect(() => {
@@ -187,10 +187,16 @@ export default function SistemaPage() {
             {Object.entries(healthChecks).map(([api, info]) => (
               <div key={api} className="p-3 rounded-xl border border-[var(--border-subtle)] bg-background/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${info.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${
+                    info.status === 'ok' ? 'bg-emerald-500' : 
+                    info.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
+                  }`} />
                   <span className="text-xs font-bold uppercase text-foreground/70">{api}</span>
                 </div>
-                <span className={`text-[10px] font-medium ${info.status === 'ok' ? 'text-emerald-500' : 'text-red-500'}`}>
+                <span className={`text-[10px] font-medium ${
+                  info.status === 'ok' ? 'text-emerald-500' : 
+                  info.status === 'warning' ? 'text-amber-500' : 'text-red-500'
+                }`}>
                   {info.msg}
                 </span>
               </div>
