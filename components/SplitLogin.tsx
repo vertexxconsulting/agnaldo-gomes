@@ -168,6 +168,10 @@ export function SplitLogin({
       if (!updateError) {
         localStorage.setItem('ag_active_session', sessionId);
       }
+      // Salvar o papel do usuário no localStorage para que a sidebar carregue sem piscar
+      if (role) {
+        localStorage.setItem('ag-user-role', role);
+      }
       localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
       router.push(redirectTo);
     }

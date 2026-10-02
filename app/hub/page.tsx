@@ -108,7 +108,7 @@ export default function HubCentralPage() {
   }, []);
 
   const modulosVisiveis = useMemo(() => {
-    if (!role) return ['studio', 'academy', 'loja'];
+    if (!role) return []; // Aguarda carregar o papel antes de exibir qualquer módulo
     if (role === ROLES.STUDIO_SECRETARIA) return ['studio'];
     if (role === ROLES.ADMIN || role === ROLES.ACADEMY_ADMIN || role === ROLES.LOJA_ADMIN || role === ROLES.STUDIO_ADMIN) return ['studio', 'academy', 'loja'];
     if (role === ROLES.ALUNO) return ['academy'];

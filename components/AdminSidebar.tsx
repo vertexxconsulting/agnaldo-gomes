@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Menu, X, ArrowLeft, LogOut, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { ROLES, getUserRole } from '@/lib/auth';
 
 export interface SidebarLink {
   href: string;
@@ -35,10 +36,27 @@ export function AdminSidebar({
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('ag-user-role');
+    return null;
+  });
+
+  // Confirmar role via Supabase e manter localStorage sincronizado
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
+      const role = getUserRole(data?.user);
+      if (role) {
+        setUserRole(role);
+        localStorage.setItem('ag-user-role', role);
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('ag-sessao');
+    localStorage.removeItem('ag-user-role');
+    localStorage.removeItem('ag_active_session');
     const base =
       pathname.startsWith('/admin-academy')
         ? '/admin-academy/login'
@@ -49,8 +67,9 @@ export function AdminSidebar({
   };
 
   const renderLinkItem = (link: SidebarLink, onNavigate?: () => void) => {
-    const userRole = typeof window !== 'undefined' ? localStorage.getItem('ag-user-role') : null;
-    if (link.adminOnly && userRole && userRole !== 'studio_admin') {
+    // Esconder links adminOnly se o papel do usuário não for admin
+    const isAdmin = !userRole || userRole === ROLES.STUDIO_ADMIN || userRole === ROLES.ADMIN;
+    if (link.adminOnly && !isAdmin) {
       return null;
     }
 
