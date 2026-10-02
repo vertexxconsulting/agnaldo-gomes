@@ -99,7 +99,7 @@ export default function AdminLojaConfiguracoes() {
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 As variáveis de ambiente estão configuradas para serem lidas diretamente da <strong>Vercel</strong> por motivos de segurança. 
-                Configure a variável <code>MP_ACCESS_TOKEN</code> no painel da Vercel.
+                Configure a variável <code>MERCADO_PAGO_ACCESS_TOKEN</code> no painel da Vercel.
               </p>
             </div>
           </div>

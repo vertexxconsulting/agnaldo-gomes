@@ -22,9 +22,9 @@ export async function GET() {
       : { status: 'error', msg: 'Não configurado' };
 
     // 2. Check Mercado Pago
-    const { data: mpConfig } = await supabase.from('payment_settings').select('access_token').eq('provider', 'mercado_pago').single();
-    results.mercadopago = mpConfig?.access_token 
-      ? { status: 'ok', msg: 'Token detectados' } 
+    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
+    results.mercadopago = mpToken 
+      ? { status: 'ok', msg: 'Token detectado' } 
       : { status: 'error', msg: 'Token ausente' };
 
     // 3. Check Vimeo
