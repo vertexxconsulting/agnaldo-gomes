@@ -177,7 +177,7 @@ export function SplitLogin({
 
   return (
     <motion.div
-      className={`min-h-screen relative overflow-hidden flex ${
+      className={`min-h-screen relative overflow-hidden flex bg-[#0a0a0a] ${
         centeredCard
           ? 'items-center justify-center p-4 sm:p-6 md:p-10'
           : 'items-stretch'
@@ -189,11 +189,11 @@ export function SplitLogin({
       {sideBgImage && (
         <>
           <div
-            className="absolute inset-0 bg-cover bg-top md:bg-center bg-no-repeat"
+            className="absolute inset-0 bg-cover bg-top md:bg-center bg-no-repeat hidden md:block"
             style={{ backgroundImage: `url(${sideBgImage})` }}
           />
           <div
-            className={`absolute inset-0 ${
+            className={`absolute inset-0 hidden md:block ${
               centeredCard
                 ? 'bg-black/50'
                 : 'bg-background/60 backdrop-blur-[2px]'
