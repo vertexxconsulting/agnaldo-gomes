@@ -41,6 +41,7 @@ function AgendaContent() {
     servico_id: '',
     data: hoje,
     hora_inicio: '09:00',
+    duracao_min: '',
   });
 
   // Carregar dados do Supabase (com fallback para mock)
@@ -227,6 +228,7 @@ function AgendaContent() {
       servico_id: '',
       data: dataSelecionada,
       hora_inicio: hora,
+      duracao_min: '',
     });
     setShowForm(true);
   };
@@ -238,7 +240,7 @@ function AgendaContent() {
       return;
     }
     const servicoSel = servicos.find(s => s.id === formData.servico_id);
-    const duracaoMin = servicoSel?.duracao_min ?? 60;
+    const duracaoMin = formData.duracao_min ? parseInt(formData.duracao_min) : (servicoSel?.duracao_min ?? 60);
     const [h, m] = formData.hora_inicio.split(':').map(Number);
     const fim = new Date(2000, 0, 1, h, m + duracaoMin);
     const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
@@ -276,7 +278,7 @@ function AgendaContent() {
       setAgendamentos(prev => [...prev, novoAgendamento]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00' });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '' });
     } catch (err: any) {
       console.error('Erro ao salvar agendamento:', err);
       alert(`Erro ao salvar no banco: ${err.message}`);
@@ -560,7 +562,10 @@ function AgendaContent() {
                 <select 
                   className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold disabled:opacity-50"
                   value={formData.servico_id}
-                  onChange={e => setFormData(f => ({ ...f, servico_id: e.target.value }))}
+                  onChange={e => {
+                    const serv = servicos.find(s => s.id === e.target.value);
+                    setFormData(f => ({ ...f, servico_id: e.target.value, duracao_min: serv ? String(serv.duracao_min) : '' }));
+                  }}
                   disabled={!formData.profissional_id}
                   required
                 >
@@ -576,6 +581,24 @@ function AgendaContent() {
                   ))}
                 </select>
               </div>
+              
+              {/* Edição de Tempo */}
+              {formData.servico_id && (
+                <div>
+                  <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center justify-between">
+                    <span>Tempo Exato (Minutos) *</span>
+                    <span className="text-[11px] font-normal text-gold font-mono">Pode ser ajustado</span>
+                  </label>
+                  <input 
+                    type="number"
+                    value={formData.duracao_min}
+                    onChange={e => setFormData(f => ({ ...f, duracao_min: e.target.value }))}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-mono"
+                    placeholder="Ex: 45"
+                    required
+                  />
+                </div>
+              )}
 
               {/* 4. Data & Horário Inteligente */}
               <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
