@@ -115,34 +115,44 @@ export default function AdminDashboardPage() {
     { href: '/admin-loja', label: 'Loja', desc: 'Produtos e pedidos', icon: ShoppingBag, cor: 'green' },
   ];
 
+  const [userRole, setUserRole] = useState<string>('');
+  
+  useEffect(() => {
+    setUserRole(localStorage.getItem('ag-user-role') || '');
+  }, []);
+
+  const isAdmin = userRole === 'admin' || userRole === 'studio_admin' || userRole === ''; // fallback para admin se vazio para não quebrar preview
+
   return (
     <div className="flex flex-col w-full space-y-7 py-2">
-      {/* Banner do ecossistema — acesso rápido aos demais módulos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {ecossistema.map((e) => {
-          const Icon = e.icon;
-          const cores: Record<string, string> = {
-            primary: 'from-[#a8862a]/15 to-[#a8862a]/5 hover:border-[#a8862a]/60',
-            purple: 'from-[#8b5cf6]/15 to-[#8b5cf6]/5 hover:border-[#8b5cf6]/60',
-            green: 'from-[#10B981]/15 to-[#10B981]/5 hover:border-[#10B981]/60',
-          };
-          const icoCores: Record<string, string> = { primary: 'text-gold', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
-          return (
-            <Link key={e.href} href={e.href}>
-              <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
-                <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-                  <Icon size={17} className={icoCores[e.cor]} />
+      {/* Banner do ecossistema — acesso rápido aos demais módulos (Apenas Admin) */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {ecossistema.map((e) => {
+            const Icon = e.icon;
+            const cores: Record<string, string> = {
+              primary: 'from-[#a8862a]/15 to-[#a8862a]/5 hover:border-[#a8862a]/60',
+              purple: 'from-[#8b5cf6]/15 to-[#8b5cf6]/5 hover:border-[#8b5cf6]/60',
+              green: 'from-[#10B981]/15 to-[#10B981]/5 hover:border-[#10B981]/60',
+            };
+            const icoCores: Record<string, string> = { primary: 'text-gold', purple: 'text-[#8b5cf6]', green: 'text-[#10B981]' };
+            return (
+              <Link key={e.href} href={e.href}>
+                <div className={`group rounded-xl border border-[var(--border-subtle)] bg-gradient-to-r ${cores[e.cor]} p-3 flex items-center gap-3 transition-all hover:shadow-md`}>
+                  <div className="w-9 h-9 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                    <Icon size={17} className={icoCores[e.cor]} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold truncate">{e.label}</p>
+                    <p className="text-[11px] text-foreground/50">{e.desc}</p>
+                  </div>
+                  <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold truncate">{e.label}</p>
-                  <p className="text-[11px] text-foreground/50">{e.desc}</p>
-                </div>
-                <ChevronRight size={15} className="ml-auto text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
       <SectionHeader eyebrow="Visão geral do negócio" title="Dashboard" />
 
       {loading && (
