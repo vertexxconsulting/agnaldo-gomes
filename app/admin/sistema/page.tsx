@@ -25,7 +25,10 @@ export default function SistemaPage() {
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
   const [whatsappContato, setWhatsappContato] = useState('');
+  const [asaasApiKey, setAsaasApiKey] = useState('');
+  const [asaasWalletId, setAsaasWalletId] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [savingAsaas, setSavingAsaas] = useState(false);
   const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
 
   useEffect(() => {
@@ -42,6 +45,8 @@ export default function SistemaPage() {
           const lojaData = await resLoja.json();
           setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
           setWhatsappContato(lojaData.whatsapp_contato ?? '');
+          setAsaasApiKey(lojaData.asaas_api_key ?? '');
+          setAsaasWalletId(lojaData.asaas_wallet_id ?? '');
         }
       } catch (e) {
         console.error('Erro ao carregar loja_settings:', e);
@@ -91,6 +96,30 @@ export default function SistemaPage() {
       alert('Erro ao salvar WhatsApp. Talvez seja necessário criar a coluna whatsapp_contato no banco de dados primeiro.');
     } finally {
       setSavingWhatsapp(false);
+    }
+  };
+
+  const saveAsaas = async () => {
+    setSavingAsaas(true);
+    try {
+      const res = await fetch('/api/admin/loja/settings');
+      const current = await res.json();
+      const payload = { ...current, asaas_api_key: asaasApiKey, asaas_wallet_id: asaasWalletId };
+      const saveRes = await fetch('/api/admin/loja/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (saveRes.ok) {
+        alert('Configurações do Asaas salvas com sucesso!');
+      } else {
+        throw new Error('Falha ao salvar');
+      }
+    } catch (e) {
+      console.error('Erro ao salvar Asaas:', e);
+      alert('Erro ao salvar Asaas. Verifique se as colunas foram criadas no banco.');
+    } finally {
+      setSavingAsaas(false);
     }
   };
 
@@ -219,6 +248,40 @@ return (
             />
             <Button onClick={saveWhatsapp} disabled={savingWhatsapp || loadingLojaSettings} variant="primary">
               {savingWhatsapp ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </div>
+      </CardGlass>
+
+      {/* Configuração do Asaas */}
+      <CardGlass className="p-6">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+          <div className="flex-1">
+            <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <ShieldCheck size={20} className="text-blue-500" />
+              Integração Asaas (Pagamentos e Notas Fiscais)
+            </h3>
+            <p className="text-sm text-foreground/60 mt-1">
+              Configure a API Key do Asaas para permitir que o sistema emita Notas Fiscais e gere cobranças para serviços e produtos.
+            </p>
+          </div>
+          <div className="flex flex-col w-full md:w-auto gap-2">
+            <input 
+              type="text" 
+              value={asaasApiKey} 
+              onChange={(e) => setAsaasApiKey(e.target.value)} 
+              placeholder="API Key do Asaas ($aact_...)" 
+              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg w-full text-foreground text-sm focus:outline-none focus:border-gold"
+            />
+            <input 
+              type="text" 
+              value={asaasWalletId} 
+              onChange={(e) => setAsaasWalletId(e.target.value)} 
+              placeholder="Wallet ID (Opcional - p/ Split)" 
+              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg w-full text-foreground text-sm focus:outline-none focus:border-gold"
+            />
+            <Button onClick={saveAsaas} disabled={savingAsaas || loadingLojaSettings} variant="primary" className="mt-1">
+              {savingAsaas ? 'Salvando...' : 'Salvar Asaas'}
             </Button>
           </div>
         </div>
