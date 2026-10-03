@@ -169,8 +169,11 @@ function AgendaContent() {
       .filter(a => a.data === formData.data && a.profissional_id === formData.profissional_id && a.status !== 'cancelado')
       .map(a => a.hora_inicio.slice(0, 5));
 
+    const isAgnaldo = (profSel?.nome || '').toLowerCase().includes('agnaldo') || profSel?.id === 'agnaldo';
+    const interval = isAgnaldo ? 20 : 30;
+
     const slots: Array<{ hora: string; ocupado: boolean }> = [];
-    for (let m = totalMinutosIni; m < totalMinutosFim; m += 30) {
+    for (let m = totalMinutosIni; m < totalMinutosFim; m += interval) {
       const hStr = String(Math.floor(m / 60)).padStart(2, '0');
       const minStr = String(m % 60).padStart(2, '0');
       const horaFormatada = `${hStr}:${minStr}`;

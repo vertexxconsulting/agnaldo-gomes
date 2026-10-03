@@ -267,8 +267,11 @@ export default function AgendamentoPage() {
     const totalIni = hIni * 60 + mIni;
     const totalFim = hFim * 60 + mFim;
 
+    const isAgnaldo = profissionalSelecionado.nome.toLowerCase().includes('agnaldo') || profissionalSelecionado.id === 'agnaldo';
+    const interval = isAgnaldo ? 20 : 30;
+
     const slots: string[] = [];
-    for (let m = totalIni; m < totalFim; m += 30) {
+    for (let m = totalIni; m < totalFim; m += interval) {
       const hStr = String(Math.floor(m / 60)).padStart(2, '0');
       const minStr = String(m % 60).padStart(2, '0');
       slots.push(`${hStr}:${minStr}`);
