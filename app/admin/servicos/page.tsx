@@ -160,27 +160,27 @@ export default function ServicosPage() {
           <div className="text-center py-6 text-foreground/50">Carregando serviços...</div>
         )}
 
-        {/* Form inline */}
-        {showForm && (
-          <CardGlass className="mb-6">
-            <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Serviço' : 'Novo Serviço'}</h3>
+        {/* Form inline para Novo Serviço */}
+        {showForm && !editando && (
+          <CardGlass className="mb-6 border-gold/50 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18} className="text-gold"/> Novo Serviço</h3>
             <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Nome</label>
-                <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <input name="nome" required className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Categoria</label>
-                <input name="categoria" required defaultValue={editando?.categoria ?? ''} list="categorias-list" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <input name="categoria" required list="categorias-list" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 <datalist id="categorias-list">{categorias.map(c => <option key={c} value={c} />)}</datalist>
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Duração (min)</label>
-                <input name="duracao_min" type="number" min={5} required defaultValue={editando?.duracao_min ?? 30} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <input name="duracao_min" type="number" min={5} required defaultValue={30} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
-                <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <input name="preco" type="number" min={0} step={0.01} required defaultValue={0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1 cursor-pointer flex items-center gap-2">
@@ -188,11 +188,11 @@ export default function ServicosPage() {
                   Preço Variável (A partir de)
                 </label>
                 {isVariablePrice && (
-                  <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx (Opcional)" defaultValue={editando?.preco_maximo ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
+                  <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx (Opcional)" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
                 )}
               </div>
               <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5">
-                <Button type="submit" variant="primary" size="md" className="flex-1">Salvar</Button>
+                <Button type="submit" variant="primary" size="md" className="flex-1">Criar Serviço</Button>
                 <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
               </div>
             </form>
@@ -214,42 +214,86 @@ export default function ServicosPage() {
               </tr>
             </thead>
             <tbody>
-              {filtrados.map(s => (
-                <tr key={s.id} className={`border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5 ${!s.ativo ? 'opacity-50' : ''}`}>
-                  <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
-                  <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{s.categoria}</span></td>
-                  <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
-                  <td className="py-3 pr-4 text-gold font-semibold">
-                    {s.preco_variavel 
-                      ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
-                      : `R$ ${Number(s.preco).toFixed(2)}`}
-                  </td>
-                  <td className="py-3 pr-4 text-foreground/60 text-xs">
-                    {(() => {
-                      const profs = profsPorServico(s.id);
-                      return profs.length > 0 ? profs.join(', ') : <span className="text-foreground/30">Nenhum</span>;
-                    })()}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <div className="flex gap-2">
-                      <button onClick={() => toggleAtivo(s.id)} title={s.ativo ? 'Desativar' : 'Ativar'}
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                        {s.ativo ? 'Ativo' : 'Inativo'}
-                      </button>
-                      <button onClick={() => toggleVisivel(s.id)} title={s.visivel_app ? 'Ocultar do app' : 'Mostrar no app'}
-                        className="text-foreground/40 hover:text-foreground/70">
-                        {s.visivel_app ? <Eye size={14} /> : <EyeOff size={14} />}
-                      </button>
-                    </div>
-                  </td>
-                  <td className="py-3 pr-4 text-right">
-                    <div className="inline-flex gap-1">
-                      <button onClick={() => { setEditando(s); setIsVariablePrice(s.preco_variavel || false); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
-                      <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtrados.map(s => {
+                if (editando?.id === s.id && showForm) {
+                  return (
+                    <tr key={s.id} className="border-b border-[var(--border-subtle)] bg-[var(--color-card)] relative">
+                      <td colSpan={7} className="p-4 shadow-[0_4px_20px_rgba(0,0,0,0.3)] inset-0 z-10 rounded-lg">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold"></div>
+                        <h3 className="text-sm font-bold mb-4 text-gold flex items-center gap-2"><Edit size={16}/> Editando: {s.nome}</h3>
+                        <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Nome</label>
+                            <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Categoria</label>
+                            <input name="categoria" required defaultValue={editando?.categoria ?? ''} list="categorias-list" className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Duração (min)</label>
+                            <input name="duracao_min" type="number" min={5} required defaultValue={editando?.duracao_min ?? 30} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
+                            <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1 cursor-pointer flex items-center gap-2">
+                              <input type="checkbox" checked={isVariablePrice} onChange={(e) => setIsVariablePrice(e.target.checked)} className="accent-gold" />
+                              Preço Variável
+                            </label>
+                            {isVariablePrice && (
+                              <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx" defaultValue={editando?.preco_maximo ?? ''} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
+                            )}
+                          </div>
+                          <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5 mt-2">
+                            <Button type="submit" variant="primary" size="sm" className="flex-1">Salvar Alterações</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={s.id} className={`border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5 ${!s.ativo ? 'opacity-50' : ''}`}>
+                    <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
+                    <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{s.categoria}</span></td>
+                    <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
+                    <td className="py-3 pr-4 text-gold font-semibold">
+                      {s.preco_variavel 
+                        ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
+                        : `R$ ${Number(s.preco).toFixed(2)}`}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/60 text-xs">
+                      {(() => {
+                        const profs = profsPorServico(s.id);
+                        return profs.length > 0 ? profs.join(', ') : <span className="text-foreground/30">Nenhum</span>;
+                      })()}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="flex gap-2">
+                        <button onClick={() => toggleAtivo(s.id)} title={s.ativo ? 'Desativar' : 'Ativar'}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                          {s.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                        <button onClick={() => toggleVisivel(s.id)} title={s.visivel_app ? 'Ocultar do app' : 'Mostrar no app'}
+                          className="text-foreground/40 hover:text-foreground/70">
+                          {s.visivel_app ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 text-right">
+                      <div className="inline-flex gap-1">
+                        <button onClick={() => { setEditando(s); setIsVariablePrice(s.preco_variavel || false); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
+                        <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtrados.length === 0 && (
                 <tr><td colSpan={7} className="py-8 text-center text-foreground/50">Nenhum serviço encontrado.</td></tr>
               )}
