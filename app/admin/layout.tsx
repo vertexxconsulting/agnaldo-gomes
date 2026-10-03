@@ -13,11 +13,11 @@ const links = [
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users },
   { href: '/admin/noivas', label: 'Dia da Noiva', icon: Heart },
-  { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck },
+  { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck, adminOnly: true },
   // Cadastros
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
-  { href: '/admin/equipe', label: 'Gestão de Equipe', icon: Users },
+  { href: '/admin/equipe', label: 'Gestão de Equipe', icon: Users, adminOnly: true },
   // Gestão & Ferramentas
   { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp },
   { href: '/admin/fidelidade', label: 'Prog. Fidelidade', icon: Gift },

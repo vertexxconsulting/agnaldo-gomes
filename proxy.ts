@@ -204,11 +204,15 @@ export async function proxy(request: NextRequest) {
   const userIsOwner = isOwner(user);
 
   // Se o usuário é owner, ou se o role está na lista de permissões da área, deixa passar
-  const hasAccess =
+  let hasAccess =
     userIsOwner ||
     (allowedStudioRoles !== null
       ? allowedStudioRoles.includes(role as Role)
       : role === requiredRole);
+
+  if (role === ROLES.STUDIO_SECRETARIA && (finalPathname.startsWith('/admin/equipe') || finalPathname.startsWith('/admin/pagamentos'))) {
+    hasAccess = false;
+  }
 
   if (!hasAccess) {
     const url = request.nextUrl.clone();
