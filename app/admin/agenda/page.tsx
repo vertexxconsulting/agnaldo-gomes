@@ -297,7 +297,12 @@ function AgendaContent() {
               type="date"
               value={dataSelecionada}
               onChange={(e) => setDataSelecionada(e.target.value)}
-              className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none [color-scheme:dark]"
+              onClick={(e) => {
+                if (typeof (e.target as any).showPicker === 'function') {
+                  (e.target as any).showPicker();
+                }
+              }}
+              className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none cursor-pointer w-full"
             />
           </div>
           {dataSelecionada !== hoje && (
@@ -413,7 +418,7 @@ function AgendaContent() {
                                   <div 
                                     key={a.id} 
                                     onClick={() => setSelectedAppt(a)}
-                                    className="text-xs bg-black/40 border border-[var(--border-subtle)] rounded p-2 mb-1 last:mb-0 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden"
+                                    className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 mb-1 last:mb-0 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden"
                                   >
                                     <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
                                     <div className="pl-2">
@@ -612,8 +617,13 @@ function AgendaContent() {
                       type="date"
                       value={formData.data}
                       onChange={e => setFormData(f => ({ ...f, data: e.target.value }))}
+                      onClick={(e) => {
+                        if (typeof (e.target as any).showPicker === 'function') {
+                          (e.target as any).showPicker();
+                        }
+                      }}
                       min={hoje}
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold [color-scheme:dark]"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold cursor-pointer"
                       required
                     />
                   </div>
