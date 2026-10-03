@@ -289,8 +289,38 @@ function AgendaContent() {
     <div className="py-4">
       <SectionTitle title="Agenda do Salão" subtitle="Gerenciamento de horários e profissionais" align="left" />
 
+      {/* Filtro Profissionais (Cards) */}
+      <div className="mt-8 mb-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+          <button
+            onClick={() => setProfFiltro('todos')}
+            className={`shrink-0 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${
+              profFiltro === 'todos' 
+                ? 'bg-gold border-gold text-background shadow-md' 
+                : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
+            }`}
+          >
+            Todos
+          </button>
+          {profissionais.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setProfFiltro(p.id)}
+              className={`shrink-0 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all flex items-center gap-2 ${
+                profFiltro === p.id 
+                  ? 'bg-gold border-gold text-background shadow-md' 
+                  : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
+              }`}
+            >
+              <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
+              {p.nome}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Controles de Busca / Filtros */}
-      <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
           <div className="flex bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-1">
             <input
@@ -302,13 +332,13 @@ function AgendaContent() {
                   (e.target as any).showPicker();
                 }
               }}
-              className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none cursor-pointer w-full"
+              className="bg-transparent px-3 py-1.5 text-sm text-foreground focus:outline-none cursor-pointer w-full font-medium"
             />
           </div>
           {dataSelecionada !== hoje && (
             <button
               onClick={() => setDataSelecionada(hoje)}
-              className="bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-background transition-colors text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg"
+              className="bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-background transition-colors text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg h-[38px]"
               title="Ir para hoje"
             >
               Hoje
@@ -316,20 +346,8 @@ function AgendaContent() {
           )}
         </div>
 
-        {/* Filtro Profissional */}
-        <select
-          value={profFiltro}
-          onChange={(e) => setProfFiltro(e.target.value)}
-          className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-gold"
-        >
-          <option value="todos">Todos os Profissionais</option>
-          {profissionais.map((p) => (
-            <option key={p.id} value={p.id}>{p.nome}</option>
-          ))}
-        </select>
-
         {/* View Toggle */}
-        <div className="sm:ml-auto flex gap-2">
+        <div className="sm:ml-auto flex gap-2 w-full sm:w-auto">
           <ViewToggle 
             options={[
               { id: 'dia', label: 'Dia' },
