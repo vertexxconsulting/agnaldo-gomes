@@ -6,6 +6,7 @@ import { LogOut, User, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { ROLE_LABELS, getUserRole, type Role } from '@/lib/auth';
 
 export function AdminUserButton({ 
   isCollapsed,
@@ -25,17 +26,19 @@ export function AdminUserButton({
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
   const [userInitials, setUserInitials] = useState('AG');
+  const [userRoleLabel, setUserRoleLabel] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
       if (user) {
-        const email = user.email || 'admin@agnaldo.com';
-        const name = user.user_metadata?.name || user.user_metadata?.nome || 'Administrador';
+        const name = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.nome || '';
+        const role = getUserRole(user);
         setUserEmail(email);
-        setUserName(name);
+        setUserName(name || email.split('@')[0]);
+        setUserRoleLabel(role ? (ROLE_LABELS[role] || role) : 'Usuário');
         
         // Calcular iniciais
-        if (name && name !== 'Administrador') {
+        if (name) {
           const parts = name.split(' ');
           if (parts.length >= 2) {
             setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
@@ -69,6 +72,8 @@ export function AdminUserButton({
     }
     // Remove sessão do localstorage (usado em modo teste)
     localStorage.removeItem('ag-sessao');
+    localStorage.removeItem('ag-user-role');
+    localStorage.removeItem('ag_active_session');
     
     // Redireciona com hard reload para limpar estados em memória e forçar o middleware
     window.location.href = logoutHref;
@@ -123,7 +128,7 @@ export function AdminUserButton({
               </motion.div>
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-foreground">{userName}</span>
-                <span className="text-xs text-foreground/50">Administrador</span>
+                <span className="text-xs text-foreground/50">{userRoleLabel}</span>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}

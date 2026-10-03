@@ -19,7 +19,7 @@ const links = [
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
   { href: '/admin/equipe', label: 'Gestão de Equipe', icon: Users },
   // Gestão & Ferramentas
-  { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, adminOnly: true },
+  { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp },
   { href: '/admin/fidelidade', label: 'Prog. Fidelidade', icon: Gift },
   { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone },
   { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true },
