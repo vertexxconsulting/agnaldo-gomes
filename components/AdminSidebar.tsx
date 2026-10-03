@@ -148,11 +148,11 @@ export function AdminSidebar({
           ) : (
             <Link href="/" className="flex items-center gap-2 min-w-0">
               {!isCollapsed ? (
-                <div className="relative h-8 w-24 shrink-0">
-                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" priority />
+                <div className="relative h-14 w-40 shrink-0 -ml-2">
+                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain object-left" priority />
                 </div>
               ) : (
-                <div className="relative h-9 w-9 shrink-0">
+                <div className="relative h-10 w-10 shrink-0">
                   <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" priority />
                 </div>
               )}
@@ -216,8 +216,8 @@ export function AdminSidebar({
           <Menu size={22} />
         </button>
         <Link href="/" className="flex items-center">
-          <div className="relative h-7 w-24">
-            <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" />
+          <div className="relative h-10 w-32 -ml-2">
+            <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain object-left" />
           </div>
         </Link>
         <div className="w-8" />
@@ -241,8 +241,8 @@ export function AdminSidebar({
               className="fixed inset-y-0 left-0 w-64 bg-[var(--color-card)] z-50 md:hidden flex flex-col shadow-2xl"
             >
               <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-subtle)]">
-                <div className="relative h-8 w-28">
-                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain" />
+                <div className="relative h-12 w-36 -ml-2">
+                  <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain object-left" />
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
