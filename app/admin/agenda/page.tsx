@@ -380,83 +380,142 @@ function AgendaContent() {
             </div>
           )}
 
-          {/* Agenda Matrix (Semelhante ao Caderno Físico) */}
+          {/* Agenda Kanban (Colunas por Profissional) */}
           <div className="overflow-x-auto w-full pb-4">
-            <div className="min-w-[800px] border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] overflow-hidden shadow-sm">
-              {/* Cabeçalho */}
-              <div className="flex border-b border-[var(--border-subtle)] bg-black/20">
-                <div className="w-20 shrink-0 p-3 text-center border-r border-[var(--border-subtle)] font-serif font-bold text-gold flex items-center justify-center">
-                  Horário
-                </div>
-                {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => (
-                  <div key={prof.id} className="flex-1 min-w-[180px] p-3 text-center border-r border-[var(--border-subtle)] last:border-0">
-                    <span className="font-bold text-foreground text-sm uppercase tracking-wide">{prof.nome}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] overflow-hidden shadow-sm min-h-[600px] w-max min-w-full">
+              {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => {
+                const isAgnaldo = (prof.nome || '').toLowerCase().includes('agnaldo') || prof.id === 'agnaldo';
+                const interval = isAgnaldo ? 20 : 30;
 
-              {/* Corpo da Matriz */}
-              <div className="flex flex-col">
-                {Array.from({ length: 27 }).map((_, i) => {
-                  const h = Math.floor(i / 2) + 8;
-                  const m = i % 2 === 0 ? '00' : '30';
-                  const time = `${String(h).padStart(2, '0')}:${m}`;
-                  const isHour = m === '00';
+                const [ano, mes, dia] = dataSelecionada.split('-').map(Number);
+                const dataObj = new Date(ano, mes - 1, dia);
+                const diaSemana = dataObj.getDay();
+                
+                const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
+                const infoSalao = horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana];
+                
+                let profInicio = infoSalao?.inicio || '09:00';
+                let profFim = infoSalao?.fim || '19:00';
+                let profAtende = false;
+                
+                const jornadaProf = prof.jornada_semanal;
+                let intInicio = '';
+                let intFim = '';
 
-                  return (
-                    <div key={time} className={`flex border-b border-[var(--border-subtle)] last:border-0 group hover:bg-white/5 transition-colors ${isHour ? 'bg-black/10' : ''}`}>
-                      {/* Célula de Horário */}
-                      <div className="w-20 shrink-0 p-2 text-center border-r border-[var(--border-subtle)] text-foreground/70 font-mono text-xs flex items-center justify-center">
-                        {time}
+                if (jornadaProf) {
+                  const chaveStr = DIAS_CHAVE[diaSemana];
+                  const cfgDia = jornadaProf[diaSemana] || (chaveStr ? jornadaProf[chaveStr] : undefined);
+                  if (cfgDia) {
+                    if (cfgDia.ativo !== false) {
+                      profAtende = true;
+                      profInicio = cfgDia.inicio || profInicio;
+                      profFim = cfgDia.fim || profFim;
+                      intInicio = cfgDia.intervalo_inicio || '';
+                      intFim = cfgDia.intervalo_fim || '';
+                    } else {
+                      profAtende = false;
+                    }
+                  } else if (infoSalao.aberto) {
+                    profAtende = true;
+                  }
+                } else if (infoSalao.aberto) {
+                  profAtende = true;
+                }
+
+                const slots: string[] = [];
+                if (profAtende) {
+                  const [hIni, mIni] = profInicio.split(':').map(Number);
+                  const [hFim, mFim] = profFim.split(':').map(Number);
+                  const totalMinutosIni = hIni * 60 + mIni;
+                  const totalMinutosFim = hFim * 60 + mFim;
+                  
+                  let totalIntIni = -1;
+                  let totalIntFim = -1;
+                  if (intInicio && intFim) {
+                    const [hiI, miI] = intInicio.split(':').map(Number);
+                    totalIntIni = hiI * 60 + miI;
+                    const [hiF, miF] = intFim.split(':').map(Number);
+                    totalIntFim = hiF * 60 + miF;
+                  }
+
+                  for (let m = totalMinutosIni; m < totalMinutosFim; m += interval) {
+                    if (totalIntIni > -1 && m >= totalIntIni && m < totalIntFim) {
+                      continue;
+                    }
+                    const hStr = String(Math.floor(m / 60)).padStart(2, '0');
+                    const minStr = String(m % 60).padStart(2, '0');
+                    slots.push(`${hStr}:${minStr}`);
+                  }
+                }
+
+                return (
+                  <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
+                    {/* Cabeçalho */}
+                    <div className="p-3 text-center border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
+                      <span className="font-bold text-foreground text-sm uppercase tracking-wide">{prof.nome}</span>
+                      <div className="text-[10px] text-foreground/50 mt-0.5">
+                        {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
+                        {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
                       </div>
+                    </div>
 
-                      {/* Células dos Profissionais */}
-                      {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => {
-                        // Encontrar agendamentos neste bloco de 30min
-                        // Para simplificar, pegamos os que começam exatamente nesta hora.
-                        // (Poderia expandir para checar se cai no intervalo)
+                    {/* Slots */}
+                    <div className="flex flex-col p-2 gap-2 h-full relative">
+                      {!profAtende && (
+                        <div className="absolute inset-0 flex items-center justify-center text-foreground/30 text-xs font-mono bg-[var(--background)]">
+                          INDISPONÍVEL
+                        </div>
+                      )}
+                      {profAtende && slots.length === 0 && (
+                        <div className="text-center text-xs text-foreground/50 mt-4">Nenhum horário disponível.</div>
+                      )}
+                      
+                      {profAtende && slots.map(time => {
                         const appts = agendamentosFiltrados.filter(a => a.profissional_id === prof.id && a.hora_inicio === time && a.status !== 'cancelado');
                         
                         return (
-                          <div 
-                            key={`${prof.id}-${time}`} 
-                            className="flex-1 min-w-[180px] border-r border-[var(--border-subtle)] last:border-0 p-1 flex flex-col relative min-h-[50px]"
-                          >
-                            {appts.length === 0 ? (
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => abrirFormNovo(time, prof.id)} className="text-[10px] text-gold/70 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
-                                  + Agendar
-                                </button>
-                              </div>
-                            ) : (
-                              appts.map(a => {
-                                const cliente = getClienteNome(a.cliente_id, clientes);
-                                const servico = getServicoNome(a.servico_id, servicos);
-                                return (
-                                  <div 
-                                    key={a.id} 
-                                    onClick={() => setSelectedAppt(a)}
-                                    className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 mb-1 last:mb-0 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden"
-                                  >
-                                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
-                                    <div className="pl-2">
-                                      <div className="flex justify-between items-start mb-1 gap-2">
-                                        <span className="font-bold truncate text-foreground/90" title={cliente}>{cliente}</span>
+                          <div key={time} className="flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm min-h-[65px] group relative overflow-hidden transition-colors hover:border-gold/30">
+                            {/* Left Time label */}
+                            <div className="w-14 bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center text-[12px] font-mono font-bold text-foreground/70 shrink-0">
+                              {time}
+                            </div>
+                            
+                            {/* Appts or Add */}
+                            <div className="flex-1 p-1.5 flex flex-col justify-center relative">
+                              {appts.length === 0 ? (
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
+                                  <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
+                                    + Agendar
+                                  </span>
+                                </div>
+                              ) : (
+                                appts.map(a => {
+                                  const cliente = getClienteNome(a.cliente_id, clientes);
+                                  const servico = getServicoNome(a.servico_id, servicos);
+                                  return (
+                                    <div 
+                                      key={a.id} 
+                                      onClick={() => setSelectedAppt(a)}
+                                      className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center"
+                                    >
+                                      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                      <div className="pl-2">
+                                        <div className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</div>
+                                        <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
+                                        <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
                                       </div>
-                                      <div className="text-gold/80 truncate text-[10px] font-medium" title={servico}>{servico}</div>
-                                      <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
                                     </div>
-                                  </div>
-                                );
-                              })
-                            )}
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
