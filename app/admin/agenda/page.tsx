@@ -311,6 +311,7 @@ function AgendaContent() {
                   ? 'bg-gold border-gold text-background shadow-md' 
                   : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
               }`}
+            >
               {p.foto_url ? (
                 <img src={p.foto_url} alt={p.nome} className="w-5 h-5 rounded-full object-cover border border-background/20" />
               ) : (
