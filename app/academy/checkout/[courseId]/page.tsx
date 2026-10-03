@@ -20,6 +20,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [valorOriginal, setValorOriginal] = useState<number | null>(null);
   const [valorComCupom, setValorComCupom] = useState<number | null>(null);
   const [msgCupom, setMsgCupom] = useState('');
+  const [country, setCountry] = useState<'BR' | 'US'>('BR');
   const [course, setCourse] = useState<any>(null);
   const [courseLoading, setCourseLoading] = useState(true);
 
@@ -120,6 +121,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
           emailAluno: email.trim(),
           cursoId: courseId,
           cupom_code: cupomValido ? cupomAplicado : undefined,
+          country: country,
         }),
       });
       if (!res.ok) {
@@ -273,6 +275,29 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                   className="w-full px-3 py-2.5 rounded-md bg-foreground/[0.03] border border-gold/20 text-foreground placeholder:text-foreground/40 focus:border-gold focus:ring-1 focus:ring-gold outline-none text-sm"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">Localização (País)</label>
+                <div className="flex bg-foreground/[0.03] border border-gold/20 rounded-md p-1">
+                  <button
+                    type="button"
+                    onClick={() => setCountry('BR')}
+                    className={`flex-1 py-1.5 text-sm font-semibold rounded ${country === 'BR' ? 'bg-gold text-black shadow' : 'text-foreground/60 hover:text-foreground'}`}
+                  >
+                    🇧🇷 Brasil
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCountry('US')}
+                    className={`flex-1 py-1.5 text-sm font-semibold rounded ${country === 'US' ? 'bg-gold text-black shadow' : 'text-foreground/60 hover:text-foreground'}`}
+                  >
+                    🇺🇸 Internacional
+                  </button>
+                </div>
+                <p className="text-xs text-foreground/50 mt-1">
+                  {country === 'BR' ? 'Pagamento em Reais (Pix, Boleto, Cartão).' : 'Pagamento em Dólar (Cartão Internacional).'}
+                </p>
+              </div>
             </div>
 
             <hr className="border-gold/10" />
@@ -301,7 +326,9 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
             {/* Trust signals */}
             <div className="flex items-center gap-2 text-xs text-foreground/50">
               <Shield className="w-4 h-4 text-gold shrink-0" />
-              Pagamento 100% seguro via Stripe — Pix e Cartão de Crédito
+              {country === 'BR' 
+                ? 'Pagamento 100% seguro via Asaas — Pix, Boleto e Cartão.'
+                : 'Pagamento 100% seguro via Stripe — Cartão de Crédito Internacional.'}
             </div>
 
             {/* Action buttons */}
@@ -323,7 +350,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                 disabled={!pedidoValido || step !== 'info'}
               >
                 {stepIcon}
-                Pagar com Stripe {checkoutLabel}
+                {country === 'BR' ? `Pagar Seguramente ${checkoutLabel}` : `Pay with Stripe ${checkoutLabel}`}
               </button>
             </div>
           </div>

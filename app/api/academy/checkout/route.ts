@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripeConfig } from '@/lib/pagamentos-academy';
 import { rateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { createOrUpdateAsaasCustomer, createAsaasPayment, scheduleAsaasInvoice, ASAAS_API_KEY } from '@/lib/asaas';
 
 /**
  * Cria uma sessão de Checkout do Stripe no servidor, usando a Secret Key
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
   const nomeAluno = String(body?.nomeAluno ?? '').slice(0, 100) || 'Aluno AG';
   const emailAluno = String(body?.emailAluno ?? '').slice(0, 200) || 'aluno@agnaldogomes.com.br';
   const cursoId = String(body?.cursoId ?? '');
+  const country = String(body?.country ?? 'BR');
 
   const origin = req.headers.get('origin') || 'https://agnaldogomes.vercel.app';
 
@@ -67,6 +69,49 @@ export async function POST(req: Request) {
   const idempotencyKey = `academy-${cursoId}-${emailAluno}-${valorBRL}-${Date.now()}`;
 
   try {
+    // --- Fluxo Asaas (Brasil) ---
+    if (country === 'BR') {
+      if (!ASAAS_API_KEY || ASAAS_API_KEY.includes('sua_api_key')) {
+        return NextResponse.json(
+          { error: 'Asaas API Key não configurada. Configure no arquivo .env.local' },
+          { status: 400, headers }
+        );
+      }
+
+      // 1. Cria ou Atualiza Cliente no Asaas
+      const asaasCustomerId = await createOrUpdateAsaasCustomer({
+        name: nomeAluno,
+        email: emailAluno,
+        cpfCnpj: '00000000000', // Mock para criação inicial, no Asaas checkout real ele preenche se faltar
+      });
+
+      // 2. Cria a cobrança (UNDEFINED = Checkout Transparente c/ Link para escolher Pix/Boleto/Cartão)
+      const dataVencimento = new Date();
+      dataVencimento.setDate(dataVencimento.getDate() + 3); // Vence em 3 dias
+
+      const payment = await createAsaasPayment({
+        customer: asaasCustomerId,
+        billingType: 'UNDEFINED',
+        value: valorBRL,
+        dueDate: dataVencimento.toISOString().split('T')[0],
+        description: descricao,
+        externalReference: `academy-${cursoId}-${emailAluno}`,
+      });
+
+      // 3. Agenda a Nota Fiscal (Opcional, mas já garante que quando pago, o Asaas emita)
+      await scheduleAsaasInvoice({
+        payment: payment.id,
+        type: 'NFS-E',
+        updatePayment: false,
+        municipalServiceId: '1234', // Configure the correct one for the city
+        municipalServiceCode: '08.02', // Instrução, treinamento, etc.
+        municipalServiceName: 'Cursos Online e Treinamentos',
+      });
+
+      return NextResponse.json({ url: payment.invoiceUrl }, { headers });
+    }
+
+    // --- Fluxo Stripe (Internacional) ---
     const stripe = new Stripe(cfg.secretKey, {
       apiVersion: '2026-07-29.dahlia',
     });
