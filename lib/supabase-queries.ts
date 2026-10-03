@@ -684,18 +684,20 @@ export async function criarServico(payload: {
     console.warn('[criarServico] API route falhou, tentando client-side:', err);
   }
 
+  const insertPayload: any = {
+    name: payload.nome,
+    category: payload.categoria,
+    duration_minutes: payload.duracao_min,
+    price: payload.preco,
+    active: payload.ativo ?? true,
+    visible_in_app: payload.visivel_app ?? true,
+  };
+  if (payload.points_reward !== undefined) insertPayload.points_reward = payload.points_reward;
+  if (payload.points_cost !== undefined) insertPayload.points_cost = payload.points_cost;
+
   const { data, error } = await supabase
     .from(TBL.servicos)
-    .insert({
-      name: payload.nome,
-      category: payload.categoria,
-      duration_minutes: payload.duracao_min,
-      price: payload.preco,
-      active: payload.ativo ?? true,
-      visible_in_app: payload.visivel_app ?? true,
-      points_reward: payload.points_reward ?? 0,
-      points_cost: payload.points_cost ?? 0,
-    })
+    .insert(insertPayload)
     .select('id')
     .single();
 

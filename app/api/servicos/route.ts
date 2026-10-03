@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome e Preço são obrigatórios.' }, { status: 400 });
     }
 
-    const payload = {
+    const payload: any = {
       name: String(nome).trim(),
       category: String(categoria || 'Geral').trim(),
       duration_minutes: Number(duracao_min) || 60,
@@ -44,9 +44,10 @@ export async function POST(req: Request) {
       is_variable_price: preco_variavel ?? false,
       active: ativo ?? true,
       visible_in_app: visivel_app ?? true,
-      points_reward: Number(points_reward) || 0,
-      points_cost: Number(points_cost) || 0,
     };
+
+    if (points_reward !== undefined) payload.points_reward = Number(points_reward);
+    if (points_cost !== undefined) payload.points_cost = Number(points_cost);
 
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
