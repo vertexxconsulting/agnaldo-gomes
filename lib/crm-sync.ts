@@ -15,6 +15,8 @@ export interface ClienteInput {
   nome: string;
   telefone: string;
   email?: string | null;
+  cpf?: string | null;
+  endereco?: string | null;
   nascimento?: string | null;
   observacoes?: string | null;
 }
@@ -71,6 +73,8 @@ export async function upsertClienteMae(input: ClienteInput) {
     name: nameClean,
     phone: phoneClean,
     email: emailClean || clienteExistente?.email || null,
+    cpf: input.cpf !== undefined ? input.cpf : clienteExistente?.cpf || null,
+    address: input.endereco !== undefined ? input.endereco : clienteExistente?.address || null,
     birth_date: input.nascimento || clienteExistente?.birth_date || null,
     notes: input.observacoes !== undefined ? input.observacoes : clienteExistente?.notes || null,
     updated_at: new Date().toISOString(),

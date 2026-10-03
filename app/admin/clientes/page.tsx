@@ -71,6 +71,8 @@ export default function ClienteModule() {
       nome: form.get('nome') as string,
       telefone: form.get('telefone') as string,
       email: (form.get('email') as string) || null,
+      cpf: (form.get('cpf') as string) || null,
+      endereco: (form.get('endereco') as string) || null,
       nascimento: (form.get('nascimento') as string) || null,
       observacoes: (form.get('observacoes') as string) || null,
     };
@@ -89,6 +91,8 @@ export default function ClienteModule() {
         nome: data.cliente.name,
         telefone: data.cliente.phone,
         email: data.cliente.email,
+        cpf: data.cliente.cpf,
+        endereco: data.cliente.address,
         nascimento: data.cliente.birth_date,
         observacoes: data.cliente.notes,
         criado_em: data.cliente.created_at,
@@ -97,6 +101,8 @@ export default function ClienteModule() {
         nome: payload.nome,
         telefone: payload.telefone,
         email: payload.email,
+        cpf: payload.cpf,
+        endereco: payload.endereco,
         nascimento: payload.nascimento,
         observacoes: payload.observacoes,
         criado_em: editando?.criado_em ?? new Date().toISOString()
@@ -173,8 +179,16 @@ export default function ClienteModule() {
                 <input name="email" type="email" defaultValue={editando?.email ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
+                <label className="block text-xs text-foreground/60 mb-1">CPF <span className="text-foreground/30">(opcional)</span></label>
+                <input name="cpf" type="text" placeholder="Apenas números ou formatado" defaultValue={editando?.cpf ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+              </div>
+              <div>
                 <label className="block text-xs text-foreground/60 mb-1">Data de Nascimento <span className="text-foreground/30">(opcional)</span></label>
-                <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold [color-scheme:dark]" />
+                <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold [color-scheme:light] dark:[color-scheme:dark]" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs text-foreground/60 mb-1">Endereço Completo <span className="text-foreground/30">(opcional)</span></label>
+                <input name="endereco" type="text" placeholder="Rua, Número, Bairro, CEP, Cidade" defaultValue={editando?.endereco ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
             </div>
             <div>
@@ -266,6 +280,17 @@ export default function ClienteModule() {
                         <div>
                           <div className="text-xs text-foreground/40 mb-1">Cliente desde</div>
                           <div className="text-sm">{new Date(c.criado_em).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[var(--border-subtle)]">
+                        <div>
+                          <div className="text-xs text-foreground/40 mb-1">CPF</div>
+                          <div className="text-sm font-medium">{c.cpf || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-foreground/40 mb-1">Endereço</div>
+                          <div className="text-sm text-foreground/80 leading-relaxed">{c.endereco || '—'}</div>
                         </div>
                       </div>
 

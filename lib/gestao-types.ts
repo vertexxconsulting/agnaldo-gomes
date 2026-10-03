@@ -21,6 +21,8 @@ export interface Cliente {
   nome: string;
   telefone: string; // único, normalizado (apenas dígitos)
   email?: string | null;
+  cpf?: string | null;
+  endereco?: string | null;
   nascimento?: string | null; // date ISO YYYY-MM-DD
   observacoes?: string | null;
   criado_em: string; // timestamptz

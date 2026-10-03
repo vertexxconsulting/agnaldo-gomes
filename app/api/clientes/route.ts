@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, telefone, email, nascimento, observacoes } = body;
+    const { id, nome, telefone, email, cpf, endereco, nascimento, observacoes } = body;
 
     if (!nome || !telefone) {
       return NextResponse.json({ error: 'Nome e Telefone são obrigatórios.' }, { status: 400 });
@@ -41,6 +41,8 @@ export async function POST(req: Request) {
       nome,
       telefone,
       email,
+      cpf,
+      endereco,
       nascimento,
       observacoes,
     });
