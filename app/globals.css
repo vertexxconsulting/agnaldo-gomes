@@ -20,6 +20,7 @@
 
 /* Variáveis de apoio (não-color) */
 :root {
+  color-scheme: light;
   --background: #faf8f3;
   --foreground: #1d1b18;
   --glass-bg: rgba(255, 255, 255, 0.78);
@@ -29,6 +30,7 @@
 
 /* ============ TEMA ESCURO (opcional) ============ */
 .dark {
+  color-scheme: dark;
   --color-background: #0f0f11;
   --color-foreground: #ebebeb;
   --color-primary: #d4af37;
@@ -75,6 +77,7 @@ body {
 
 /* ============ ESCUDO DARK PARA A ACADEMY (modo preto + dourado) ============ */
 .academy-dark {
+  color-scheme: dark;
   --color-background: #0f0f11;
   --color-foreground: #ebebeb;
   --color-primary: #d4af37;
