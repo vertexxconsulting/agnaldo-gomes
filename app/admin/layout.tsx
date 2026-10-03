@@ -7,7 +7,7 @@ import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
 
 const links = [
-  { href: '/hub', label: 'Command Center', icon: Command, hub: true },
+  { href: '/hub', label: 'Command Center', icon: Command, hub: true, adminOnly: true },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   // Operacional Diário
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },

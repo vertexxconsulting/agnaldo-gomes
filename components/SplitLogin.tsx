@@ -172,8 +172,14 @@ export function SplitLogin({
       if (role) {
         localStorage.setItem('ag-user-role', role);
       }
-      localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: redirectTo, em: new Date().toISOString() }));
-      router.push(redirectTo);
+      // Se for secretaria e o destino for o hub, redirecionar direto para o dashboard
+      let finalRedirectTo = redirectTo;
+      if (role === ROLES.STUDIO_SECRETARIA && (finalRedirectTo === '/hub' || finalRedirectTo === '/')) {
+        finalRedirectTo = '/admin';
+      }
+
+      localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: finalRedirectTo, em: new Date().toISOString() }));
+      router.push(finalRedirectTo);
     }
   };
 
