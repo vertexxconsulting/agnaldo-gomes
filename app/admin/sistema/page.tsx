@@ -24,6 +24,8 @@ export default function SistemaPage() {
   const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
+  const [whatsappContato, setWhatsappContato] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function SistemaPage() {
         if (resLoja.ok) {
           const lojaData = await resLoja.json();
           setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
+          setWhatsappContato(lojaData.whatsapp_contato ?? '');
         }
       } catch (e) {
         console.error('Erro ao carregar loja_settings:', e);
@@ -64,6 +67,30 @@ export default function SistemaPage() {
     } catch (e) {
       console.error('Erro ao salvar config agendamento:', e);
       setAgendamentoAtivo(!novoStatus); // reverte em caso de erro
+    }
+  };
+
+  const saveWhatsapp = async () => {
+    setSavingWhatsapp(true);
+    try {
+      const res = await fetch('/api/admin/loja/settings');
+      const current = await res.json();
+      const payload = { ...current, whatsapp_contato: whatsappContato };
+      const saveRes = await fetch('/api/admin/loja/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (saveRes.ok) {
+        alert('Número do WhatsApp salvo com sucesso!');
+      } else {
+        throw new Error('Falha ao salvar');
+      }
+    } catch (e) {
+      console.error('Erro ao salvar WhatsApp:', e);
+      alert('Erro ao salvar WhatsApp. Talvez seja necessário criar a coluna whatsapp_contato no banco de dados primeiro.');
+    } finally {
+      setSavingWhatsapp(false);
     }
   };
 
@@ -167,6 +194,33 @@ return (
               {agendamentoAtivo ? 'Desabilitar Agendamento' : 'Habilitar Agendamento'}
             </Button>
           )}
+        </div>
+      </CardGlass>
+
+      {/* Configuração de WhatsApp */}
+      <CardGlass className="p-6">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <MessageSquare size={20} className="text-emerald-500" />
+              WhatsApp de Atendimento
+            </h3>
+            <p className="text-sm text-foreground/60 mt-1">
+              Defina o número de WhatsApp principal (com DDI e DDD, ex: 5511999999999).
+            </p>
+          </div>
+          <div className="flex w-full md:w-auto items-center gap-2">
+            <input 
+              type="text" 
+              value={whatsappContato} 
+              onChange={(e) => setWhatsappContato(e.target.value)} 
+              placeholder="5511999999999" 
+              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg flex-1 min-w-[200px] text-foreground focus:outline-none focus:border-gold"
+            />
+            <Button onClick={saveWhatsapp} disabled={savingWhatsapp || loadingLojaSettings} variant="primary">
+              {savingWhatsapp ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </div>
       </CardGlass>
 

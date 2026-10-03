@@ -15,10 +15,11 @@ export interface LojaSettings {
   frete_gratis_acima_de: string;
   valor_motoboy: string;
   valor_correios: string;
-  envio_automatico: boolean; // Nova opção
-  envio_manual: boolean;     // Nova opção
+  envio_automatico: boolean;
+  envio_manual: boolean;
   fidelidade_ativa: boolean;
   agendamento_ativo: boolean;
+  whatsapp_contato?: string;
 }
 
 export async function getLojaSettings(): Promise<LojaSettings | null> {
@@ -41,6 +42,7 @@ export async function getLojaSettings(): Promise<LojaSettings | null> {
     envio_manual: data.envio_manual ?? true,
     fidelidade_ativa: data.fidelidade_ativa ?? true,
     agendamento_ativo: data.agendamento_ativo ?? true,
+    whatsapp_contato: data.whatsapp_contato || '',
   };
 }
 
