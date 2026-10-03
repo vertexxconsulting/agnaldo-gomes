@@ -455,18 +455,20 @@ function AgendaContent() {
                 return (
                   <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
                     {/* Cabeçalho */}
-                    <div className="p-3 flex flex-col items-center text-center border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
+                    <div className="p-3 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
                       {prof.foto_url ? (
-                        <img src={prof.foto_url} alt={prof.nome} className="w-10 h-10 rounded-full object-cover border-2 border-gold/50 mb-1.5 shadow-sm" />
+                        <img src={prof.foto_url} alt={prof.nome} className="w-10 h-10 rounded-full object-cover border-2 border-gold/50 shadow-sm shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center mb-1.5 shadow-sm">
+                        <div className="w-10 h-10 rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center shadow-sm shrink-0">
                           <User2 size={20} className="text-gold" />
                         </div>
                       )}
-                      <span className="font-bold text-foreground text-sm uppercase tracking-wide">{prof.nome}</span>
-                      <div className="text-[10px] text-foreground/50 mt-0.5">
-                        {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
-                        {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
+                      <div className="flex flex-col text-left">
+                        <span className="font-bold text-foreground text-sm uppercase tracking-wide leading-tight">{prof.nome}</span>
+                        <div className="text-[10px] text-foreground/50 mt-0.5">
+                          {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
+                          {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
+                        </div>
                       </div>
                     </div>
 
