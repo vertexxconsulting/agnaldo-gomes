@@ -311,8 +311,11 @@ function AgendaContent() {
                   ? 'bg-gold border-gold text-background shadow-md' 
                   : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
               }`}
-            >
-              <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
+              {p.foto_url ? (
+                <img src={p.foto_url} alt={p.nome} className="w-5 h-5 rounded-full object-cover border border-background/20" />
+              ) : (
+                <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
+              )}
               {p.nome}
             </button>
           ))}
@@ -451,7 +454,14 @@ function AgendaContent() {
                 return (
                   <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
                     {/* Cabeçalho */}
-                    <div className="p-3 text-center border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
+                    <div className="p-3 flex flex-col items-center text-center border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
+                      {prof.foto_url ? (
+                        <img src={prof.foto_url} alt={prof.nome} className="w-10 h-10 rounded-full object-cover border-2 border-gold/50 mb-1.5 shadow-sm" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center mb-1.5 shadow-sm">
+                          <User2 size={20} className="text-gold" />
+                        </div>
+                      )}
                       <span className="font-bold text-foreground text-sm uppercase tracking-wide">{prof.nome}</span>
                       <div className="text-[10px] text-foreground/50 mt-0.5">
                         {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
