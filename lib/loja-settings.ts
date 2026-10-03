@@ -20,8 +20,6 @@ export interface LojaSettings {
   fidelidade_ativa: boolean;
   agendamento_ativo: boolean;
   whatsapp_contato?: string;
-  asaas_api_key?: string;
-  asaas_wallet_id?: string;
 }
 
 export async function getLojaSettings(): Promise<LojaSettings | null> {
@@ -45,8 +43,6 @@ export async function getLojaSettings(): Promise<LojaSettings | null> {
     fidelidade_ativa: data.fidelidade_ativa ?? true,
     agendamento_ativo: data.agendamento_ativo ?? true,
     whatsapp_contato: data.whatsapp_contato || '',
-    asaas_api_key: data.asaas_api_key || '',
-    asaas_wallet_id: data.asaas_wallet_id || '',
   };
 }
 
