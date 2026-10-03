@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       .limit(5);
 
     // Mapear detalhes dos serviços
-    const servicosFormatados = (agendamentos || []).map(ag => {
+    const servicosFormatados = (agendamentos || []).map((ag: any) => {
       // Mock lookup para simplificar no MVP (ideal seria um JOIN com salon_services)
       const mockServico = MOCK_SERVICOS.find(s => s.id === ag.service_id);
       const mockProfissional = MOCK_PROFISSIONAIS.find(p => p.id === ag.professional_id);

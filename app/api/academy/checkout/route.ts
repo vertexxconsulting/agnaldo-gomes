@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { descricao?: string; valorBRL?: number; nomeAluno?: string; emailAluno?: string; cursoId?: string };
+  let body: { descricao?: string; valorBRL?: number; nomeAluno?: string; emailAluno?: string; cursoId?: string; country?: string };
   try {
     body = await req.json();
   } catch {
