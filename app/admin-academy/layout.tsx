@@ -16,7 +16,6 @@ const links = [
   { href: '/admin-academy/comunidade', label: 'Comunidade', icon: Users },
   { href: '/admin-academy/certificados', label: 'Certificados', icon: Award },
   { href: '/admin-academy/configuracoes', label: 'Configurações', icon: Settings },
-  { href: '/admin-academy/pagamentos', label: 'Pagamentos', icon: CreditCard },
   { href: '/admin-academy/vimeo', label: 'Hospedagem de Vídeos', icon: Video },
   { href: '/admin-academy/tutorial', label: 'Ajuda / Tutorial', icon: BookOpen },
 ];
