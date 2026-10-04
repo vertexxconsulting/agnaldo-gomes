@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getStripeConfig } from '@/lib/pagamentos-academy';
+import { createAsaasPaymentLink } from '@/lib/asaas';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -13,15 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: false, error: 'Preço inválido' }, { status: 400 });
     }
 
-    // 1. Setup Stripe
-    const cfg = await getStripeConfig();
-    
-    if (!cfg.ativo || !cfg.secretKey) {
-      return NextResponse.json({ success: false, error: 'Stripe não está configurado. Adicione STRIPE_SECRET_KEY e STRIPE_PUBLIC_KEY nas variáveis de ambiente da Vercel.' }, { status: 400 });
-    }
-    const stripe = new Stripe(cfg.secretKey, { apiVersion: '2026-07-29.dahlia' as any });
-
-    // 2. Buscar Curso VIP
+    // 1. Buscar Curso VIP
     const { data: curso, error: cursoError } = await supabaseAdmin
       .from('academy_vip_courses')
       .select('title, description, thumbnail_url, price')
@@ -33,41 +24,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: false, error: 'Curso VIP não encontrado' }, { status: 404 });
     }
 
-    // 3. Criar Product e Price
-    const priceInCents = Math.round(price * 100);
-
-    const product = await stripe.products.create({
+    // 2. Criar Payment Link no Asaas
+    const paymentLinkData = await createAsaasPaymentLink({
       name: curso.title + ' (VIP)',
       description: curso.description || 'Curso VIP da Agnaldo Gomes Academy',
-      images: curso.thumbnail_url ? [curso.thumbnail_url] : [],
+      value: price,
+      billingType: 'UNDEFINED',
+      chargeType: 'DETACHED',
     });
 
-    const stripePrice = await stripe.prices.create({
-      product: product.id,
-      unit_amount: priceInCents,
-      currency: 'brl',
-    });
+    const paymentUrl = paymentLinkData.url;
 
-    // 4. Criar Payment Link
-    const paymentLink = await stripe.paymentLinks.create({
-      line_items: [
-        {
-          price: stripePrice.id,
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        curso_id: id,
-        sistema: 'academy-ag',
-        tipo: 'vip'
-      }
-    });
-
-    // 5. Atualizar curso VIP no Supabase com o link gerado e o preço
+    // 3. Atualizar curso VIP no Supabase com o link gerado e o preço
     const { error: updateError } = await supabaseAdmin
       .from('academy_vip_courses')
       .update({
-        stripe_payment_link: paymentLink.url,
+        stripe_payment_link: paymentUrl, // reutilizando a mesma coluna por enquanto
         price: price
       })
       .eq('id', id);
@@ -81,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, paymentLink: paymentLink.url });
+    return NextResponse.json({ success: true, paymentLink: paymentUrl });
   } catch (err: any) {
     console.error('Erro ao gerar Stripe Payment Link:', err);
     return NextResponse.json({ success: false, error: err.message || 'Erro interno' }, { status: 500 });

@@ -257,11 +257,11 @@ export default function AdminEdicaoCursoVipPage() {
               <div className="bg-[var(--background)] p-4 rounded-lg border border-[var(--border-subtle)] space-y-4">
                 <h3 className="font-medium text-foreground flex items-center gap-2">
                   <CreditCard size={18} className="text-gold" />
-                  Configuração de Pagamento Stripe
+                  Configuração de Pagamento Asaas
                 </h3>
                 
                 <p className="text-xs text-foreground/60">
-                  Crie um Stripe Price e Payment Link para este curso VIP.
+                  Crie um Payment Link no Asaas para este curso VIP.
                 </p>
 
                 {paymentResult?.error && (
@@ -293,7 +293,7 @@ export default function AdminEdicaoCursoVipPage() {
                   disabled={paymentLoading || cursoForm.price <= 0}
                 >
                   {paymentLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-                  Criar Stripe Price + Payment Link
+                  Criar Payment Link Asaas
                 </Button>
               </div>
 

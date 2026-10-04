@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/Button';
-import { Check, Calendar, MapPin, Clock, Loader2, ArrowLeft } from 'lucide-react';
+import { Check, Calendar, MapPin, Clock, Loader2, ArrowLeft, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CheckoutVIP() {
@@ -160,21 +160,41 @@ export default function CheckoutVIP() {
               </div>
 
               <div className="border-t border-[var(--border-subtle)] pt-6 mb-6">
-                <p className="text-sm text-foreground/80 mb-6">
-                  Para garantir sua vaga e excelência no atendimento, o processo de pagamento e reserva é finalizado de forma personalizada via WhatsApp diretamente com a equipe.
-                </p>
                 
-                <Button 
-                  onClick={handleWhatsAppRedirect}
-                  className="w-full h-14 text-base font-bold flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white border-none shadow-lg shadow-[#25D366]/20 transition-transform hover:scale-105"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                  Finalizar Reserva via WhatsApp
-                </Button>
+                {course.stripe_payment_link ? (
+                  <>
+                    <p className="text-sm text-foreground/80 mb-6">
+                      Clique no botão abaixo para garantir sua vaga de forma segura via Asaas.
+                    </p>
+                    <a 
+                      href={course.stripe_payment_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full h-14 text-base font-bold flex items-center justify-center gap-2 bg-gold hover:bg-gold-light text-black rounded-lg transition-transform hover:scale-105"
+                    >
+                      <CreditCard size={20} />
+                      Ir para Pagamento
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-foreground/80 mb-6">
+                      Para garantir sua vaga e excelência no atendimento, o processo de pagamento e reserva é finalizado de forma personalizada via WhatsApp diretamente com a equipe.
+                    </p>
+                    <Button 
+                      onClick={handleWhatsAppRedirect}
+                      className="w-full h-14 text-base font-bold flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white border-none shadow-lg shadow-[#25D366]/20 transition-transform hover:scale-105"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                      Finalizar Reserva via WhatsApp
+                    </Button>
+                  </>
+                )}
+
               </div>
 
               <p className="text-xs text-foreground/50 text-center">
-                * Sua vaga só será reservada após a confirmação do pagamento com nossa equipe.
+                * Sua vaga só será reservada após a confirmação do pagamento.
               </p>
             </div>
           </div>
