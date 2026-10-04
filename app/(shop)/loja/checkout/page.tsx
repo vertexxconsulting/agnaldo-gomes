@@ -61,13 +61,43 @@ export default function CheckoutPage() {
     return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   };
 
-  const calcShippingValues = (numericCep: string) => {
+  const fetchShippingRates = async (numericCep: string) => {
+    try {
+      const res = await fetch('/api/loja/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cep: numericCep, items: items })
+      });
+      const data = await res.json();
+      const options = data.rates || [];
+      if (options.length > 0) {
+        options.sort((a: any, b: any) => a.price - b.price);
+        const cheapest = options[0];
+
+        const cfg = getStoreConfig();
+        const subtotal = getTotal();
+        const gratisLigado = cfg?.freteGratis;
+        const acimaDe = parseFloat(String(cfg?.freteGratisAcimaDe)) || 0;
+        const gratis = Boolean(gratisLigado) || (acimaDe > 0 && subtotal >= acimaDe);
+
+        return {
+          metodo: cheapest.name,
+          custo: gratis ? 0 : cheapest.price,
+          gratis,
+          regiao: 'Brasil'
+        };
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const cfg = getStoreConfig();
     const isLocal = numericCep.startsWith('8426');
     const metodo = isLocal ? 'MOTOBOY' : 'CORREIOS';
     const valorBase = isLocal
       ? parseFloat(String(cfg?.valorMotoboy ?? '15.00')) || 15.0
       : parseFloat(String(cfg?.valorCorreios ?? '28.50')) || 28.5;
+    const subtotal = getTotal();
     const gratisLigado = cfg?.freteGratis;
     const acimaDe = parseFloat(String(cfg?.freteGratisAcimaDe)) || 0;
     const gratis = Boolean(gratisLigado) || (acimaDe > 0 && subtotal >= acimaDe);
@@ -79,32 +109,32 @@ export default function CheckoutPage() {
     };
   };
 
-  const handleCalcShipping = () => {
+  const handleCalcShipping = async () => {
     const numericCep = cep.replace(/\D/g, '');
     if (numericCep.length < 8) return;
     setIsCalculating(true);
     setShippingMethod('');
-    setTimeout(() => {
-      setIsCalculating(false);
-      const { metodo, custo, gratis, regiao } = calcShippingValues(numericCep);
-      setShippingMethod(gratis ? `${metodo} (GRÁTIS)` : metodo);
-      setShippingCost(custo);
-      setCity(regiao);
-    }, 1200);
+    
+    const { metodo, custo, gratis, regiao } = await fetchShippingRates(numericCep);
+    setShippingMethod(gratis ? `${metodo} (GRÁTIS)` : metodo);
+    setShippingCost(custo);
+    setCity(regiao);
+    setIsCalculating(false);
   };
 
   const addressValid = customerName.trim().length >= 3 && cep.replace(/\D/g, '').length === 8 && address.trim().length >= 5 && addressNumber.trim().length >= 1;
 
-  // Ao preencher um CEP válido, já define o frete automaticamente (sem bloquear o usuário)
-  const handleCepChange = (v: string) => {
+  const handleCepChange = async (v: string) => {
     const formatted = formatCep(v);
     setCep(formatted);
     const numericCep = formatted.replace(/\D/g, '');
     if (numericCep.length === 8 && !shippingMethod) {
-      const { metodo, custo, gratis, regiao } = calcShippingValues(numericCep);
+      setIsCalculating(true);
+      const { metodo, custo, gratis, regiao } = await fetchShippingRates(numericCep);
       setShippingMethod(gratis ? `${metodo} (GRÁTIS)` : metodo);
       setShippingCost(custo);
       setCity(regiao);
+      setIsCalculating(false);
     }
   };
 

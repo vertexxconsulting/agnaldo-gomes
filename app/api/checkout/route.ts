@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { ENVIO_DEFAULT } from '@/lib/envios';
+import { createAsaasCustomer, createAsaasCharge, AsaasChargePayload } from '@/lib/asaas';
 
-// Configuração do Mercado Pago
-const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || '';
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (isProd ? 'https://agnaldogomes.com.br' : 'http://localhost:3000');
-
-const client = accessToken ? new MercadoPagoConfig({ accessToken }) : null;
 
 export async function POST(request: Request) {
   try {
@@ -74,44 +70,46 @@ export async function POST(request: Request) {
     }
 
     // Se chegou aqui, pedido criado e estoque baixado
-    // Criar preference no Mercado Pago
-    if (client) {
-      const preference = new Preference(client);
-      try {
-        const response = await preference.create({
-          body: {
-            external_reference: orderId,
-            notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-            items: items.map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              currency_id: 'BRL',
-            })),
-            shipments: {
-              cost: shippingCost,
-              mode: 'not_specified',
-            },
-            back_urls: {
-              success: `${baseUrl}/loja?status=success&order_id=${orderId}`,
-              failure: `${baseUrl}/loja?status=failure&order_id=${orderId}`,
-              pending: `${baseUrl}/loja?status=pending&order_id=${orderId}`,
-            },
-            auto_return: 'approved',
-          }
-        });
+    // Criar cobrança no Asaas
+    try {
+      const asaasCustomerId = await createAsaasCustomer({
+        name: customerName || 'Cliente (Checkout)',
+        cpfCnpj: customerCpf || '',
+        email: customerEmail || '',
+        phone: customerPhone || '',
+      });
 
+      if (!asaasCustomerId) {
+        throw new Error('Falha ao criar cliente no Asaas.');
+      }
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 1); // 1 dia de vencimento
+
+      const chargePayload: AsaasChargePayload = {
+        customer: asaasCustomerId,
+        billingType: 'UNDEFINED', // Checkout Hosted Asaas permite o usuário escolher
+        value: total,
+        dueDate: dueDate.toISOString().split('T')[0],
+        description: `Pedido ${orderId} - Loja Agnaldo Gomes`,
+        externalReference: orderId,
+      };
+
+      const asaasCharge = await createAsaasCharge(chargePayload);
+
+      if (asaasCharge && asaasCharge.invoiceUrl) {
         return NextResponse.json({
           success: true,
           orderId,
           shippingCost,
           total,
-          paymentUrl: response.init_point,
+          paymentUrl: asaasCharge.invoiceUrl,
         });
-      } catch (mpError) {
-        console.warn('Mercado Pago SDK falhou. Usando modo simulado.', mpError);
+      } else {
+        throw new Error('Falha ao gerar o link de pagamento do Asaas.');
       }
+    } catch (asaasError) {
+      console.warn('Erro na integração Asaas. Usando modo simulado.', asaasError);
     }
 
     // Fallback simulado
@@ -122,7 +120,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const simulatedPaymentLink = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=SIMULADO-${crypto.randomUUID()}`;
+    const simulatedPaymentLink = `/loja?status=success&order_id=${orderId}`;
     return NextResponse.json({
       success: true,
       orderId,
