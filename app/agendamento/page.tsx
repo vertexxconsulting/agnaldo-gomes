@@ -199,22 +199,6 @@ export default function AgendamentoPage() {
     }
   };
 
-  const buscarCep = async (cep: string) => {
-    const cepLimpo = cep.replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return;
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await res.json();
-      if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
-          endereco: `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`
-        }));
-      }
-    } catch (e) {
-      console.error('Erro ao buscar CEP', e);
-    }
-  };
 
   const nextStep = () => {
     const idx = steps.indexOf(step as any);

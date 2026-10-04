@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { ENVIO_DEFAULT } from '@/lib/envios';
-import { createAsaasCustomer, createAsaasCharge, AsaasChargePayload } from '@/lib/asaas';
+import { createOrUpdateAsaasCustomer, createAsaasPayment, AsaasPayment } from '@/lib/asaas';
 
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (isProd ? 'https://agnaldogomes.com.br' : 'http://localhost:3000');
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     // Se chegou aqui, pedido criado e estoque baixado
     // Criar cobrança no Asaas
     try {
-      const asaasCustomerId = await createAsaasCustomer({
+      const asaasCustomerId = await createOrUpdateAsaasCustomer({
         name: customerName || 'Cliente (Checkout)',
         cpfCnpj: customerCpf || '',
         email: customerEmail || '',
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 1); // 1 dia de vencimento
 
-      const chargePayload: AsaasChargePayload = {
+      const chargePayload: AsaasPayment = {
         customer: asaasCustomerId,
         billingType: 'UNDEFINED', // Checkout Hosted Asaas permite o usuário escolher
         value: total,
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         externalReference: orderId,
       };
 
-      const asaasCharge = await createAsaasCharge(chargePayload);
+      const asaasCharge = await createAsaasPayment(chargePayload);
 
       if (asaasCharge && asaasCharge.invoiceUrl) {
         return NextResponse.json({
