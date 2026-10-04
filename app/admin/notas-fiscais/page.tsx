@@ -142,6 +142,7 @@ export default function NotasFiscaisPage() {
               type="text" 
               value={cpfBusca} 
               onChange={handleCpfChange} 
+              onKeyDown={(e) => { if (e.key === 'Enter') buscarCliente(); }}
               placeholder="000.000.000-00" 
               className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold"
             />
