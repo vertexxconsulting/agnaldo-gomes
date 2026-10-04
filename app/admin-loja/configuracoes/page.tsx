@@ -6,7 +6,7 @@ import { Save, ShieldCheck, Truck, CreditCard, Gift } from 'lucide-react';
 const CONFIG_STORAGE_KEY = 'loja-config';
 
 interface LojaConfig {
-  mpAccessToken: string;
+  asaasApiKey: string;
   melhorEnvioToken: string;
   cepOrigem: string;
   prazoManuseio: string;
@@ -17,7 +17,7 @@ interface LojaConfig {
 }
 
 const defaultConfig: LojaConfig = {
-  mpAccessToken: '',
+  asaasApiKey: '',
   melhorEnvioToken: '',
   cepOrigem: '',
   prazoManuseio: '1',
@@ -30,7 +30,7 @@ const defaultConfig: LojaConfig = {
 export default function AdminLojaConfiguracoes() {
   const [config, setConfig] = useState<LojaConfig>(defaultConfig);
   const [saving, setSaving] = useState(false);
-  const [envStatus, setEnvStatus] = useState({ mpConfigured: false, meConfigured: false });
+  const [envStatus, setEnvStatus] = useState({ asaasConfigured: false, meConfigured: false });
 
   useEffect(() => {
     // Carrega dados do localStorage para as outras configs (frete, etc)
@@ -54,7 +54,7 @@ export default function AdminLojaConfiguracoes() {
   const handleSave = () => {
     setSaving(true);
     // Removemos os tokens do localStorage, já que estão na Vercel
-    const configToSave = { ...config, mpAccessToken: '', melhorEnvioToken: '' };
+    const configToSave = { ...config, asaasApiKey: '', melhorEnvioToken: '' };
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configToSave));
     setTimeout(() => {
       setSaving(false);
@@ -72,34 +72,34 @@ export default function AdminLojaConfiguracoes() {
 
       <div className="space-y-6">
         
-        {/* Integração Mercado Pago */}
+        {/* Integração Asaas */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
               <CreditCard size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Mercado Pago (Checkout)</h2>
+              <h2 className="text-lg font-bold text-slate-900">Asaas (Checkout)</h2>
               <p className="text-sm text-slate-500">Gateway para processar os pagamentos dos produtos físicos.</p>
             </div>
           </div>
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Access Token (Produção)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">API Key (Produção)</label>
               <div className="relative">
                 <input 
                   type="password" 
                   disabled
-                  placeholder={envStatus.mpConfigured ? "Token configurado na Vercel (••••••••)" : "Token não configurado"} 
-                  className={`w-full border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none ${envStatus.mpConfigured ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-500'}`} 
+                  placeholder={envStatus.asaasConfigured ? "Token configurado na Vercel (••••••••)" : "Token não configurado"} 
+                  className={`w-full border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none ${envStatus.asaasConfigured ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-500'}`} 
                   value=""
                   readOnly
                 />
-                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.mpConfigured ? 'text-green-500' : 'text-slate-400'}`} size={18} />
+                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.asaasConfigured ? 'text-green-500' : 'text-slate-400'}`} size={18} />
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 As variáveis de ambiente estão configuradas para serem lidas diretamente da <strong>Vercel</strong> por motivos de segurança. 
-                Configure a variável <code>MERCADO_PAGO_ACCESS_TOKEN</code> no painel da Vercel.
+                Configure a variável <code className="bg-slate-100 px-1 py-0.5 rounded">ASAAS_API_KEY</code> no painel da Vercel.
               </p>
             </div>
           </div>
