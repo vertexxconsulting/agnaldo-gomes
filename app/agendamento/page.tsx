@@ -64,6 +64,9 @@ export default function AgendamentoPage() {
     nome: '',
     telefone: '',
     email: '',
+    cpf: '',
+    cep: '',
+    endereco: '',
   });
 
   // Carregar dados
@@ -169,11 +172,47 @@ export default function AgendamentoPage() {
         ...prev,
         nome: clienteExistente.nome,
         email: clienteExistente.email || '',
+        cpf: clienteExistente.cpf || '',
+        endereco: clienteExistente.endereco || '',
         clienteId: clienteExistente.id
       }));
       nextStep();
     } else {
       setTelefoneVerificado(true);
+    }
+  };
+
+  const buscarCep = async (cep: string) => {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          endereco: `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`
+        }));
+      }
+    } catch (e) {
+      console.error('Erro ao buscar CEP', e);
+    }
+  };
+
+  const buscarCep = async (cep: string) => {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          endereco: `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`
+        }));
+      }
+    } catch (e) {
+      console.error('Erro ao buscar CEP', e);
     }
   };
 
@@ -531,6 +570,42 @@ export default function AgendamentoPage() {
                       value={formData.email}
                       onChange={e => handleInputChange('email', e.target.value)}
                       placeholder="seu@email.com"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">CPF (opcional para NF)</label>
+                    <input
+                      type="text"
+                      value={formData.cpf}
+                      onChange={e => handleInputChange('cpf', e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">CEP (Busca Automática)</label>
+                    <input
+                      type="text"
+                      value={formData.cep}
+                      onChange={e => {
+                        const val = e.target.value;
+                        handleInputChange('cep', val);
+                        if (val.replace(/\D/g, '').length === 8) {
+                          buscarCep(val);
+                        }
+                      }}
+                      placeholder="00000-000"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">Endereço Completo (opcional)</label>
+                    <input
+                      type="text"
+                      value={formData.endereco}
+                      onChange={e => handleInputChange('endereco', e.target.value)}
+                      placeholder="Rua, Número, Bairro, CEP, Cidade"
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
                     />
                   </div>

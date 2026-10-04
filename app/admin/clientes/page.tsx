@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -20,6 +20,22 @@ export default function ClienteModule() {
   // Estados para o form
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Cliente | null>(null);
+  
+  const enderecoRef = useRef<HTMLInputElement>(null);
+
+  const buscarCep = async (cep: string) => {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (!data.erro && enderecoRef.current) {
+        enderecoRef.current.value = `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`;
+      }
+    } catch (e) {
+      console.error('Erro ao buscar CEP', e);
+    }
+  };
 
   // Carregar dados do Supabase (com fallback para mock)
   useEffect(() => {
@@ -186,9 +202,22 @@ export default function ClienteModule() {
                 <label className="block text-xs text-foreground/60 mb-1">Data de Nascimento <span className="text-foreground/30">(opcional)</span></label>
                 <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold [color-scheme:light] dark:[color-scheme:dark]" />
               </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">CEP (Busca Automática)</label>
+                <input 
+                  type="text" 
+                  placeholder="00000-000" 
+                  onChange={(e) => {
+                    if (e.target.value.replace(/\D/g, '').length === 8) {
+                      buscarCep(e.target.value);
+                    }
+                  }}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
+                />
+              </div>
               <div className="md:col-span-2">
                 <label className="block text-xs text-foreground/60 mb-1">Endereço Completo <span className="text-foreground/30">(opcional)</span></label>
-                <input name="endereco" type="text" placeholder="Rua, Número, Bairro, CEP, Cidade" defaultValue={editando?.endereco ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <input ref={enderecoRef} name="endereco" type="text" placeholder="Rua, Número, Bairro, CEP, Cidade" defaultValue={editando?.endereco ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
             </div>
             <div>
