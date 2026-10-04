@@ -5,7 +5,7 @@ import { getVimeoSettings } from '@/lib/vimeo-settings';
 export async function GET() {
   const results: Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> = {
     evolution: { status: 'idle', msg: 'Verificando...' },
-    mercadopago: { status: 'idle', msg: 'Verificando...' },
+    asaas: { status: 'idle', msg: 'Verificando...' },
     vimeo: { status: 'idle', msg: 'Verificando...' },
     bolten: { status: 'idle', msg: 'Verificando...' },
     stripe: { status: 'idle', msg: 'Verificando...' },
@@ -22,11 +22,17 @@ export async function GET() {
       ? { status: 'ok', msg: 'Configurado' } 
       : { status: 'error', msg: 'Não configurado' };
 
-    // 2. Check Mercado Pago
-    const mpToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
-    results.mercadopago = mpToken 
-      ? { status: 'ok', msg: 'Token detectado' } 
-      : { status: 'error', msg: 'Token ausente' };
+    // 2. Check Asaas
+    const asaasKey = process.env.ASAAS_API_KEY;
+    if (asaasKey) {
+      if (asaasKey.includes('sandbox')) {
+        results.asaas = { status: 'warning', msg: 'Modo Sandbox (Teste)' };
+      } else {
+        results.asaas = { status: 'ok', msg: 'Chave detectada' };
+      }
+    } else {
+      results.asaas = { status: 'error', msg: 'Chave ausente' };
+    }
 
     // 3. Check Vimeo
     const vimeo = await getVimeoSettings();
