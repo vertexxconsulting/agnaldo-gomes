@@ -35,6 +35,11 @@ function AgendaContent() {
   const [showForm, setShowForm] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
   
+  // Checkout / Recebimento
+  const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
+  const [checkoutExtras, setCheckoutExtras] = useState<Array<{ id: string; servicoId: string; preco: number }>>([]);
+  const [extraServiceSelect, setExtraServiceSelect] = useState<string>('');
+  
   const [formData, setFormData] = useState({
     cliente_id: '',
     profissional_id: '',
@@ -571,7 +576,7 @@ function AgendaContent() {
                 </Button>
               )}
               {selectedAppt.status === 'em_atendimento' && (
-                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'concluido'); setSelectedAppt(null); }}>
+                <Button variant="primary" onClick={() => { setCheckoutAppt(selectedAppt); setSelectedAppt(null); }}>
                   <CheckCircle2 size={16} className="mr-2"/> Concluir
                 </Button>
               )}
@@ -586,6 +591,148 @@ function AgendaContent() {
                   </Button>
                 </div>
               )}
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* Modal de Finalização (Checkout / Recebimento) */}
+      {checkoutAppt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold font-serif text-foreground">Finalizar Atendimento</h3>
+              <button onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); }} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Resumo do Principal */}
+              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
+                <p className="text-sm text-foreground/60">Serviço Agendado:</p>
+                <div className="flex justify-between items-center mt-1">
+                  <p className="font-bold">{getServicoNome(checkoutAppt.servico_id, servicos)}</p>
+                  <p className="font-bold text-gold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getServicoPreco(checkoutAppt.servico_id, servicos))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Serviços Extras */}
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-3">Serviços Adicionais Realizados <span className="text-foreground/30 font-normal">(opcional)</span></h4>
+                <div className="flex gap-2 mb-4">
+                  <select
+                    value={extraServiceSelect}
+                    onChange={(e) => setExtraServiceSelect(e.target.value)}
+                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                  >
+                    <option value="">Selecione um serviço extra...</option>
+                    {servicos.filter(s => s.ativo).map(s => (
+                      <option key={s.id} value={s.id}>{s.nome} - R$ {s.preco.toFixed(2)}</option>
+                    ))}
+                  </select>
+                  <Button 
+                    variant="outline" 
+                    type="button"
+                    onClick={() => {
+                      if (!extraServiceSelect) return;
+                      const srv = servicos.find(s => s.id === extraServiceSelect);
+                      if (srv) {
+                        setCheckoutExtras([...checkoutExtras, { id: Date.now().toString(), servicoId: srv.id, preco: srv.preco }]);
+                        setExtraServiceSelect('');
+                      }
+                    }}
+                  >
+                    Adicionar
+                  </Button>
+                </div>
+
+                {checkoutExtras.length > 0 && (
+                  <div className="space-y-2">
+                    {checkoutExtras.map((extra, idx) => (
+                      <div key={extra.id} className="flex justify-between items-center p-3 bg-[var(--background)]/50 rounded-lg text-sm border border-[var(--border-subtle)]">
+                        <div className="flex-1 truncate pr-4">
+                          {getServicoNome(extra.servicoId, servicos)}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/50">R$</span>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              className="w-24 bg-[var(--background)] border border-[var(--border-subtle)] rounded-md pl-8 pr-2 py-1 text-right focus:outline-none focus:border-gold" 
+                              value={extra.preco}
+                              onChange={(e) => {
+                                const newExtras = [...checkoutExtras];
+                                newExtras[idx].preco = parseFloat(e.target.value) || 0;
+                                setCheckoutExtras(newExtras);
+                              }}
+                            />
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setCheckoutExtras(checkoutExtras.filter(e => e.id !== extra.id))}
+                            className="text-red-500 hover:text-red-600 p-1 bg-red-500/10 rounded-md"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Totalizador */}
+              <div className="border-t border-[var(--border-subtle)] pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div>
+                  <p className="text-sm text-foreground/60 mb-1">Total a Receber</p>
+                  <p className="text-2xl font-bold font-serif text-gold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      getServicoPreco(checkoutAppt.servico_id, servicos) + checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0)
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); }}>Cancelar</Button>
+                  <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
+                    // Finalizar o original
+                    await mudarStatus(checkoutAppt.id, 'concluido');
+                    
+                    // Adicionar extras gerando agendamentos concluídos
+                    if (checkoutExtras.length > 0) {
+                      for (const ext of checkoutExtras) {
+                        try {
+                          await fetch('/api/agendamentos/admin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              cliente_id: checkoutAppt.cliente_id,
+                              profissional_id: checkoutAppt.profissional_id,
+                              servico_id: ext.servicoId,
+                              data: checkoutAppt.data,
+                              hora_inicio: checkoutAppt.hora_inicio,
+                              status: 'concluido'
+                            })
+                          });
+                        } catch (e) {
+                          console.error("Erro ao registrar serviço extra", e);
+                        }
+                      }
+                      fetchAgendamentos().then(setAgendamentos);
+                    }
+                    
+                    setCheckoutAppt(null);
+                    setCheckoutExtras([]);
+                    setExtraServiceSelect('');
+                    alert('Atendimento concluído e valores registrados com sucesso!');
+                  }}>
+                    Confirmar Recebimento
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardGlass>
         </div>
