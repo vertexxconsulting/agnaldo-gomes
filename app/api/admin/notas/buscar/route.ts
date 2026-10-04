@@ -14,11 +14,14 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = auth.supabase!;
     
-    // 1. Buscar Cliente pelo CPF
+    // 1. Buscar Cliente pelo CPF (tenta com e sem formatação)
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+
     const { data: cliente, error: cliError } = await supabase
       .from('salon_customers')
       .select('id, name, cpf, email, address, phone')
-      .eq('cpf', cpf)
+      .or(`cpf.eq.${cpfLimpo},cpf.eq.${cpfFormatado}`)
       .maybeSingle();
 
     if (cliError || !cliente) {

@@ -81,6 +81,8 @@ function mapCliente(r: Row): Cliente {
     nome: r.name ?? '',
     telefone: r.phone ?? '',
     email: r.email ?? null,
+    cpf: r.cpf ?? null,
+    endereco: r.address ?? null,
     nascimento: r.birth_date ?? r.data_nascimento ?? null,
     observacoes: r.notes ?? null,
     criado_em: r.created_at ?? '',
