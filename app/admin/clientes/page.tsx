@@ -73,11 +73,13 @@ export default function ClienteModule() {
     };
   };
 
-  const clientesFiltrados = clientes.filter((c) =>
-    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    c.telefone.includes(busca) ||
-    (c.email ?? '').toLowerCase().includes(busca.toLowerCase())
-  );
+  const clientesFiltrados = [...clientes]
+    .filter((c) =>
+      c.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      c.telefone.includes(busca) ||
+      (c.email ?? '').toLowerCase().includes(busca.toLowerCase())
+    )
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
