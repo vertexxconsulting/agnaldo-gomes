@@ -193,7 +193,7 @@ export default function TeamManagementPage() {
                 <td className="px-6 py-4 text-right">
                   <select 
                     value={profile.role}
-                    onChange={(e) => handleChangeRole(profile.id, e.target.value as Role, profile.permissions)}
+                    onChange={(e) => handleChangeRole(profile.id, e.target.value as Role)}
                     disabled={updatingId === profile.id}
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >

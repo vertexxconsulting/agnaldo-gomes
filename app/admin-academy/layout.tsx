@@ -29,7 +29,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (user) {
         setUserRole(getUserRole(user));
         setUserPermissions(user.user_metadata?.permissions);

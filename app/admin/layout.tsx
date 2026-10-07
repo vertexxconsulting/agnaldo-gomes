@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: any) => {
       if (user) {
         setUserRole(getUserRole(user));
         setUserPermissions(user.user_metadata?.permissions);

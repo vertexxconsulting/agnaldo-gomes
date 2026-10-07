@@ -29,6 +29,7 @@ const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: typeof Ban
   PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400' },
   DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400' },
   CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-400' },
+  BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400' },
 };
 
 function StatusBadge({ status }: { status: string }) {
