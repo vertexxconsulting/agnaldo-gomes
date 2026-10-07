@@ -16,6 +16,8 @@ export default function ClienteModule() {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const porPagina = 50;
   
   // Estados para o form
   const [showForm, setShowForm] = useState(false);
@@ -80,6 +82,9 @@ export default function ClienteModule() {
       (c.email ?? '').toLowerCase().includes(busca.toLowerCase())
     )
     .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const totalPaginas = Math.ceil(clientesFiltrados.length / porPagina);
+  const clientesPaginados = clientesFiltrados.slice((pagina - 1) * porPagina, pagina * porPagina);
 
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -164,7 +169,7 @@ export default function ClienteModule() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
           <input
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
             className="w-full pl-10 pr-3 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
             placeholder="Buscar por nome, telefone ou e-mail..."
           />
@@ -241,7 +246,7 @@ export default function ClienteModule() {
             {busca ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}
           </CardGlass>
         ) : (
-          clientesFiltrados.map((c) => {
+          clientesPaginados.map((c) => {
             const stats = statsCliente(c.id);
             const isExpanded = expandido === c.id;
 
@@ -368,6 +373,31 @@ export default function ClienteModule() {
           })
         )}
       </div>
+
+      {/* Paginação */}
+      {totalPaginas > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pagina === 1}
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-foreground/60">
+            Página {pagina} de {totalPaginas}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pagina === totalPaginas}
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
