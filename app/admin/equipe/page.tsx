@@ -7,13 +7,23 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
 
+import { 
+  ADMIN_MODULES, STUDIO_MODULES, LOJA_MODULES, ACADEMY_MODULES, 
+  UserPermissions, PermissionLevel, DEFAULT_PERMISSIONS 
+} from '@/lib/permissions';
+
 export default function TeamManagementPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'studio_admin' as Role });
+  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'studio_admin' as Role, permissions: { ...DEFAULT_PERMISSIONS } });
   const [creating, setCreating] = useState(false);
+  
+  // Modal de edição de permissões
+  const [editingProfile, setEditingProfile] = useState<any>(null);
+  const [editPermissions, setEditPermissions] = useState<UserPermissions>({});
+  
   const [busca, setBusca] = useState('');
 
   async function safeFetch(url: string, options?: RequestInit) {
@@ -53,10 +63,29 @@ export default function TeamManagementPage() {
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, newRole }),
+        body: JSON.stringify({ userId, newRole, permissions: newPermissions }),
       });
       await loadProfiles();
       alert('Permissão atualizada com sucesso!');
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleSavePermissions() {
+    if (!editingProfile) return;
+    setUpdatingId(editingProfile.id);
+    try {
+      await safeFetch('/api/admin/equipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: editingProfile.id, newRole: editingProfile.role, permissions: editPermissions }),
+      });
+      await loadProfiles();
+      alert('Permissões atualizadas com sucesso!');
+      setEditingProfile(null);
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -79,7 +108,7 @@ export default function TeamManagementPage() {
       });
       alert('Usuário criado com sucesso!');
       setIsModalOpen(false);
-      setNewUser({ email: '', full_name: '', password: '', role: 'studio_admin' });
+      setNewUser({ email: '', full_name: '', password: '', role: 'studio_admin', permissions: { ...DEFAULT_PERMISSIONS } });
       await loadProfiles();
     } catch (e: any) {
       alert(e.message);
@@ -127,6 +156,7 @@ export default function TeamManagementPage() {
               <th className="px-6 py-4">Usuário</th>
               <th className="px-6 py-4">E-mail</th>
               <th className="px-6 py-4">Papel Atual</th>
+              <th className="px-6 py-4 text-center">Permissões</th>
               <th className="px-6 py-4 text-right">Alterar Acesso</th>
             </tr>
           </thead>
@@ -147,10 +177,23 @@ export default function TeamManagementPage() {
                     {ROLE_LABELS[profile.role as Role] || profile.role}
                   </span>
                 </td>
+                <td className="px-6 py-4 text-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setEditingProfile(profile);
+                      setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
+                    }}
+                    disabled={updatingId === profile.id || profile.role === ROLES.ADMIN}
+                  >
+                    Editar
+                  </Button>
+                </td>
                 <td className="px-6 py-4 text-right">
                   <select 
                     value={profile.role}
-                    onChange={(e) => handleChangeRole(profile.id, e.target.value as Role)}
+                    onChange={(e) => handleChangeRole(profile.id, e.target.value as Role, profile.permissions)}
                     disabled={updatingId === profile.id}
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >
@@ -227,12 +270,175 @@ export default function TeamManagementPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Tabela de Permissões para Novo Membro */}
+              <div className="flex flex-col gap-1 mt-4">
+                <label className="block text-xs font-bold text-foreground/60 uppercase mb-2">Permissões de Acesso</label>
+                <div className="max-h-64 overflow-y-auto bg-foreground/5 rounded-xl border border-[var(--border-subtle)] p-2 space-y-4">
+                  
+                  {/* STUDIO */}
+                  <div>
+                    <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2">Studio (Salão)</h4>
+                    <div className="space-y-1">
+                      {STUDIO_MODULES.map(mod => (
+                        <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                          <span className="font-medium text-foreground/80">{mod.label}</span>
+                          <select 
+                            value={newUser.permissions[mod.id] || 'none'}
+                            onChange={(e) => setNewUser({...newUser, permissions: {...newUser.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                            className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                          >
+                            <option value="none">Ocultar</option>
+                            <option value="read">Leitura</option>
+                            <option value="write">Edição</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* LOJA */}
+                  <div>
+                    <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2 mt-4">Loja Física / E-commerce</h4>
+                    <div className="space-y-1">
+                      {LOJA_MODULES.map(mod => (
+                        <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                          <span className="font-medium text-foreground/80">{mod.label}</span>
+                          <select 
+                            value={newUser.permissions[mod.id] || 'none'}
+                            onChange={(e) => setNewUser({...newUser, permissions: {...newUser.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                            className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                          >
+                            <option value="none">Ocultar</option>
+                            <option value="read">Leitura</option>
+                            <option value="write">Edição</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ACADEMY */}
+                  <div>
+                    <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2 mt-4">Academy (Cursos)</h4>
+                    <div className="space-y-1">
+                      {ACADEMY_MODULES.map(mod => (
+                        <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                          <span className="font-medium text-foreground/80">{mod.label}</span>
+                          <select 
+                            value={newUser.permissions[mod.id] || 'none'}
+                            onChange={(e) => setNewUser({...newUser, permissions: {...newUser.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                            className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                          >
+                            <option value="none">Ocultar</option>
+                            <option value="read">Leitura</option>
+                            <option value="write">Edição</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
               <button 
                 onClick={handleCreateUser}
                 disabled={creating}
                 className="w-full bg-gold text-black py-3 rounded-xl font-bold hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
               >
                 {creating ? 'Criando...' : <><UserPlus size={20} /> Criar Acesso</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Permissões */}
+      {editingProfile && (
+        <div className="fixed inset-0 z-50 bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] rounded-3xl w-full max-w-md border border-[var(--border-subtle)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-foreground/5 shrink-0">
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Permissões de Acesso</h3>
+                <p className="text-xs text-foreground/60 mt-1">{editingProfile.full_name}</p>
+              </div>
+              <button onClick={() => setEditingProfile(null)} className="text-foreground/40 hover:text-foreground transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* STUDIO */}
+              <div>
+                <h4 className="text-xs font-bold text-gold uppercase mb-2">Studio (Salão)</h4>
+                <div className="space-y-1">
+                  {STUDIO_MODULES.map(mod => (
+                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                      <span className="font-medium text-foreground/80">{mod.label}</span>
+                      <select 
+                        value={editPermissions[mod.id] || 'none'}
+                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
+                        className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
+                      >
+                        <option value="none">Ocultar</option>
+                        <option value="read">Leitura</option>
+                        <option value="write">Edição</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* LOJA */}
+              <div>
+                <h4 className="text-xs font-bold text-gold uppercase mb-2">Loja Física / E-commerce</h4>
+                <div className="space-y-1">
+                  {LOJA_MODULES.map(mod => (
+                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                      <span className="font-medium text-foreground/80">{mod.label}</span>
+                      <select 
+                        value={editPermissions[mod.id] || 'none'}
+                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
+                        className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
+                      >
+                        <option value="none">Ocultar</option>
+                        <option value="read">Leitura</option>
+                        <option value="write">Edição</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ACADEMY */}
+              <div>
+                <h4 className="text-xs font-bold text-gold uppercase mb-2">Academy (Cursos)</h4>
+                <div className="space-y-1">
+                  {ACADEMY_MODULES.map(mod => (
+                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                      <span className="font-medium text-foreground/80">{mod.label}</span>
+                      <select 
+                        value={editPermissions[mod.id] || 'none'}
+                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
+                        className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
+                      >
+                        <option value="none">Ocultar</option>
+                        <option value="read">Leitura</option>
+                        <option value="write">Edição</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+            <div className="p-6 border-t border-[var(--border-subtle)] bg-foreground/5 shrink-0">
+              <button 
+                onClick={handleSavePermissions}
+                disabled={updatingId === editingProfile.id}
+                className="w-full bg-gold text-black py-3 rounded-xl font-bold hover:bg-white transition-all disabled:opacity-50"
+              >
+                {updatingId === editingProfile.id ? 'Salvando...' : 'Salvar Permissões'}
               </button>
             </div>
           </div>

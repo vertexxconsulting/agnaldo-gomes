@@ -120,7 +120,7 @@ export async function POST(req: Request) {
 
     // Filtra apenas os payloads que NÃO conflitam com horários existentes
     const validPayloads = payloads.filter(p => {
-      const conflictsForDate = allConflicts?.filter(c => c.date === p.date) || [];
+      const conflictsForDate = allConflicts?.filter((c: any) => c.date === p.date) || [];
       const hasOverlap = conflictsForDate.some((app: any) => {
         const startA = p.start_time;
         const endA = p.end_time;

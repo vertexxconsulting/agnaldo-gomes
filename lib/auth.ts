@@ -5,6 +5,7 @@ export const ROLES = {
   LOJA_ADMIN: 'loja_admin',
   ALUNO: 'STUDENT',
   STUDIO_SECRETARIA: 'studio_secretaria',
+  STUDIO_PROFISSIONAL: 'studio_profissional',
   CUSTOMER: 'CUSTOMER',
 } as const;
 
@@ -17,6 +18,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   loja_admin: 'Gestor da Loja',
   STUDENT: 'Aluno',
   studio_secretaria: 'Secretária do Studio',
+  studio_profissional: 'Profissional',
   CUSTOMER: 'Cliente/Comprador',
 };
 
@@ -27,6 +29,7 @@ export const AREA_LABELS: Record<Role, string> = {
   loja_admin: 'Loja (e-commerce)',
   STUDENT: 'Aluno (área de cursos)',
   studio_secretaria: 'Secretaria (Studio)',
+  studio_profissional: 'Profissional (Studio)',
   CUSTOMER: 'Cliente/Comprador (Loja)',
 };
 
@@ -84,7 +87,7 @@ export function getHubModules(
   user: { user_metadata?: Record<string, unknown> } | null | undefined
 ): HubModule[] {
   const role = getUserRole(user);
-  if (role === ROLES.STUDIO_SECRETARIA) return ['studio'];
+  if (role === ROLES.STUDIO_SECRETARIA || role === ROLES.STUDIO_PROFISSIONAL) return ['studio'];
   if (role === ROLES.ADMIN || role === ROLES.ACADEMY_ADMIN || role === ROLES.LOJA_ADMIN || role === ROLES.STUDIO_ADMIN) {
     return ['studio', 'academy', 'loja'];
   }

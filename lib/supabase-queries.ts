@@ -674,6 +674,9 @@ export async function criarServico(payload: {
   visivel_app?: boolean;
   points_reward?: number;
   points_cost?: number;
+  preco_variavel?: boolean;
+  preco_maximo?: number | null;
+  default_commission_pct?: number;
 }): Promise<{ id?: string; error?: string }> {
   try {
     const res = await fetch('/api/servicos', {
@@ -699,6 +702,9 @@ export async function criarServico(payload: {
   };
   if (payload.points_reward !== undefined) insertPayload.points_reward = payload.points_reward;
   if (payload.points_cost !== undefined) insertPayload.points_cost = payload.points_cost;
+  if (payload.preco_variavel !== undefined) insertPayload.preco_variavel = payload.preco_variavel;
+  if (payload.preco_maximo !== undefined) insertPayload.preco_maximo = payload.preco_maximo;
+  if (payload.default_commission_pct !== undefined) insertPayload.default_commission_pct = payload.default_commission_pct;
 
   const { data, error } = await supabase
     .from(TBL.servicos)
@@ -722,6 +728,9 @@ export async function atualizarServico(id: string, payload: Partial<{
   visivel_app: boolean;
   points_reward: number;
   points_cost: number;
+  preco_variavel: boolean;
+  preco_maximo: number | null;
+  default_commission_pct: number;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
@@ -747,6 +756,9 @@ export async function atualizarServico(id: string, payload: Partial<{
   if (payload.visivel_app !== undefined) patch.visible_in_app = payload.visivel_app;
   if (payload.points_reward !== undefined) patch.points_reward = payload.points_reward;
   if (payload.points_cost !== undefined) patch.points_cost = payload.points_cost;
+  if (payload.preco_variavel !== undefined) patch.preco_variavel = payload.preco_variavel;
+  if (payload.preco_maximo !== undefined) patch.preco_maximo = payload.preco_maximo;
+  if (payload.default_commission_pct !== undefined) patch.default_commission_pct = payload.default_commission_pct;
 
   const { error } = await supabase
     .from(TBL.servicos)

@@ -22,7 +22,7 @@ import type {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 
-type Aba = 'resumo' | 'parcelas' | 'historico' | 'regras';
+type Aba = 'resumo' | 'parcelas' | 'historico' | 'regras' | 'taxas';
 
 const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: typeof Banknote; cor: string }> = {
   DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400' },
@@ -209,6 +209,7 @@ export default function ComissoesPage() {
               { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
               { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
               { id: 'regras', label: 'Regras de Comissão', icon: DollarSign, badge: regras.length },
+              { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote },
             ].map(tabItem => {
               const active = aba === tabItem.id;
               const Icon = tabItem.icon;
@@ -587,24 +588,42 @@ export default function ComissoesPage() {
 
             {/* Regras específicas por serviço */}
             <div>
-              <h4 className="text-xs font-semibold text-foreground/50 mb-3 uppercase tracking-wider">
-                Regras Específicas por Serviço (Prioridade sobre a regra geral)
-              </h4>
-              {regras.filter(r => !!r.service_id).length > 0 ? (
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
+                <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
+                  Regras Específicas por Serviço (Prioridade sobre a regra geral)
+                </h4>
+                
+                {/* Filtro contextual */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-xs text-foreground/50">
+                    <Filter size={14} /> Filtrar Profissional:
+                  </div>
+                  <select
+                    value={profFiltro}
+                    onChange={e => setProfFiltro(e.target.value)}
+                    className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="todos">Todos os profissionais</option>
+                    {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {regras.filter(r => !!r.service_id && (profFiltro === 'todos' || r.professional_id === profFiltro)).length > 0 ? (
                 <CardGlass className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-foreground/40 text-xs uppercase tracking-wider border-b border-[var(--border-subtle)]">
-                        <th className="py-3 px-4">Profissional</th>
+                        {profFiltro === 'todos' && <th className="py-3 px-4">Profissional</th>}
                         <th className="py-3 px-4">Serviço Específico</th>
                         <th className="py-3 px-4">Comissão Aplicada</th>
                         <th className="py-3 px-4 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {regras.filter(r => !!r.service_id).map(r => (
+                      {regras.filter(r => !!r.service_id && (profFiltro === 'todos' || r.professional_id === profFiltro)).map(r => (
                         <tr key={r.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5">
-                          <td className="py-3 px-4 font-semibold">{getProfNome(r.professional_id)}</td>
+                          {profFiltro === 'todos' && <td className="py-3 px-4 font-semibold">{getProfNome(r.professional_id)}</td>}
                           <td className="py-3 px-4 text-foreground/80">{getSvcNome(r.service_id)}</td>
                           <td className="py-3 px-4 font-bold text-gold text-base">{r.commission_pct}%</td>
                           <td className="py-3 px-4 text-right">
@@ -636,6 +655,30 @@ export default function ComissoesPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+        {/* ══════════════════════════════════════════════════════════════
+            ABA 5: TAXAS E MAQUININHAS
+           ══════════════════════════════════════════════════════════════ */}
+        {!loading && aba === 'taxas' && (
+          <div>
+            <div className="flex flex-col justify-between items-start mb-6">
+              <h3 className="text-lg font-bold">Taxas de Pagamento e Maquininhas</h3>
+              <p className="text-xs text-foreground/50">
+                Configure as taxas cobradas pelos meios de pagamento (cartão de crédito, débito, pix).
+                Isso permite descontar a taxa da operadora ANTES de calcular a comissão do profissional,
+                garantindo que o salão não pague a comissão sobre um valor que ficou com a maquininha.
+              </p>
+            </div>
+
+            <CardGlass className="p-12 text-center text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
+              <Banknote size={40} className="mx-auto mb-3 opacity-30 text-gold" />
+              <h4 className="text-lg font-semibold text-foreground/70 mb-2">Configuração de Taxas</h4>
+              <p className="max-w-md mx-auto text-sm">
+                Estamos implementando o painel para você cadastrar cada bandeira de cartão e suas taxas. 
+                Isso permitirá que o sistema calcule automaticamente o desconto da maquininha no momento do fechamento.
+              </p>
+            </CardGlass>
           </div>
         )}
       </div>

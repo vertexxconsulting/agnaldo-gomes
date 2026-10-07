@@ -15,6 +15,11 @@ import {
   criarProfissional, atualizarProfissional, excluirProfissional, vincularProfissionalServicos
 } from '@/lib/supabase-queries';
 import type { Profissional, JornadaSemanal, Servico, ProfissionalServico } from '@/lib/gestao-types';
+import { ROLES, Role, ROLE_LABELS } from '@/lib/auth';
+import { 
+  STUDIO_MODULES, LOJA_MODULES, ACADEMY_MODULES, 
+  UserPermissions, PermissionLevel, DEFAULT_PERMISSIONS 
+} from '@/lib/permissions';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -32,6 +37,16 @@ export default function ProfissionaisPage() {
   const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
   const [diasAtivos, setDiasAtivos] = useState<number[]>([]);
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
+  const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
+
+  // Estados para Acesso ao Sistema
+  const [criarAcesso, setCriarAcesso] = useState(false);
+  const [acessoData, setAcessoData] = useState({
+    email: '',
+    password: '',
+    role: 'studio_profissional' as Role,
+    permissions: { ...DEFAULT_PERMISSIONS, agenda: 'write', comissoes: 'read', servicos: 'read', relatorios: 'none' } as UserPermissions
+  });
 
   // Carregar dados do Supabase (com fallback para mock)
   useEffect(() => {
@@ -128,12 +143,36 @@ export default function ProfissionaisPage() {
     const profissionalData = {
       nome: form.get('nome') as string,
       foto_url: fotoLocal || editando?.foto_url || null,
-      especialidades: (form.get('especialidades') as string).split(',').map(s => s.trim()).filter(Boolean),
+      especialidades: especialidadesSelecionadas,
       ativo: true,
       jornada_semanal: jornada,
+      product_commission_pct: Number(form.get('product_commission_pct')) || 0,
     };
 
     let profissionalId: string;
+    let profileId: string | null = null;
+
+    if (criarAcesso && !editando) {
+      try {
+        const resAcesso = await fetch('/api/admin/equipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: acessoData.email, 
+            password: acessoData.password, 
+            full_name: form.get('nome') as string, 
+            role: acessoData.role, 
+            permissions: acessoData.permissions 
+          }),
+        });
+        const dataAcesso = await resAcesso.json();
+        if (!resAcesso.ok) throw new Error(dataAcesso.error || 'Erro ao criar acesso');
+        profileId = dataAcesso.user?.id || null;
+      } catch (err: any) {
+        alert(`Erro ao criar acesso ao sistema: ${err.message}`);
+        return;
+      }
+    }
 
     if (editando) {
       const resultado = await atualizarProfissional(editando.id, profissionalData);
@@ -144,7 +183,8 @@ export default function ProfissionaisPage() {
       profissionalId = editando.id;
       setProfissionais(prev => prev.map(p => p.id === editando.id ? { ...p, ...profissionalData } : p));
     } else {
-      const resultado = await criarProfissional(profissionalData);
+      const payloadCriacao = { ...profissionalData, profile_id: profileId };
+      const resultado = await criarProfissional(payloadCriacao);
       if (resultado.error || !resultado.id) {
         alert(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
         return;
@@ -177,7 +217,15 @@ export default function ProfissionaisPage() {
     setEditando(null);
     setFotoLocal(null);
     setServicosSelecionados([]);
+    setEspecialidadesSelecionadas([]);
     setDiasAtivos([]);
+    setCriarAcesso(false);
+    setAcessoData({
+      email: '',
+      password: '',
+      role: 'studio_profissional',
+      permissions: { ...DEFAULT_PERMISSIONS, agenda: 'write', comissoes: 'read', servicos: 'read', relatorios: 'none' }
+    });
     setShowForm(false);
   };
 
@@ -191,11 +239,20 @@ export default function ProfissionaisPage() {
       setFotoLocal(prof.foto_url ?? null);
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
+      setEspecialidadesSelecionadas(prof.especialidades || []);
     } else {
       setEditando(null);
       setFotoLocal(null);
       setServicosSelecionados([]);
+      setEspecialidadesSelecionadas([]);
       setDiasAtivos([]);
+      setCriarAcesso(false);
+      setAcessoData({
+        email: '',
+        password: '',
+        role: 'studio_profissional',
+        permissions: { ...DEFAULT_PERMISSIONS, agenda: 'write', comissoes: 'read', servicos: 'read', relatorios: 'none' }
+      });
     }
     setShowForm(true);
   };
@@ -246,14 +303,44 @@ export default function ProfissionaisPage() {
           <CardGlass className="mb-6">
             <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Profissional' : 'Novo Profissional'}</h3>
             <form onSubmit={salvar} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="sm:col-span-2">
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
                 <div>
-                  <label className="block text-xs text-foreground/60 mb-1">Especialidades <span className="text-foreground/30">(separar por vírgula)</span></label>
-                  <input name="especialidades" defaultValue={editando?.especialidades?.join(', ') ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" placeholder="Corte, Coloração" />
+                  <label className="block text-xs text-foreground/60 mb-1">Comissão Prod. (%)</label>
+                  <div className="relative">
+                    <input name="product_commission_pct" type="number" min="0" max="100" step="0.5" defaultValue={editando?.product_commission_pct ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold text-xs">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-2">Especialidades</label>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(new Set(servicosCache.map(s => s.categoria || 'Outros'))).map(cat => {
+                      const isSelected = especialidadesSelecionadas.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setEspecialidadesSelecionadas(prev =>
+                              isSelected ? prev.filter(c => c !== cat) : [...prev, cat]
+                            );
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                            isSelected
+                              ? 'bg-gold/20 border-gold text-gold'
+                              : 'bg-foreground/5 border-[var(--border-subtle)] text-foreground/60 hover:border-gold/50 hover:text-foreground'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-foreground/40 mt-2">Você pode clicar para adicionar manualmente, ou selecionar os serviços abaixo para adicionar automaticamente.</p>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Foto <span className="text-foreground/30">(opcional)</span></label>
@@ -273,6 +360,134 @@ export default function ProfissionaisPage() {
                   )}
                 </div>
               </div>
+
+              {/* Acesso ao Sistema */}
+              {!editando && (
+                <div className="bg-[var(--background)] p-4 rounded-xl border border-[var(--border-subtle)] space-y-4">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gold">
+                    <input 
+                      type="checkbox" 
+                      checked={criarAcesso} 
+                      onChange={(e) => setCriarAcesso(e.target.checked)}
+                      className="accent-primary w-4 h-4"
+                    />
+                    Gerar Acesso ao Sistema para este Profissional
+                  </label>
+                  
+                  {criarAcesso && (
+                    <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">E-mail de Acesso</label>
+                          <input 
+                            type="email" 
+                            required={criarAcesso}
+                            value={acessoData.email}
+                            onChange={e => setAcessoData({...acessoData, email: e.target.value})}
+                            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="email@salao.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Senha Provisória</label>
+                          <input 
+                            type="password" 
+                            required={criarAcesso}
+                            value={acessoData.password}
+                            onChange={e => setAcessoData({...acessoData, password: e.target.value})}
+                            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="••••••••"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Função (Role)</label>
+                          <select 
+                            value={acessoData.role}
+                            onChange={e => setAcessoData({...acessoData, role: e.target.value as Role})}
+                            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none"
+                          >
+                            {Object.entries(ROLES)
+                              .filter(([_, value]) => value !== ROLES.ALUNO && value !== ROLES.CUSTOMER)
+                              .map(([key, value]) => (
+                              <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1 mt-2">
+                        <label className="block text-xs font-bold text-foreground/60 uppercase mb-2">Permissões de Abas</label>
+                        <div className="max-h-64 overflow-y-auto bg-[var(--color-card)] rounded-xl border border-[var(--border-subtle)] p-2 space-y-4">
+                          
+                          {/* STUDIO */}
+                          <div>
+                            <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2">Studio (Salão)</h4>
+                            <div className="space-y-1">
+                              {STUDIO_MODULES.map(mod => (
+                                <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                                  <span className="font-medium text-foreground/80">{mod.label}</span>
+                                  <select 
+                                    value={acessoData.permissions[mod.id] || 'none'}
+                                    onChange={(e) => setAcessoData({...acessoData, permissions: {...acessoData.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                                    className="bg-[var(--background)] border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                                  >
+                                    <option value="none">Ocultar</option>
+                                    <option value="read">Leitura</option>
+                                    <option value="write">Edição</option>
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* LOJA */}
+                          <div>
+                            <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2 mt-4">Loja Física / E-commerce</h4>
+                            <div className="space-y-1">
+                              {LOJA_MODULES.map(mod => (
+                                <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                                  <span className="font-medium text-foreground/80">{mod.label}</span>
+                                  <select 
+                                    value={acessoData.permissions[mod.id] || 'none'}
+                                    onChange={(e) => setAcessoData({...acessoData, permissions: {...acessoData.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                                    className="bg-[var(--background)] border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                                  >
+                                    <option value="none">Ocultar</option>
+                                    <option value="read">Leitura</option>
+                                    <option value="write">Edição</option>
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* ACADEMY */}
+                          <div>
+                            <h4 className="text-xs font-bold text-gold uppercase mb-2 px-2 mt-4">Academy (Cursos)</h4>
+                            <div className="space-y-1">
+                              {ACADEMY_MODULES.map(mod => (
+                                <div key={mod.id} className="flex justify-between items-center text-sm px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
+                                  <span className="font-medium text-foreground/80">{mod.label}</span>
+                                  <select 
+                                    value={acessoData.permissions[mod.id] || 'none'}
+                                    onChange={(e) => setAcessoData({...acessoData, permissions: {...acessoData.permissions, [mod.id]: e.target.value as PermissionLevel}})}
+                                    className="bg-[var(--background)] border border-[var(--border-subtle)] text-xs rounded px-2 py-1 outline-none focus:border-gold"
+                                  >
+                                    <option value="none">Ocultar</option>
+                                    <option value="read">Leitura</option>
+                                    <option value="write">Edição</option>
+                                  </select>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Serviços que realiza */}
               <div>
@@ -315,6 +530,8 @@ export default function ProfissionaisPage() {
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     setServicosSelecionados(prev => [...prev, servico.id]);
+                                    const cat = servico.categoria || 'Outros';
+                                    setEspecialidadesSelecionadas(prev => prev.includes(cat) ? prev : [...prev, cat]);
                                   } else {
                                     setServicosSelecionados(prev => prev.filter(id => id !== servico.id));
                                   }
@@ -416,10 +633,13 @@ export default function ProfissionaisPage() {
                       </div>
                     )}
 
-                    {/* Stats */}
-                    <div className="flex gap-4 text-xs text-foreground/60">
+                    {/* Stats e Comissões */}
+                    <div className="flex flex-wrap gap-4 text-xs text-foreground/60 mt-2">
                       <span className="flex items-center gap-1"><Calendar size={12} /> {stats.totalServicos} serviços</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-400" /> R$ {stats.totalValor.toFixed(2)}</span>
+                      <span className="flex items-center gap-1" title="Valor total de serviços executados"><CheckCircle2 size={12} className="text-emerald-400" /> R$ {stats.totalValor.toFixed(2)}</span>
+                      {prof.product_commission_pct !== undefined && prof.product_commission_pct > 0 && (
+                        <span className="flex items-center gap-1"><DollarSign size={12} className="text-amber-400" /> {prof.product_commission_pct}% em produtos</span>
+                      )}
                     </div>
 
                     {/* Expandido */}

@@ -78,7 +78,9 @@ export default function EstoquePage() {
     setLoading(false);
   };
 
-  const categorias = [...new Set(produtos.map(p => p.category))].sort();
+  const categoriasExistentes = [...new Set(produtos.map(p => p.category))].sort();
+  const allCategories = [...new Set([...CATEGORIAS_SUGERIDAS, ...categoriasExistentes])].sort();
+  const marcas = [...new Set(produtos.map(p => p.brand).filter(Boolean))].sort();
 
   const filtrados = useMemo(() => {
     return produtos.filter(p => {
@@ -224,7 +226,7 @@ export default function EstoquePage() {
               <select value={catFiltro} onChange={e => setCatFiltro(e.target.value)}
                 className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold">
                 <option value="todas">Todas categorias</option>
-                {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <select value={tipFiltro} onChange={e => setTipFiltro(e.target.value as any)}
                 className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold">
@@ -408,15 +410,29 @@ export default function EstoquePage() {
               {/* Marca */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Marca</label>
-                <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: Wella" />
+                <input value={form.brand} onChange={e => {
+                  const newBrand = e.target.value;
+                  setForm(f => {
+                    const nextForm = { ...f, brand: newBrand };
+                    // Se não tiver categoria e digitou/selecionou uma marca conhecida, tenta puxar a categoria automaticamente
+                    if (!f.category && newBrand) {
+                      const prodMesmaMarca = produtos.find(p => p.brand === newBrand);
+                      if (prodMesmaMarca) {
+                        nextForm.category = prodMesmaMarca.category;
+                      }
+                    }
+                    return nextForm;
+                  });
+                }}
+                  list="brand-sugest" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: Wella" />
+                <datalist id="brand-sugest">{marcas.map(m => <option key={m as string} value={m as string} />)}</datalist>
               </div>
               {/* Categoria */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Categoria *</label>
                 <input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                   list="cat-sugest" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: Química" />
-                <datalist id="cat-sugest">{CATEGORIAS_SUGERIDAS.map(c => <option key={c} value={c} />)}</datalist>
+                <datalist id="cat-sugest">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
               </div>
               {/* Unidade */}
               <div>

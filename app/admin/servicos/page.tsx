@@ -98,6 +98,7 @@ export default function ServicosPage() {
       preco: Number(form.get('preco')),
       preco_variavel: isVariablePrice,
       preco_maximo: isVariablePrice ? Number(form.get('preco_maximo')) : null,
+      default_commission_pct: Number(form.get('default_commission_pct')) || 0,
     };
 
     if (editando) {
@@ -121,6 +122,7 @@ export default function ServicosPage() {
         preco: payload.preco,
         preco_variavel: payload.preco_variavel,
         preco_maximo: payload.preco_maximo,
+        default_commission_pct: payload.default_commission_pct,
         ativo: true,
         visivel_app: true,
       }]);
@@ -191,6 +193,13 @@ export default function ServicosPage() {
                   <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx (Opcional)" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
                 )}
               </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Comissão Padrão (%)</label>
+                <div className="relative">
+                  <input name="default_commission_pct" type="number" min={0} max={100} step={0.5} required defaultValue={40} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
+                </div>
+              </div>
               <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5">
                 <Button type="submit" variant="primary" size="md" className="flex-1">Criar Serviço</Button>
                 <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
@@ -208,6 +217,7 @@ export default function ServicosPage() {
                 <th className="py-3 pr-4">Categoria</th>
                 <th className="py-3 pr-4">Duração</th>
                 <th className="py-3 pr-4">Preço</th>
+                <th className="py-3 pr-4">Comissão</th>
                 <th className="py-3 pr-4">Profissionais</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4 text-right">Ações</th>
@@ -247,6 +257,13 @@ export default function ServicosPage() {
                               <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx" defaultValue={editando?.preco_maximo ?? ''} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
                             )}
                           </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Comissão Padrão (%)</label>
+                            <div className="relative">
+                              <input name="default_commission_pct" type="number" min={0} max={100} step={0.5} required defaultValue={editando?.default_commission_pct ?? 40} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
+                            </div>
+                          </div>
                           <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5 mt-2">
                             <Button type="submit" variant="primary" size="sm" className="flex-1">Salvar Alterações</Button>
                             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
@@ -267,6 +284,7 @@ export default function ServicosPage() {
                         ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
                         : `R$ ${Number(s.preco).toFixed(2)}`}
                     </td>
+                    <td className="py-3 pr-4 text-foreground/70 font-semibold">{s.default_commission_pct ?? 40}%</td>
                     <td className="py-3 pr-4 text-foreground/60 text-xs">
                       {(() => {
                         const profs = profsPorServico(s.id);

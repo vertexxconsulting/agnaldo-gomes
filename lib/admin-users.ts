@@ -23,16 +23,21 @@ export async function getAllProfiles(excludeRole?: Role) {
   return data;
 }
 
-export async function updateUserRole(userId: string, newRole: Role) {
+export async function updateUserRole(userId: string, newRole: Role, permissions?: any) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
   // 1. Atualizar a tabela 'profiles' (DB)
+  const updateData: any = { role: newRole };
+  if (permissions) {
+    updateData.permissions = permissions;
+  }
+
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
-    .update({ role: newRole })
+    .update(updateData)
     .eq('id', userId);
 
   if (profileError) throw new Error(`Erro ao atualizar profile: ${profileError.message}`);
@@ -41,7 +46,7 @@ export async function updateUserRole(userId: string, newRole: Role) {
   try {
     await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { user_metadata: { role: newRole } }
+      { user_metadata: { role: newRole, ...(permissions && { permissions }) } }
     );
   } catch (authError: any) {
     console.warn(`Aviso: Metadados do Auth não atualizados para ${userId}: ${authError.message}`);
@@ -51,7 +56,7 @@ export async function updateUserRole(userId: string, newRole: Role) {
   return { success: true };
 }
 
-export async function createAdminUser(userData: { email: string; full_name: string; password: string; role: Role }) {
+export async function createAdminUser(userData: { email: string; full_name: string; password: string; role: Role; permissions?: any }) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -62,7 +67,7 @@ export async function createAdminUser(userData: { email: string; full_name: stri
     email: userData.email,
     password: userData.password,
     email_confirm: true, // Confirma o e-mail automaticamente para acesso imediato
-    user_metadata: { role: userData.role, full_name: userData.full_name }
+    user_metadata: { role: userData.role, full_name: userData.full_name, ...(userData.permissions && { permissions: userData.permissions }) }
   });
 
   if (authError) throw new Error(`Erro ao criar conta no Auth: ${authError.message}`);
@@ -74,7 +79,8 @@ export async function createAdminUser(userData: { email: string; full_name: stri
       id: authUser.user.id,
       email: userData.email,
       full_name: userData.full_name,
-      role: userData.role
+      role: userData.role,
+      ...(userData.permissions && { permissions: userData.permissions })
     });
 
   if (profileError) throw new Error(`Erro ao criar perfil no banco: ${profileError.message}`);

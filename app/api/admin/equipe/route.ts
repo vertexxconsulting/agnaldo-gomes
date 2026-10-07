@@ -23,16 +23,16 @@ export async function POST(req: Request) {
     
     // Se vier userId, é atualização de role
     if (body.userId) {
-      const { userId, newRole } = body;
-      await updateUserRole(userId, newRole);
+      const { userId, newRole, permissions } = body;
+      await updateUserRole(userId, newRole, permissions);
       return NextResponse.json({ success: true });
     } 
     
     // Se vier email/password, é criação de usuário
     if (body.email && body.password) {
-      const { email, full_name, password, role } = body;
-      await createAdminUser({ email, full_name, password, role });
-      return NextResponse.json({ success: true });
+      const { email, full_name, password, role, permissions } = body;
+      const result = await createAdminUser({ email, full_name, password, role, permissions });
+      return NextResponse.json({ success: true, user: result.user });
     }
 
     return NextResponse.json({ error: 'Dados insuficientes para a operação' }, { status: 400 });

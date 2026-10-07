@@ -39,6 +39,7 @@ export interface Profissional {
   jornada_semanal: JornadaSemanal;
   criado_em: string;
   atualizado_em?: string;
+  product_commission_pct?: number; // Comissão padrão sobre venda de produtos
 }
 
 export interface JornadaSemanal {
@@ -58,6 +59,7 @@ export interface Servico {
   visivel_app: boolean;
   points_reward?: number;
   points_cost?: number;
+  default_commission_pct?: number;
 }
 
 export interface ProfissionalServico {
@@ -194,9 +196,23 @@ export interface InsumoAtendimento {
   custo_total: number; // qty_used × price_per_gram
 }
 
+// ── TAXAS DE PAGAMENTO E MAQUININHAS ──────────────────────
+
+export interface PaymentFee {
+  id: UUID;
+  name: string; // Ex: 'Visa Crédito', 'Mastercard Débito'
+  payment_type: 'credito' | 'debito' | 'pix' | 'dinheiro' | 'boleto';
+  fee_percentage: number; // Ex: 3.19 para 3.19%
+  fee_fixed: number; // Ex: 0.99 para R$0,99 fixo
+  days_to_receive: number; // Ex: 30 para D+30
+  active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 // ── COMISSÕES DOS PROFISSIONAIS ────────────────────────────
 
-export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO';
+export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO' | 'BOLETO';
 
 /** Regra de comissão: geral (service_id null) ou por serviço */
 export interface RegraComissao {
@@ -223,6 +239,7 @@ export interface Comissao {
   created_at: string;
   updated_at?: string;
   parcelas?: ParcelaComissao[];
+  product_id?: UUID | null; // Se for comissão de produto
 }
 
 /** Parcela individual de comissão */

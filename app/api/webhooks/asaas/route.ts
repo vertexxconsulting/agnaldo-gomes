@@ -6,6 +6,14 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    const asaasToken = request.headers.get('asaas-access-token');
+    
+    // Validação de segurança opcional (altamente recomendada)
+    if (process.env.ASAAS_WEBHOOK_TOKEN && asaasToken !== process.env.ASAAS_WEBHOOK_TOKEN) {
+      console.warn('[asaas-webhook] Token de autenticação inválido!');
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
     const payload = await request.json();
     const event = payload.event;
     const payment = payload.payment;
