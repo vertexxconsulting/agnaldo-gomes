@@ -1164,7 +1164,12 @@ export async function criarComissao(params: {
   if (pct === 0) return { ok: true }; // sem regra de comissão configurada
 
   const totalComissao = Number((params.totalAmount * pct / 100).toFixed(2));
-  const numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
+  let numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
+  
+  // Regra especial solicitada: serviços com 100% de comissão são pagos ao profissional em 3x
+  if (pct === 100) {
+    numParcelas = 3;
+  }
   const valorParcela = Number((totalComissao / numParcelas).toFixed(2));
 
   // Insere comissão
