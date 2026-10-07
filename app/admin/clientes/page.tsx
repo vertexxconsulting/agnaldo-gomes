@@ -111,6 +111,7 @@ export default function ClienteModule() {
 
       const savedCliente: Cliente = data.cliente ? {
         id: data.cliente.id,
+        codigo: data.cliente.codigo,
         nome: data.cliente.name,
         telefone: data.cliente.phone,
         email: data.cliente.email,
@@ -121,6 +122,7 @@ export default function ClienteModule() {
         criado_em: data.cliente.created_at,
       } : {
         id: editando?.id ?? `c${Date.now()}`,
+        codigo: editando?.codigo,
         nome: payload.nome,
         telefone: payload.telefone,
         email: payload.email,
@@ -186,7 +188,7 @@ export default function ClienteModule() {
       {/* Formulário de Criação/Edição */}
       {showForm && (
         <CardGlass className="mb-6 p-6">
-          <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+          <h3 className="text-lg font-bold mb-4">{editando ? `Editar Cliente ${editando.codigo ? `(Cód: ${editando.codigo})` : ''}` : 'Novo Cliente'}</h3>
           <form onSubmit={salvar} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -261,6 +263,7 @@ export default function ClienteModule() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
                       {c.nome}
+                      {c.codigo && <span className="text-sm text-foreground/40 font-normal ml-1">(Cód: {c.codigo})</span>}
                       {stats.visitas >= 5 && <span className="px-2 py-0.5 rounded-full text-[10px] bg-gold/20 text-gold uppercase tracking-wider font-bold border border-gold/30">VIP</span>}
                     </h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/60">

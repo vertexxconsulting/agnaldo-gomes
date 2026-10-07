@@ -18,6 +18,7 @@ export type CanalAgendamento = 'online' | 'recepcao' | 'manual';
 
 export interface Cliente {
   id: UUID;
+  codigo?: number;
   nome: string;
   telefone: string; // único, normalizado (apenas dígitos)
   email?: string | null;

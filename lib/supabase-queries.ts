@@ -81,6 +81,7 @@ type Row = Record<string, any>;
 function mapCliente(r: Row): Cliente {
   return {
     id: r.id,
+    codigo: r.codigo,
     nome: r.name ?? '',
     telefone: r.phone ?? '',
     email: r.email ?? null,
