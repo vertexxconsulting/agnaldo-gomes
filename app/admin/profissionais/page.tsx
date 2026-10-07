@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, DollarSign } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -224,6 +225,12 @@ export default function ProfissionaisPage() {
             onChange={setViewMode}
             className="hidden sm:flex self-center"
           />
+
+          <Link href="/admin/comissoes">
+            <Button variant="outline" size="md" className="border-gold/40 text-gold hover:bg-gold/10">
+              <DollarSign size={18} className="mr-1.5" /> Regras de Comissão
+            </Button>
+          </Link>
 
           <Button variant="primary" size="md" onClick={() => abrirForm()}>
             <Plus size={18} className="mr-2" /> Novo Profissional

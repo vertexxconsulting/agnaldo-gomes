@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt } from 'lucide-react';
+import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
@@ -18,7 +18,10 @@ const links = [
   // Cadastros
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors },
   { href: '/admin/profissionais', label: 'Profissionais', icon: UserCircle },
+  { href: '/admin/estoque', label: 'Estoque', icon: Package, adminOnly: true },
   { href: '/admin/equipe', label: 'Gestão de Equipe', icon: Users, adminOnly: true },
+  // Financeiro
+  { href: '/admin/comissoes', label: 'Comissões', icon: DollarSign, adminOnly: true },
   // Gestão & Ferramentas
   { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp },
   { href: '/admin/fidelidade', label: 'Prog. Fidelidade', icon: Gift, adminOnly: true },

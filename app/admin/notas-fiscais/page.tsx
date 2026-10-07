@@ -121,6 +121,76 @@ export default function NotasFiscaisPage() {
 
   const selectedService = servicosRecentes.find(s => s.id === servicoSelecionado);
 
+  const imprimirCupom = () => {
+    if (!cliente || !selectedService) return;
+
+    const dataAtual = new Date().toLocaleString('pt-BR');
+    
+    // Formato padrão de canhoto RPS/Asaas para impressora térmica 80mm
+    const conteudo = `
+      <html>
+        <head>
+          <title>Cupom RPS - ${cliente.nome}</title>
+          <style>
+            @page { margin: 0; }
+            body { 
+              font-family: monospace; 
+              font-size: 12px; 
+              width: 80mm; 
+              margin: 0; 
+              padding: 5mm; 
+              color: #000;
+              background: #fff;
+            }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #000; margin: 8px 0; }
+            .mb { margin-bottom: 5px; }
+            .mt { margin-top: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold mb" style="font-size: 14px;">
+            STUDIO AGNALDO GOMES<br/>
+            CNPJ: 00.000.000/0001-00
+          </div>
+          <div class="center mb">
+            RPS - RECIBO PROVISÓRIO DE SERVIÇOS
+          </div>
+          <div class="divider"></div>
+          <div><span class="bold">Data/Hora:</span> ${dataAtual}</div>
+          <div><span class="bold">Emissão:</span> Via Asaas</div>
+          <div class="divider"></div>
+          <div class="bold mb">TOMADOR DO SERVIÇO:</div>
+          <div>Nome: ${cliente.nome}</div>
+          <div>CPF: ${cliente.cpf}</div>
+          <div class="divider"></div>
+          <div class="bold mb">DISCRIMINAÇÃO DOS SERVIÇOS:</div>
+          <div>${selectedService.servico}</div>
+          <div class="mt">Profissional: ${selectedService.profissional}</div>
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 16px; text-align: right;">TOTAL: R$ ${selectedService.valor.toFixed(2)}</div>
+          <div class="divider"></div>
+          <div class="center" style="font-size: 10px; margin-top: 15px;">
+            Documento emitido por ME ou EPP optante pelo Simples Nacional.<br/>
+            Este recibo provisório será convertido em Nota Fiscal de Serviços Eletrônica (NFS-e).
+          </div>
+        </body>
+      </html>
+    `;
+
+    const janela = window.open('', '_blank', 'width=400,height=600');
+    if (janela) {
+      janela.document.write(conteudo);
+      janela.document.close();
+      janela.focus();
+      setTimeout(() => {
+        janela.print();
+        // janela.close(); // opcional fechar logo após impressão
+      }, 500);
+    }
+  };
+
   return (
     <div className="py-4 space-y-6 max-w-5xl mx-auto">
       <SectionTitle
@@ -259,10 +329,19 @@ export default function NotasFiscaisPage() {
 
             <div className="mt-8 pt-4 border-t border-[var(--border-subtle)]">
               {notaEmitida ? (
-                <div className="bg-emerald-500/10 text-emerald-500 p-4 rounded-lg flex flex-col items-center justify-center gap-2">
-                  <CheckCircle size={32} />
-                  <p className="font-bold">Nota Fiscal Emitida com Sucesso!</p>
-                  <p className="text-xs text-center opacity-80">O documento foi enviado para a prefeitura via Asaas. Você pode acompanhar o status no painel do Asaas.</p>
+                <div className="flex flex-col gap-4">
+                  <div className="bg-emerald-500/10 text-emerald-500 p-4 rounded-lg flex flex-col items-center justify-center gap-2">
+                    <CheckCircle size={32} />
+                    <p className="font-bold">Nota Fiscal Emitida com Sucesso!</p>
+                    <p className="text-xs text-center opacity-80">O documento foi enviado para a prefeitura via Asaas. Você pode acompanhar o status no painel do Asaas.</p>
+                  </div>
+                  <Button 
+                    onClick={imprimirCupom} 
+                    variant="outline" 
+                    className="w-full h-[54px] text-lg font-bold border-gold text-gold hover:bg-gold hover:text-black transition-colors"
+                  >
+                    🖨️ Imprimir Canhoto (Térmica 80mm)
+                  </Button>
                 </div>
               ) : (
                 <Button 

@@ -136,3 +136,104 @@ export interface Produto {
   image_url?: string;
   link?: string;
 }
+
+// ── ESTOQUE DO SALÃO ────────────────────────────────────────
+
+export type UnidadeEstoque = 'g' | 'ml' | 'un';
+
+/** Produto do estoque interno do salão (insumo e/ou venda) */
+export interface ProdutoEstoque {
+  id: UUID;
+  name: string;
+  brand?: string | null;
+  category: string;
+  unit: UnidadeEstoque;
+  stock_qty: number;
+  stock_alert_qty?: number | null;
+  cost_price: number;
+  sale_price?: number | null;
+  price_per_gram?: number | null;  // custo por grama/ml calculado
+  allow_sale: boolean;
+  allow_procedure_use: boolean;
+  active: boolean;
+  image_url?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** Movimentação de entrada/saída do estoque */
+export interface MovimentacaoEstoque {
+  id: UUID;
+  inventory_id: UUID;
+  type: 'IN' | 'OUT_SALE' | 'OUT_PROCEDURE' | 'ADJUSTMENT';
+  qty: number;
+  unit_cost?: number | null;
+  appointment_id?: UUID | null;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at: string;
+}
+
+/** Vínculo entre serviço e produto usado com pesagem */
+export interface ServicoProduto {
+  id: UUID;
+  service_id: UUID;
+  inventory_id: UUID;
+  default_qty_g: number;
+  is_required: boolean;
+}
+
+/** Insumo usado no atendimento (para o checkout) */
+export interface InsumoAtendimento {
+  inventory_id: UUID;
+  name: string;
+  unit: UnidadeEstoque;
+  price_per_gram: number;
+  qty_used: number;   // quantidade usada em gramas/ml
+  custo_total: number; // qty_used × price_per_gram
+}
+
+// ── COMISSÕES DOS PROFISSIONAIS ────────────────────────────
+
+export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO';
+
+/** Regra de comissão: geral (service_id null) ou por serviço */
+export interface RegraComissao {
+  id: UUID;
+  professional_id: UUID;
+  service_id?: UUID | null;
+  commission_pct: number;  // 0–100
+  active: boolean;
+  notes?: string | null;
+  created_at?: string;
+}
+
+/** Registro de comissão gerado no fechamento do atendimento */
+export interface Comissao {
+  id: UUID;
+  appointment_id: UUID;
+  professional_id: UUID;
+  total_amount: number;
+  commission_pct: number;
+  total_commission: number;
+  installments: number;
+  payment_method: FormaPagamento;
+  status: 'PENDING' | 'PARTIAL' | 'PAID';
+  created_at: string;
+  updated_at?: string;
+  parcelas?: ParcelaComissao[];
+}
+
+/** Parcela individual de comissão */
+export interface ParcelaComissao {
+  id: UUID;
+  commission_id: UUID;
+  installment_number: number;
+  amount: number;
+  due_date: string;        // YYYY-MM-DD
+  paid_at?: string | null;
+  status: 'PENDING' | 'PAID';
+  notes?: string | null;
+  created_at?: string;
+}

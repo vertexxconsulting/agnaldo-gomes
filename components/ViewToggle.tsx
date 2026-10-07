@@ -38,7 +38,7 @@ export function ViewToggle({ options, selectedId, onChange, className = '' }: Vi
                 transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
               />
             )}
-            <span className="relative z-20 flex items-center gap-2">{option.label}</span>
+            <span className="relative z-20 flex items-center gap-2 [&_*]:text-inherit">{option.label}</span>
           </button>
         );
       })}

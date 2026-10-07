@@ -21,6 +21,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [step, setStep] = useState<1 | 2>(1);
 
+  const [deliveryType, setDeliveryType] = useState<'ENTREGA' | 'RETIRADA'>('ENTREGA');
+
   // Endereço completo
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -122,7 +124,7 @@ export default function CheckoutPage() {
     setIsCalculating(false);
   };
 
-  const addressValid = customerName.trim().length >= 3 && cep.replace(/\D/g, '').length === 8 && address.trim().length >= 5 && addressNumber.trim().length >= 1;
+  const addressValid = customerName.trim().length >= 3 && (deliveryType === 'RETIRADA' || (cep.replace(/\D/g, '').length === 8 && address.trim().length >= 5 && addressNumber.trim().length >= 1 && !!shippingMethod));
 
   const handleCepChange = async (v: string) => {
     const formatted = formatCep(v);
@@ -154,8 +156,8 @@ export default function CheckoutPage() {
           customerName,
           customerEmail,
           customerPhone,
-          cep,
-          address: `${address}, ${addressNumber}${addressComplement ? ` - ${addressComplement}` : ''}, ${neighborhood}, ${city}`,
+          cep: deliveryType === 'RETIRADA' ? '00000000' : cep,
+          address: deliveryType === 'RETIRADA' ? 'Retirada em Loja' : `${address}, ${addressNumber}${addressComplement ? ` - ${addressComplement}` : ''}, ${neighborhood}, ${city}`,
           shippingMethod,
           paymentMethod,
         }),
@@ -240,6 +242,41 @@ export default function CheckoutPage() {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
+                    {/* Escolha de Entrega ou Retirada */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryType('ENTREGA');
+                          setShippingMethod('');
+                          setShippingCost(0);
+                        }}
+                        className={`flex items-center justify-center gap-2 p-3 text-xs font-bold uppercase tracking-wider rounded-sm border transition-colors ${
+                          deliveryType === 'ENTREGA'
+                            ? 'bg-amber-50 border-amber-400 text-amber-700'
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                        }`}
+                      >
+                        <Truck size={16} /> Entregar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryType('RETIRADA');
+                          setShippingMethod('RETIRADA EM LOJA');
+                          setShippingCost(0);
+                        }}
+                        className={`flex items-center justify-center gap-2 p-3 text-xs font-bold uppercase tracking-wider rounded-sm border transition-colors ${
+                          deliveryType === 'RETIRADA'
+                            ? 'bg-amber-50 border-amber-400 text-amber-700'
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                        }`}
+                      >
+                        <MapPin size={16} /> Retirar na Loja
+                      </button>
+                    </div>
+
+                    {deliveryType === 'ENTREGA' && (
                     <div className="flex gap-2 mb-4">
                       <input
                         type="text"
@@ -257,6 +294,7 @@ export default function CheckoutPage() {
                         {isCalculating ? 'Buscando...' : 'Buscar'}
                       </button>
                     </div>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                       <input
@@ -281,37 +319,41 @@ export default function CheckoutPage() {
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
                       />
-                      <input
-                        type="text"
-                        placeholder="Bairro"
-                        value={neighborhood}
-                        onChange={(e) => setNeighborhood(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Rua / Avenida *"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm sm:col-span-2"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Número *"
-                        value={addressNumber}
-                        onChange={(e) => setAddressNumber(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Complemento (opcional)"
-                        value={addressComplement}
-                        onChange={(e) => setAddressComplement(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
-                      />
+                      {deliveryType === 'ENTREGA' && (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="Bairro"
+                            value={neighborhood}
+                            onChange={(e) => setNeighborhood(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Rua / Avenida *"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm sm:col-span-2"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Número *"
+                            value={addressNumber}
+                            onChange={(e) => setAddressNumber(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Complemento (opcional)"
+                            value={addressComplement}
+                            onChange={(e) => setAddressComplement(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 transition-colors rounded-sm"
+                          />
+                        </>
+                      )}
                     </div>
 
-                    {shippingMethod && (
+                    {shippingMethod && deliveryType === 'ENTREGA' && (
                       <div className="p-3 bg-amber-50 border border-amber-200 flex flex-col gap-1.5 rounded-sm mb-4">
                         <div className="flex items-center gap-2 text-amber-700 font-bold text-[11px] uppercase tracking-wider mb-1">
                           <Truck size={14} /> {shippingMethod === 'MOTOBOY' || shippingMethod.startsWith('MOTOBOY') ? 'Entrega Local (Motoboy)' : 'Envio Nacional (Correios)'}

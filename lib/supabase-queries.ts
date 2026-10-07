@@ -11,6 +11,9 @@ import { supabase } from './supabase';
 import type {
   Cliente, Profissional, Servico, ProfissionalServico,
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
+  ProdutoEstoque, MovimentacaoEstoque, ServicoProduto,
+  RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
+  InsumoAtendimento,
 } from './gestao-types';
 
 export function isUUID(str: string): boolean {
@@ -786,6 +789,471 @@ export async function excluirServico(id: string): Promise<{ ok: boolean; error?:
       return { ok: true };
     }
     return { ok: false, error: traduzirErro(error) };
+  }
+  return { ok: true };
+}
+
+// ══════════════════════════════════════════════════════════════
+// ESTOQUE DO SALÃO
+// ══════════════════════════════════════════════════════════════
+
+const TBL_INV = {
+  inventory: 'salon_inventory',
+  movements: 'salon_inventory_movements',
+  serviceProducts: 'salon_service_products',
+} as const;
+
+function mapProdutoEstoque(r: Row): ProdutoEstoque {
+  return {
+    id: r.id,
+    name: r.name ?? '',
+    brand: r.brand ?? null,
+    category: r.category ?? 'Geral',
+    unit: r.unit ?? 'g',
+    stock_qty: Number(r.stock_qty ?? 0),
+    stock_alert_qty: r.stock_alert_qty != null ? Number(r.stock_alert_qty) : null,
+    cost_price: Number(r.cost_price ?? 0),
+    sale_price: r.sale_price != null ? Number(r.sale_price) : null,
+    price_per_gram: r.price_per_gram != null ? Number(r.price_per_gram) : null,
+    allow_sale: r.allow_sale ?? false,
+    allow_procedure_use: r.allow_procedure_use ?? true,
+    active: r.active ?? true,
+    image_url: r.image_url ?? null,
+    notes: r.notes ?? null,
+    created_at: r.created_at ?? '',
+    updated_at: r.updated_at ?? undefined,
+  };
+}
+
+function mapMovimentacao(r: Row): MovimentacaoEstoque {
+  return {
+    id: r.id,
+    inventory_id: r.inventory_id,
+    type: r.type,
+    qty: Number(r.qty ?? 0),
+    unit_cost: r.unit_cost != null ? Number(r.unit_cost) : null,
+    appointment_id: r.appointment_id ?? null,
+    notes: r.notes ?? null,
+    created_by: r.created_by ?? null,
+    created_at: r.created_at ?? '',
+  };
+}
+
+function mapServicoProduto(r: Row): ServicoProduto {
+  return {
+    id: r.id,
+    service_id: r.service_id,
+    inventory_id: r.inventory_id,
+    default_qty_g: Number(r.default_qty_g ?? 0),
+    is_required: r.is_required ?? false,
+  };
+}
+
+/** Lista todos os produtos do estoque */
+export async function fetchEstoque(apenasAtivos = false): Promise<ProdutoEstoque[]> {
+  let q = supabase.from(TBL_INV.inventory).select('*').order('name');
+  if (apenasAtivos) q = q.eq('active', true);
+  const { data, error } = await q;
+  if (error) { logSupabaseError('[fetchEstoque]', error); return []; }
+  return (data ?? []).map(mapProdutoEstoque);
+}
+
+/** Busca produto por ID */
+export async function fetchProdutoEstoqueById(id: string): Promise<ProdutoEstoque | null> {
+  const { data, error } = await supabase.from(TBL_INV.inventory).select('*').eq('id', id).single();
+  if (error) { logSupabaseError('[fetchProdutoEstoqueById]', error); return null; }
+  return data ? mapProdutoEstoque(data) : null;
+}
+
+/** Cria ou atualiza produto no estoque */
+export async function salvarProdutoEstoque(
+  payload: Omit<ProdutoEstoque, 'id' | 'created_at' | 'updated_at'>,
+  id?: string
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const row = {
+    name: payload.name,
+    brand: payload.brand,
+    category: payload.category,
+    unit: payload.unit,
+    stock_qty: payload.stock_qty,
+    stock_alert_qty: payload.stock_alert_qty,
+    cost_price: payload.cost_price,
+    sale_price: payload.sale_price,
+    price_per_gram: payload.price_per_gram,
+    allow_sale: payload.allow_sale,
+    allow_procedure_use: payload.allow_procedure_use,
+    active: payload.active,
+    image_url: payload.image_url,
+    notes: payload.notes,
+  };
+
+  if (id) {
+    const { error } = await supabase.from(TBL_INV.inventory).update(row).eq('id', id);
+    if (error) { logSupabaseError('[salvarProdutoEstoque update]', error); return { ok: false, error: error.message }; }
+    return { ok: true, id };
+  }
+  const { data, error } = await supabase.from(TBL_INV.inventory).insert(row).select('id').single();
+  if (error) { logSupabaseError('[salvarProdutoEstoque insert]', error); return { ok: false, error: error.message }; }
+  return { ok: true, id: data?.id };
+}
+
+/** Registra movimentação de estoque e atualiza stock_qty */
+export async function registrarMovimentacao(
+  inventoryId: string,
+  type: MovimentacaoEstoque['type'],
+  qty: number,
+  opts?: { appointmentId?: string; notes?: string; createdBy?: string; unitCost?: number }
+): Promise<{ ok: boolean; error?: string }> {
+  // Calcula delta: IN = positivo, saídas = negativo
+  const delta = type === 'IN' ? qty : -Math.abs(qty);
+
+  const { error: movErr } = await supabase.from(TBL_INV.movements).insert({
+    inventory_id: inventoryId,
+    type,
+    qty: Math.abs(qty),
+    unit_cost: opts?.unitCost ?? null,
+    appointment_id: opts?.appointmentId ?? null,
+    notes: opts?.notes ?? null,
+    created_by: opts?.createdBy ?? null,
+  });
+  if (movErr) { logSupabaseError('[registrarMovimentacao insert]', movErr); return { ok: false, error: movErr.message }; }
+
+  // Atualiza stock
+  const { error: updErr } = await supabase.rpc('increment_inventory_stock', {
+    p_id: inventoryId,
+    p_delta: delta,
+  }).maybeSingle();
+
+  // Se RPC não existe, faz update manual
+  if (updErr) {
+    const { data: current } = await supabase.from(TBL_INV.inventory).select('stock_qty').eq('id', inventoryId).single();
+    const newQty = Math.max(0, Number(current?.stock_qty ?? 0) + delta);
+    await supabase.from(TBL_INV.inventory).update({ stock_qty: newQty }).eq('id', inventoryId);
+  }
+  return { ok: true };
+}
+
+/** Busca movimentações de um produto */
+export async function fetchMovimentacoes(inventoryId?: string): Promise<MovimentacaoEstoque[]> {
+  let q = supabase.from(TBL_INV.movements).select('*').order('created_at', { ascending: false }).limit(200);
+  if (inventoryId) q = q.eq('inventory_id', inventoryId);
+  const { data, error } = await q;
+  if (error) { logSupabaseError('[fetchMovimentacoes]', error); return []; }
+  return (data ?? []).map(mapMovimentacao);
+}
+
+/** Produtos vinculados a um serviço (para pesagem no checkout) */
+export async function fetchServicoProdutos(serviceId: string): Promise<ServicoProduto[]> {
+  const { data, error } = await supabase
+    .from(TBL_INV.serviceProducts)
+    .select('*')
+    .eq('service_id', serviceId);
+  if (error) { logSupabaseError('[fetchServicoProdutos]', error); return []; }
+  return (data ?? []).map(mapServicoProduto);
+}
+
+/** Todos os vínculos serviço-produto (para o formulário de serviços) */
+export async function fetchTodosServicoProdutos(): Promise<ServicoProduto[]> {
+  const { data, error } = await supabase.from(TBL_INV.serviceProducts).select('*');
+  if (error) { logSupabaseError('[fetchTodosServicoProdutos]', error); return []; }
+  return (data ?? []).map(mapServicoProduto);
+}
+
+/** Vincula produto ao serviço com pesagem */
+export async function vincularProdutoServico(
+  serviceId: string, inventoryId: string, defaultQtyG: number, isRequired: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from(TBL_INV.serviceProducts).upsert({
+    service_id: serviceId,
+    inventory_id: inventoryId,
+    default_qty_g: defaultQtyG,
+    is_required: isRequired,
+  }, { onConflict: 'service_id,inventory_id' });
+  if (error) { logSupabaseError('[vincularProdutoServico]', error); return { ok: false, error: error.message }; }
+  return { ok: true };
+}
+
+/** Remove vínculo produto-serviço */
+export async function desvincularProdutoServico(id: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from(TBL_INV.serviceProducts).delete().eq('id', id);
+  if (error) { logSupabaseError('[desvincularProdutoServico]', error); return { ok: false, error: error.message }; }
+  return { ok: true };
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMISSÕES DOS PROFISSIONAIS
+// ══════════════════════════════════════════════════════════════
+
+const TBL_COM = {
+  rules: 'salon_commission_rules',
+  commissions: 'salon_commissions',
+  installments: 'salon_commission_installments',
+} as const;
+
+function mapRegraComissao(r: Row): RegraComissao {
+  return {
+    id: r.id,
+    professional_id: r.professional_id,
+    service_id: r.service_id ?? null,
+    commission_pct: Number(r.commission_pct ?? 0),
+    active: r.active ?? true,
+    notes: r.notes ?? null,
+    created_at: r.created_at ?? '',
+  };
+}
+
+function mapComissao(r: Row): Comissao {
+  return {
+    id: r.id,
+    appointment_id: r.appointment_id,
+    professional_id: r.professional_id,
+    total_amount: Number(r.total_amount ?? 0),
+    commission_pct: Number(r.commission_pct ?? 0),
+    total_commission: Number(r.total_commission ?? 0),
+    installments: Number(r.installments ?? 1),
+    payment_method: r.payment_method as FormaPagamento,
+    status: r.status ?? 'PENDING',
+    created_at: r.created_at ?? '',
+    updated_at: r.updated_at ?? undefined,
+  };
+}
+
+function mapParcela(r: Row): ParcelaComissao {
+  return {
+    id: r.id,
+    commission_id: r.commission_id,
+    installment_number: Number(r.installment_number ?? 1),
+    amount: Number(r.amount ?? 0),
+    due_date: r.due_date ?? '',
+    paid_at: r.paid_at ?? null,
+    status: r.status ?? 'PENDING',
+    notes: r.notes ?? null,
+    created_at: r.created_at ?? '',
+  };
+}
+
+/** Busca regras de comissão (todas ou de um profissional) */
+export async function fetchRegrasComissao(professionalId?: string): Promise<RegraComissao[]> {
+  try {
+    const url = '/api/admin/comissoes' + (professionalId ? `?professional_id=${encodeURIComponent(professionalId)}` : '');
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json.rules)) {
+        return json.rules.map(mapRegraComissao);
+      }
+    }
+  } catch (e) {
+    // Continua para fallback direto no supabase
+  }
+
+  let q = supabase.from(TBL_COM.rules).select('*').eq('active', true).order('created_at');
+  if (professionalId) q = q.eq('professional_id', professionalId);
+  const { data, error } = await q;
+  if (error) { logSupabaseError('[fetchRegrasComissao]', error); return []; }
+  return (data ?? []).map(mapRegraComissao);
+}
+
+/** Retorna % de comissão para um profissional+serviço (específica ou geral) */
+export async function getComissaoPct(professionalId: string, serviceId: string): Promise<number> {
+  const { data } = await supabase
+    .from(TBL_COM.rules)
+    .select('commission_pct, service_id')
+    .eq('professional_id', professionalId)
+    .eq('active', true);
+  if (!data || data.length === 0) return 0;
+  // Prefere regra específica para o serviço
+  const especifica = data.find((r: any) => r.service_id === serviceId);
+  if (especifica) return Number(especifica.commission_pct);
+  // Fallback: regra geral (service_id = null)
+  const geral = data.find((r: any) => !r.service_id);
+  return geral ? Number(geral.commission_pct) : 0;
+}
+
+/** Salva ou atualiza uma regra de comissão via API e com fallback seguro */
+export async function salvarRegraComissao(
+  payload: Omit<RegraComissao, 'id' | 'created_at'>,
+  id?: string
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/comissoes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao salvar regra' };
+    }
+    return { ok: true, id: json.id };
+  } catch (err: any) {
+    // Fallback para cliente direto do Supabase com tratamento seguro de conflito
+    const row = {
+      professional_id: payload.professional_id,
+      service_id: payload.service_id ?? null,
+      commission_pct: payload.commission_pct,
+      active: payload.active,
+      notes: payload.notes,
+    };
+    if (id) {
+      const { error } = await supabase.from(TBL_COM.rules).update(row).eq('id', id);
+      if (error) { logSupabaseError('[salvarRegraComissao update]', error); return { ok: false, error: traduzirErro(error) }; }
+      return { ok: true, id };
+    }
+
+    let checkQuery = supabase.from(TBL_COM.rules).select('id').eq('professional_id', row.professional_id);
+    if (row.service_id) {
+      checkQuery = checkQuery.eq('service_id', row.service_id);
+    } else {
+      checkQuery = checkQuery.is('service_id', null);
+    }
+    const { data: existing } = await checkQuery.maybeSingle();
+
+    if (existing?.id) {
+      const { error } = await supabase.from(TBL_COM.rules).update(row).eq('id', existing.id);
+      if (error) { logSupabaseError('[salvarRegraComissao update]', error); return { ok: false, error: traduzirErro(error) }; }
+      return { ok: true, id: existing.id };
+    }
+
+    const { data, error } = await supabase.from(TBL_COM.rules).insert(row).select('id').single();
+    if (error) { logSupabaseError('[salvarRegraComissao insert]', error); return { ok: false, error: traduzirErro(error) }; }
+    return { ok: true, id: data?.id };
+  }
+}
+
+/** Exclui regra de comissão */
+export async function excluirRegraComissao(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/comissoes?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao excluir regra' };
+    }
+    return { ok: true };
+  } catch (e) {
+    const { error } = await supabase.from(TBL_COM.rules).delete().eq('id', id);
+    if (error) { logSupabaseError('[excluirRegraComissao]', error); return { ok: false, error: traduzirErro(error) }; }
+    return { ok: true };
+  }
+}
+
+/** Cria comissão + parcelas ao finalizar atendimento */
+export async function criarComissao(params: {
+  appointmentId: string;
+  professionalId: string;
+  serviceId: string;
+  totalAmount: number;
+  paymentMethod: FormaPagamento;
+  installments: number;
+  appointmentDate: string; // YYYY-MM-DD
+}): Promise<{ ok: boolean; commissionId?: string; error?: string }> {
+  const pct = await getComissaoPct(params.professionalId, params.serviceId);
+  if (pct === 0) return { ok: true }; // sem regra de comissão configurada
+
+  const totalComissao = Number((params.totalAmount * pct / 100).toFixed(2));
+  const numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
+  const valorParcela = Number((totalComissao / numParcelas).toFixed(2));
+
+  // Insere comissão
+  const { data: com, error: comErr } = await supabase.from(TBL_COM.commissions).insert({
+    appointment_id: params.appointmentId,
+    professional_id: params.professionalId,
+    total_amount: params.totalAmount,
+    commission_pct: pct,
+    total_commission: totalComissao,
+    installments: numParcelas,
+    payment_method: params.paymentMethod,
+    status: 'PENDING',
+  }).select('id').single();
+
+  if (comErr || !com?.id) {
+    logSupabaseError('[criarComissao insert]', comErr);
+    return { ok: false, error: comErr?.message };
+  }
+
+  // Insere parcelas
+  const baseDate = new Date(params.appointmentDate + 'T12:00:00');
+  const parcelas = Array.from({ length: numParcelas }, (_, i) => {
+    const due = new Date(baseDate);
+    due.setMonth(due.getMonth() + i);
+    return {
+      commission_id: com.id,
+      installment_number: i + 1,
+      amount: i === numParcelas - 1
+        ? Number((totalComissao - valorParcela * (numParcelas - 1)).toFixed(2)) // ajuste centavos na última
+        : valorParcela,
+      due_date: due.toISOString().split('T')[0],
+      status: 'PENDING',
+    };
+  });
+
+  const { error: parcErr } = await supabase.from(TBL_COM.installments).insert(parcelas);
+  if (parcErr) { logSupabaseError('[criarComissao parcelas]', parcErr); }
+
+  return { ok: true, commissionId: com.id };
+}
+
+/** Busca comissões com parcelas (todas ou por profissional) */
+export async function fetchComissoes(professionalId?: string): Promise<Comissao[]> {
+  let q = supabase.from(TBL_COM.commissions).select('*').order('created_at', { ascending: false });
+  if (professionalId) q = q.eq('professional_id', professionalId);
+  const { data, error } = await q;
+  if (error) { logSupabaseError('[fetchComissoes]', error); return []; }
+  const comissoes = (data ?? []).map(mapComissao);
+
+  // Carrega parcelas de todas de uma vez
+  if (comissoes.length > 0) {
+    const ids = comissoes.map((c: any) => c.id);
+    const { data: parcData } = await supabase.from(TBL_COM.installments).select('*').in('commission_id', ids).order('installment_number');
+    const parcMap = new Map<string, ParcelaComissao[]>();
+    (parcData ?? []).forEach((r: any) => {
+      const p = mapParcela(r);
+      if (!parcMap.has(p.commission_id)) parcMap.set(p.commission_id, []);
+      parcMap.get(p.commission_id)!.push(p);
+    });
+    comissoes.forEach((c: any) => { c.parcelas = parcMap.get(c.id) ?? []; });
+  }
+  return comissoes;
+}
+
+/** Busca todas as parcelas pendentes (para o painel "A Pagar") */
+export async function fetchParcelasPendentes(professionalId?: string): Promise<(ParcelaComissao & { professional_id: string; professional_name?: string })[]> {
+  let q = supabase
+    .from(TBL_COM.installments)
+    .select('*, salon_commissions(professional_id, payment_method)')
+    .eq('status', 'PENDING')
+    .order('due_date');
+  const { data, error } = await q;
+  if (error) { logSupabaseError('[fetchParcelasPendentes]', error); return []; }
+  return (data ?? [])
+    .map((r: any) => ({
+      ...mapParcela(r),
+      professional_id: r.salon_commissions?.professional_id ?? '',
+    }))
+    .filter((p: any) => !professionalId || p.professional_id === professionalId);
+}
+
+/** Marca parcela como paga */
+export async function pagarParcela(parcelaId: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from(TBL_COM.installments)
+    .update({ status: 'PAID', paid_at: new Date().toISOString() })
+    .eq('id', parcelaId);
+  if (error) { logSupabaseError('[pagarParcela]', error); return { ok: false, error: error.message }; }
+
+  // Verifica se todas as parcelas da comissão foram pagas
+  const { data: parc } = await supabase.from(TBL_COM.installments)
+    .select('commission_id, status')
+    .eq('id', parcelaId)
+    .single();
+  if (parc?.commission_id) {
+    const { data: todas } = await supabase.from(TBL_COM.installments)
+      .select('status')
+      .eq('commission_id', parc.commission_id);
+    const todasPagas = (todas ?? []).every((p: any) => p.status === 'PAID');
+    const algumaPaga = (todas ?? []).some((p: any) => p.status === 'PAID');
+    await supabase.from(TBL_COM.commissions)
+      .update({ status: todasPagas ? 'PAID' : algumaPaga ? 'PARTIAL' : 'PENDING' })
+      .eq('id', parc.commission_id);
   }
   return { ok: true };
 }

@@ -7,14 +7,14 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
-import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico } from '@/lib/gestao-types';
+import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -39,7 +39,14 @@ function AgendaContent() {
   const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
   const [checkoutExtras, setCheckoutExtras] = useState<Array<{ id: string; servicoId: string; preco: number }>>([]);
   const [extraServiceSelect, setExtraServiceSelect] = useState<string>('');
-  
+  // Insumos (pesagem)
+  const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
+  const [servicoProdutos, setServicoProdutos] = useState<ServicoProduto[]>([]);
+  const [checkoutInsumos, setCheckoutInsumos] = useState<InsumoAtendimento[]>([]);
+  // Pagamento e comissão
+  const [checkoutPagamento, setCheckoutPagamento] = useState<FormaPagamento>('DINHEIRO');
+  const [checkoutParcelas, setCheckoutParcelas] = useState<number>(1);
+
   const [formData, setFormData] = useState({
     cliente_id: '',
     profissional_id: '',
@@ -47,6 +54,9 @@ function AgendaContent() {
     data: hoje,
     hora_inicio: '09:00',
     duracao_min: '',
+    is_fixed: false,
+    recurrence_type: 'WEEKLY',
+    recurrence_custom_day: '',
   });
 
   // Carregar dados do Supabase (com fallback para mock)
@@ -82,6 +92,10 @@ function AgendaContent() {
       setClientes(clientesData);
       setServicos(servicosData);
       setProfServicos(profServData);
+      // Carrega estoque e vínculos serviço-produto
+      const [estoqueData, spData] = await Promise.all([fetchEstoque(true), fetchTodosServicoProdutos()]);
+      setEstoque(estoqueData);
+      setServicoProdutos(spData);
       setLoading(false);
     };
     carregarDados();
@@ -234,6 +248,9 @@ function AgendaContent() {
       data: dataSelecionada,
       hora_inicio: hora,
       duracao_min: '',
+      is_fixed: false,
+      recurrence_type: 'WEEKLY',
+      recurrence_custom_day: '',
     });
     setShowForm(true);
   };
@@ -262,7 +279,10 @@ function AgendaContent() {
           hora_inicio: formData.hora_inicio,
           hora_fim: horaFim,
           status: 'confirmado',
-          canal: 'recepcao'
+          canal: 'recepcao',
+          is_fixed: formData.is_fixed,
+          recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
+          recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null
         })
       });
       const data = await res.json();
@@ -283,7 +303,7 @@ function AgendaContent() {
       setAgendamentos(prev => [...prev, novoAgendamento]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '' });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '' });
     } catch (err: any) {
       console.error('Erro ao salvar agendamento:', err);
       alert(`Erro ao salvar no banco: ${err.message}`);
@@ -602,12 +622,12 @@ function AgendaContent() {
           <CardGlass className="w-full max-w-xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold font-serif text-foreground">Finalizar Atendimento</h3>
-              <button onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); }} className="text-foreground/50 hover:text-foreground">
+              <button onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); setCheckoutInsumos([]); setCheckoutPagamento('DINHEIRO'); setCheckoutParcelas(1); }} className="text-foreground/50 hover:text-foreground">
                 <X size={20} />
               </button>
             </div>
             
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Resumo do Principal */}
               <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
                 <p className="text-sm text-foreground/60">Serviço Agendado:</p>
@@ -685,54 +705,244 @@ function AgendaContent() {
                 )}
               </div>
 
-              {/* Totalizador */}
-              <div className="border-t border-[var(--border-subtle)] pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                <div>
-                  <p className="text-sm text-foreground/60 mb-1">Total a Receber</p>
-                  <p className="text-2xl font-bold font-serif text-gold">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      getServicoPreco(checkoutAppt.servico_id, servicos) + checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0)
-                    )}
-                  </p>
+              {/* INSUMOS (Pesagem) — aparece apenas se o serviço tiver produtos vinculados */}
+              {(() => {
+                const produtosDoServico = servicoProdutos
+                  .filter(sp => sp.service_id === checkoutAppt.servico_id)
+                  .map(sp => ({ sp, prod: estoque.find(e => e.id === sp.inventory_id) }))
+                  .filter(x => x.prod);
+                
+                if (produtosDoServico.length === 0) return null;
+
+                return (
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Beaker size={15} className="text-amber-400" />
+                      Insumos Utilizados (Pesagem)
+                    </h4>
+                    <div className="space-y-2">
+                      {produtosDoServico.map(({ sp, prod }) => {
+                        const insumo = checkoutInsumos.find(i => i.inventory_id === sp.inventory_id);
+                        const qty = insumo?.qty_used ?? sp.default_qty_g;
+                        const ppg = prod!.price_per_gram ?? 0;
+                        const custo = qty * ppg;
+                        return (
+                          <div key={sp.id} className="p-3 bg-amber-500/5 border border-amber-500/15 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <p className="text-sm font-medium">{prod!.name}</p>
+                                {ppg > 0 && <p className="text-xs text-foreground/50">R$ {ppg.toFixed(4)}/{prod!.unit}</p>}
+                              </div>
+                              {sp.is_required && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">Obrigatório</span>}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1">
+                                <label className="text-xs text-foreground/50">Qtd. usada ({prod!.unit})</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="number" min={0} step={0.1}
+                                    value={qty}
+                                    onChange={e => {
+                                      const newQty = parseFloat(e.target.value) || 0;
+                                      const custTotal = newQty * ppg;
+                                      setCheckoutInsumos(prev => {
+                                        const others = prev.filter(i => i.inventory_id !== sp.inventory_id);
+                                        return [...others, {
+                                          inventory_id: sp.inventory_id,
+                                          name: prod!.name,
+                                          unit: prod!.unit,
+                                          price_per_gram: ppg,
+                                          qty_used: newQty,
+                                          custo_total: custTotal,
+                                        }];
+                                      });
+                                    }}
+                                    className="w-28 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm focus:outline-none focus:border-gold"
+                                  />
+                                  <span className="text-xs text-foreground/50">{prod!.unit}</span>
+                                </div>
+                              </div>
+                              {ppg > 0 && (
+                                <div className="text-right">
+                                  <p className="text-xs text-foreground/50">Custo</p>
+                                  <p className="font-bold text-amber-400">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* FORMA DE PAGAMENTO */}
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <CreditCard size={15} className="text-blue-400" />
+                  Forma de Pagamento
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                  {([
+                    ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-400 border-emerald-500/40'],
+                    ['PIX', 'PIX', Smartphone, 'text-blue-400 border-blue-500/40'],
+                    ['DEBITO', 'Débito', CreditCard, 'text-purple-400 border-purple-500/40'],
+                    ['CREDITO', 'Crédito', CreditCard, 'text-amber-400 border-amber-500/40'],
+                  ] as const).map(([val, label, Icon, cor]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => { setCheckoutPagamento(val); if (val !== 'CREDITO') setCheckoutParcelas(1); }}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 text-xs font-medium transition-all ${
+                        checkoutPagamento === val
+                          ? `${cor} bg-foreground/5`
+                          : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); }}>Cancelar</Button>
-                  <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
-                    // Finalizar o original
-                    await mudarStatus(checkoutAppt.id, 'concluido');
-                    
-                    // Adicionar extras gerando agendamentos concluídos
-                    if (checkoutExtras.length > 0) {
-                      for (const ext of checkoutExtras) {
-                        try {
-                          await fetch('/api/agendamentos/admin', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              cliente_id: checkoutAppt.cliente_id,
-                              profissional_id: checkoutAppt.profissional_id,
-                              servico_id: ext.servicoId,
-                              data: checkoutAppt.data,
-                              hora_inicio: checkoutAppt.hora_inicio,
-                              status: 'concluido'
-                            })
-                          });
-                        } catch (e) {
-                          console.error("Erro ao registrar serviço extra", e);
-                        }
-                      }
-                      fetchAgendamentos().then(setAgendamentos);
-                    }
-                    
-                    setCheckoutAppt(null);
-                    setCheckoutExtras([]);
-                    setExtraServiceSelect('');
-                    alert('Atendimento concluído e valores registrados com sucesso!');
-                  }}>
-                    Confirmar Recebimento
-                  </Button>
-                </div>
+                
+                {/* Parcelas — apenas para crédito */}
+                {checkoutPagamento === 'CREDITO' && (
+                  <div>
+                    <p className="text-xs text-foreground/60 mb-2">Número de parcelas:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
+                        <button key={n} type="button"
+                          onClick={() => setCheckoutParcelas(n)}
+                          className={`w-10 h-10 rounded-lg text-sm font-bold border-2 transition-all ${
+                            checkoutParcelas === n
+                              ? 'border-amber-400 bg-amber-400/15 text-amber-400'
+                              : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
+                          }`}
+                        >
+                          {n}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* TOTAL + COMISSÃO */}
+              {(() => {
+                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
+                const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
+                const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
+                const totalGeral = totalServico + totalExtras + totalInsumos;
+                const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
+
+                return (
+                  <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
+                    {/* Breakdown */}
+                    {(totalExtras > 0 || totalInsumos > 0) && (
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between text-foreground/60">
+                          <span>Serviço</span>
+                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico)}</span>
+                        </div>
+                        {totalExtras > 0 && (
+                          <div className="flex justify-between text-foreground/60">
+                            <span>Extras</span>
+                            <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalExtras)}</span>
+                          </div>
+                        )}
+                        {totalInsumos > 0 && (
+                          <div className="flex justify-between text-amber-400">
+                            <span>Insumos</span>
+                            <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalInsumos)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                      <div>
+                        <p className="text-sm text-foreground/60 mb-1">Total a Receber</p>
+                        <p className="text-2xl font-bold font-serif text-gold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}
+                        </p>
+                        {numParcelas > 1 && (
+                          <p className="text-xs text-amber-400 mt-0.5">
+                            {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / numParcelas)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); setCheckoutInsumos([]); setCheckoutPagamento('DINHEIRO'); setCheckoutParcelas(1); }}>Cancelar</Button>
+                        <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
+                          // 1. Finalizar o atendimento principal
+                          await mudarStatus(checkoutAppt.id, 'concluido');
+                          
+                          // 2. Registrar extras como agendamentos concluídos
+                          if (checkoutExtras.length > 0) {
+                            for (const ext of checkoutExtras) {
+                              try {
+                                await fetch('/api/agendamentos/admin', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    cliente_id: checkoutAppt.cliente_id,
+                                    profissional_id: checkoutAppt.profissional_id,
+                                    servico_id: ext.servicoId,
+                                    data: checkoutAppt.data,
+                                    hora_inicio: checkoutAppt.hora_inicio,
+                                    status: 'concluido'
+                                  })
+                                });
+                              } catch (e) {
+                                console.error("Erro ao registrar serviço extra", e);
+                              }
+                            }
+                            fetchAgendamentos().then(setAgendamentos);
+                          }
+                          
+                          // 3. Baixar insumos do estoque
+                          for (const insumo of checkoutInsumos) {
+                            if (insumo.qty_used > 0) {
+                              await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
+                                appointmentId: checkoutAppt.id,
+                                notes: `Procedimento: ${getServicoNome(checkoutAppt.servico_id, servicos)}`,
+                              });
+                            }
+                          }
+
+                          // 4. Gerar comissão para o profissional
+                          const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
+                          const totalExtrasVal = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
+                          const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
+                          const totalGeral = totalServico + totalExtrasVal + totalInsumos;
+                          await criarComissao({
+                            appointmentId: checkoutAppt.id,
+                            professionalId: checkoutAppt.profissional_id,
+                            serviceId: checkoutAppt.servico_id,
+                            totalAmount: totalGeral,
+                            paymentMethod: checkoutPagamento,
+                            installments: checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1,
+                            appointmentDate: checkoutAppt.data,
+                          });
+                          
+                          setCheckoutAppt(null);
+                          setCheckoutExtras([]);
+                          setExtraServiceSelect('');
+                          setCheckoutInsumos([]);
+                          setCheckoutPagamento('DINHEIRO');
+                          setCheckoutParcelas(1);
+                          alert('Atendimento concluído! Insumos e comissão registrados com sucesso.');
+                        }}>
+                          Confirmar Recebimento
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </CardGlass>
         </div>
@@ -842,8 +1052,49 @@ function AgendaContent() {
                 </div>
               )}
 
+              {/* Cliente Fixo */}
+              <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={formData.is_fixed}
+                    onChange={e => setFormData(f => ({ ...f, is_fixed: e.target.checked }))}
+                    className="w-4 h-4 rounded border-[var(--border-subtle)] bg-[var(--background)] text-gold focus:ring-gold accent-gold"
+                  />
+                  <span className="text-sm font-bold text-foreground">Este é um horário fixo/recorrente do cliente?</span>
+                </label>
+                
+                {formData.is_fixed && (
+                  <div className="pl-6 animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">Frequência</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'WEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'WEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Semanal</button>
+                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'BIWEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'BIWEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Quinzenal</button>
+                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'MONTHLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'MONTHLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Mensal</button>
+                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'CUSTOM' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'CUSTOM' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Todo Dia...</button>
+                    </div>
+                    {formData.recurrence_type === 'CUSTOM' && (
+                      <div className="mt-3">
+                        <label className="block text-[11px] font-bold text-foreground/70 mb-1">Qual o dia fixo do mês? (1 a 31)</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          max="31"
+                          required={formData.is_fixed && formData.recurrence_type === 'CUSTOM'}
+                          placeholder="Ex: 5"
+                          value={formData.recurrence_custom_day}
+                          onChange={e => setFormData(f => ({ ...f, recurrence_custom_day: e.target.value }))}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
+                        />
+                      </div>
+                    )}
+                    <p className="text-[11px] text-foreground/50 mt-2">O sistema irá marcar este agendamento como fixo para o cliente.</p>
+                  </div>
+                )}
+              </div>
+
               {/* 4. Data & Horário Inteligente */}
-              <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+              <div className="space-y-2 pt-4 border-t border-[var(--border-subtle)]">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center gap-1">
