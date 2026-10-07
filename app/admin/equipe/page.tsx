@@ -63,7 +63,7 @@ export default function TeamManagementPage() {
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, newRole, permissions: newPermissions }),
+        body: JSON.stringify({ userId, newRole }),
       });
       await loadProfiles();
       alert('Permissão atualizada com sucesso!');
