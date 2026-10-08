@@ -18,6 +18,7 @@ import {
   atualizarStatusAgendamento
 } from '@/lib/supabase-queries';
 import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda } from '@/lib/gestao-types';
+import { supabase } from '@/lib/supabase';
 
 // Mock IDs for the professional (will be replaced by real auth logic)
 const PROFISSIONAL_ID = 'a0000001-0000-0000-0000-000000000001';
