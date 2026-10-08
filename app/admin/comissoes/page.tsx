@@ -161,6 +161,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
 export default function ComissoesPage() {
   const [aba, setAba] = useState<Aba>('fechamento');
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [todosProfissionais, setTodosProfissionais] = useState<Profissional[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [regras, setRegras] = useState<RegraComissao[]>([]);
   const [comissoes, setComissoes] = useState<Comissao[]>([]);
@@ -245,6 +246,7 @@ export default function ComissoesPage() {
       fetchProfissionais(), fetchServicos(), fetchRegrasComissao(),
       fetchComissoes(), fetchParcelasPendentes(), fetchTaxasPagamento(),
     ]);
+    setTodosProfissionais(profs);
     setProfissionais(profs.filter(p => p.ativo));
     setServicos(svcs.filter(s => s.ativo));
     setRegras(rgs);
@@ -338,9 +340,9 @@ export default function ComissoesPage() {
     }
   };
 
-  const getProfNome = (id: string) => profissionais.find(p => p.id === id)?.nome ?? id.slice(0, 8);
+  const getProfNome = (id: string) => todosProfissionais.find(p => p.id === id)?.nome ?? id.slice(0, 8);
   const getProfCategoria = (profId: string) => {
-    const p = profissionais.find(pr => pr.id === profId);
+    const p = todosProfissionais.find(pr => pr.id === profId);
     if (!p) return 'Cabelo';
     if (p.categoria) return p.categoria;
     const tags = (p.especialidades || []).join(' ').toLowerCase();
@@ -359,7 +361,7 @@ export default function ComissoesPage() {
   // Lista unificada de todos os recebíveis detalhados
   const todosRecebiveis = useMemo(() => {
     return comissoes.flatMap(c => {
-      const prof = profissionais.find(p => p.id === c.professional_id);
+      const prof = todosProfissionais.find(p => p.id === c.professional_id);
       const dataAtendimento = c.created_at.slice(0, 10);
       const taxaInfo = calcularTaxaMaquininha(c.payment_method, c.installments, c.total_amount, taxas);
       return (c.parcelas ?? []).map(p => {
