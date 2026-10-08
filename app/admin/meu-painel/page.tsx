@@ -30,6 +30,7 @@ export default function MeuPainelPage() {
   // Modals state
   const [insumosModalOpen, setInsumosModalOpen] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
+  const [catalogoModalOpen, setCatalogoModalOpen] = useState(false);
   const [activeAgendamento, setActiveAgendamento] = useState<Agendamento | null>(null);
 
   // Comanda state
@@ -226,7 +227,7 @@ export default function MeuPainelPage() {
               Gere links de produtos para suas clientes com seu código de comissão embutido.
             </p>
             <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => alert('Em breve: Catálogo de links de produtos do salão')}>
+              <Button variant="secondary" className="flex-1" onClick={() => setCatalogoModalOpen(true)}>
                 <Share2 size={16} /> Abrir Catálogo para Compartilhar
               </Button>
             </div>
@@ -387,6 +388,57 @@ export default function MeuPainelPage() {
             </div>
 
             <Button variant="outline" className="w-full" onClick={() => setUpsellModalOpen(false)}>Pronto</Button>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* MODAL CATÁLOGO AFILIADO */}
+      {catalogoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <CardGlass className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Share2 className="text-gold" />
+                Catálogo de Produtos
+              </h3>
+              <button onClick={() => setCatalogoModalOpen(false)}><X className="text-foreground/50 hover:text-foreground" /></button>
+            </div>
+            <p className="text-sm text-foreground/60 mb-6">
+              Compartilhe os links no WhatsApp. Quando a cliente comprar, o sistema registrará a comissão automaticamente para você.
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              {produtosDeVenda.length === 0 ? (
+                <div className="text-center p-4 border border-dashed border-[var(--border-subtle)] text-foreground/50 rounded">
+                  Nenhum produto disponível para venda.
+                </div>
+              ) : (
+                produtosDeVenda.map(p => {
+                  const url = `${window.location.origin}/loja/produto/${p.id}?ref=${PROFISSIONAL_ID}`;
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.sale_price}\n\nCompre por aqui: ${url}`)}`;
+                  
+                  return (
+                    <div key={p.id} className="flex justify-between items-center p-3 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
+                      <div className="flex-1 pr-4">
+                        <p className="font-bold text-foreground">{p.name}</p>
+                        <p className="text-sm text-gold font-mono">R$ {p.sale_price}</p>
+                      </div>
+                      <a 
+                        href={whatsappUrl} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-md transition-colors"
+                        title="Compartilhar no WhatsApp"
+                      >
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="css-i6dzq1"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                      </a>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <Button variant="outline" className="w-full" onClick={() => setCatalogoModalOpen(false)}>Fechar</Button>
           </CardGlass>
         </div>
       )}

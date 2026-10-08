@@ -1151,6 +1151,18 @@ export async function excluirRegraComissao(id: string): Promise<{ ok: boolean; e
   }
 }
 
+/** Calcula a taxa administrativa/maquininha com base na forma de pagamento e parcelas */
+export function getTaxaCartao(method: FormaPagamento, parcelas: number): number {
+  if (method === 'DINHEIRO' || method === 'PIX') return 0;
+  if (method === 'DEBITO') return 1.99; // Exemplo: 1.99% débito
+  if (method === 'CREDITO') {
+    if (parcelas <= 1) return 4.98; // Exemplo: 4.98% crédito à vista
+    // Exemplo: 4.98% base + 1.5% por parcela adicional
+    return 4.98 + (1.5 * (parcelas - 1));
+  }
+  return 0;
+}
+
 /** Cria comissão + parcelas ao finalizar atendimento */
 export async function criarComissao(params: {
   appointmentId: string;
@@ -1164,13 +1176,20 @@ export async function criarComissao(params: {
   const pct = await getComissaoPct(params.professionalId, params.serviceId);
   if (pct === 0) return { ok: true }; // sem regra de comissão configurada
 
-  const totalComissao = Number((params.totalAmount * pct / 100).toFixed(2));
   let numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
   
   // Regra especial solicitada: serviços com 100% de comissão são pagos ao profissional em 3x
   if (pct === 100) {
     numParcelas = 3;
   }
+
+  // Lógica de Taxas do Cartão: Descontar a taxa da bandeira antes de calcular a comissão
+  const taxaPercent = getTaxaCartao(params.paymentMethod, numParcelas);
+  const valorTaxa = params.totalAmount * (taxaPercent / 100);
+  const valorLiquidoParaSplit = params.totalAmount - valorTaxa;
+
+  // Calcula a comissão sobre o valor líquido (após taxa da maquininha)
+  const totalComissao = Number((valorLiquidoParaSplit * pct / 100).toFixed(2));
   const valorParcela = Number((totalComissao / numParcelas).toFixed(2));
 
   // Insere comissão
