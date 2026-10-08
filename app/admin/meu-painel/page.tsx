@@ -27,6 +27,7 @@ export default function MeuPainelPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
+  const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modals state
@@ -53,10 +54,13 @@ export default function MeuPainelPage() {
         fetchServicos(),
         fetchEstoque(),
       ]);
+      const { data: prods } = await supabase.from('products').select('*').eq('active', true).order('name');
+      
       setAgendamentos(ags);
       setClientes(cls);
       setServicos(srvs);
       setEstoque(est);
+      setProdutosLoja(prods || []);
       setLoading(false);
     }
     loadData();
@@ -125,9 +129,9 @@ export default function MeuPainelPage() {
     setInsumoQty('');
   };
 
-  const prodSelMeuPainel = estoque.find(p => p.id === produtoSelecionado);
+  const prodSelMeuPainel = produtosLoja.find(p => p.id === produtoSelecionado);
   const qNumMeuPainel = Math.max(1, parseInt(produtoQty) || 1);
-  const subtotalProdMeuPainel = (prodSelMeuPainel?.sale_price || 0) * qNumMeuPainel;
+  const subtotalProdMeuPainel = (prodSelMeuPainel?.price || 0) * qNumMeuPainel;
 
   const handleProdDescPct = (pctStr: string) => {
     setProdutoDescPct(pctStr);
@@ -159,10 +163,10 @@ export default function MeuPainelPage() {
     const qtyNum = parseInt(produtoQty);
     if (isNaN(qtyNum) || qtyNum <= 0) return;
 
-    const prod = estoque.find(p => p.id === produtoSelecionado);
+    const prod = produtosLoja.find(p => p.id === produtoSelecionado);
     if (!prod) return;
 
-    const precoBase = prod.sale_price ?? 0;
+    const precoBase = prod.price ?? 0;
     const sub = precoBase * qtyNum;
     const descVal = Math.min(sub, Math.max(0, parseFloat(produtoDescValor) || 0));
     const precoFinalUnit = (sub - descVal) / qtyNum;
@@ -419,8 +423,8 @@ export default function MeuPainelPage() {
                       const pid = e.target.value;
                       setProdutoSelecionado(pid);
                       if (produtoDescPct) {
-                        const p = estoque.find(x => x.id === pid);
-                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(produtoQty) || 1));
+                        const p = produtosLoja.find(x => x.id === pid);
+                        const sub = (p?.price || 0) * (Math.max(1, parseInt(produtoQty) || 1));
                         const pct = parseFloat(produtoDescPct) || 0;
                         const val = (sub * pct) / 100;
                         setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
@@ -428,8 +432,8 @@ export default function MeuPainelPage() {
                     }}
                   >
                     <option value="">Selecione o Produto...</option>
-                    {produtosDeVenda.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} — R$ {p.sale_price}</option>
+                    {produtosLoja.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} — R$ {p.price}</option>
                     ))}
                   </select>
                   <input 
@@ -442,8 +446,8 @@ export default function MeuPainelPage() {
                       const q = e.target.value;
                       setProdutoQty(q);
                       if (produtoDescPct) {
-                        const p = estoque.find(x => x.id === produtoSelecionado);
-                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
+                        const p = produtosLoja.find(x => x.id === produtoSelecionado);
+                        const sub = (p?.price || 0) * (Math.max(1, parseInt(q) || 1));
                         const pct = parseFloat(produtoDescPct) || 0;
                         const val = (sub * pct) / 100;
                         setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
@@ -540,8 +544,8 @@ export default function MeuPainelPage() {
                 <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden">
                   <div className="bg-foreground/5 p-2 text-xs font-bold uppercase text-foreground/60">Itens na Comanda</div>
                   {comandaAtual.filter(i => i.type === 'PRODUTO').map(item => {
-                    const prod = estoque.find(p => p.id === item.inventory_id);
-                    const precoOrig = prod?.sale_price || 0;
+                    const prod = produtosLoja.find(p => p.id === item.inventory_id);
+                    const precoOrig = prod?.price || 0;
                     const temDesc = precoOrig > item.price;
                     return (
                       <div key={item.id} className="p-2.5 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
@@ -588,20 +592,20 @@ export default function MeuPainelPage() {
             </p>
             
             <div className="space-y-4 mb-6">
-              {produtosDeVenda.length === 0 ? (
+              {produtosLoja.length === 0 ? (
                 <div className="text-center p-4 border border-dashed border-[var(--border-subtle)] text-foreground/50 rounded">
-                  Nenhum produto disponível para venda.
+                  Nenhum produto disponível na loja.
                 </div>
               ) : (
-                produtosDeVenda.map(p => {
+                produtosLoja.map(p => {
                   const url = `${window.location.origin}/loja/produto/${p.id}?ref=${PROFISSIONAL_ID}`;
-                  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.sale_price}\n\nCompre por aqui: ${url}`)}`;
+                  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.price}\n\nCompre por aqui: ${url}`)}`;
                   
                   return (
                     <div key={p.id} className="flex justify-between items-center p-3 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
                       <div className="flex-1 pr-4">
                         <p className="font-bold text-foreground">{p.name}</p>
-                        <p className="text-sm text-gold font-mono">R$ {p.sale_price}</p>
+                        <p className="text-sm text-gold font-mono">R$ {p.price}</p>
                       </div>
                       <a 
                         href={whatsappUrl} 
