@@ -62,7 +62,20 @@ export async function createAdminUser(userData: { email: string; full_name: stri
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // 1. Criar o usuário no Supabase Auth
+  // 1. Verifica se o usuário já existe
+  const { data: existingProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('email', userData.email)
+    .single();
+
+  if (existingProfile && existingProfile.id) {
+    // Atualiza a role do usuário existente
+    await updateUserRole(existingProfile.id, userData.role, userData.permissions);
+    return { success: true, user: { id: existingProfile.id } };
+  }
+
+  // 2. Criar o usuário no Supabase Auth
   const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: userData.email,
     password: userData.password,
@@ -72,7 +85,7 @@ export async function createAdminUser(userData: { email: string; full_name: stri
 
   if (authError) throw new Error(`Erro ao criar conta no Auth: ${authError.message}`);
 
-  // 2. Criar o perfil na tabela profiles (caso o trigger handle_new_user falhe ou demore)
+  // 3. Criar o perfil na tabela profiles (caso o trigger handle_new_user falhe ou demore)
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
     .upsert({
