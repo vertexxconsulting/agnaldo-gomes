@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 export default function AdminPerfilPage() {
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
+  const [userNickname, setUserNickname] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [userInitials, setUserInitials] = useState('AG');
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,13 @@ export default function AdminPerfilPage() {
             setUserAvatar(user.user_metadata.avatar_url);
           }
           
+          
+          // Buscar dados adicionais do profile (nickname)
+          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', user.id).single();
+          if (profile && profile.nickname) {
+            setUserNickname(profile.nickname);
+          }
+
           if (name && name !== 'Administrador') {
             const parts = name.split(' ');
             if (parts.length >= 2) {
@@ -104,6 +112,7 @@ export default function AdminPerfilPage() {
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const newName = formData.get('name') as string;
     const newPhone = formData.get('phone') as string;
+    const newNickname = formData.get('nickname') as string;
 
     try {
       const { error } = await supabase.auth.updateUser({
@@ -118,11 +127,13 @@ export default function AdminPerfilPage() {
           id: user.id,
           full_name: newName,
           phone: newPhone,
+          nickname: newNickname,
         });
       }
 
       setUserName(newName);
       setUserPhone(newPhone);
+      setUserNickname(newNickname);
       alert('Perfil atualizado com sucesso!');
     } catch (e: any) {
       alert(`Erro ao atualizar perfil: ${e.message}`);
@@ -216,6 +227,17 @@ export default function AdminPerfilPage() {
                     className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-gold transition-colors"
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground/60">Nickname / Apelido</label>
+                <input 
+                  type="text" 
+                  name="nickname"
+                  defaultValue={userNickname}
+                  placeholder="Ex: anderson.alves"
+                  className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-gold transition-colors"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">
