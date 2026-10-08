@@ -23,7 +23,8 @@ export default function AdminLojaLayout({ children }: { children: React.ReactNod
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }: any) => {
+    supabase.auth.getUser().then(({ data }: { data: { user: any } | { user: null } }) => {
+      const user = data?.user;
       if (user) {
         setUserRole(getUserRole(user));
         setUserPermissions(user.user_metadata?.permissions);

@@ -14,7 +14,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone } from 'lucide-react';
+import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -259,6 +259,9 @@ function AgendaContent() {
       const custoUn = prod?.cost_price || 0;
       return {
         inventory_id: i.inventory_id,
+        name: prod?.name || 'Insumo',
+        unit: prod?.unit || 'GR',
+        price_per_gram: prod?.cost_price || 0,
         qty_used: i.qty,
         custo_unitario: custoUn,
         custo_total: custoUn * i.qty

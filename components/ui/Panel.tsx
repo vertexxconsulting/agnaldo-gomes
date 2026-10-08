@@ -115,11 +115,13 @@ export function StatCard({
 export function SectionHeader({
   eyebrow,
   title,
+  description,
   action,
   className,
 }: {
   eyebrow?: string;
   title: string;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
 }) {
@@ -134,6 +136,11 @@ export function SectionHeader({
         <h2 className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground">
           {title}
         </h2>
+        {description && (
+          <p className="text-sm text-foreground/70 mt-1 max-w-xl">
+            {description}
+          </p>
+        )}
         <div className="w-7 h-[3px] rounded-full bg-primary mt-2" />
       </div>
       {action && <div className="shrink-0 pb-0.5">{action}</div>}

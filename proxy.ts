@@ -66,7 +66,7 @@ export async function proxy(request: NextRequest) {
   const isMain = !isAcademy && !isLoja && !isAgenda && !isAdmin;
 
   // --- REDIRECIONAMENTOS DE DOMÍNIO PRINCIPAL ---
-  if (isMain && !hostname.includes('vercel.app')) {
+  if (isMain && !hostname.includes('vercel.app') && !hostname.includes('localhost') && !hostname.includes('127.0.0.1')) {
     const scheme = hostname.includes('localhost') ? 'http' : 'https';
     let baseDomain = hostname.replace('www.', ''); 
     

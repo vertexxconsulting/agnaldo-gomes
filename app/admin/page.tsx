@@ -6,7 +6,7 @@ import {
   Wallet, CheckCircle2, AlertTriangle, Clock, Scissors, 
   Users, Banknote, UserPlus, ShoppingCart, TrendingDown
 } from 'lucide-react';
-import { SectionHeader, CardGlass, StatCard } from '@/components/ui/Panel';
+import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 import { fetchClientes, fetchAgendamentos, fetchServicos, fetchProfissionais, atualizarStatusAgendamento } from '@/lib/supabase-queries';
 import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
@@ -21,7 +21,7 @@ export default function ReceptionDashboard() {
   const carregarDados = async () => {
     setLoading(true);
     const [ags, cls, srvs, profs] = await Promise.all([
-      fetchAgendamentos({ data_inicio: new Date().toISOString().split('T')[0] }),
+      fetchAgendamentos({ data: new Date().toISOString().split('T')[0] }),
       fetchClientes(),
       fetchServicos(),
       fetchProfissionais(),
@@ -125,15 +125,15 @@ export default function ReceptionDashboard() {
           </h2>
           
           {naCadeira.length === 0 ? (
-            <CardGlass className="p-8 text-center text-foreground/50 border-dashed">
+            <Panel className="p-8 text-center text-foreground/50 border-dashed">
               Nenhuma cliente em atendimento no momento.
-            </CardGlass>
+            </Panel>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {naCadeira.map(ag => {
                 const srv = getServico(ag.servico_id);
                 return (
-                  <CardGlass key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-green-500/20 bg-green-500/5">
+                  <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-green-500/20 bg-green-500/5">
                     <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -159,7 +159,7 @@ export default function ReceptionDashboard() {
                         </Button>
                       </Link>
                     </div>
-                  </CardGlass>
+                  </Panel>
                 );
               })}
             </div>
@@ -201,29 +201,21 @@ export default function ReceptionDashboard() {
             Atalhos Rápidos
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <Link href="/admin/agenda">
-              <Button variant="secondary" className="w-full flex-col h-auto py-4 gap-2 text-xs">
-                <Clock size={20} className="text-gold" />
-                Novo Agendamento
-              </Button>
+            <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-gold hover:text-gold transition-colors text-foreground">
+              <Clock size={20} className="text-gold" />
+              Novo Agendamento
             </Link>
-            <Link href="/admin/clientes">
-              <Button variant="secondary" className="w-full flex-col h-auto py-4 gap-2 text-xs">
-                <UserPlus size={20} className="text-blue-400" />
-                Novo Cliente
-              </Button>
+            <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-blue-400 hover:text-blue-400 transition-colors text-foreground">
+              <UserPlus size={20} className="text-blue-400" />
+              Novo Cliente
             </Link>
-            <Link href="/admin/loja" onClick={(e) => { e.preventDefault(); alert("Módulo Venda Balcão em breve!"); }}>
-              <Button variant="secondary" className="w-full flex-col h-auto py-4 gap-2 text-xs">
-                <ShoppingCart size={20} className="text-green-400" />
-                Venda Balcão
-              </Button>
+            <Link href="/admin/loja" onClick={(e) => { e.preventDefault(); alert("Módulo Venda Balcão em breve!"); }} className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-green-400 hover:text-green-400 transition-colors text-foreground">
+              <ShoppingCart size={20} className="text-green-400" />
+              Venda Balcão
             </Link>
-            <Link href="/admin/relatorios">
-              <Button variant="secondary" className="w-full flex-col h-auto py-4 gap-2 text-xs">
-                <Wallet size={20} className="text-purple-400" />
-                Despesa / Relatórios
-              </Button>
+            <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-purple-400 hover:text-purple-400 transition-colors text-foreground">
+              <Wallet size={20} className="text-purple-400" />
+              Despesas / Resumo
             </Link>
           </div>
         </div>

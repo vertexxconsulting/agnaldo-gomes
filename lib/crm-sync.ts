@@ -12,6 +12,7 @@ export function normalizarTelefone(telefone: string | null | undefined): string 
 
 export interface ClienteInput {
   id?: string;
+  codigo?: number | null;
   nome: string;
   telefone: string;
   email?: string | null;
@@ -72,6 +73,7 @@ export async function upsertClienteMae(input: ClienteInput) {
   const payload: any = {
     name: nameClean,
     phone: phoneClean,
+    codigo: input.codigo !== undefined ? input.codigo : clienteExistente?.codigo,
     email: emailClean || clienteExistente?.email || null,
     cpf: input.cpf !== undefined ? input.cpf : clienteExistente?.cpf || null,
     address: input.endereco !== undefined ? input.endereco : clienteExistente?.address || null,

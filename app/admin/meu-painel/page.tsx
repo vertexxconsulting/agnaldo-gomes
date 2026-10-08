@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker
 } from 'lucide-react';
-import { SectionHeader, CardGlass } from '@/components/ui/Panel';
+import { SectionHeader, Panel } from '@/components/ui/Panel';
+import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { 
   fetchClientes, 
@@ -44,7 +45,7 @@ export default function MeuPainelPage() {
     async function loadData() {
       setLoading(true);
       const [ags, cls, srvs, est] = await Promise.all([
-        fetchAgendamentos({ data_inicio: new Date().toISOString().split('T')[0] }),
+        fetchAgendamentos({ data: new Date().toISOString().split('T')[0] }),
         fetchClientes(),
         fetchServicos(),
         fetchEstoque(),

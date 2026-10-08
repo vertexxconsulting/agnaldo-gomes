@@ -91,6 +91,7 @@ export default function ClienteModule() {
     const form = new FormData(e.currentTarget);
     const payload = {
       id: editando?.id,
+      codigo: form.get('codigo') as string,
       nome: form.get('nome') as string,
       telefone: form.get('telefone') as string,
       email: (form.get('email') as string) || null,
@@ -194,6 +195,10 @@ export default function ClienteModule() {
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Nome Completo *</label>
                 <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Código (Opcional)</label>
+                <input name="codigo" type="number" defaultValue={editando?.codigo ?? ''} placeholder="Automático" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Telefone / WhatsApp *</label>
