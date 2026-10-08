@@ -899,6 +899,7 @@ export async function salvarProdutoEstoque(
     active: payload.active,
     image_url: payload.image_url,
     notes: payload.notes,
+    points_cost: payload.points_cost,
   };
 
   if (id) {

@@ -4,19 +4,25 @@ import { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { atualizarServico, fetchEstoque, atualizarProdutoEstoqueParcial } from '@/lib/supabase-queries';
-import { getServicos } from '@/lib/mock-data';
-import type { Servico, ProdutoEstoque } from '@/lib/gestao-types';
-import { Save, Gift, Coins, Package } from 'lucide-react';
+import { fetchEstoque, atualizarProdutoEstoqueParcial, salvarProdutoEstoque } from '@/lib/supabase-queries';
+import type { ProdutoEstoque } from '@/lib/gestao-types';
+import { Gift, Package, Plus, X } from 'lucide-react';
 
 export default function FidelidadePage() {
-  const [servicos, setServicos] = useState<Servico[]>([]);
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
-  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+
   const [fidelidadeAtiva, setFidelidadeAtiva] = useState(true);
   const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Modal de Adicionar
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [addMode, setAddMode] = useState<'existente' | 'novo'>('existente');
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [newProductName, setNewProductName] = useState('');
+  const [newPointsCost, setNewPointsCost] = useState('');
+  const [savingNew, setSavingNew] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -56,35 +62,78 @@ export default function FidelidadePage() {
 
   const carregarDados = async () => {
     setLoading(true);
-    const [dadosServicos, dadosProdutos] = await Promise.all([
-      getServicos(),
-      fetchEstoque(true)
-    ]);
-    setServicos(dadosServicos.sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome)));
+    const dadosProdutos = await fetchEstoque(false);
     setProdutos(dadosProdutos);
     setLoading(false);
   };
 
-  const handleUpdateServico = async (servicoId: string, reward: number) => {
-    setSaving(servicoId);
-    await atualizarServico(servicoId, {
-      points_reward: reward,
-    });
-    setSaving(null);
-    carregarDados();
-  };
-
   const handleUpdateProduto = async (produtoId: string, cost: number) => {
     setSaving(produtoId);
-    await atualizarProdutoEstoqueParcial(produtoId, {
-      points_cost: cost,
-    });
+    await atualizarProdutoEstoqueParcial(produtoId, { points_cost: cost });
     setSaving(null);
     carregarDados();
   };
 
+  const handleRemoveProduto = async (produtoId: string) => {
+    setSaving(produtoId);
+    // Remover do resgate = colocar pontos como 0 (ou null)
+    await atualizarProdutoEstoqueParcial(produtoId, { points_cost: 0 });
+    setSaving(null);
+    carregarDados();
+  };
+
+  const handleAddProduto = async () => {
+    const cost = Number(newPointsCost);
+    if (!cost || cost <= 0) {
+      alert('Informe um custo em pontos válido.');
+      return;
+    }
+
+    setSavingNew(true);
+
+    if (addMode === 'existente') {
+      if (!selectedProductId) {
+        alert('Selecione um produto.');
+        setSavingNew(false);
+        return;
+      }
+      await atualizarProdutoEstoqueParcial(selectedProductId, { points_cost: cost });
+    } else {
+      if (!newProductName.trim()) {
+        alert('Informe o nome do produto.');
+        setSavingNew(false);
+        return;
+      }
+      // Criar novo produto direto no estoque como "Fidelidade"
+      await salvarProdutoEstoque({
+        name: newProductName.trim(),
+        category: 'Fidelidade',
+        unit: 'un',
+        stock_qty: 0,
+        cost_price: 0,
+        allow_sale: false,
+        allow_procedure_use: false,
+        active: true,
+        points_cost: cost
+      });
+    }
+
+    setSavingNew(false);
+    setIsModalOpen(false);
+    setNewPointsCost('');
+    setNewProductName('');
+    setSelectedProductId('');
+    carregarDados();
+  };
+
+  // Produtos que estão no programa de fidelidade (points_cost > 0)
+  const produtosResgate = produtos.filter(p => (p.points_cost || 0) > 0);
+  
+  // Produtos do estoque que ainda NÃO estão no programa
+  const produtosDisponiveis = produtos.filter(p => (p.points_cost || 0) <= 0);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <SectionTitle title="Programa de Fidelidade" />
         
@@ -105,163 +154,156 @@ export default function FidelidadePage() {
       <div className="bg-[var(--accent)]/10 text-[var(--accent)] p-4 rounded-xl flex gap-3 items-start border border-[var(--accent)]/20">
         <Gift className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-semibold mb-1">Nova Dinâmica de Fidelidade</p>
+          <p className="font-semibold mb-1">Catálogo de Resgate</p>
           <p>
-            O resgate de pontos agora é exclusivo para <strong>Produtos (Estoque)</strong>.
-            <br/>• <strong>Ganho de Pontos:</strong> Os clientes acumulam pontos ao realizarem <strong>Serviços</strong>.
-            <br/>• <strong>Resgate (Custo):</strong> Os clientes gastam os pontos para retirar <strong>Produtos</strong> gratuitamente da prateleira.
+            Adicione produtos do seu estoque que as clientes podem resgatar usando seus pontos de fidelidade. 
+            Você também pode criar produtos exclusivos de resgate.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Tabela 1: GANHO DE PONTOS (SERVIÇOS) */}
-        <CardGlass>
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
-              <Coins className="w-5 h-5 text-green-500" />
-              Ganho de Pontos (Serviços)
-            </h2>
-
-            {loading ? (
-              <p className="text-[var(--muted-foreground)]">Carregando serviços...</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)] text-[var(--muted-foreground)] text-sm">
-                      <th className="pb-3 px-4 font-medium">Serviço</th>
-                      <th className="pb-3 px-4 font-medium text-center">Pontos Ganhos</th>
-                      <th className="pb-3 px-4 font-medium text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {servicos.map((s) => (
-                      <ServicoFidelidadeRow 
-                        key={s.id} 
-                        servico={s} 
-                        saving={saving === s.id}
-                        onSave={handleUpdateServico} 
-                      />
-                    ))}
-                    {servicos.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="py-8 text-center text-[var(--muted-foreground)]">
-                          Nenhum serviço cadastrado.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </CardGlass>
-
-        {/* Tabela 2: RESGATE DE PRODUTOS */}
-        <CardGlass>
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+      <CardGlass>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
               <Package className="w-5 h-5 text-rose-500" />
-              Custo de Resgate (Produtos)
+              Produtos Disponíveis para Resgate
             </h2>
-
-            {loading ? (
-              <p className="text-[var(--muted-foreground)]">Carregando produtos...</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)] text-[var(--muted-foreground)] text-sm">
-                      <th className="pb-3 px-4 font-medium">Produto</th>
-                      <th className="pb-3 px-4 font-medium text-center">Custo (Pontos)</th>
-                      <th className="pb-3 px-4 font-medium text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {produtos.map((p) => (
-                      <ProdutoFidelidadeRow 
-                        key={p.id} 
-                        produto={p} 
-                        saving={saving === p.id}
-                        onSave={handleUpdateProduto} 
-                      />
-                    ))}
-                    {produtos.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="py-8 text-center text-[var(--muted-foreground)]">
-                          Nenhum produto cadastrado no estoque.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <Button size="sm" onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Adicionar Produto
+            </Button>
           </div>
-        </CardGlass>
-      </div>
-    </div>
-  );
-}
 
-function ServicoFidelidadeRow({ 
-  servico, 
-  saving,
-  onSave 
-}: { 
-  servico: Servico; 
-  saving: boolean;
-  onSave: (id: string, reward: number) => void 
-}) {
-  const [reward, setReward] = useState(servico.points_reward?.toString() || '0');
-  const isChanged = Number(reward) !== (servico.points_reward || 0);
-
-  return (
-    <tr className="border-b border-[var(--border-subtle)] hover:bg-[var(--background)]/50 transition-colors">
-      <td className="py-4 px-4">
-        <span className="font-medium text-[var(--foreground)]">{servico.nome}</span>
-      </td>
-      <td className="py-4 px-4">
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-green-500 font-semibold">+</span>
-          <input 
-            type="number" 
-            value={reward}
-            onChange={(e) => setReward(e.target.value)}
-            className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-center"
-            min="0"
-          />
+          {loading ? (
+            <p className="text-[var(--muted-foreground)]">Carregando catálogo...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--muted-foreground)] text-sm">
+                    <th className="pb-3 px-4 font-medium">Produto</th>
+                    <th className="pb-3 px-4 font-medium text-center">Custo (Pontos)</th>
+                    <th className="pb-3 px-4 font-medium text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {produtosResgate.map((p) => (
+                    <ProdutoFidelidadeRow 
+                      key={p.id} 
+                      produto={p} 
+                      saving={saving === p.id}
+                      onSave={handleUpdateProduto} 
+                      onRemove={handleRemoveProduto}
+                    />
+                  ))}
+                  {produtosResgate.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-8 text-center text-[var(--muted-foreground)]">
+                        Nenhum produto cadastrado para resgate.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      </td>
-      <td className="py-4 px-4 text-right">
-        {isChanged ? (
-          <Button 
-            size="sm" 
-            disabled={saving}
-            onClick={() => onSave(servico.id, Number(reward))}
-            className="h-8"
-          >
-            {saving ? '...' : 'Salvar'}
-          </Button>
-        ) : (
-          <Button size="sm" variant="ghost" disabled className="h-8 opacity-50">
-            Salvo
-          </Button>
-        )}
-      </td>
-    </tr>
+      </CardGlass>
+
+      {/* MODAL DE ADICIONAR PRODUTO */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1C1C1E] border border-[var(--border-subtle)] w-full max-w-md rounded-2xl p-6 shadow-xl relative">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-[var(--muted-foreground)] hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-white mb-6">Adicionar ao Resgate</h2>
+
+            <div className="flex gap-2 mb-6 bg-[var(--background)] p-1 rounded-lg">
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'existente' ? 'bg-[var(--accent)] text-white' : 'text-[var(--muted-foreground)] hover:text-white'}`}
+                onClick={() => setAddMode('existente')}
+              >
+                Do Estoque
+              </button>
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'novo' ? 'bg-[var(--accent)] text-white' : 'text-[var(--muted-foreground)] hover:text-white'}`}
+                onClick={() => setAddMode('novo')}
+              >
+                Criar Novo
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {addMode === 'existente' ? (
+                <div>
+                  <label className="block text-sm text-[var(--muted-foreground)] mb-1">Selecione um Produto</label>
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => setSelectedProductId(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                  >
+                    <option value="">-- Selecione --</option>
+                    {produtosDisponiveis.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} (Estoque: {p.stock_qty})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm text-[var(--muted-foreground)] mb-1">Nome do Produto Especial</label>
+                  <input
+                    type="text"
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    placeholder="Ex: Copo Térmico Personalizado"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                  />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">Este produto será criado no estoque na categoria "Fidelidade".</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm text-[var(--muted-foreground)] mb-1">Custo para Resgate (Pontos)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newPointsCost}
+                  onChange={(e) => setNewPointsCost(e.target.value)}
+                  placeholder="Ex: 500"
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                />
+              </div>
+
+              <Button 
+                className="w-full mt-2" 
+                onClick={handleAddProduto}
+                disabled={savingNew}
+              >
+                {savingNew ? 'Adicionando...' : 'Confirmar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 function ProdutoFidelidadeRow({ 
   produto, 
   saving,
-  onSave 
+  onSave,
+  onRemove
 }: { 
   produto: ProdutoEstoque; 
   saving: boolean;
-  onSave: (id: string, cost: number) => void 
+  onSave: (id: string, cost: number) => void;
+  onRemove: (id: string) => void;
 }) {
   const [cost, setCost] = useState(produto.points_cost?.toString() || '0');
   const isChanged = Number(cost) !== (produto.points_cost || 0);
@@ -279,13 +321,13 @@ function ProdutoFidelidadeRow({
             type="number" 
             value={cost}
             onChange={(e) => setCost(e.target.value)}
-            className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-center"
-            min="0"
+            className="w-24 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-center"
+            min="1"
           />
         </div>
       </td>
-      <td className="py-4 px-4 text-right">
-        {isChanged ? (
+      <td className="py-4 px-4 text-right space-x-2">
+        {isChanged && (
           <Button 
             size="sm" 
             disabled={saving}
@@ -294,11 +336,20 @@ function ProdutoFidelidadeRow({
           >
             {saving ? '...' : 'Salvar'}
           </Button>
-        ) : (
-          <Button size="sm" variant="ghost" disabled className="h-8 opacity-50">
-            Salvo
-          </Button>
         )}
+        <Button 
+          size="sm" 
+          variant="outline"
+          className="h-8 text-red-500 border-red-500/20 hover:bg-red-500/10"
+          disabled={saving}
+          onClick={() => {
+            if (window.confirm(`Remover "${produto.name}" do programa de fidelidade?`)) {
+              onRemove(produto.id);
+            }
+          }}
+        >
+          Remover
+        </Button>
       </td>
     </tr>
   );
