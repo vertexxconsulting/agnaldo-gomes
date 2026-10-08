@@ -119,7 +119,6 @@ export async function POST(req: Request) {
       .in('date', datesToCheck)
       .neq('status', 'CANCELLED');
 
-    const { allow_overlap } = body;
 
     // Filtra apenas os payloads que NÃO conflitam com horários existentes (a menos que seja encaixe)
     const validPayloads = allow_overlap ? payloads : payloads.filter(p => {
