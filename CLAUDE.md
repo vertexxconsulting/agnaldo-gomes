@@ -172,6 +172,22 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.1 Gestão da Agenda & Categorias de Profissionais
+
+- **Categorias Oficiais de Profissionais**:
+  - `✂️ Cabelo`: Especialistas capilares (cortes, escovas, mechas, coloração, barbearia). Ex: Agnaldo Gomes, Equipe Studio.
+  - `💅 Unhas`: Especialistas em manicure, pedicure, esmaltação em gel e podologia. Ex: Camila Silva (Unhas).
+- **Filtro Dinâmico na Agenda (`/admin/agenda`)**:
+  - **Tabs de Categoria**: Alterna entre "Todos os Atendimentos", "✂️ Cabelo" e "💅 Unhas" com contadores em tempo real.
+  - **Cascata Visual**: Ao selecionar uma categoria, a agenda atualiza automaticamente os pills de profissionais, as colunas do Kanban, os horários e bloqueios do dia.
+  - **Auto-reset inteligente**: Se um profissional específico estiver selecionado e o usuário alternar para uma categoria à qual ele não pertence, o filtro de profissional volta para "Todos".
+  - **Modal de Agendamento**: Exibe os profissionais organizados por `<optgroup label="✂️ Cabelo">` e `<optgroup label="💅 Unhas">` com indicação visual da categoria.
+- **Busca Rápida de Clientes**:
+  - Campo de pesquisa em tempo real na Agenda e no Modal (busca por nome, telefone ou `#código`).
+  - Cadastro rápido de novos clientes inline diretamente na criação do agendamento.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
