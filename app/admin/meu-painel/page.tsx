@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays
+  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -41,6 +41,8 @@ export default function MeuPainelPage() {
   const [insumoQty, setInsumoQty] = useState('');
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [produtoQty, setProdutoQty] = useState('1');
+  const [produtoDescPct, setProdutoDescPct] = useState('');
+  const [produtoDescValor, setProdutoDescValor] = useState('');
 
   useEffect(() => {
     async function loadData() {
@@ -123,6 +125,34 @@ export default function MeuPainelPage() {
     setInsumoQty('');
   };
 
+  const prodSelMeuPainel = estoque.find(p => p.id === produtoSelecionado);
+  const qNumMeuPainel = Math.max(1, parseInt(produtoQty) || 1);
+  const subtotalProdMeuPainel = (prodSelMeuPainel?.sale_price || 0) * qNumMeuPainel;
+
+  const handleProdDescPct = (pctStr: string) => {
+    setProdutoDescPct(pctStr);
+    const p = parseFloat(pctStr);
+    if (isNaN(p) || p <= 0) {
+      setProdutoDescValor('');
+    } else {
+      const clamped = Math.min(100, Math.max(0, p));
+      const val = (subtotalProdMeuPainel * clamped) / 100;
+      setProdutoDescValor(val.toFixed(2));
+    }
+  };
+
+  const handleProdDescValor = (valStr: string) => {
+    setProdutoDescValor(valStr);
+    const v = parseFloat(valStr);
+    if (isNaN(v) || v <= 0 || subtotalProdMeuPainel <= 0) {
+      setProdutoDescPct('');
+    } else {
+      const clampedVal = Math.min(subtotalProdMeuPainel, Math.max(0, v));
+      const p = (clampedVal / subtotalProdMeuPainel) * 100;
+      setProdutoDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+    }
+  };
+
   const handleSalvarProduto = async () => {
     if (!activeAgendamento || !produtoSelecionado || !produtoQty) return;
     
@@ -132,17 +162,24 @@ export default function MeuPainelPage() {
     const prod = estoque.find(p => p.id === produtoSelecionado);
     if (!prod) return;
 
+    const precoBase = prod.sale_price ?? 0;
+    const sub = precoBase * qtyNum;
+    const descVal = Math.min(sub, Math.max(0, parseFloat(produtoDescValor) || 0));
+    const precoFinalUnit = (sub - descVal) / qtyNum;
+
     await salvarItemComanda(activeAgendamento.id, {
       inventory_id: produtoSelecionado,
       type: 'PRODUTO',
       qty: qtyNum,
-      price: prod.sale_price ?? 0
+      price: precoFinalUnit
     });
 
     const itens = await fetchItensComanda(activeAgendamento.id);
     setComandaAtual(itens);
     setProdutoSelecionado('');
     setProdutoQty('1');
+    setProdutoDescPct('');
+    setProdutoDescValor('');
   };
 
   const insumosDoEstoque = estoque.filter(p => p.allow_procedure_use);
@@ -373,37 +410,156 @@ export default function MeuPainelPage() {
             </p>
             
             <div className="space-y-4 mb-6">
-              <div className="flex gap-2">
-                <select 
-                  className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-sm"
-                  value={produtoSelecionado}
-                  onChange={e => setProdutoSelecionado(e.target.value)}
-                >
-                  <option value="">Selecione o Produto...</option>
-                  {produtosDeVenda.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} - R$ {p.sale_price}</option>
-                  ))}
-                </select>
-                <input 
-                  type="number"
-                  placeholder="Qtd"
-                  min="1"
-                  className="w-16 bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-sm text-center"
-                  value={produtoQty}
-                  onChange={e => setProdutoQty(e.target.value)}
-                />
-                <Button variant="primary" onClick={handleSalvarProduto}>Vender</Button>
+              <div className="space-y-3 p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg">
+                <div className="flex gap-2">
+                  <select 
+                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                    value={produtoSelecionado}
+                    onChange={e => {
+                      const pid = e.target.value;
+                      setProdutoSelecionado(pid);
+                      if (produtoDescPct) {
+                        const p = estoque.find(x => x.id === pid);
+                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(produtoQty) || 1));
+                        const pct = parseFloat(produtoDescPct) || 0;
+                        const val = (sub * pct) / 100;
+                        setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
+                      }
+                    }}
+                  >
+                    <option value="">Selecione o Produto...</option>
+                    {produtosDeVenda.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} — R$ {p.sale_price}</option>
+                    ))}
+                  </select>
+                  <input 
+                    type="number"
+                    placeholder="Qtd"
+                    min="1"
+                    className="w-16 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-center font-mono focus:outline-none focus:border-gold"
+                    value={produtoQty}
+                    onChange={e => {
+                      const q = e.target.value;
+                      setProdutoQty(q);
+                      if (produtoDescPct) {
+                        const p = estoque.find(x => x.id === produtoSelecionado);
+                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
+                        const pct = parseFloat(produtoDescPct) || 0;
+                        const val = (sub * pct) / 100;
+                        setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Seção de Desconto no Produto */}
+                {produtoSelecionado && (() => {
+                  const prod = estoque.find(p => p.id === produtoSelecionado);
+                  const q = Math.max(1, parseInt(produtoQty) || 1);
+                  const subItem = (prod?.sale_price || 0) * q;
+                  const descVal = Math.min(subItem, Math.max(0, parseFloat(produtoDescValor) || 0));
+                  const totalItem = Math.max(0, subItem - descVal);
+
+                  return (
+                    <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2.5">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (%)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              placeholder="0"
+                              value={produtoDescPct}
+                              onChange={e => handleProdDescPct(e.target.value)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (R$)</label>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="0.00"
+                              value={produtoDescValor}
+                              onChange={e => handleProdDescValor(e.target.value)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Atalhos Rápidos */}
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-[10px] text-foreground/40 mr-1">Atalhos:</span>
+                        {[
+                          { label: '0%', val: '0' },
+                          { label: '5%', val: '5' },
+                          { label: '10%', val: '10' },
+                          { label: '15%', val: '15' },
+                          { label: '20%', val: '20' },
+                        ].map(b => (
+                          <button
+                            key={b.val}
+                            type="button"
+                            onClick={() => handleProdDescPct(b.val === '0' ? '' : b.val)}
+                            className={`text-[10px] px-2 py-0.5 rounded border transition-all ${
+                              (b.val === '0' && !produtoDescPct) || (produtoDescPct === b.val)
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                                : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30'
+                            }`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between items-center pt-1 text-xs">
+                        <span className="text-foreground/70">
+                          Total do item: <strong className="text-foreground font-mono">R$ {totalItem.toFixed(2)}</strong>
+                          {descVal > 0 && <span className="text-emerald-400 ml-1.5 font-medium">(-R$ {descVal.toFixed(2)})</span>}
+                        </span>
+                        <Button variant="primary" size="sm" onClick={handleSalvarProduto} className="text-xs py-1 px-3">
+                          <ShoppingBag size={13} className="mr-1" /> Lançar
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {comandaAtual.filter(i => i.type === 'PRODUTO').length > 0 && (
-                <div className="border border-[var(--border-subtle)] rounded overflow-hidden">
+                <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden">
                   <div className="bg-foreground/5 p-2 text-xs font-bold uppercase text-foreground/60">Itens na Comanda</div>
                   {comandaAtual.filter(i => i.type === 'PRODUTO').map(item => {
                     const prod = estoque.find(p => p.id === item.inventory_id);
+                    const precoOrig = prod?.sale_price || 0;
+                    const temDesc = precoOrig > item.price;
                     return (
-                      <div key={item.id} className="p-2 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
-                        <span className="flex items-center gap-2"><ShoppingBag size={14} className="text-gold"/> {prod?.name}</span>
-                        <span className="font-mono text-foreground/70">{item.qty}x</span>
+                      <div key={item.id} className="p-2.5 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
+                        <div className="flex-1 pr-2">
+                          <span className="flex items-center gap-2 font-medium">
+                            <ShoppingBag size={14} className="text-gold"/> {prod?.name}
+                          </span>
+                          {temDesc && (
+                            <p className="text-xs text-foreground/50 ml-5 mt-0.5 flex items-center gap-1.5">
+                              <span className="line-through">R$ {precoOrig.toFixed(2)}</span>
+                              <span className="text-emerald-400 font-semibold">R$ {item.price.toFixed(2)} un.</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono text-foreground/70">{item.qty}x</span>
+                          <p className="text-xs font-bold text-gold font-mono">R$ {(item.price * item.qty).toFixed(2)}</p>
+                        </div>
                       </div>
                     );
                   })}

@@ -207,6 +207,35 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.3 Descontos em Atendimentos e Vendas de Produtos de Salão
+
+- **Fechamento de Atendimento com Desconto (`/admin/agenda`)**:
+  - Ao concluir um agendamento e receber o pagamento, a recepção/administração pode aplicar desconto geral ao cliente.
+  - **Sincronização Bidirecional Automática (% e R$)**:
+    - Ao digitar a **porcentagem (%)**, o sistema calcula e preenche automaticamente o **valor em Reais (R$)** com base no subtotal.
+    - Ao digitar o **valor em Reais (R$)**, o sistema calcula e preenche automaticamente a **porcentagem correspondente (%)**.
+    - Atalhos de um clique: `0% (Sem desc.)`, `5%`, `10%`, `15%`, `20%`, `25%`, `30%`.
+    - Campo opcional para motivo/observação do desconto (ex: "Aniversariante", "Cortesia VIP", "Parceria").
+  - **Venda de Produtos no Checkout**:
+    - Permite incluir produtos do salão diretamente no fechamento, com desconto individual por item (% e R$ sincronizados).
+  - **Cálculo Líquido e Repasse de Comissões**:
+    - O valor total recebido (`Total Líquido a Receber`) deduz o desconto com clareza no resumo financeiro.
+    - O repasse de comissão do profissional é calculado fielmente sobre o valor líquido recebido, mantendo a integridade financeira do salão.
+
+- **Venda Direta de Produtos no Salão (`/admin/estoque`)**:
+  - Botão **"Venda no Salão"** no cabeçalho e botão **"Vender"** nos cards de produtos disponíveis para revenda.
+  - Modal moderno para registro de venda avulsa de balcão:
+    - Seleção de produto e quantidade com validação de estoque em tempo real.
+    - **Desconto Sincronizado (% <-> R$)**: ajuste instantâneo entre percentual e reais, com atalhos de 5%, 10%, 15%, 20%, 25%.
+    - Associação opcional de cliente cadastrado e profissional vendedor (gerando comissão calculada sobre o valor líquido).
+    - Formas de pagamento: Dinheiro, PIX, Débito e Crédito (com parcelamento de 1x a 12x).
+    - Baixa automática no estoque (`OUT_SALE`) com histórico detalhado nas movimentações.
+
+- **Lançamento de Produtos pelo Profissional (`/admin/meu-painel`)**:
+  - No modal de Upsell da cadeira, o profissional pode conceder desconto em % ou R$ (com cálculo automático) ao lançar o produto na comanda do cliente.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

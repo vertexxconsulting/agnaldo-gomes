@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Package, Plus, Edit, Trash2, Search, AlertTriangle,
   TrendingDown, TrendingUp, ArrowUpDown, X, ChevronDown, ChevronUp,
-  BarChart3, RefreshCw, ShoppingBag, Beaker, CheckCircle2
+  BarChart3, RefreshCw, ShoppingBag, Beaker, CheckCircle2,
+  Percent, Tag, DollarSign, User2
 } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
@@ -12,9 +13,9 @@ import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
 import {
   fetchEstoque, salvarProdutoEstoque, registrarMovimentacao,
-  fetchMovimentacoes,
+  fetchMovimentacoes, fetchClientes, fetchProfissionais, criarComissao
 } from '@/lib/supabase-queries';
-import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque } from '@/lib/gestao-types';
+import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque, Cliente, Profissional, FormaPagamento } from '@/lib/gestao-types';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number, u: string) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${u}`;
@@ -49,6 +50,8 @@ export default function EstoquePage() {
   const [aba, setAba] = useState<Aba>('produtos');
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [movs, setMovs] = useState<MovimentacaoEstoque[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [catFiltro, setCatFiltro] = useState('todas');
@@ -66,16 +69,185 @@ export default function EstoquePage() {
   const [entradaNota, setEntradaNota] = useState('');
   const [entradaSalvando, setEntradaSalvando] = useState(false);
 
+  // Venda de Produto no Salão com Desconto Sincronizado
+  const [showVenda, setShowVenda] = useState(false);
+  const [vendaProduto, setVendaProduto] = useState<ProdutoEstoque | null>(null);
+  const [vendaProdSelectId, setVendaProdSelectId] = useState<string>('');
+  const [vendaQty, setVendaQty] = useState<string>('1');
+  const [vendaPrecoUnit, setVendaPrecoUnit] = useState<string>('');
+  const [vendaDescPct, setVendaDescPct] = useState<string>('');
+  const [vendaDescValor, setVendaDescValor] = useState<string>('');
+  const [vendaClienteId, setVendaClienteId] = useState<string>('');
+  const [vendaClienteNome, setVendaClienteNome] = useState<string>('');
+  const [vendaProfissionalId, setVendaProfissionalId] = useState<string>('');
+  const [vendaPagamento, setVendaPagamento] = useState<FormaPagamento>('DINHEIRO');
+  const [vendaParcelas, setVendaParcelas] = useState<number>(1);
+  const [vendaObs, setVendaObs] = useState<string>('');
+  const [vendaSalvando, setVendaSalvando] = useState<boolean>(false);
+
   useEffect(() => {
     carregarDados();
   }, []);
 
   const carregarDados = async () => {
     setLoading(true);
-    const [prods, movimentacoes] = await Promise.all([fetchEstoque(), fetchMovimentacoes()]);
+    const [prods, movimentacoes, clis, profs] = await Promise.all([
+      fetchEstoque(),
+      fetchMovimentacoes(),
+      fetchClientes(),
+      fetchProfissionais()
+    ]);
     setProdutos(prods);
     setMovs(movimentacoes);
+    setClientes(clis);
+    setProfissionais(profs);
     setLoading(false);
+  };
+
+  // Ações de Venda de Produto no Salão com Desconto Sincronizado
+  const abrirVenda = (p?: ProdutoEstoque) => {
+    if (p) {
+      setVendaProduto(p);
+      setVendaProdSelectId(p.id);
+      setVendaPrecoUnit(p.sale_price != null ? p.sale_price.toString() : (p.cost_price?.toString() || '0'));
+    } else {
+      const primeiroVenda = produtos.find(prod => prod.allow_sale && prod.active);
+      if (primeiroVenda) {
+        setVendaProduto(primeiroVenda);
+        setVendaProdSelectId(primeiroVenda.id);
+        setVendaPrecoUnit(primeiroVenda.sale_price != null ? primeiroVenda.sale_price.toString() : '');
+      } else {
+        setVendaProduto(null);
+        setVendaProdSelectId('');
+        setVendaPrecoUnit('');
+      }
+    }
+    setVendaQty('1');
+    setVendaDescPct('');
+    setVendaDescValor('');
+    setVendaClienteId('');
+    setVendaClienteNome('');
+    setVendaProfissionalId('');
+    setVendaPagamento('DINHEIRO');
+    setVendaParcelas(1);
+    setVendaObs('');
+    setShowVenda(true);
+  };
+
+  const produtoVendaAtual = vendaProduto || produtos.find(p => p.id === vendaProdSelectId) || null;
+  const precoUnitarioVenda = vendaPrecoUnit !== '' ? (parseFloat(vendaPrecoUnit) || 0) : (produtoVendaAtual?.sale_price || 0);
+  const qtyVendaNum = Math.max(1, parseInt(vendaQty) || 1);
+  const subtotalVenda = precoUnitarioVenda * qtyVendaNum;
+
+  const handleVendaDescPct = (pctStr: string) => {
+    setVendaDescPct(pctStr);
+    const p = parseFloat(pctStr);
+    if (isNaN(p) || p <= 0) {
+      setVendaDescValor('');
+    } else {
+      const clamped = Math.min(100, Math.max(0, p));
+      const val = (subtotalVenda * clamped) / 100;
+      setVendaDescValor(val.toFixed(2));
+    }
+  };
+
+  const handleVendaDescValor = (valStr: string) => {
+    setVendaDescValor(valStr);
+    const v = parseFloat(valStr);
+    if (isNaN(v) || v <= 0 || subtotalVenda <= 0) {
+      setVendaDescPct('');
+    } else {
+      const clampedVal = Math.min(subtotalVenda, Math.max(0, v));
+      const p = (clampedVal / subtotalVenda) * 100;
+      setVendaDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+    }
+  };
+
+  const handleSelectProdutoVenda = (pid: string) => {
+    setVendaProdSelectId(pid);
+    const prod = produtos.find(p => p.id === pid);
+    setVendaProduto(prod || null);
+    const preco = prod?.sale_price != null ? prod.sale_price.toString() : (prod?.cost_price?.toString() || '');
+    setVendaPrecoUnit(preco);
+    if (vendaDescPct) {
+      const p = parseFloat(vendaDescPct) || 0;
+      const sub = (parseFloat(preco) || 0) * (Math.max(1, parseInt(vendaQty) || 1));
+      const val = (sub * p) / 100;
+      setVendaDescValor(val > 0 ? val.toFixed(2) : '');
+    }
+  };
+
+  const handleChangeQtyVenda = (qStr: string) => {
+    setVendaQty(qStr);
+    const q = Math.max(1, parseInt(qStr) || 1);
+    const sub = precoUnitarioVenda * q;
+    if (vendaDescPct) {
+      const p = parseFloat(vendaDescPct) || 0;
+      const val = (sub * p) / 100;
+      setVendaDescValor(val > 0 ? val.toFixed(2) : '');
+    } else if (vendaDescValor) {
+      const v = parseFloat(vendaDescValor) || 0;
+      const p = sub > 0 ? (v / sub) * 100 : 0;
+      setVendaDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+    }
+  };
+
+  const valorDescVenda = Math.min(subtotalVenda, Math.max(0, parseFloat(vendaDescValor) || 0));
+  const totalFinalVenda = Math.max(0, subtotalVenda - valorDescVenda);
+
+  const registrarVenda = async () => {
+    if (!produtoVendaAtual) return alert('Selecione um produto para a venda.');
+    if (qtyVendaNum <= 0) return alert('Informe uma quantidade válida.');
+    if (produtoVendaAtual.stock_qty < qtyVendaNum) {
+      if (!confirm(`Atenção: O estoque atual (${produtoVendaAtual.stock_qty}) é menor do que a quantidade a vender (${qtyVendaNum}). Deseja prosseguir com a venda mesmo assim?`)) {
+        return;
+      }
+    }
+
+    setVendaSalvando(true);
+    try {
+      const cliNome = vendaClienteId
+        ? (clientes.find(c => c.id === vendaClienteId)?.nome || 'Cliente')
+        : (vendaClienteNome || 'Cliente Balcão');
+      const profNome = vendaProfissionalId
+        ? (profissionais.find(p => p.id === vendaProfissionalId)?.nome || '')
+        : '';
+      
+      const descTxt = valorDescVenda > 0
+        ? ` | Desconto: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)`
+        : '';
+      
+      const obsTxt = `Venda Salão: ${cliNome}${profNome ? ` (Vendedor: ${profNome})` : ''} | Pag: ${vendaPagamento}${descTxt}${vendaObs ? ` | Obs: ${vendaObs}` : ''}`;
+
+      // 1. Registrar saída por venda no estoque (OUT_SALE)
+      await registrarMovimentacao(produtoVendaAtual.id, 'OUT_SALE', qtyVendaNum, {
+        notes: obsTxt,
+        unitCost: produtoVendaAtual.cost_price,
+      });
+
+      // 2. Se houver profissional vendedor, registrar comissão com valor líquido pós-desconto
+      if (vendaProfissionalId) {
+        const hojeIso = new Date().toISOString().split('T')[0];
+        await criarComissao({
+          appointmentId: `venda-prod-${Date.now()}`,
+          professionalId: vendaProfissionalId,
+          serviceId: '',
+          totalAmount: totalFinalVenda,
+          paymentMethod: vendaPagamento,
+          installments: vendaPagamento === 'CREDITO' ? vendaParcelas : 1,
+          appointmentDate: hojeIso,
+        });
+      }
+
+      await carregarDados();
+      setShowVenda(false);
+      alert(`Venda registrada com sucesso!\nProduto: ${produtoVendaAtual.name} (${qtyVendaNum}x)\nTotal Líquido: ${fmt(totalFinalVenda)}${valorDescVenda > 0 ? `\nDesconto: ${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)` : ''}\nEstoque atualizado.`);
+    } catch (err: any) {
+      console.error('Erro ao registrar venda:', err);
+      alert(`Erro ao registrar venda: ${err?.message || 'Erro desconhecido'}`);
+    } finally {
+      setVendaSalvando(false);
+    }
   };
 
   const categoriasExistentes = [...new Set(produtos.map(p => p.category))].sort();
@@ -234,10 +406,13 @@ export default function EstoquePage() {
                 <option value="insumo">Só insumos</option>
                 <option value="venda">Só para venda</option>
               </select>
+              <Button variant="outline" className="text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={() => abrirVenda()}>
+                <ShoppingBag size={16} className="mr-1.5" /> Venda no Salão
+              </Button>
               <Button variant="primary" onClick={() => abrirForm()}>
                 <Plus size={16} className="mr-1.5" /> Novo Produto
               </Button>
-              <button onClick={carregarDados} className="p-2.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold hover:border-gold/40 transition-colors">
+              <button onClick={carregarDados} className="p-2.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold hover:border-gold/40 transition-colors" title="Atualizar estoque">
                 <RefreshCw size={16} />
               </button>
             </div>
@@ -293,11 +468,20 @@ export default function EstoquePage() {
 
                       <div className="flex gap-2">
                         <button onClick={() => { setShowEntrada(p); setEntradaQty(''); setEntradaNota(''); }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors">
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors"
+                          title="Registrar entrada de estoque">
                           <TrendingUp size={13} /> Entrada
                         </button>
+                        {p.allow_sale && (
+                          <button onClick={() => abrirVenda(p)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-blue-500/30 text-blue-400 text-xs hover:bg-blue-500/10 transition-colors"
+                            title="Vender produto no salão">
+                            <ShoppingBag size={13} /> Vender
+                          </button>
+                        )}
                         <button onClick={() => abrirForm(p)}
-                          className="p-2 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold hover:border-gold/40 transition-colors">
+                          className="p-2 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold hover:border-gold/40 transition-colors"
+                          title="Editar produto">
                           <Edit size={13} />
                         </button>
                       </div>
@@ -533,6 +717,320 @@ export default function EstoquePage() {
               <Button variant="ghost" className="flex-1" onClick={() => setShowEntrada(null)}>Cancelar</Button>
               <Button variant="primary" className="flex-1" onClick={registrarEntrada} disabled={entradaSalvando || !entradaQty}>
                 <TrendingUp size={15} className="mr-1.5" /> {entradaSalvando ? 'Salvando...' : 'Registrar'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* MODAL: Venda de Produto no Salão com Desconto Sincronizado */}
+      {showVenda && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-lg p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                  <ShoppingBag size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold font-serif text-foreground">Venda de Produto no Salão</h3>
+                  <p className="text-xs text-foreground/50">Venda direta com desconto e comissão</p>
+                </div>
+              </div>
+              <button onClick={() => setShowVenda(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Seleção do Produto */}
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Produto para Venda *</label>
+                <select
+                  value={vendaProdSelectId}
+                  onChange={(e) => handleSelectProdutoVenda(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                >
+                  <option value="">Selecione o produto...</option>
+                  {produtos.filter(p => p.active && (p.allow_sale || p.id === vendaProdSelectId)).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.brand ? `(${p.brand})` : ''} — {fmt(p.sale_price || 0)} [{fmtQty(p.stock_qty, p.unit)} em estoque]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Info do Produto Selecionado */}
+              {produtoVendaAtual && (
+                <div className="p-3 bg-foreground/5 rounded-lg border border-[var(--border-subtle)] flex items-center justify-between text-xs">
+                  <div>
+                    <p className="font-semibold text-foreground">{produtoVendaAtual.name}</p>
+                    <p className="text-foreground/50">
+                      {produtoVendaAtual.category} · Estoque: <strong className={produtoVendaAtual.stock_qty <= 0 ? 'text-red-400' : 'text-emerald-400'}>{fmtQty(produtoVendaAtual.stock_qty, produtoVendaAtual.unit)}</strong>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-foreground/50">Preço tabela</p>
+                    <p className="font-bold text-blue-400">{fmt(produtoVendaAtual.sale_price || 0)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Quantidade e Preço Unitário */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1">Quantidade</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={vendaQty}
+                    onChange={(e) => handleChangeQtyVenda(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-center font-mono focus:outline-none focus:border-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1">Preço Unitário (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={vendaPrecoUnit}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setVendaPrecoUnit(val);
+                      if (vendaDescPct) {
+                        const p = parseFloat(vendaDescPct) || 0;
+                        const sub = (parseFloat(val) || 0) * qtyVendaNum;
+                        const descVal = (sub * p) / 100;
+                        setVendaDescValor(descVal > 0 ? descVal.toFixed(2) : '');
+                      }
+                    }}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-gold"
+                  />
+                </div>
+              </div>
+
+              {/* BOX DE DESCONTO COM SINCRONIZAÇÃO % <-> R$ */}
+              <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Percent size={15} className="text-emerald-400" />
+                    <span className="text-xs font-bold text-foreground">Desconto na Venda</span>
+                  </div>
+                  {valorDescVenda > 0 && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
+                      -{fmt(valorDescVenda)} ({vendaDescPct || '0'}%)
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-foreground/60 mb-1 block">Porcentagem (%)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        placeholder="0"
+                        value={vendaDescPct}
+                        onChange={(e) => handleVendaDescPct(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-2.5 pr-7 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-[11px] font-bold">%</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-foreground/60 mb-1 block">Valor em Reais (R$)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-[11px] font-bold">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        placeholder="0.00"
+                        value={vendaDescValor}
+                        onChange={(e) => handleVendaDescValor(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-8 pr-2.5 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Atalhos Rápidos de % */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-foreground/40 mr-1">Atalhos:</span>
+                  {[
+                    { label: '0%', val: '0' },
+                    { label: '5%', val: '5' },
+                    { label: '10%', val: '10' },
+                    { label: '15%', val: '15' },
+                    { label: '20%', val: '20' },
+                    { label: '25%', val: '25' },
+                  ].map(b => (
+                    <button
+                      key={b.val}
+                      type="button"
+                      onClick={() => handleVendaDescPct(b.val === '0' ? '' : b.val)}
+                      className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
+                        (b.val === '0' && !vendaDescPct) || (vendaDescPct === b.val)
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                          : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30 hover:text-foreground'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cliente & Profissional Vendedor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1">Cliente (opcional)</label>
+                  <select
+                    value={vendaClienteId}
+                    onChange={(e) => {
+                      setVendaClienteId(e.target.value);
+                      if (e.target.value) setVendaClienteNome('');
+                    }}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold mb-1"
+                  >
+                    <option value="">Selecionar cliente cadastrado...</option>
+                    {clientes.map(c => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                  {!vendaClienteId && (
+                    <input
+                      type="text"
+                      placeholder="Ou digite o nome do cliente..."
+                      value={vendaClienteNome}
+                      onChange={(e) => setVendaClienteNome(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:border-gold"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1">Profissional Vendedor (Comissão)</label>
+                  <select
+                    value={vendaProfissionalId}
+                    onChange={(e) => setVendaProfissionalId(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="">Sem profissional (Venda direta salão)</option>
+                    {profissionais.filter(p => p.ativo).map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                  {vendaProfissionalId && (
+                    <p className="text-[10px] text-gold mt-1">Gera comissão sobre o valor líquido da venda</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Forma de Pagamento */}
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1.5">Forma de Pagamento</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { val: 'DINHEIRO', label: 'Dinheiro' },
+                    { val: 'PIX', label: 'PIX' },
+                    { val: 'DEBITO', label: 'Débito' },
+                    { val: 'CREDITO', label: 'Crédito' },
+                  ].map(fp => (
+                    <button
+                      key={fp.val}
+                      type="button"
+                      onClick={() => {
+                        setVendaPagamento(fp.val as FormaPagamento);
+                        if (fp.val !== 'CREDITO') setVendaParcelas(1);
+                      }}
+                      className={`py-2 px-1 text-xs rounded-lg border text-center font-medium transition-all ${
+                        vendaPagamento === fp.val
+                          ? 'border-blue-400 bg-blue-500/10 text-blue-400 font-bold'
+                          : 'border-[var(--border-subtle)] text-foreground/60 hover:border-foreground/20'
+                      }`}
+                    >
+                      {fp.label}
+                    </button>
+                  ))}
+                </div>
+
+                {vendaPagamento === 'CREDITO' && (
+                  <div className="mt-2.5">
+                    <p className="text-[11px] text-foreground/50 mb-1">Parcelas:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setVendaParcelas(n)}
+                          className={`w-8 h-8 rounded text-xs font-bold border ${
+                            vendaParcelas === n
+                              ? 'border-blue-400 bg-blue-500/20 text-blue-400'
+                              : 'border-[var(--border-subtle)] text-foreground/50'
+                          }`}
+                        >
+                          {n}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Observações */}
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Observações (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Brinde promocional, venda balcão..."
+                  value={vendaObs}
+                  onChange={(e) => setVendaObs(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              {/* Resumo Financeiro */}
+              <div className="p-3 bg-foreground/[0.03] border border-[var(--border-subtle)] rounded-xl space-y-1.5 text-xs">
+                <div className="flex justify-between text-foreground/60">
+                  <span>Subtotal ({qtyVendaNum}x)</span>
+                  <span className="font-mono">{fmt(subtotalVenda)}</span>
+                </div>
+                {valorDescVenda > 0 && (
+                  <div className="flex justify-between text-emerald-400 font-semibold">
+                    <span>Desconto ({vendaDescPct || '0'}%)</span>
+                    <span className="font-mono">- {fmt(valorDescVenda)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)]">
+                  <span className="text-sm font-bold text-foreground">Total a Pagar:</span>
+                  <span className="text-xl font-bold font-serif text-gold font-mono">{fmt(totalFinalVenda)}</span>
+                </div>
+                {vendaPagamento === 'CREDITO' && vendaParcelas > 1 && (
+                  <p className="text-right text-[11px] text-blue-400">
+                    {vendaParcelas}x de {fmt(totalFinalVenda / vendaParcelas)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <Button variant="ghost" className="flex-1" onClick={() => setShowVenda(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={registrarVenda}
+                disabled={vendaSalvando || !produtoVendaAtual}
+              >
+                <ShoppingBag size={15} className="mr-1.5" />
+                {vendaSalvando ? 'Gravando...' : 'Confirmar Venda'}
               </Button>
             </div>
           </CardGlass>

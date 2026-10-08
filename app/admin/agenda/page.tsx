@@ -14,7 +14,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone } from 'lucide-react';
+import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 function formatPhone(val: string) {
@@ -78,10 +78,29 @@ function AgendaContent() {
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
   const [servicoProdutos, setServicoProdutos] = useState<ServicoProduto[]>([]);
   const [checkoutInsumos, setCheckoutInsumos] = useState<InsumoAtendimento[]>([]);
-  const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{ id: string; inventory_id: string; qty: number; preco: number }>>([]);
+  const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{ 
+    id: string; 
+    inventory_id: string; 
+    qty: number; 
+    precoOriginal: number;
+    preco: number; 
+    descontoPct?: number; 
+    descontoValor?: number; 
+  }>>([]);
   // Pagamento e comissão
   const [checkoutPagamento, setCheckoutPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [checkoutParcelas, setCheckoutParcelas] = useState<number>(1);
+
+  // Desconto no Atendimento (com ajuste sincronizado entre % e R$)
+  const [checkoutDescontoPct, setCheckoutDescontoPct] = useState<string>('');
+  const [checkoutDescontoValor, setCheckoutDescontoValor] = useState<string>('');
+  const [checkoutDescontoMotivo, setCheckoutDescontoMotivo] = useState<string>('');
+
+  // Adicionar Produto de Salão no Checkout
+  const [checkoutNovoProdId, setCheckoutNovoProdId] = useState<string>('');
+  const [checkoutNovoProdQty, setCheckoutNovoProdQty] = useState<string>('1');
+  const [checkoutNovoProdDescPct, setCheckoutNovoProdDescPct] = useState<string>('');
+  const [checkoutNovoProdDescValor, setCheckoutNovoProdDescValor] = useState<string>('');
 
   const [formData, setFormData] = useState({
     cliente_id: '',
@@ -445,6 +464,13 @@ function AgendaContent() {
     setCheckoutProdutos([]);
     setCheckoutPagamento('DINHEIRO');
     setCheckoutParcelas(1);
+    setCheckoutDescontoPct('');
+    setCheckoutDescontoValor('');
+    setCheckoutDescontoMotivo('');
+    setCheckoutNovoProdId('');
+    setCheckoutNovoProdQty('1');
+    setCheckoutNovoProdDescPct('');
+    setCheckoutNovoProdDescValor('');
 
     const itens = await fetchItensComanda(appt.id);
     
@@ -463,23 +489,125 @@ function AgendaContent() {
         custo_total: custoUn * i.qty
       };
     });
-    
-    // Merge com insumos padrão do serviço se o profissional não tiver lançado?
-    // O ideal é a secretária ver só o que o profissional lançou, ou preencher manualmente se faltar.
-    // Vamos apenas carregar os lançados na comanda.
     setCheckoutInsumos(mapInsumos);
 
     // Produtos (Upsell)
     const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
     const mapProdutos = produtosDaComanda.map(i => {
+      const prod = estoque.find(p => p.id === i.inventory_id);
+      const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
       return {
         id: Date.now().toString() + i.id, // Random id for list
         inventory_id: i.inventory_id,
         qty: i.qty,
-        preco: i.price
+        precoOriginal: precoBase,
+        preco: precoBase,
+        descontoPct: 0,
+        descontoValor: 0,
       };
     });
     setCheckoutProdutos(mapProdutos);
+  };
+
+  const fecharCheckout = () => {
+    setCheckoutAppt(null);
+    setCheckoutExtras([]);
+    setExtraServiceSelect('');
+    setCheckoutInsumos([]);
+    setCheckoutProdutos([]);
+    setCheckoutPagamento('DINHEIRO');
+    setCheckoutParcelas(1);
+    setCheckoutDescontoPct('');
+    setCheckoutDescontoValor('');
+    setCheckoutDescontoMotivo('');
+    setCheckoutNovoProdId('');
+    setCheckoutNovoProdQty('1');
+    setCheckoutNovoProdDescPct('');
+    setCheckoutNovoProdDescValor('');
+  };
+
+  // Funções de Desconto no Atendimento (com auto-ajuste sincronizado % <-> R$)
+  const handleCheckoutDescontoPct = (pctStr: string, subtotal: number) => {
+    setCheckoutDescontoPct(pctStr);
+    const p = parseFloat(pctStr);
+    if (isNaN(p) || p <= 0) {
+      setCheckoutDescontoValor('');
+    } else {
+      const clamped = Math.min(100, Math.max(0, p));
+      const val = (subtotal * clamped) / 100;
+      setCheckoutDescontoValor(val.toFixed(2));
+    }
+  };
+
+  const handleCheckoutDescontoValor = (valStr: string, subtotal: number) => {
+    setCheckoutDescontoValor(valStr);
+    const v = parseFloat(valStr);
+    if (isNaN(v) || v <= 0 || subtotal <= 0) {
+      setCheckoutDescontoPct('');
+    } else {
+      const clampedVal = Math.min(subtotal, Math.max(0, v));
+      const p = (clampedVal / subtotal) * 100;
+      setCheckoutDescontoPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+    }
+  };
+
+  // Funções de Desconto para Produto adicionado no Checkout (com auto-ajuste sincronizado % <-> R$)
+  const handleCheckoutNovoProdDescPct = (pctStr: string) => {
+    setCheckoutNovoProdDescPct(pctStr);
+    const prod = estoque.find(e => e.id === checkoutNovoProdId);
+    const sub = (prod?.sale_price || 0) * (Math.max(1, parseInt(checkoutNovoProdQty) || 1));
+    const p = parseFloat(pctStr);
+    if (isNaN(p) || p <= 0) {
+      setCheckoutNovoProdDescValor('');
+    } else {
+      const clamped = Math.min(100, Math.max(0, p));
+      const val = (sub * clamped) / 100;
+      setCheckoutNovoProdDescValor(val.toFixed(2));
+    }
+  };
+
+  const handleCheckoutNovoProdDescValor = (valStr: string) => {
+    setCheckoutNovoProdDescValor(valStr);
+    const prod = estoque.find(e => e.id === checkoutNovoProdId);
+    const sub = (prod?.sale_price || 0) * (Math.max(1, parseInt(checkoutNovoProdQty) || 1));
+    const v = parseFloat(valStr);
+    if (isNaN(v) || v <= 0 || sub <= 0) {
+      setCheckoutNovoProdDescPct('');
+    } else {
+      const clamped = Math.min(sub, Math.max(0, v));
+      const p = (clamped / sub) * 100;
+      setCheckoutNovoProdDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+    }
+  };
+
+  const adicionarProdutoAoCheckout = () => {
+    if (!checkoutNovoProdId) return;
+    const prod = estoque.find(e => e.id === checkoutNovoProdId);
+    if (!prod) return;
+    const q = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
+    const precoOriginal = prod.sale_price || 0;
+    const subtotalItem = precoOriginal * q;
+    const descVal = Math.min(subtotalItem, Math.max(0, parseFloat(checkoutNovoProdDescValor) || 0));
+    const descPct = parseFloat(checkoutNovoProdDescPct) || (subtotalItem > 0 ? (descVal / subtotalItem) * 100 : 0);
+    const precoUnitFinal = (subtotalItem - descVal) / q;
+
+    setCheckoutProdutos(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        inventory_id: prod.id,
+        qty: q,
+        precoOriginal,
+        preco: precoUnitFinal,
+        descontoPct: descPct,
+        descontoValor: descVal,
+      }
+    ]);
+
+    setCheckoutNovoProdId('');
+    setCheckoutNovoProdQty('1');
+    setCheckoutNovoProdDescPct('');
+    setCheckoutNovoProdDescValor('');
   };
 
   const abrirFormNovo = (hora: string, profId: string) => {
@@ -1010,7 +1138,7 @@ function AgendaContent() {
           <CardGlass className="w-full max-w-xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold font-serif text-foreground">Finalizar Atendimento</h3>
-              <button onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); setCheckoutInsumos([]); setCheckoutPagamento('DINHEIRO'); setCheckoutParcelas(1); }} className="text-foreground/50 hover:text-foreground">
+              <button onClick={fecharCheckout} className="text-foreground/50 hover:text-foreground">
                 <X size={20} />
               </button>
             </div>
@@ -1167,31 +1295,184 @@ function AgendaContent() {
                 );
               })()}
 
-              {/* PRODUTOS (Upsell - Lançados pelo Profissional) */}
-              {checkoutProdutos.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                    <ShoppingBag size={15} className="text-gold" />
-                    Produtos Vendidos (Upsell)
+              {/* PRODUTOS DO SALÃO (Venda / Upsell / Balcão) */}
+              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <ShoppingBag size={16} className="text-gold" />
+                    Produtos do Salão (Venda / Balcão)
                   </h4>
+                  {checkoutProdutos.length > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-semibold">
+                      {checkoutProdutos.length} {checkoutProdutos.length === 1 ? 'item' : 'itens'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Lista de Produtos Adicionados */}
+                {checkoutProdutos.length > 0 && (
                   <div className="space-y-2">
-                    {checkoutProdutos.map((prod) => {
+                    {checkoutProdutos.map((prod, idx) => {
                       const itemEstoque = estoque.find(e => e.id === prod.inventory_id);
+                      const subOriginal = (prod.precoOriginal ?? prod.preco) * prod.qty;
+                      const subFinal = prod.preco * prod.qty;
+                      const temDesc = (prod.descontoValor != null && prod.descontoValor > 0) || subOriginal > subFinal;
+
                       return (
                         <div key={prod.id} className="flex justify-between items-center p-3 bg-gold/5 border border-gold/15 rounded-lg text-sm">
-                          <div className="flex-1">
-                            <span className="font-bold text-foreground">{itemEstoque?.name || 'Produto'}</span>
-                            <span className="text-foreground/50 text-xs ml-2">{prod.qty}x</span>
+                          <div className="flex-1 min-w-0 pr-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-foreground truncate">{itemEstoque?.name || 'Produto'}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold font-mono">{prod.qty}x</span>
+                            </div>
+                            {temDesc ? (
+                              <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
+                                <span className="line-through">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal)}</span>
+                                <span className="text-emerald-400 font-semibold">
+                                  Desc: {prod.descontoPct ? `${prod.descontoPct.toFixed(0)}%` : ''} (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal - subFinal)})
+                                </span>
+                              </p>
+                            ) : (
+                              <p className="text-xs text-foreground/40 mt-0.5">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.preco)} un.
+                              </p>
+                            )}
                           </div>
-                          <div className="font-bold text-gold">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.preco * prod.qty)}
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-gold font-mono">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subFinal)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setCheckoutProdutos(checkoutProdutos.filter((_, i) => i !== idx))}
+                              className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
+                              title="Remover produto"
+                            >
+                              <X size={15} />
+                            </button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                )}
+
+                {/* Adicionar Produto no Checkout */}
+                <div className="p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg space-y-2.5">
+                  <p className="text-xs font-semibold text-foreground/70">Adicionar produto ao atendimento:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <div className="sm:col-span-8">
+                      <select
+                        value={checkoutNovoProdId}
+                        onChange={(e) => {
+                          const pid = e.target.value;
+                          setCheckoutNovoProdId(pid);
+                          if (checkoutNovoProdDescPct) {
+                            const p = estoque.find(x => x.id === pid);
+                            const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(checkoutNovoProdQty) || 1));
+                            const pct = parseFloat(checkoutNovoProdDescPct) || 0;
+                            const val = (sub * pct) / 100;
+                            setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
+                          }
+                        }}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                      >
+                        <option value="">Selecione o produto...</option>
+                        {estoque.filter(p => p.allow_sale && p.active).map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.sale_price || 0)} ({p.stock_qty} em estoque)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-foreground/50 whitespace-nowrap">Qtd:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={checkoutNovoProdQty}
+                          onChange={(e) => {
+                            const q = e.target.value;
+                            setCheckoutNovoProdQty(q);
+                            if (checkoutNovoProdDescPct) {
+                              const p = estoque.find(x => x.id === checkoutNovoProdId);
+                              const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
+                              const pct = parseFloat(checkoutNovoProdDescPct) || 0;
+                              const val = (sub * pct) / 100;
+                              setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
+                            }
+                          }}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-gold font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campos de Desconto do Produto adicionado */}
+                  {checkoutNovoProdId && (() => {
+                    const prodSel = estoque.find(p => p.id === checkoutNovoProdId);
+                    const qSel = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
+                    const subItem = (prodSel?.sale_price || 0) * qSel;
+                    const descValItem = Math.min(subItem, Math.max(0, parseFloat(checkoutNovoProdDescValor) || 0));
+                    const totalItemFinal = Math.max(0, subItem - descValItem);
+
+                    return (
+                      <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (%)</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                placeholder="0"
+                                value={checkoutNovoProdDescPct}
+                                onChange={(e) => handleCheckoutNovoProdDescPct(e.target.value)}
+                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (R$)</label>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                placeholder="0.00"
+                                value={checkoutNovoProdDescValor}
+                                onChange={(e) => handleCheckoutNovoProdDescValor(e.target.value)}
+                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-xs pt-1">
+                          <span className="text-foreground/60">
+                            Total do item: <strong className="text-foreground font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItemFinal)}</strong>
+                            {descValItem > 0 && <span className="text-emerald-400 ml-1.5 font-medium">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
+                          </span>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            type="button"
+                            onClick={adicionarProdutoAoCheckout}
+                            className="text-xs py-1 px-3"
+                          >
+                            <ShoppingBag size={12} className="mr-1" /> Adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
-              )}
+              </div>
 
               {/* FORMA DE PAGAMENTO */}
               <div>
@@ -1244,49 +1525,149 @@ function AgendaContent() {
                 )}
               </div>
 
-              {/* TOTAL + COMISSÃO */}
+              {/* TOTAL + DESCONTO GERAL + COMISSÃO */}
               {(() => {
                 const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
                 const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
                 const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
-                const totalGeral = totalServico + totalExtras + totalInsumos + totalProdutos;
+                const subtotalGeral = totalServico + totalExtras + totalInsumos + totalProdutos;
+                
+                const valorDesconto = Math.min(subtotalGeral, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
+                const totalGeral = Math.max(0, subtotalGeral - valorDesconto);
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
 
                 return (
-                  <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
-                    {/* Breakdown */}
-                    {(totalExtras > 0 || totalInsumos > 0 || totalProdutos > 0) && (
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between text-foreground/60">
-                          <span>Serviço</span>
-                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico)}</span>
+                  <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
+                    {/* DESCONTO AO CLIENTE (COM AUTO-AJUSTE ENTRE % E R$) */}
+                    <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Percent size={16} className="text-emerald-400" />
+                          <span className="text-sm font-bold text-foreground">Desconto ao Cliente</span>
                         </div>
-                        {totalExtras > 0 && (
-                          <div className="flex justify-between text-foreground/60">
-                            <span>Extras</span>
-                            <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalExtras)}</span>
-                          </div>
-                        )}
-                        {totalInsumos > 0 && (
-                          <div className="flex justify-between text-amber-400">
-                            <span>Insumos</span>
-                            <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalInsumos)}</span>
-                          </div>
-                        )}
-                        {totalProdutos > 0 && (
-                          <div className="flex justify-between text-gold">
-                            <span>Produtos (Upsell)</span>
-                            <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
-                          </div>
+                        {valorDesconto > 0 && (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
+                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} ({checkoutDescontoPct || '0'}%)
+                          </span>
                         )}
                       </div>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-foreground/60 mb-1 block">Porcentagem (%)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              placeholder="Ex: 10"
+                              value={checkoutDescontoPct}
+                              onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalGeral)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">%</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-foreground/60 mb-1 block">Valor em Reais (R$)</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">R$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="Ex: 25.00"
+                              value={checkoutDescontoValor}
+                              onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalGeral)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botões de Atalho de Desconto */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[11px] text-foreground/40 mr-1">Atalhos:</span>
+                        {[
+                          { label: 'Sem desc.', pct: '0' },
+                          { label: '5%', pct: '5' },
+                          { label: '10%', pct: '10' },
+                          { label: '15%', pct: '15' },
+                          { label: '20%', pct: '20' },
+                          { label: '25%', pct: '25' },
+                          { label: '30%', pct: '30' },
+                        ].map(btn => (
+                          <button
+                            key={btn.pct}
+                            type="button"
+                            onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalGeral)}
+                            className={`text-xs px-2.5 py-1 rounded-md border transition-all ${
+                              (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                                : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30 hover:text-foreground'
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+
                       <div>
-                        <p className="text-sm text-foreground/60 mb-1">Total a Receber</p>
-                        <p className="text-2xl font-bold font-serif text-gold">
+                        <input
+                          type="text"
+                          placeholder="Motivo / observação do desconto (opcional, ex: Aniversariante, Cortesia...)"
+                          value={checkoutDescontoMotivo}
+                          onChange={(e) => setCheckoutDescontoMotivo(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Breakdown Financeiro */}
+                    <div className="space-y-1 text-sm bg-foreground/[0.02] p-3 rounded-lg border border-[var(--border-subtle)]">
+                      <div className="flex justify-between text-foreground/60">
+                        <span>Serviço Agendado</span>
+                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico)}</span>
+                      </div>
+                      {totalExtras > 0 && (
+                        <div className="flex justify-between text-foreground/60">
+                          <span>Serviços Extras</span>
+                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalExtras)}</span>
+                        </div>
+                      )}
+                      {totalInsumos > 0 && (
+                        <div className="flex justify-between text-amber-400">
+                          <span>Insumos (Pesagem)</span>
+                          <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalInsumos)}</span>
+                        </div>
+                      )}
+                      {totalProdutos > 0 && (
+                        <div className="flex justify-between text-gold">
+                          <span>Produtos de Salão</span>
+                          <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
+                        </div>
+                      )}
+                      {valorDesconto > 0 && (
+                        <div className="flex justify-between text-foreground/50 pt-1 border-t border-[var(--border-subtle)]">
+                          <span>Subtotal</span>
+                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalGeral)}</span>
+                        </div>
+                      )}
+                      {valorDesconto > 0 && (
+                        <div className="flex justify-between text-emerald-400 font-semibold">
+                          <span>Desconto ao Cliente ({checkoutDescontoPct || '0'}%)</span>
+                          <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
+                      <div>
+                        <p className="text-sm text-foreground/60 mb-0.5">Total Líquido a Receber</p>
+                        <p className="text-3xl font-bold font-serif text-gold">
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}
                         </p>
                         {numParcelas > 1 && (
@@ -1296,7 +1677,9 @@ function AgendaContent() {
                         )}
                       </div>
                       <div className="flex gap-2 w-full sm:w-auto">
-                        <Button variant="ghost" className="flex-1 sm:flex-none" onClick={() => { setCheckoutAppt(null); setCheckoutExtras([]); setExtraServiceSelect(''); setCheckoutInsumos([]); setCheckoutPagamento('DINHEIRO'); setCheckoutParcelas(1); }}>Cancelar</Button>
+                        <Button variant="ghost" className="flex-1 sm:flex-none" onClick={fecharCheckout}>
+                          Cancelar
+                        </Button>
                         <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
                           // 1. Finalizar o atendimento principal
                           await mudarStatus(checkoutAppt.id, 'concluido');
@@ -1334,40 +1717,36 @@ function AgendaContent() {
                             }
                           }
                           
-                          // 3.5. Baixar produtos vendidos (Upsell)
+                          // 3.5. Baixar produtos vendidos (Upsell / Salão)
                           for (const prod of checkoutProdutos) {
                             if (prod.qty > 0) {
+                              const descNote = prod.descontoValor && prod.descontoValor > 0 
+                                ? ` (Desc: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.descontoValor)})` 
+                                : '';
                               await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
                                 appointmentId: checkoutAppt.id,
-                                notes: `Venda Direta: ${getServicoNome(checkoutAppt.servico_id, servicos)}`,
+                                notes: `Venda Salão: ${getServicoNome(checkoutAppt.servico_id, servicos)}${descNote}`,
                               });
                             }
                           }
 
-                          // 4. Gerar comissão para o profissional
-                          const totalServicoCom = getServicoPreco(checkoutAppt.servico_id, servicos);
-                          const totalExtrasVal = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
-                          const totalInsumosCom = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
-                          const totalProdutosCom = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
-                          const totalGeralCom = totalServicoCom + totalExtrasVal + totalInsumosCom + totalProdutosCom;
+                          // 4. Gerar comissão para o profissional (com o valor líquido recebido pós-desconto)
+                          const descDetalhes = valorDesconto > 0 
+                            ? ` [Desc Geral: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct}%)${checkoutDescontoMotivo ? ` - ${checkoutDescontoMotivo}` : ''}]` 
+                            : '';
+                          
                           await criarComissao({
                             appointmentId: checkoutAppt.id,
                             professionalId: checkoutAppt.profissional_id,
                             serviceId: checkoutAppt.servico_id,
-                            totalAmount: totalGeralCom,
+                            totalAmount: totalGeral,
                             paymentMethod: checkoutPagamento,
                             installments: checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1,
                             appointmentDate: checkoutAppt.data,
                           });
                           
-                          setCheckoutAppt(null);
-                          setCheckoutExtras([]);
-                          setExtraServiceSelect('');
-                          setCheckoutInsumos([]);
-                          setCheckoutProdutos([]);
-                          setCheckoutPagamento('DINHEIRO');
-                          setCheckoutParcelas(1);
-                          alert('Atendimento concluído! Insumos, produtos e comissão registrados com sucesso.');
+                          fecharCheckout();
+                          alert(`Atendimento concluído com sucesso!\nTotal recebido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}${valorDesconto > 0 ? `\nDesconto concedido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct || '0'}%)` : ''}\nInsumos, produtos e comissão registrados.`);
                         }}>
                           Confirmar Recebimento
                         </Button>
