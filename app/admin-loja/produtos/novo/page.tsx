@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info } from 'lucide-react';
@@ -19,9 +19,28 @@ export default function NovoProdutoPage() {
     stock: '',
     image_url: '',
     active: true,
+    salon_inventory_id: '',
   });
 
   const [isExtracting, setIsExtracting] = useState(false);
+  const [estoque, setEstoque] = useState<any[]>([]);
+
+  // Carregar estoque
+  useEffect(() => {
+    async function loadEstoque() {
+      try {
+        const { data, error } = await supabase
+          .from('salon_inventory')
+          .select('id, name, type, stock_qty')
+          .eq('type', 'PRODUTO')
+          .order('name');
+        if (!error && data) setEstoque(data);
+      } catch (err) {
+        console.error('Erro ao buscar estoque:', err);
+      }
+    }
+    loadEstoque();
+  }, []);
 
   const handleExtract = async () => {
     if (!formData.link) {
@@ -90,6 +109,7 @@ export default function NovoProdutoPage() {
         active: formData.active,
         image_url: formData.image_url || null,
         ml_link: formData.link || null,
+        salon_inventory_id: formData.salon_inventory_id || null,
       });
       if (error) throw error;
       router.push('/admin-loja/produtos');
@@ -228,7 +248,23 @@ export default function NovoProdutoPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Inicial (unidades)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vincular Insumo (Estoque Físico)</label>
+                  <select
+                    value={formData.salon_inventory_id}
+                    onChange={(e) => setFormData({ ...formData, salon_inventory_id: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white"
+                  >
+                    <option value="">Não vincular</option>
+                    {estoque.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} (Saldo: {item.stock_qty})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Ao vincular, as vendas da loja dão baixa no estoque do Studio.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Inicial (Loja)</label>
                   <input type="number" placeholder="0" 
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: e.target.value })}

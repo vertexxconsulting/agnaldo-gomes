@@ -16,6 +16,7 @@ interface FormData {
   stock: string;
   image_url: string;
   active: boolean;
+  salon_inventory_id: string;
 }
 
 export default function EditarProdutoPage() {
@@ -34,13 +35,23 @@ export default function EditarProdutoPage() {
     stock: '',
     image_url: '',
     active: true,
+    salon_inventory_id: '',
   });
+
+  const [estoque, setEstoque] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     const carregar = async () => {
       try {
-        const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+        const [prodRes, estRes] = await Promise.all([
+          supabase.from('products').select('*').eq('id', id).single(),
+          supabase.from('salon_inventory').select('id, name, type, stock_qty').eq('type', 'PRODUTO').order('name')
+        ]);
+        if (!cancelled && estRes.data) {
+          setEstoque(estRes.data);
+        }
+        const { data, error } = prodRes;
         if (error || !data) {
           // Produto mock ou inexistente — preenche com valores de demonstração
           if (!cancelled) {
@@ -52,6 +63,7 @@ export default function EditarProdutoPage() {
               stock: '',
               image_url: '',
               active: true,
+              salon_inventory_id: '',
             });
             setLoaded(true);
           }
@@ -67,6 +79,7 @@ export default function EditarProdutoPage() {
             stock: String(data.stock ?? 0),
             image_url: data.image_url ?? '',
             active: data.active ?? true,
+            salon_inventory_id: data.salon_inventory_id ?? '',
           });
           setLoaded(true);
         }
@@ -96,6 +109,7 @@ export default function EditarProdutoPage() {
         active: formData.active,
         image_url: formData.image_url || null,
         ml_link: formData.link || null,
+        salon_inventory_id: formData.salon_inventory_id || null,
       };
       const { data: existing } = await supabase.from('products').select('id').eq('id', id);
       if (existing && existing.length > 0) {
@@ -242,15 +256,33 @@ export default function EditarProdutoPage() {
           {productType === 'LOCAL_STOCK' && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
               <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Estoque</h2>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Atual (unidades)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vincular Insumo (Estoque Físico)</label>
+                  <select
+                    value={formData.salon_inventory_id}
+                    onChange={(e) => setFormData({ ...formData, salon_inventory_id: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white"
+                  >
+                    <option value="">Não vincular</option>
+                    {estoque.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} (Saldo: {item.stock_qty})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Ao vincular, as vendas da loja dão baixa no estoque do Studio.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Atual (Loja)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
               </div>
             </div>
           )}
