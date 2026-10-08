@@ -173,16 +173,24 @@ export async function fetchClientes(): Promise<Cliente[]> {
     console.warn('[fetchClientes] API server falhou, tentando client-side:', err);
   }
 
-  const { data, error } = await supabase
-    .from(TBL.clientes)
-    .select('*')
-    .order('name');
+  let all: any[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(TBL.clientes)
+      .select('*')
+      .order('name')
+      .range(from, from + 999);
 
-  if (error) {
-    logSupabaseError('[supabase] fetchClientes error:', error);
-    return [];
+    if (error) {
+      logSupabaseError('[supabase] fetchClientes error:', error);
+      break;
+    }
+    all = all.concat(data ?? []);
+    if (!data || data.length < 1000) break;
+    from += 1000;
   }
-  return (data ?? []).map(mapCliente);
+  return all.map(mapCliente);
 }
 
 export async function fetchClientePorId(id: string): Promise<Cliente | null> {

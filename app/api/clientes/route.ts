@@ -2,22 +2,51 @@ import { NextResponse } from 'next/server';
 import { upsertClienteMae } from '@/lib/crm-sync';
 import { requireStudioAuth } from '@/lib/api-auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireStudioAuth();
   if (auth.error) return auth.error;
 
-  try {
-    const { data, error } = await auth.supabase!
-      .from('salon_customers')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const { searchParams } = new URL(req.url);
+  const search = searchParams.get('search');
 
-    if (error) {
-      console.error('[api/clientes] Erro ao buscar clientes:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const supabase = auth.supabase!;
+
+    if (search && search.trim()) {
+      const termo = search.trim();
+      const cleanPhone = termo.replace(/\D/g, '');
+      let query = supabase.from('salon_customers').select('*');
+      if (cleanPhone.length >= 4) {
+        query = query.or(`name.ilike.%${termo}%,phone.ilike.%${cleanPhone}%,cpf.ilike.%${termo}%`);
+      } else {
+        query = query.ilike('name', `%${termo}%`);
+      }
+      const { data, error } = await query.order('name').limit(100);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(data || []);
     }
 
-    return NextResponse.json(data || []);
+    // Carrega todos os clientes do salão em lotes de 1000 para superar o limite padrão de 1000
+    let all: any[] = [];
+    let from = 0;
+    for (;;) {
+      const { data, error } = await supabase
+        .from('salon_customers')
+        .select('*')
+        .order('name')
+        .range(from, from + 999);
+
+      if (error) {
+        console.error('[api/clientes] Erro ao buscar clientes:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      all = all.concat(data || []);
+      if (!data || data.length < 1000) break;
+      from += 1000;
+    }
+
+    return NextResponse.json(all);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
