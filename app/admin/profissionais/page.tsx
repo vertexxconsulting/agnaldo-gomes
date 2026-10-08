@@ -14,6 +14,7 @@ import {
 import { 
   criarProfissional, atualizarProfissional, excluirProfissional, vincularProfissionalServicos
 } from '@/lib/supabase-queries';
+import { supabase } from '@/lib/supabase';
 import type { Profissional, JornadaSemanal, Servico, ProfissionalServico } from '@/lib/gestao-types';
 import { ROLES, Role, ROLE_LABELS } from '@/lib/auth';
 import { 
@@ -33,6 +34,7 @@ export default function ProfissionaisPage() {
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Profissional | null>(null);
   const [fotoLocal, setFotoLocal] = useState<string | null>(null);
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [viewMode, setViewMode] = useState<string>('grid');
   const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
   const [diasAtivos, setDiasAtivos] = useState<number[]>([]);
@@ -120,6 +122,7 @@ export default function ProfissionaisPage() {
   const handleFotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setFotoFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setFotoLocal(event.target?.result as string);
@@ -141,9 +144,31 @@ export default function ProfissionaisPage() {
         jornada[d] = { inicio, fim, intervalo_inicio, intervalo_fim };
       }
     }
+
+    let finalFotoUrl = editando?.foto_url || null;
+
+    if (fotoFile) {
+      const fileExt = fotoFile.name.split('.').pop();
+      const fileName = `prof-${Date.now()}.${fileExt}`;
+      const filePath = `profissionais/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatares')
+        .upload(filePath, fotoFile, { upsert: true });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatares')
+          .getPublicUrl(filePath);
+        finalFotoUrl = publicUrl;
+      } else {
+        alert(`Erro ao salvar foto: ${uploadError.message}`);
+      }
+    }
+
     const profissionalData = {
       nome: form.get('nome') as string,
-      foto_url: fotoLocal || editando?.foto_url || null,
+      foto_url: finalFotoUrl,
       categoria: categoriaSelecionada,
       especialidades: especialidadesSelecionadas,
       ativo: true,
@@ -218,6 +243,7 @@ export default function ProfissionaisPage() {
 
     setEditando(null);
     setFotoLocal(null);
+    setFotoFile(null);
     setServicosSelecionados([]);
     setEspecialidadesSelecionadas([]);
     setDiasAtivos([]);
@@ -239,6 +265,7 @@ export default function ProfissionaisPage() {
     if (prof) {
       setEditando(prof);
       setFotoLocal(prof.foto_url ?? null);
+      setFotoFile(null);
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
@@ -246,6 +273,7 @@ export default function ProfissionaisPage() {
     } else {
       setEditando(null);
       setFotoLocal(null);
+      setFotoFile(null);
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
       setCategoriaSelecionada('Cabelo');
