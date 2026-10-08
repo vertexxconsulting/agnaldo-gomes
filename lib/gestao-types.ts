@@ -265,3 +265,15 @@ export interface ParcelaComissao {
   notes?: string | null;
   created_at?: string;
 }
+
+export interface RegraMarketing {
+  id: string;
+  name: string;
+  service_id: string | null;
+  days_offset: number;
+  trigger_timing: string;
+  send_method: string;
+  message_template: string | null;
+  active: boolean;
+  created_at: string;
+}

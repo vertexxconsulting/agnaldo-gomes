@@ -5,6 +5,7 @@ import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink, Ro
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 import { CardGlass } from '@/components/CardGlass';
+import { RegrasMarketing } from './RegrasMarketing';
 
 type ItemMsg = {
   tipo: string;
@@ -265,6 +266,8 @@ export default function MarketingPage() {
                 </ul>
               )}
             </Panel>
+            
+            <RegrasMarketing />
           </div>
         </div>
       )}

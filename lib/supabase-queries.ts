@@ -1351,3 +1351,43 @@ export async function salvarItemComanda(
   }
   return { ok: true };
 }
+
+// --------------------------------------------------------------------------------
+// REGRAS DE MARKETING
+// --------------------------------------------------------------------------------
+
+export async function fetchMarketingRules(): Promise<any[]> {
+  const { data, error } = await supabase.from('salon_marketing_rules').select('*, service:salon_services(nome)').order('created_at', { ascending: false });
+  if (error) {
+    logSupabaseError('[fetchMarketingRules]', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createMarketingRule(payload: any): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('salon_marketing_rules').insert(payload);
+  if (error) {
+    logSupabaseError('[createMarketingRule]', error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+export async function updateMarketingRule(id: string, payload: any): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('salon_marketing_rules').update(payload).eq('id', id);
+  if (error) {
+    logSupabaseError('[updateMarketingRule]', error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+export async function deleteMarketingRule(id: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('salon_marketing_rules').delete().eq('id', id);
+  if (error) {
+    logSupabaseError('[deleteMarketingRule]', error);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
