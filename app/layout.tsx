@@ -36,6 +36,8 @@ export const metadata: Metadata = {
 };
 
 import { SessionEnforcer } from '@/components/SessionEnforcer';
+import { PWAManager } from '@/components/PWAInstallPrompt';
+import { RoutePrefetcher } from '@/components/RoutePrefetcher';
 
 /**
  * RootLayout neutro: NÃO inclui Header/Footer — apenas html, fonts e children.
@@ -58,6 +60,8 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white">
         <SessionEnforcer />
+        <PWAManager />
+        <RoutePrefetcher />
         {children}
       </body>
     </html>

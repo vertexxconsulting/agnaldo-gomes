@@ -24,7 +24,6 @@ import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -404,7 +403,6 @@ export default function AgendamentoPage() {
       <div className="absolute inset-0 bg-background/80 backdrop-blur-md" />
       
       <div className="relative z-10 flex-1 flex flex-col">
-        <PWAInstallPrompt />
         <div className="max-w-5xl mx-auto px-4 w-full">
           
           {/* Header Centralizado acima das colunas */}
