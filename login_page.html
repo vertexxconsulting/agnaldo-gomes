@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Base path placeholder -->
+    <base href="/">
+
+    <!-- Meta -->
+    <meta charset="UTF-8">
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- iOS meta tags & icon -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Corthy">
+    <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- Title, description and manifest -->
+    <title>Corthy</title>
+    <meta name="description" content="Corthy">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Preload flutter_bootstrap.js script... -->
+    <link rel="preload" href="flutter_bootstrap.js" as="script">
+
+    <!-- Native Splash -->
+    <style id="splash-screen-style">
+        html {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            background-color: #ffffff;
+            background-size: 100% 100%;
+        }
+
+        .center {
+            margin: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+
+        .contain {
+            display:block;
+            width:100%; height:100%;
+            object-fit: contain;
+        }
+
+        .stretch {
+            display:block;
+            width:100%; height:100%;
+        }
+
+        .cover {
+            display:block;
+            width:100%; height:100%;
+            object-fit: cover;
+        }
+
+        .bottom {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            -ms-transform: translate(-50%, 0);
+            transform: translate(-50%, 0);
+        }
+
+        .bottomLeft {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        .bottomRight {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+    </style>
+    <script id="splash-screen-script">
+        function removeSplashFromWeb() {
+            document.getElementById("splash")?.remove();
+            document.getElementById("splash-branding")?.remove();
+            document.body.style.background = "transparent";
+        }
+    </script>
+
+    <!-- Html2Pdf - Lazy loaded to improve initial load time... -->
+    <script id="html2pdf-script">
+        window.loadHtml2Pdf = function() {
+            return new Promise(function(resolve, reject) {
+                if (window.html2pdf) {
+                    resolve();
+                    return;
+                }
+                var script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        };
+
+        window.generatePdfAsBase64 = async function(_html, _options) {
+            await window.loadHtml2Pdf() /* Only load html2pdf when needed... */;
+            const element = document.createElement('div');
+            element.innerHTML = _html;
+            const worker = html2pdf().from(element).set({
+                margin: _options.margin,
+                jsPDF: {
+                  unit: 'pt',
+                  format: [_options.width, _options.height],
+                  orientation: 'portrait',
+                },
+                html2canvas: { scale: 2 },
+            });
+            const pdfBlob = await worker.output('blob');
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    const base64data = reader.result.split(',')[1];
+                    resolve(base64data);
+                };
+                reader.readAsDataURL(pdfBlob);
+            });
+        };
+    </script>
+
+    <!-- MS Clarity - Check similar clarity_options file, but with other projectId... -->
+    <script type="text/javascript">
+        var production = window.location.hostname.includes('web.corthy');
+        if (production) {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "w9puj4e712");
+        }
+    </script>
+</head>
+<body>
+    <!-- Native Splash -->
+    <picture id="splash">
+        <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+        <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+        <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+    </picture>
+
+    <!-- Flutter - Preloaded link and without async for better performance loading sequence... -->
+    <script src="flutter_bootstrap.js"></script>
+    <!-- Note: FCM config is in
+            firebase-messaging-sw.js file which is automatically tag script injected since 2023/10. -->
+</body>
+</html>

@@ -70,7 +70,7 @@ export default function OfflinePage() {
           </p>
 
           <button
-            onClick={() => window.location.reload()}
+            id="retry-btn"
             className="btn"
             style={{ cursor: 'pointer' }}
           >
@@ -101,6 +101,13 @@ export default function OfflinePage() {
               // Salvar a última página visitada
               if (document.referrer) {
                 sessionStorage.setItem('lastPage', document.referrer);
+              }
+              // Botão de recarregar
+              var retryBtn = document.getElementById('retry-btn');
+              if (retryBtn) {
+                retryBtn.addEventListener('click', function() {
+                  window.location.reload();
+                });
               }
             `,
           }}
