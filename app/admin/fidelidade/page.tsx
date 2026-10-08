@@ -214,24 +214,24 @@ export default function FidelidadePage() {
       {/* MODAL DE ADICIONAR PRODUTO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1C1C1E] border border-[var(--border-subtle)] w-full max-w-md rounded-2xl p-6 shadow-xl relative">
+          <div className="bg-[var(--card)] sm:bg-[var(--background)] border border-[var(--border-subtle)] w-full max-w-md rounded-2xl p-6 shadow-xl relative">
             <button 
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-[var(--muted-foreground)] hover:text-white"
+              className="absolute top-4 right-4 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-bold text-white mb-6">Adicionar ao Resgate</h2>
+            <h2 className="text-xl font-bold text-[var(--foreground)] mb-6">Adicionar ao Resgate</h2>
 
-            <div className="flex gap-2 mb-6 bg-[var(--background)] p-1 rounded-lg">
+            <div className="flex gap-2 mb-6 bg-[var(--background)] border border-[var(--border-subtle)] p-1 rounded-lg">
               <button
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'existente' ? 'bg-[var(--accent)] text-white' : 'text-[var(--muted-foreground)] hover:text-white'}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'existente' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
                 onClick={() => setAddMode('existente')}
               >
                 Do Estoque
               </button>
               <button
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'novo' ? 'bg-[var(--accent)] text-white' : 'text-[var(--muted-foreground)] hover:text-white'}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'novo' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
                 onClick={() => setAddMode('novo')}
               >
                 Criar Novo
@@ -245,11 +245,13 @@ export default function FidelidadePage() {
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-[var(--foreground)] outline-none focus:border-[var(--accent)] overflow-hidden text-ellipsis whitespace-nowrap"
                   >
                     <option value="">-- Selecione --</option>
                     {produtosDisponiveis.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (Estoque: {p.stock_qty})</option>
+                      <option key={p.id} value={p.id}>
+                        {p.name.length > 35 ? p.name.substring(0, 35) + '...' : p.name} (Estoque: {p.stock_qty})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -261,7 +263,7 @@ export default function FidelidadePage() {
                     value={newProductName}
                     onChange={(e) => setNewProductName(e.target.value)}
                     placeholder="Ex: Copo Térmico Personalizado"
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
                   />
                   <p className="text-xs text-[var(--muted-foreground)] mt-1">Este produto será criado no estoque na categoria "Fidelidade".</p>
                 </div>
@@ -275,7 +277,7 @@ export default function FidelidadePage() {
                   value={newPointsCost}
                   onChange={(e) => setNewPointsCost(e.target.value)}
                   placeholder="Ex: 500"
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
