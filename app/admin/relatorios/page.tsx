@@ -305,8 +305,8 @@ export default function RelatoriosPage() {
                         ))}
                       </Pie>
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                        itemStyle={{ color: '#fff' }}
+                        contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}
+                        itemStyle={{ color: 'var(--foreground)' }}
                         formatter={(val: any, name: any, item: any) => [
                           `${val} atendimentos (R$ ${item?.payload?.faturamento?.toFixed(2) || 0})`,
                           item?.payload?.nome
@@ -337,8 +337,9 @@ export default function RelatoriosPage() {
                       <XAxis dataKey="nome" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
                       <Tooltip 
-                        cursor={{ fill: '#ffffff05' }}
-                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                        cursor={{ fill: 'var(--foreground)', opacity: 0.05 }}
+                        contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}
+                        itemStyle={{ color: 'var(--foreground)' }}
                         formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, 'Faturamento']}
                       />
                       <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
