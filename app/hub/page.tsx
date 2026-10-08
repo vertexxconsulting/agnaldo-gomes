@@ -266,12 +266,11 @@ export default function HubCentralPage() {
           {loading ? (
             <div className="text-center py-8 text-foreground/50 text-sm">Carregando visão geral...</div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard label="Faturamento hoje" value={formatPrice(kpis.hojeV)} icon={Wallet} tone="primary" />
               <StatCard label="Faturamento do mês" value={formatPrice(kpis.mesV)} icon={TrendingUp} tone="primary" />
               <StatCard label="Agendamentos hoje" value={`${kpis.agendadosHoje}`} icon={CalendarDays} />
               <StatCard label="Clientes cadastrados" value={`${kpis.clientesCount}`} icon={Users} />
-              <StatCard label="Aulas concluídas" value={`${kpis.concluidas}/${kpis.totalAulas}`} icon={PlayCircle} tone="warning" />
             </div>
           )}
         </section>
