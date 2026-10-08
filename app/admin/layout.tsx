@@ -13,6 +13,7 @@ import { getUserRole } from '@/lib/auth';
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true, adminOnly: true, id: 'hub' },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, id: 'dashboard' },
+  { href: '/admin/meu-painel', label: 'Meu Painel', icon: Scissors, id: 'meu-painel' },
   // Operacional Diário
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays, id: 'agenda' },
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users, id: 'clientes' },
