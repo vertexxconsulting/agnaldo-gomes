@@ -173,23 +173,37 @@ export async function fetchClientes(): Promise<Cliente[]> {
     console.warn('[fetchClientes] API server falhou, tentando client-side:', err);
   }
 
-  let all: any[] = [];
-  let from = 0;
-  for (;;) {
-    const { data, error } = await supabase
+  const { count, error: countErr } = await supabase
+    .from(TBL.clientes)
+    .select('*', { count: 'exact', head: true });
+
+  if (countErr) {
+    logSupabaseError('[supabase] fetchClientes count error:', countErr);
+    return [];
+  }
+
+  const total = count || 0;
+  const pages = Math.ceil(total / 1000);
+
+  const promises = Array.from({ length: pages }, (_, i) => {
+    const from = i * 1000;
+    return supabase
       .from(TBL.clientes)
       .select('*')
       .order('name')
       .range(from, from + 999);
+  });
 
-    if (error) {
-      logSupabaseError('[supabase] fetchClientes error:', error);
-      break;
+  const results = await Promise.all(promises);
+  let all: any[] = [];
+  for (const res of results) {
+    if (res.error) {
+      logSupabaseError('[supabase] fetchClientes batch error:', res.error);
+    } else {
+      all = all.concat(res.data || []);
     }
-    all = all.concat(data ?? []);
-    if (!data || data.length < 1000) break;
-    from += 1000;
   }
+
   return all.map(mapCliente);
 }
 

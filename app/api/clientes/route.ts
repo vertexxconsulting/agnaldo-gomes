@@ -26,24 +26,37 @@ export async function GET(req: Request) {
       return NextResponse.json(data || []);
     }
 
-    // Carrega todos os clientes do salão em lotes de 1000 para superar o limite padrão de 1000
-    let all: any[] = [];
-    let from = 0;
-    for (;;) {
-      const { data, error } = await supabase
+    // Conta o total de clientes para buscar as páginas concorrentemente
+    const { count, error: countErr } = await supabase
+      .from('salon_customers')
+      .select('*', { count: 'exact', head: true });
+
+    if (countErr) {
+      console.error('[api/clientes] Erro ao contar clientes:', countErr);
+      return NextResponse.json({ error: countErr.message }, { status: 500 });
+    }
+
+    const total = count || 0;
+    const pages = Math.ceil(total / 1000);
+
+    const promises = Array.from({ length: pages }, (_, i) => {
+      const from = i * 1000;
+      return supabase
         .from('salon_customers')
         .select('*')
         .order('name')
         .range(from, from + 999);
+    });
 
-      if (error) {
-        console.error('[api/clientes] Erro ao buscar clientes:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    const results = await Promise.all(promises);
+    
+    let all: any[] = [];
+    for (const res of results) {
+      if (res.error) {
+        console.error('[api/clientes] Erro em um dos lotes:', res.error);
+      } else {
+        all = all.concat(res.data || []);
       }
-
-      all = all.concat(data || []);
-      if (!data || data.length < 1000) break;
-      from += 1000;
     }
 
     return NextResponse.json(all);

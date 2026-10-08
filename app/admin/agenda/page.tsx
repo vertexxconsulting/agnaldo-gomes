@@ -240,14 +240,25 @@ function AgendaContent() {
       }
 
       const [
-        agendamentosData, bloqueiosData, profissionaisData, clientesData, servicosData, profServData
+        agendamentosData, 
+        bloqueiosData, 
+        profissionaisData, 
+        clientesData, 
+        servicosData, 
+        profServData,
+        estoqueData, 
+        spData, 
+        taxasData
       ] = await Promise.all([
         fetchAgendamentos(),
         fetchBloqueios(),
         fetchProfissionais(),
         fetchClientes(),
         fetchServicos(),
-        fetchProfissionalServico()
+        fetchProfissionalServico(),
+        fetchEstoque(true),
+        fetchTodosServicoProdutos(),
+        fetchTaxasPagamento()
       ]);
       setAgendamentos(agendamentosData);
       setBloqueiosDia(bloqueiosData);
@@ -255,12 +266,6 @@ function AgendaContent() {
       setClientes(clientesData);
       setServicos(servicosData);
       setProfServicos(profServData);
-      // Carrega estoque, vínculos serviço-produto e taxas de pagamento
-      const [estoqueData, spData, taxasData] = await Promise.all([
-        fetchEstoque(true),
-        fetchTodosServicoProdutos(),
-        fetchTaxasPagamento()
-      ]);
       setEstoque(estoqueData);
       setServicoProdutos(spData);
       setTaxasPagamento(taxasData.taxas);
