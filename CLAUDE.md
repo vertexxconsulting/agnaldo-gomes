@@ -222,14 +222,21 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
     - O valor total recebido (`Total Líquido a Receber`) deduz o desconto com clareza no resumo financeiro.
     - O repasse de comissão do profissional é calculado fielmente sobre o valor líquido recebido, mantendo a integridade financeira do salão.
 
-- **Venda Direta de Produtos no Salão (`/admin/estoque`)**:
+- **Venda Direta de Produtos no Salão / Balcão (`/admin/estoque`)**:
   - Botão **"Venda no Salão"** no cabeçalho e botão **"Vender"** nos cards de produtos disponíveis para revenda.
-  - Modal moderno para registro de venda avulsa de balcão:
-    - Seleção de produto e quantidade com validação de estoque em tempo real.
-    - **Desconto Sincronizado (% <-> R$)**: ajuste instantâneo entre percentual e reais, com atalhos de 5%, 10%, 15%, 20%, 25%.
-    - Associação opcional de cliente cadastrado e profissional vendedor (gerando comissão calculada sobre o valor líquido).
-    - Formas de pagamento: Dinheiro, PIX, Débito e Crédito (com parcelamento de 1x a 12x).
-    - Baixa automática no estoque (`OUT_SALE`) com histórico detalhado nas movimentações.
+  - **Carrinho com Múltiplos Produtos (PDV Balcão)**:
+    - Permite selecionar múltiplos produtos diferentes (ex: Shampoo + Condicionador + Máscara + Óleo).
+    - Permite ajustar a quantidade de cada item com botões rápidos `[-]` e `[+]` e preço unitário avulso.
+    - O sistema soma automaticamente os subtotais de todos os produtos selecionados.
+    - Botão de remoção individual de itens.
+  - **Desconto Geral no Total da Venda (% <-> R$ Sincronizados)**:
+    - Aplicado sobre o somatório geral de todos os produtos do carrinho.
+    - Sincronização bidirecional instantânea: digitando `%` calcula `R$`, digitando `R$` calcula `%`.
+    - Atalhos de um clique: `0%`, `5%`, `10%`, `15%`, `20%`, `25%`, `30%`.
+    - Se novos produtos forem adicionados ou removidos do carrinho, o desconto em % recalcula e ajusta os valores automaticamente.
+  - Associação opcional de cliente cadastrado e profissional vendedor (gerando comissão calculada sobre o valor líquido final).
+  - Formas de pagamento: Dinheiro, PIX, Débito e Crédito (com parcelamento de 1x a 12x).
+  - Baixa automática no estoque (`OUT_SALE`) para cada produto vendido com histórico detalhado nas movimentações.
 
 - **Lançamento de Produtos pelo Profissional (`/admin/meu-painel`)**:
   - No modal de Upsell da cadeira, o profissional pode conceder desconto em % ou R$ (com cálculo automático) ao lançar o produto na comanda do cliente.

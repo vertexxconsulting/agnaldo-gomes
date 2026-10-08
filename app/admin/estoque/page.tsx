@@ -32,6 +32,19 @@ const MOV_LABELS: Record<MovTipo, { label: string; cor: string }> = {
 
 const CATEGORIAS_SUGERIDAS = ['Química', 'Coloração', 'Tratamento', 'Cuidados', 'Revenda', 'Higiene', 'Equipamentos'];
 
+export interface ItemVendaSalao {
+  id: string;
+  inventory_id: string;
+  name: string;
+  brand?: string | null;
+  category: string;
+  unit: string;
+  qty: number;
+  precoUnit: number;
+  stock_qty: number;
+  cost_price: number;
+}
+
 function estoqueBadge(p: ProdutoEstoque) {
   if (p.stock_qty <= 0) return { label: 'Zerado', cor: 'bg-red-500/15 text-red-400' };
   const alerta = p.stock_alert_qty ?? 0;
@@ -69,12 +82,12 @@ export default function EstoquePage() {
   const [entradaNota, setEntradaNota] = useState('');
   const [entradaSalvando, setEntradaSalvando] = useState(false);
 
-  // Venda de Produto no Salão com Desconto Sincronizado
+  // Venda de Produtos no Salão (Carrinho com Múltiplos Produtos + Desconto Sincronizado)
   const [showVenda, setShowVenda] = useState(false);
-  const [vendaProduto, setVendaProduto] = useState<ProdutoEstoque | null>(null);
-  const [vendaProdSelectId, setVendaProdSelectId] = useState<string>('');
-  const [vendaQty, setVendaQty] = useState<string>('1');
-  const [vendaPrecoUnit, setVendaPrecoUnit] = useState<string>('');
+  const [vendaItens, setVendaItens] = useState<ItemVendaSalao[]>([]);
+  const [addProdSelectId, setAddProdSelectId] = useState<string>('');
+  const [addProdQty, setAddProdQty] = useState<string>('1');
+  const [addProdPrecoUnit, setAddProdPrecoUnit] = useState<string>('');
   const [vendaDescPct, setVendaDescPct] = useState<string>('');
   const [vendaDescValor, setVendaDescValor] = useState<string>('');
   const [vendaClienteId, setVendaClienteId] = useState<string>('');
@@ -104,25 +117,11 @@ export default function EstoquePage() {
     setLoading(false);
   };
 
-  // Ações de Venda de Produto no Salão com Desconto Sincronizado
+  // Ações de Venda de Produto no Salão com Múltiplos Itens e Desconto Sincronizado
   const abrirVenda = (p?: ProdutoEstoque) => {
-    if (p) {
-      setVendaProduto(p);
-      setVendaProdSelectId(p.id);
-      setVendaPrecoUnit(p.sale_price != null ? p.sale_price.toString() : (p.cost_price?.toString() || '0'));
-    } else {
-      const primeiroVenda = produtos.find(prod => prod.allow_sale && prod.active);
-      if (primeiroVenda) {
-        setVendaProduto(primeiroVenda);
-        setVendaProdSelectId(primeiroVenda.id);
-        setVendaPrecoUnit(primeiroVenda.sale_price != null ? primeiroVenda.sale_price.toString() : '');
-      } else {
-        setVendaProduto(null);
-        setVendaProdSelectId('');
-        setVendaPrecoUnit('');
-      }
-    }
-    setVendaQty('1');
+    setAddProdSelectId('');
+    setAddProdQty('1');
+    setAddProdPrecoUnit('');
     setVendaDescPct('');
     setVendaDescValor('');
     setVendaClienteId('');
@@ -131,13 +130,101 @@ export default function EstoquePage() {
     setVendaPagamento('DINHEIRO');
     setVendaParcelas(1);
     setVendaObs('');
+
+    if (p) {
+      const preco = p.sale_price != null ? p.sale_price : (p.cost_price || 0);
+      setVendaItens([{
+        id: `item-${p.id}-${Date.now()}`,
+        inventory_id: p.id,
+        name: p.name,
+        brand: p.brand,
+        category: p.category,
+        unit: p.unit,
+        qty: 1,
+        precoUnit: preco,
+        stock_qty: p.stock_qty,
+        cost_price: p.cost_price,
+      }]);
+    } else {
+      setVendaItens([]);
+    }
     setShowVenda(true);
   };
 
-  const produtoVendaAtual = vendaProduto || produtos.find(p => p.id === vendaProdSelectId) || null;
-  const precoUnitarioVenda = vendaPrecoUnit !== '' ? (parseFloat(vendaPrecoUnit) || 0) : (produtoVendaAtual?.sale_price || 0);
-  const qtyVendaNum = Math.max(1, parseInt(vendaQty) || 1);
-  const subtotalVenda = precoUnitarioVenda * qtyVendaNum;
+  const subtotalVenda = useMemo(() => {
+    return vendaItens.reduce((acc, it) => acc + (it.precoUnit * it.qty), 0);
+  }, [vendaItens]);
+
+  const totalItensVenda = useMemo(() => {
+    return vendaItens.reduce((acc, it) => acc + it.qty, 0);
+  }, [vendaItens]);
+
+  const handleSelectAddProd = (pid: string) => {
+    setAddProdSelectId(pid);
+    const prod = produtos.find(p => p.id === pid);
+    if (prod) {
+      const preco = prod.sale_price != null ? prod.sale_price.toString() : (prod.cost_price?.toString() || '0');
+      setAddProdPrecoUnit(preco);
+    } else {
+      setAddProdPrecoUnit('');
+    }
+  };
+
+  const handleAdicionarItemVenda = () => {
+    if (!addProdSelectId) return alert('Selecione um produto para adicionar à venda.');
+    const prod = produtos.find(p => p.id === addProdSelectId);
+    if (!prod) return;
+
+    const q = Math.max(1, parseInt(addProdQty) || 1);
+    const preco = addProdPrecoUnit !== '' ? (parseFloat(addProdPrecoUnit) || 0) : (prod.sale_price || 0);
+
+    const existenteIdx = vendaItens.findIndex(it => it.inventory_id === prod.id);
+    if (existenteIdx >= 0) {
+      setVendaItens(prev => {
+        const copy = [...prev];
+        copy[existenteIdx] = {
+          ...copy[existenteIdx],
+          qty: copy[existenteIdx].qty + q,
+          precoUnit: preco,
+        };
+        return copy;
+      });
+    } else {
+      setVendaItens(prev => [
+        ...prev,
+        {
+          id: `item-${prod.id}-${Date.now()}`,
+          inventory_id: prod.id,
+          name: prod.name,
+          brand: prod.brand,
+          category: prod.category,
+          unit: prod.unit,
+          qty: q,
+          precoUnit: preco,
+          stock_qty: prod.stock_qty,
+          cost_price: prod.cost_price,
+        }
+      ]);
+    }
+
+    setAddProdSelectId('');
+    setAddProdQty('1');
+    setAddProdPrecoUnit('');
+  };
+
+  const removerItemVenda = (id: string) => {
+    setVendaItens(prev => prev.filter(it => it.id !== id));
+  };
+
+  const alterarQtyItemVenda = (id: string, delta: number) => {
+    setVendaItens(prev => prev.map(it => {
+      if (it.id === id) {
+        const novaQ = Math.max(1, it.qty + delta);
+        return { ...it, qty: novaQ };
+      }
+      return it;
+    }));
+  };
 
   const handleVendaDescPct = (pctStr: string) => {
     setVendaDescPct(pctStr);
@@ -163,43 +250,42 @@ export default function EstoquePage() {
     }
   };
 
-  const handleSelectProdutoVenda = (pid: string) => {
-    setVendaProdSelectId(pid);
-    const prod = produtos.find(p => p.id === pid);
-    setVendaProduto(prod || null);
-    const preco = prod?.sale_price != null ? prod.sale_price.toString() : (prod?.cost_price?.toString() || '');
-    setVendaPrecoUnit(preco);
+  // Se o subtotal mudar com adição/remoção de itens, recalcula desconto sincronizado
+  useEffect(() => {
     if (vendaDescPct) {
-      const p = parseFloat(vendaDescPct) || 0;
-      const sub = (parseFloat(preco) || 0) * (Math.max(1, parseInt(vendaQty) || 1));
-      const val = (sub * p) / 100;
-      setVendaDescValor(val > 0 ? val.toFixed(2) : '');
-    }
-  };
-
-  const handleChangeQtyVenda = (qStr: string) => {
-    setVendaQty(qStr);
-    const q = Math.max(1, parseInt(qStr) || 1);
-    const sub = precoUnitarioVenda * q;
-    if (vendaDescPct) {
-      const p = parseFloat(vendaDescPct) || 0;
-      const val = (sub * p) / 100;
-      setVendaDescValor(val > 0 ? val.toFixed(2) : '');
+      const p = parseFloat(vendaDescPct);
+      if (!isNaN(p) && p > 0) {
+        const val = (subtotalVenda * p) / 100;
+        setVendaDescValor(val > 0 ? val.toFixed(2) : '');
+      } else {
+        setVendaDescValor('');
+      }
     } else if (vendaDescValor) {
-      const v = parseFloat(vendaDescValor) || 0;
-      const p = sub > 0 ? (v / sub) * 100 : 0;
-      setVendaDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+      const v = parseFloat(vendaDescValor);
+      if (!isNaN(v) && v > 0 && subtotalVenda > 0) {
+        if (v > subtotalVenda) {
+          setVendaDescValor(subtotalVenda.toFixed(2));
+          setVendaDescPct('100');
+        } else {
+          const p = (v / subtotalVenda) * 100;
+          setVendaDescPct(p % 1 === 0 ? p.toFixed(0) : p.toFixed(1));
+        }
+      }
     }
-  };
+  }, [subtotalVenda]);
 
   const valorDescVenda = Math.min(subtotalVenda, Math.max(0, parseFloat(vendaDescValor) || 0));
   const totalFinalVenda = Math.max(0, subtotalVenda - valorDescVenda);
 
   const registrarVenda = async () => {
-    if (!produtoVendaAtual) return alert('Selecione um produto para a venda.');
-    if (qtyVendaNum <= 0) return alert('Informe uma quantidade válida.');
-    if (produtoVendaAtual.stock_qty < qtyVendaNum) {
-      if (!confirm(`Atenção: O estoque atual (${produtoVendaAtual.stock_qty}) é menor do que a quantidade a vender (${qtyVendaNum}). Deseja prosseguir com a venda mesmo assim?`)) {
+    if (vendaItens.length === 0) {
+      return alert('Adicione pelo menos um produto ao carrinho de venda.');
+    }
+
+    const semEstoque = vendaItens.filter(it => it.stock_qty < it.qty);
+    if (semEstoque.length > 0) {
+      const nomes = semEstoque.map(it => `• ${it.name} (Qtd a vender: ${it.qty}, Estoque atual: ${it.stock_qty})`).join('\n');
+      if (!confirm(`Atenção: Os seguintes produtos têm quantidade maior que o estoque atual:\n\n${nomes}\n\nDeseja prosseguir com a venda mesmo assim?`)) {
         return;
       }
     }
@@ -214,22 +300,25 @@ export default function EstoquePage() {
         : '';
       
       const descTxt = valorDescVenda > 0
-        ? ` | Desconto: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)`
+        ? ` | Desconto Geral: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)`
         : '';
-      
-      const obsTxt = `Venda Salão: ${cliNome}${profNome ? ` (Vendedor: ${profNome})` : ''} | Pag: ${vendaPagamento}${descTxt}${vendaObs ? ` | Obs: ${vendaObs}` : ''}`;
 
-      // 1. Registrar saída por venda no estoque (OUT_SALE)
-      await registrarMovimentacao(produtoVendaAtual.id, 'OUT_SALE', qtyVendaNum, {
-        notes: obsTxt,
-        unitCost: produtoVendaAtual.cost_price,
-      });
+      const resumoItens = vendaItens.map(it => `${it.qty}x ${it.name}`).join(', ');
+      const obsTxt = `Venda Salão (${vendaItens.length} itens): ${resumoItens} | Cliente: ${cliNome}${profNome ? ` (Vendedor: ${profNome})` : ''} | Pag: ${vendaPagamento}${descTxt}${vendaObs ? ` | Obs: ${vendaObs}` : ''}`;
+
+      // 1. Registrar saída por venda no estoque (OUT_SALE) para cada produto
+      for (const item of vendaItens) {
+        await registrarMovimentacao(item.inventory_id, 'OUT_SALE', item.qty, {
+          notes: obsTxt,
+          unitCost: item.cost_price,
+        });
+      }
 
       // 2. Se houver profissional vendedor, registrar comissão com valor líquido pós-desconto
       if (vendaProfissionalId) {
         const hojeIso = new Date().toISOString().split('T')[0];
         await criarComissao({
-          appointmentId: `venda-prod-${Date.now()}`,
+          appointmentId: `venda-balcao-${Date.now()}`,
           professionalId: vendaProfissionalId,
           serviceId: '',
           totalAmount: totalFinalVenda,
@@ -241,7 +330,15 @@ export default function EstoquePage() {
 
       await carregarDados();
       setShowVenda(false);
-      alert(`Venda registrada com sucesso!\nProduto: ${produtoVendaAtual.name} (${qtyVendaNum}x)\nTotal Líquido: ${fmt(totalFinalVenda)}${valorDescVenda > 0 ? `\nDesconto: ${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)` : ''}\nEstoque atualizado.`);
+      alert(
+        `Venda no Salão registrada com sucesso!\n\n` +
+        `Produtos vendidos (${totalItensVenda} un):\n` +
+        vendaItens.map(it => `• ${it.name} (${it.qty}x ${fmt(it.precoUnit)}) = ${fmt(it.precoUnit * it.qty)}`).join('\n') +
+        `\n\nSubtotal: ${fmt(subtotalVenda)}` +
+        (valorDescVenda > 0 ? `\nDesconto: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)` : '') +
+        `\nTotal Líquido a Pagar: ${fmt(totalFinalVenda)}` +
+        `\n\nEstoque atualizado e comissão registrada.`
+      );
     } catch (err: any) {
       console.error('Erro ao registrar venda:', err);
       alert(`Erro ao registrar venda: ${err?.message || 'Erro desconhecido'}`);
@@ -723,18 +820,18 @@ export default function EstoquePage() {
         </div>
       )}
 
-      {/* MODAL: Venda de Produto no Salão com Desconto Sincronizado */}
+      {/* MODAL: Venda de Produtos no Salão (Balcão com Múltiplos Produtos e Desconto Sincronizado) */}
       {showVenda && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-lg p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
                   <ShoppingBag size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold font-serif text-foreground">Venda de Produto no Salão</h3>
-                  <p className="text-xs text-foreground/50">Venda direta com desconto e comissão</p>
+                  <h3 className="text-lg font-bold font-serif text-foreground">Venda de Produtos no Salão (Balcão)</h3>
+                  <p className="text-xs text-foreground/50">Selecione múltiplos produtos, acompanhe a soma e aplique o desconto no total</p>
                 </div>
               </div>
               <button onClick={() => setShowVenda(false)} className="text-foreground/50 hover:text-foreground">
@@ -743,79 +840,171 @@ export default function EstoquePage() {
             </div>
 
             <div className="space-y-4">
-              {/* Seleção do Produto */}
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1">Produto para Venda *</label>
-                <select
-                  value={vendaProdSelectId}
-                  onChange={(e) => handleSelectProdutoVenda(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
-                >
-                  <option value="">Selecione o produto...</option>
-                  {produtos.filter(p => p.active && (p.allow_sale || p.id === vendaProdSelectId)).map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.brand ? `(${p.brand})` : ''} — {fmt(p.sale_price || 0)} [{fmtQty(p.stock_qty, p.unit)} em estoque]
-                    </option>
-                  ))}
-                </select>
+              {/* 1. SELETOR PARA ADICIONAR PRODUTOS */}
+              <div className="p-3.5 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl space-y-2.5">
+                <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Plus size={14} className="text-blue-400" />
+                  Adicionar Produto à Venda
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-6">
+                    <select
+                      value={addProdSelectId}
+                      onChange={(e) => handleSelectAddProd(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                    >
+                      <option value="">Selecione o produto...</option>
+                      {produtos.filter(p => p.active && p.allow_sale).map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {p.brand ? `(${p.brand})` : ''} — {fmt(p.sale_price || 0)} [{fmtQty(p.stock_qty, p.unit)}]
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Qtd"
+                      value={addProdQty}
+                      onChange={(e) => setAddProdQty(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center font-mono focus:outline-none focus:border-gold"
+                      title="Quantidade"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Preço (R$)"
+                        value={addProdPrecoUnit}
+                        onChange={(e) => setAddProdPrecoUnit(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-gold"
+                        title="Preço Unitário"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={handleAdicionarItemVenda}
+                      className="w-full text-xs py-2 px-2.5 h-full flex items-center justify-center"
+                      disabled={!addProdSelectId}
+                    >
+                      <Plus size={13} className="mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
+
+                {addProdSelectId && (() => {
+                  const prodPreview = produtos.find(p => p.id === addProdSelectId);
+                  if (!prodPreview) return null;
+                  return (
+                    <div className="flex items-center justify-between text-[11px] text-foreground/50 px-1 pt-0.5">
+                      <span>Categoria: <strong className="text-foreground/70">{prodPreview.category}</strong></span>
+                      <span>Estoque disponível: <strong className={prodPreview.stock_qty <= 0 ? 'text-red-400' : 'text-emerald-400'}>{fmtQty(prodPreview.stock_qty, prodPreview.unit)}</strong></span>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Info do Produto Selecionado */}
-              {produtoVendaAtual && (
-                <div className="p-3 bg-foreground/5 rounded-lg border border-[var(--border-subtle)] flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-semibold text-foreground">{produtoVendaAtual.name}</p>
-                    <p className="text-foreground/50">
-                      {produtoVendaAtual.category} · Estoque: <strong className={produtoVendaAtual.stock_qty <= 0 ? 'text-red-400' : 'text-emerald-400'}>{fmtQty(produtoVendaAtual.stock_qty, produtoVendaAtual.unit)}</strong>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-foreground/50">Preço tabela</p>
-                    <p className="font-bold text-blue-400">{fmt(produtoVendaAtual.sale_price || 0)}</p>
-                  </div>
+              {/* 2. LISTA / CARRINHO DE PRODUTOS SELECIONADOS */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <ShoppingBag size={14} className="text-gold" />
+                    Produtos Selecionados ({vendaItens.length})
+                  </label>
+                  {vendaItens.length > 0 && (
+                    <span className="text-[11px] text-foreground/50">
+                      Total de itens: <strong className="text-gold">{totalItensVenda} un.</strong>
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {/* Quantidade e Preço Unitário */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-foreground/60 mb-1">Quantidade</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={vendaQty}
-                    onChange={(e) => handleChangeQtyVenda(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-center font-mono focus:outline-none focus:border-gold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground/60 mb-1">Preço Unitário (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={vendaPrecoUnit}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setVendaPrecoUnit(val);
-                      if (vendaDescPct) {
-                        const p = parseFloat(vendaDescPct) || 0;
-                        const sub = (parseFloat(val) || 0) * qtyVendaNum;
-                        const descVal = (sub * p) / 100;
-                        setVendaDescValor(descVal > 0 ? descVal.toFixed(2) : '');
-                      }
-                    }}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-gold"
-                  />
-                </div>
+                {vendaItens.length === 0 ? (
+                  <div className="p-4 border border-dashed border-[var(--border-subtle)] rounded-xl text-center text-xs text-foreground/40">
+                    Nenhum produto adicionado à venda ainda. Escolha um produto acima e clique em &ldquo;Adicionar&rdquo;.
+                  </div>
+                ) : (
+                  <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y divide-[var(--border-subtle)]">
+                    {vendaItens.map((item) => (
+                      <div key={item.id} className="p-3 bg-foreground/[0.02] flex items-center justify-between gap-3 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground truncate">{item.name}</p>
+                          <p className="text-[11px] text-foreground/50">
+                            {item.category} {item.brand ? `· ${item.brand}` : ''} · <span className="font-mono">{fmt(item.precoUnit)}/un</span>
+                            {item.stock_qty < item.qty && (
+                              <span className="text-amber-400 ml-2 font-bold">⚠️ Estoque: {fmtQty(item.stock_qty, item.unit)}</span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Controles de Quantidade */}
+                        <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => alterarQtyItemVenda(item.id, -1)}
+                            className="w-6 h-6 rounded flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-foreground/5 text-xs font-bold"
+                            title="Diminuir"
+                          >
+                            -
+                          </button>
+                          <span className="w-7 text-center font-mono font-bold text-foreground text-xs">
+                            {item.qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => alterarQtyItemVenda(item.id, 1)}
+                            className="w-6 h-6 rounded flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-foreground/5 text-xs font-bold"
+                            title="Aumentar"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Subtotal do Item */}
+                        <div className="text-right min-w-[70px]">
+                          <p className="font-bold font-mono text-gold text-xs">
+                            {fmt(item.precoUnit * item.qty)}
+                          </p>
+                        </div>
+
+                        {/* Remover */}
+                        <button
+                          type="button"
+                          onClick={() => removerItemVenda(item.id)}
+                          className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
+                          title="Remover produto da venda"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Barra de Subtotal dos Itens */}
+                    <div className="p-2.5 bg-foreground/[0.04] flex justify-between items-center text-xs px-3">
+                      <span className="text-foreground/70 font-medium">Subtotal dos Produtos:</span>
+                      <span className="font-bold font-mono text-foreground">{fmt(subtotalVenda)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* BOX DE DESCONTO COM SINCRONIZAÇÃO % <-> R$ */}
+              {/* 3. BOX DE DESCONTO COM SINCRONIZAÇÃO % <-> R$ */}
               <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Percent size={15} className="text-emerald-400" />
-                    <span className="text-xs font-bold text-foreground">Desconto na Venda</span>
+                    <span className="text-xs font-bold text-foreground">Desconto no Total da Venda</span>
                   </div>
                   {valorDescVenda > 0 && (
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
@@ -869,6 +1058,7 @@ export default function EstoquePage() {
                     { label: '15%', val: '15' },
                     { label: '20%', val: '20' },
                     { label: '25%', val: '25' },
+                    { label: '30%', val: '30' },
                   ].map(b => (
                     <button
                       key={b.val}
@@ -886,7 +1076,7 @@ export default function EstoquePage() {
                 </div>
               </div>
 
-              {/* Cliente & Profissional Vendedor */}
+              {/* 4. CLIENTE & PROFISSIONAL VENDEDOR */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Cliente (opcional)</label>
@@ -927,12 +1117,12 @@ export default function EstoquePage() {
                     ))}
                   </select>
                   {vendaProfissionalId && (
-                    <p className="text-[10px] text-gold mt-1">Gera comissão sobre o valor líquido da venda</p>
+                    <p className="text-[10px] text-gold mt-1">Gera comissão sobre o valor líquido pós-desconto</p>
                   )}
                 </div>
               </div>
 
-              {/* Forma de Pagamento */}
+              {/* 5. FORMA DE PAGAMENTO */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1.5">Forma de Pagamento</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -983,7 +1173,7 @@ export default function EstoquePage() {
                 )}
               </div>
 
-              {/* Observações */}
+              {/* 6. OBSERVAÇÕES */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Observações (opcional)</label>
                 <input
@@ -995,10 +1185,10 @@ export default function EstoquePage() {
                 />
               </div>
 
-              {/* Resumo Financeiro */}
-              <div className="p-3 bg-foreground/[0.03] border border-[var(--border-subtle)] rounded-xl space-y-1.5 text-xs">
+              {/* 7. RESUMO FINANCEIRO */}
+              <div className="p-3.5 bg-foreground/[0.03] border border-[var(--border-subtle)] rounded-xl space-y-1.5 text-xs">
                 <div className="flex justify-between text-foreground/60">
-                  <span>Subtotal ({qtyVendaNum}x)</span>
+                  <span>Subtotal dos Produtos ({totalItensVenda} un)</span>
                   <span className="font-mono">{fmt(subtotalVenda)}</span>
                 </div>
                 {valorDescVenda > 0 && (
@@ -1008,7 +1198,7 @@ export default function EstoquePage() {
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)]">
-                  <span className="text-sm font-bold text-foreground">Total a Pagar:</span>
+                  <span className="text-sm font-bold text-foreground">Total Líquido a Pagar:</span>
                   <span className="text-xl font-bold font-serif text-gold font-mono">{fmt(totalFinalVenda)}</span>
                 </div>
                 {vendaPagamento === 'CREDITO' && vendaParcelas > 1 && (
@@ -1027,10 +1217,10 @@ export default function EstoquePage() {
                 variant="primary"
                 className="flex-1"
                 onClick={registrarVenda}
-                disabled={vendaSalvando || !produtoVendaAtual}
+                disabled={vendaSalvando || vendaItens.length === 0}
               >
                 <ShoppingBag size={15} className="mr-1.5" />
-                {vendaSalvando ? 'Gravando...' : 'Confirmar Venda'}
+                {vendaSalvando ? 'Gravando...' : `Confirmar Venda (${totalItensVenda} un)`}
               </Button>
             </div>
           </CardGlass>
