@@ -24,6 +24,7 @@ import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
+import { normalizarTelefoneDestino } from '@/lib/whatsapp';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -38,6 +39,7 @@ export default function AgendamentoPage() {
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
+  const [whatsappSalao, setWhatsappSalao] = useState('5542998271222');
   
   // Ordem: telefone -> profissional -> servico -> confirmacao
   // (Step 'data' oculto: data/hora definida pela secretaria do salão)
@@ -98,6 +100,9 @@ export default function AgendamentoPage() {
         if (res.ok) {
           const lojaData = await res.json();
           setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
+          if (lojaData.whatsapp_contato && lojaData.whatsapp_contato.trim()) {
+            setWhatsappSalao(lojaData.whatsapp_contato.trim());
+          }
         }
       } catch (e) {
         console.error('Erro ao carregar configurações globais:', e);
@@ -324,6 +329,10 @@ export default function AgendamentoPage() {
     };
   }, [formData.data, profissionalSelecionado]);
 
+  const whatsappSalaoFormatado = useMemo(() => {
+    return normalizarTelefoneDestino(whatsappSalao);
+  }, [whatsappSalao]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step !== 'confirmacao') {
@@ -348,8 +357,8 @@ export default function AgendamentoPage() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Erro ao salvar agendamento');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Erro ao processar agendamento no servidor');
       }
 
       const resData = await res.json();
@@ -368,10 +377,22 @@ export default function AgendamentoPage() {
         return;
       }
 
-      window.location.href = resData.whatsappUrl;
+      if (resData.whatsappUrl) {
+        window.location.href = resData.whatsappUrl;
+      } else {
+        throw new Error('Link de envio para o WhatsApp não foi gerado');
+      }
     } catch (err: any) {
       console.error('Erro no agendamento:', err);
-      alert(`Erro: ${err.message || 'Ocorreu um erro ao processar seu agendamento. Tente novamente.'}`);
+      // Fallback de segurança: se a API retornar instabilidade, envia os dados diretamente para o WhatsApp do salão
+      const destino = whatsappSalaoFormatado || '5542998271222';
+      const msgTexto = `*Novo Agendamento Solicitado* 📅\n\n👤 *Cliente:* ${formData.nome || 'Cliente'}\n📞 *Telefone:* ${formData.telefone}\n✂️ *Serviço:* ${servicoSelecionado?.nome || 'Serviço'}\n👤 *Profissional:* ${profissionalSelecionado?.nome || 'Especialista'}\n💰 *Valor:* R$ ${valorTotalServico.toFixed(2).replace('.', ',')}\n\n🗓️ *Data/Hora:* A ser definida pela secretaria\n\n_Olá! Gostaria de agendar este procedimento no Studio Agnaldo Gomes._`;
+      const fallbackUrl = `https://wa.me/${destino}?text=${encodeURIComponent(msgTexto)}`;
+
+      const tentarDireto = confirm(`Aviso do agendamento: ${err.message || 'Houve uma instabilidade temporária'}.\n\nDeseja enviar sua solicitação diretamente para o WhatsApp do salão agora?`);
+      if (tentarDireto) {
+        window.location.href = fallbackUrl;
+      }
       setLoading(false);
     }
   };
@@ -399,7 +420,7 @@ export default function AgendamentoPage() {
           <Button 
             variant="primary" 
             className="w-full font-bold flex items-center justify-center gap-2"
-            onClick={() => window.open('https://wa.me/5542998271222?text=Olá, gostaria de saber sobre a disponibilidade de horários.', '_blank')}
+            onClick={() => window.open(`https://wa.me/${whatsappSalaoFormatado}?text=${encodeURIComponent('Olá, gostaria de saber sobre a disponibilidade de horários.')}`, '_blank')}
           >
             <MessageCircle size={18} />
             Falar pelo WhatsApp

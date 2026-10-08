@@ -6,16 +6,15 @@ import { gerarPixCopiaCola } from '@/lib/noivas';
 import { MOCK_SERVICOS, MOCK_PROFISSIONAIS } from '@/lib/mock-data';
 import { sincronizarAgendamentoComBolten } from '@/lib/bolten';
 
-const ALLOWED_ORIGINS = [
-  'https://agnaldogomes.com.br',
-  'https://www.agnaldogomes.com.br',
-  'https://agnaldogomes.vercel.app',
-  'http://localhost:3000',
-];
-
 function validateOrigin(req: Request): boolean {
   const origin = req.headers.get('origin') || req.headers.get('referer') || '';
-  return ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  if (!origin) return true; // Requisição direta da aplicação
+  return (
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1') ||
+    origin.includes('agnaldogomes.com') ||
+    origin.includes('vercel.app')
+  );
 }
 
 function sanitizeInput(input: string): string {
@@ -23,9 +22,13 @@ function sanitizeInput(input: string): string {
 }
 
 function validatePhone(phone: string): string {
-  const cleaned = phone.replace(/\D/g, '');
+  let cleaned = phone.replace(/\D/g, '');
+  // Se usuário ou navegador enviou com DDI 55 (12 ou 13 dígitos), normaliza removendo o 55
+  if (cleaned.startsWith('55') && (cleaned.length === 12 || cleaned.length === 13)) {
+    cleaned = cleaned.slice(2);
+  }
   if (cleaned.length < 10 || cleaned.length > 11) {
-    throw new Error('Telefone inválido');
+    throw new Error('Telefone inválido (deve conter DDD e número com 10 ou 11 dígitos)');
   }
   return cleaned;
 }
@@ -305,7 +308,34 @@ export async function POST(req: Request) {
       }
     }
 
-    // 6. Gerar URL do WhatsApp
+    // 6. Buscar o número de WhatsApp cadastrado para o salão
+    let whatsappSalao = process.env.NEXT_PUBLIC_WHATSAPP_PHONE || '5542998271222';
+    if (supabase) {
+      try {
+        const { data: lojaConfig } = await supabase
+          .from('loja_settings')
+          .select('whatsapp_contato')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (lojaConfig?.whatsapp_contato && lojaConfig.whatsapp_contato.trim()) {
+          whatsappSalao = lojaConfig.whatsapp_contato.trim();
+        } else {
+          const { data: sysSetting } = await supabase
+            .from('salon_system_settings')
+            .select('value')
+            .in('key', ['whatsapp_contato', 'whatsapp_salao', 'whatsapp_atendimento'])
+            .maybeSingle();
+          if (sysSetting?.value && sysSetting.value.trim()) {
+            whatsappSalao = sysSetting.value.trim();
+          }
+        }
+      } catch (err) {
+        console.warn('Aviso ao consultar WhatsApp cadastrado para o salão:', err);
+      }
+    }
+
+    // Gerar URL do WhatsApp direcionando para o número do salão
     const whatsappUrl = getWhatsAppBookingUrl({
       id: agendamentoId,
       cliente: nomeSanitizado,
@@ -316,7 +346,8 @@ export async function POST(req: Request) {
       hora: hora,
       valor: valorTotal,
       isNoiva,
-      valorSinal
+      valorSinal,
+      whatsappDestino: whatsappSalao,
     });
 
     return NextResponse.json({ 
@@ -333,15 +364,14 @@ export async function POST(req: Request) {
       data,
       hora,
       nome: nomeSanitizado,
-      whatsappUrl 
+      whatsappUrl,
+      whatsappSalao
     });
 
   } catch (error: any) {
     console.error('Erro na API de agendamento:', error);
-    const message = error.message === 'Telefone inválido' || error.message === 'E-mail inválido' 
-      ? error.message 
-      : 'Erro interno no servidor';
-    const status = error.message === 'Telefone inválido' || error.message === 'E-mail inválido' ? 400 : 500;
+    const message = error.message || 'Erro ao processar agendamento';
+    const status = error.status || (message.includes('inválido') ? 400 : 500);
     return NextResponse.json(
       { error: message },
       { status }

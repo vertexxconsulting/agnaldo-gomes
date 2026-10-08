@@ -108,22 +108,30 @@ export default function SistemaPage() {
   const saveWhatsapp = async () => {
     setSavingWhatsapp(true);
     try {
+      const { normalizarTelefoneDestino } = await import('@/lib/whatsapp');
+      const formatado = normalizarTelefoneDestino(whatsappContato);
+
       const res = await fetch('/api/admin/loja/settings');
       const current = await res.json();
-      const payload = { ...current, whatsapp_contato: whatsappContato };
+      const payload = { ...current, whatsapp_contato: formatado };
       const saveRes = await fetch('/api/admin/loja/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
+      // Salva também nas configurações gerais do salão (redundância)
+      await updateSystemSetting('whatsapp_contato', formatado);
+
       if (saveRes.ok) {
-        alert('Número do WhatsApp salvo com sucesso!');
+        setWhatsappContato(formatado);
+        alert(`WhatsApp do salão salvo com sucesso: ${formatado}`);
       } else {
-        throw new Error('Falha ao salvar');
+        throw new Error('Falha ao salvar nas configurações da loja');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro ao salvar WhatsApp:', e);
-      alert('Erro ao salvar WhatsApp. Talvez seja necessário criar a coluna whatsapp_contato no banco de dados primeiro.');
+      alert(`Erro ao salvar WhatsApp: ${e.message}`);
     } finally {
       setSavingWhatsapp(false);
     }
@@ -238,23 +246,41 @@ return (
           <div>
             <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
               <MessageSquare size={20} className="text-emerald-500" />
-              WhatsApp de Atendimento
+              WhatsApp de Atendimento do Salão
             </h3>
             <p className="text-sm text-foreground/60 mt-1">
-              Defina o número de WhatsApp principal (com DDI e DDD, ex: 5511999999999).
+              Número que recebe as solicitações de agendamento feitas pelos clientes no site (com DDD, ex: 42 99827-1222 ou 5542998271222).
             </p>
+            {whatsappContato && (
+              <p className="text-xs text-emerald-400 font-medium mt-1">
+                ✓ Destino configurado: <span className="font-mono">{whatsappContato}</span>
+              </p>
+            )}
           </div>
-          <div className="flex w-full md:w-auto items-center gap-2">
+          <div className="flex flex-wrap w-full md:w-auto items-center gap-2">
             <input 
               type="text" 
               value={whatsappContato} 
               onChange={(e) => setWhatsappContato(e.target.value)} 
-              placeholder="5511999999999" 
-              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg flex-1 min-w-[200px] text-foreground focus:outline-none focus:border-gold"
+              placeholder="Ex: (42) 99827-1222" 
+              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg flex-1 min-w-[200px] text-foreground focus:outline-none focus:border-gold font-mono text-sm"
             />
             <Button onClick={saveWhatsapp} disabled={savingWhatsapp || loadingLojaSettings} variant="primary">
               {savingWhatsapp ? 'Salvando...' : 'Salvar'}
             </Button>
+            {whatsappContato && (
+              <Button 
+                variant="outline"
+                className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 text-xs"
+                onClick={() => {
+                  const limpo = whatsappContato.replace(/\D/g, '');
+                  const num = limpo.length === 10 || limpo.length === 11 ? `55${limpo}` : limpo;
+                  window.open(`https://wa.me/${num}?text=${encodeURIComponent('Olá! Teste de recepção de agendamentos do Studio Agnaldo Gomes.')}`, '_blank');
+                }}
+              >
+                Testar Link
+              </Button>
+            )}
           </div>
         </div>
       </CardGlass>

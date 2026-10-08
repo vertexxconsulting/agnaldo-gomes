@@ -258,6 +258,22 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.5 Reconhecimento do WhatsApp do Salão e Resiliência no Agendamento
+
+- **Reconhecimento Dinâmico do Número do Salão (`loja_settings` & `salon_system_settings`)**:
+  - O sistema agora puxa dinamicamente o número oficial cadastrado para o salão em `loja_settings.whatsapp_contato` (configurado em `/admin/sistema` no bloco "WhatsApp de Atendimento do Salão") e `salon_system_settings`.
+  - **Normalização Automática para `wa.me` (`lib/whatsapp.ts`)**:
+    - Função `normalizarTelefoneDestino()` higieniza qualquer formatação brasileira (com ou sem DDI 55, parênteses ou traços, ex: `(42) 99827-1222` ou `42998271222`) convertendo estritamente para o padrão internacional com DDI 55 (`5542998271222`).
+    - Elimina erros do WhatsApp do tipo *"O número compartilhado por link é inválido"*.
+  - **Permissividade da API de Agendamento (`/api/agendamento`)**:
+    - `validateOrigin`: ampliada para aceitar origens legítimas (`agnaldogomes.com`, `agnaldogomes.com.br`, `vercel.app`, `localhost`, `127.0.0.1` e requisições diretas de webview/mobile sem cabeçalho).
+    - `validatePhone`: normaliza números enviados pelo cliente que contenham DDI 55 antes de validar os 10 ou 11 dígitos, evitando falso erro de *"Telefone inválido"*.
+  - **Fallback Gracioso no Front-end (`/agendamento`)**:
+    - Se houver qualquer instabilidade momentânea na gravação do banco de dados, o cliente recebe um alerta amigável e a opção direta de enviar a mensagem com todos os dados montados para o WhatsApp oficial do salão, garantindo que nenhum lead ou agendamento seja perdido.
+    - Teste direto de link WhatsApp adicionado em `/admin/sistema` para conferência imediata da recepção.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
