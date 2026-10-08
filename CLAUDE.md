@@ -274,6 +274,25 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.6 Sistema de Login por Nickname / Apelido
+
+- **Login Híbrido (E-mail ou Nickname)**:
+  - O componente global de login (`components/SplitLogin.tsx`) agora aceita tanto o e-mail tradicional quanto um apelido/nickname (ex: `agnaldo`, `alice`, `anderson`, `secretaria`, `admin`).
+  - **Resolução Automática (`/api/auth/resolve-identifier` & `lib/nicknames.ts`)**:
+    - Se o usuário digita um valor sem `@`, o sistema consulta em camadas:
+      1. Tabela `salon_system_settings` (`key: 'user_nicknames'`).
+      2. Tabela `profiles` (campo `permissions.nickname`, primeiro nome ou nome completo sem espaços).
+      3. Metadados do Auth (`user_metadata.nickname`).
+      4. Tabela `salon_professionals` (equipe do salão).
+    - O identificador é resolvido para o e-mail real e autenticado no Supabase Auth via `supabase.auth.signInWithPassword()`.
+    - **Preservação Total**: Nenhuma senha foi alterada e os papéis/permissões (`Role`) continuam 100% preservados.
+  - **Gestão no Painel (`/admin/equipe`)**:
+    - A tabela de membros exibe uma coluna dedicada mostrando o `@nickname` do usuário.
+    - O modal de "Novo Membro" permite definir um apelido opcional na criação.
+    - O modal de "Editar" permite alterar ou cadastrar o `@nickname` de qualquer membro da equipe através de `/api/admin/nicknames`.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

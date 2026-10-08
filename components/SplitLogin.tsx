@@ -78,7 +78,7 @@ export function SplitLogin({
   centeredCard = false,
 }: SplitLoginProps) {
   const router = useRouter();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -109,10 +109,8 @@ export function SplitLogin({
 
   const validateForm = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
-    if (!formData.email.trim()) {
-      newErrors.email = 'O e-mail é obrigatório.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'E-mail inválido.';
+    if (!formData.identifier.trim()) {
+      newErrors.identifier = 'Informe seu e-mail ou nickname.';
     }
     if (!formData.password) {
       newErrors.password = senhaMensagens.obrigatoria;
@@ -130,15 +128,39 @@ export function SplitLogin({
 
     setIsSubmitting(true);
 
+    let emailToAuth = formData.identifier.trim();
+
+    // Se o usuário digitou um apelido/nickname (sem @), resolve para o e-mail real da conta
+    if (!emailToAuth.includes('@')) {
+      try {
+        const res = await fetch('/api/auth/resolve-identifier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: emailToAuth }),
+        });
+        const resData = await res.json();
+        if (!res.ok || !resData.email) {
+          setIsSubmitting(false);
+          setErrors({ form: resData.error || 'Nickname não encontrado. Verifique o nome ou utilize seu e-mail.' });
+          return;
+        }
+        emailToAuth = resData.email;
+      } catch (err: any) {
+        setIsSubmitting(false);
+        setErrors({ form: 'Erro ao conectar ao servidor para validar o nickname.' });
+        return;
+      }
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
+      email: emailToAuth,
       password: formData.password,
     });
 
     setIsSubmitting(false);
 
     if (error) {
-      setErrors({ form: 'E-mail ou senha incorretos.' });
+      setErrors({ form: 'E-mail, nickname ou senha incorretos.' });
       return;
     }
     // Valida se a conta tem permissão para esta área (login dedicado)
@@ -178,7 +200,7 @@ export function SplitLogin({
         finalRedirectTo = '/admin';
       }
 
-      localStorage.setItem('ag-sessao', JSON.stringify({ email: formData.email, sistema: finalRedirectTo, em: new Date().toISOString() }));
+      localStorage.setItem('ag-sessao', JSON.stringify({ email: emailToAuth, sistema: finalRedirectTo, em: new Date().toISOString() }));
       router.push(finalRedirectTo);
     }
   };
@@ -332,25 +354,26 @@ export function SplitLogin({
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <motion.div variants={ITEM_VARIANTS}>
-              <label htmlFor="split-email" className={`block text-sm font-medium mb-1.5 ${sideBgImage || centeredCard ? 'text-white/90' : 'text-foreground/80'}`}>
-                E-mail
+              <label htmlFor="split-identifier" className={`block text-sm font-medium mb-1.5 ${sideBgImage || centeredCard ? 'text-white/90' : 'text-foreground/80'}`}>
+                E-mail ou Nickname
               </label>
               <input
-                id="split-email"
-                type="email"
-                name="email"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                id="split-identifier"
+                type="text"
+                name="identifier"
+                placeholder="Seu e-mail ou apelido (ex: agnaldo)"
+                value={formData.identifier}
+                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                 className={`w-full px-4 py-3 border rounded-xl text-sm transition-all focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold ${
                   sideBgImage || centeredCard
                     ? 'bg-black/40 border-white/20 text-white placeholder:text-white/40 focus:bg-black/60'
                     : 'bg-[var(--card-bg)] border-gold/20 text-foreground placeholder:text-foreground/40'
                 }`}
-                aria-label="E-mail"
-                aria-invalid={!!errors.email}
+                aria-label="E-mail ou Nickname"
+                aria-invalid={!!errors.identifier}
+                autoComplete="username"
               />
-              {errors.email && <p className="text-[var(--color-danger)] text-xs mt-1.5" role="alert">{errors.email}</p>}
+              {errors.identifier && <p className="text-[var(--color-danger)] text-xs mt-1.5" role="alert">{errors.identifier}</p>}
             </motion.div>
 
             <motion.div variants={ITEM_VARIANTS}>

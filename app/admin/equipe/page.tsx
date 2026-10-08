@@ -14,14 +14,16 @@ import {
 
 export default function TeamManagementPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [nicknames, setNicknames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'studio_admin' as Role, permissions: { ...DEFAULT_PERMISSIONS } });
+  const [newUser, setNewUser] = useState({ email: '', full_name: '', password: '', role: 'studio_admin' as Role, nickname: '', permissions: { ...DEFAULT_PERMISSIONS } });
   const [creating, setCreating] = useState(false);
   
   // Modal de edição de permissões
   const [editingProfile, setEditingProfile] = useState<any>(null);
+  const [editingNickname, setEditingNickname] = useState('');
   const [editPermissions, setEditPermissions] = useState<UserPermissions>({});
   
   const [busca, setBusca] = useState('');
@@ -43,8 +45,12 @@ export default function TeamManagementPage() {
   async function loadProfiles() {
     setLoading(true);
     try {
-      const data = await safeFetch('/api/admin/equipe');
+      const [data, nickData] = await Promise.all([
+        safeFetch('/api/admin/equipe'),
+        safeFetch('/api/admin/nicknames').catch(() => ({ nicknames: {} })),
+      ]);
       setProfiles(Array.isArray(data) ? data : []);
+      setNicknames(nickData?.nicknames || {});
     } catch (e: any) {
       console.error('Erro loadProfiles:', e);
       alert(e.message);
@@ -52,6 +58,13 @@ export default function TeamManagementPage() {
       setLoading(false);
     }
   }
+
+  const getNicknameDisplay = (profile: any) => {
+    for (const [nick, email] of Object.entries(nicknames)) {
+      if (email.toLowerCase() === profile.email?.toLowerCase()) return nick;
+    }
+    return (profile.permissions as any)?.nickname || profile.full_name?.split(' ')[0]?.toLowerCase() || 'sem-apelido';
+  };
 
   useEffect(() => {
     loadProfiles();
@@ -78,13 +91,23 @@ export default function TeamManagementPage() {
     if (!editingProfile) return;
     setUpdatingId(editingProfile.id);
     try {
+      const permsToSave = { ...editPermissions };
+      if (editingNickname.trim()) {
+        (permsToSave as any).nickname = editingNickname.trim().toLowerCase();
+        await safeFetch('/api/admin/nicknames', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: editingProfile.email, nickname: editingNickname.trim() }),
+        }).catch(err => console.warn('Aviso ao salvar nickname:', err));
+      }
+
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: editingProfile.id, newRole: editingProfile.role, permissions: editPermissions }),
+        body: JSON.stringify({ userId: editingProfile.id, newRole: editingProfile.role, permissions: permsToSave }),
       });
       await loadProfiles();
-      alert('Permissões atualizadas com sucesso!');
+      alert('Permissões e nickname atualizados com sucesso!');
       setEditingProfile(null);
     } catch (e: any) {
       alert(e.message);
@@ -101,14 +124,28 @@ export default function TeamManagementPage() {
 
     setCreating(true);
     try {
+      const perms = { ...newUser.permissions };
+      if (newUser.nickname.trim()) {
+        (perms as any).nickname = newUser.nickname.trim().toLowerCase();
+      }
+
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify({ ...newUser, permissions: perms }),
       });
+
+      if (newUser.nickname.trim()) {
+        await safeFetch('/api/admin/nicknames', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: newUser.email, nickname: newUser.nickname.trim() }),
+        }).catch(err => console.warn('Aviso ao registrar nickname:', err));
+      }
+
       alert('Usuário criado com sucesso!');
       setIsModalOpen(false);
-      setNewUser({ email: '', full_name: '', password: '', role: 'studio_admin', permissions: { ...DEFAULT_PERMISSIONS } });
+      setNewUser({ email: '', full_name: '', password: '', role: 'studio_admin', nickname: '', permissions: { ...DEFAULT_PERMISSIONS } });
       await loadProfiles();
     } catch (e: any) {
       alert(e.message);
@@ -154,6 +191,7 @@ export default function TeamManagementPage() {
           <thead className="bg-foreground/5 text-foreground text-xs font-bold uppercase tracking-widest">
             <tr className="border-b border-[var(--border-subtle)]">
               <th className="px-6 py-4">Usuário</th>
+              <th className="px-6 py-4">Nickname</th>
               <th className="px-6 py-4">E-mail</th>
               <th className="px-6 py-4">Papel Atual</th>
               <th className="px-6 py-4 text-center">Permissões</th>
@@ -171,6 +209,11 @@ export default function TeamManagementPage() {
                     <span className="text-foreground font-semibold text-sm">{profile.full_name}</span>
                   </div>
                 </td>
+                <td className="px-6 py-4">
+                  <span className="px-2.5 py-1 rounded-lg bg-gold/15 text-gold text-xs font-mono font-bold border border-gold/30">
+                    @{getNicknameDisplay(profile)}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
                 <td className="px-6 py-4">
                   <span className="px-3 py-1 rounded-full bg-foreground/10 text-foreground text-xs font-bold border border-foreground/20">
@@ -183,6 +226,7 @@ export default function TeamManagementPage() {
                     size="sm" 
                     onClick={() => {
                       setEditingProfile(profile);
+                      setEditingNickname(getNicknameDisplay(profile));
                       setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
                     }}
                     disabled={updatingId === profile.id || profile.role === ROLES.ADMIN}
@@ -245,6 +289,19 @@ export default function TeamManagementPage() {
                   className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all"
                   placeholder="email@empresa.com"
                 />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Nickname de Login (Opcional)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-gold font-bold text-sm">@</span>
+                  <input 
+                    type="text" 
+                    value={newUser.nickname}
+                    onChange={e => setNewUser({...newUser, nickname: e.target.value})}
+                    className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
+                    placeholder="ex: agnaldo"
+                  />
+                </div>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Senha Inicial</label>
@@ -368,6 +425,24 @@ export default function TeamManagementPage() {
               </button>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* Nickname de Login */}
+              <div className="p-4 bg-foreground/5 rounded-2xl border border-[var(--border-subtle)]">
+                <label className="block text-xs font-bold text-gold uppercase mb-1.5">Nickname de Acesso (@)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-gold font-bold text-base">@</span>
+                  <input 
+                    type="text"
+                    value={editingNickname}
+                    onChange={e => setEditingNickname(e.target.value)}
+                    placeholder="ex: agnaldo"
+                    className="flex-1 bg-background border border-[var(--border-subtle)] text-foreground text-sm rounded-xl px-3 py-2 outline-none focus:border-gold font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-foreground/50 mt-1.5">
+                  Permite entrar no sistema digitando apenas este apelido ao invés do e-mail.
+                </p>
+              </div>
+
               {/* STUDIO */}
               <div>
                 <h4 className="text-xs font-bold text-gold uppercase mb-2">Studio (Salão)</h4>
