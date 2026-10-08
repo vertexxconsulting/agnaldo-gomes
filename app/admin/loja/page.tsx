@@ -60,7 +60,7 @@ export default function LojaPage() {
     setProcessing(true);
     try {
       // 1. Baixa no estoque
-      await registrarMovimentacao(selectedProduto, 'OUT_SALE', quantidade, 'Venda Balcão');
+      await registrarMovimentacao(selectedProduto, 'OUT_SALE', quantidade, { notes: 'Venda Balcão' });
 
       // 2. Registra comissão do produto (usando insert direto, já que criarComissao requer appointment_id)
       const { error: comErr } = await supabase.from('commissions').insert({
