@@ -32,8 +32,8 @@ export async function GET(req: Request) {
 
     const enviados: string[] = [];
     const falhas: { nome: string; error: string }[] = [];
-    const itens = aniversariantes.map(c => {
-      const msg = msgAniversario(c.name ?? '');
+    const itens = await Promise.all(aniversariantes.map(async c => {
+      const msg = await msgAniversario(c.name ?? '');
       const telefone = normalizarTelefone(c.phone ?? '');
       return {
         nome: c.name,
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         wa_link: telefone ? waMeLink(telefone, msg) : '',
         enviada_via_api: false as boolean,
       };
-    });
+    }));
 
     if (evolutionConfigurada()) {
       for (const item of itens) {

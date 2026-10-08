@@ -5,6 +5,8 @@
  * Placeholders: {nome}, {data}, {hora}, {servico}, {profissional}
  */
 
+import { fetchSystemSettings } from './supabase-queries';
+
 const STUDIO = 'Agnaldo Gomes Studio';
 
 export function formatarDataBR(iso: string): string {
@@ -15,6 +17,22 @@ export function formatarDataBR(iso: string): string {
 
 function primeiroNome(nomeCompleto: string): string {
   return (nomeCompleto || '').trim().split(/\s+/)[0] || '';
+}
+
+let settingsCache: { data: Record<string, string>; at: number } | null = null;
+const SETTINGS_TTL_MS = 60_000;
+async function getSettings(): Promise<Record<string, string>> {
+  if (settingsCache && Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.data;
+  const settings = await fetchSystemSettings();
+  const map: Record<string, string> = {};
+  for (const s of settings ?? []) map[s.key] = s.value;
+  settingsCache = { data: map, at: Date.now() };
+  return map;
+}
+
+/** Invalida o cache de templates (chamar após salvar mensagens) */
+export function invalidarCacheMensagens() {
+  settingsCache = null;
 }
 
 /**
@@ -42,80 +60,73 @@ export function isMasculino(nomeCompleto: string): boolean {
   return NOMES_MASCULINOS.has(primeiro);
 }
 
-/** Aniversário — disparo no dia, às 08h */
-export function msgAniversario(nomeCompleto: string): string {
-  const nome = primeiroNome(nomeCompleto);
-  const masculino = isMasculino(nomeCompleto);
+/** Templates padrão (usados quando o admin ainda não personalizou) */
+export const MENSAGENS_PADRAO = {
+  msg_confirmacao: `Olá, {nome}! 💛 Passando para confirmar seu horário de *{servico}* com {profissional} amanhã, {data}, às {hora}, no Agnaldo Gomes Studio.\n\nResponda *SIM* para confirmar ou nos avise caso precise remarcar.`,
+  msg_lembrete: `Oi, {nome}! ⏰ Lembrando que seu horário de *{servico}* é HOJE às {hora}. Estamos te esperando no Agnaldo Gomes Studio!`,
+  msg_feedback: `Oi, {nome}! 😍 Como está ficando o resultado do seu *{servico}*? Sua opinião vale ouro para nós: responda com uma nota de 0 a 10.`,
+  msg_aniversario: `🌸 Feliz Aniversário, {nome}! 🎂 A equipe Agnaldo Gomes Studio deseja que este dia seja tão especial quanto você.`,
+  msg_reativacao: `Oi, {nome}! ✨ Sentimos sua falta no Agnaldo Gomes Studio — já faz {tempo} desde seu último cuidado. Que tal reservar um momento só seu?`,
+} as const;
+export type ChaveMensagem = keyof typeof MENSAGENS_PADRAO;
 
-  if (masculino) {
-    // Mensagem sem o mimo da hidratação (serviço feminino)
-    return (
-      `🎂 *Feliz Aniversário, ${nome}*! 🥳\n\n` +
-      `A equipe ${STUDIO} deseja que este dia seja incrível — cheio de conquistas, alegria e muita energia positiva! 💛\n\n` +
-      `Qualquer serviço que precisar, estamos aqui para cuidar do melhor de você!\n` +
-      `Responda esta mensagem e garantimos o melhor horário. ✨`
-    );
-  }
-
-  // Mensagem com o mimo da hidratação — para clientes mulheres
-  return (
-    `🌸 *Feliz Aniversário, ${nome}*! 🎂\n\n` +
-    `A equipe ${STUDIO} deseja que este dia seja tão especial quanto você — cheio de beleza, alegria e boas energias.\n\n` +
-    `🎁 *Presente de aniversário:* uma *Hidratação Profissional* por nossa conta!\n` +
-    `Responda esta mensagem e nossa equipe reserva o melhor horário para você aproveitar seu mimo. 💛`
+/** Substitui variáveis no template — aceita {var} e {{var}} */
+export function aplicarTemplate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{?\s*(\w+)\s*\}?\}/g, (m, chave: string) =>
+    chave in vars ? vars[chave] : m,
   );
+}
+
+async function template(chave: ChaveMensagem): Promise<string> {
+  const settings = await getSettings();
+  return settings[chave]?.trim() || MENSAGENS_PADRAO[chave];
+}
+
+/** Aniversário — disparo no dia, às 08h */
+export async function msgAniversario(nomeCompleto: string): Promise<string> {
+  return aplicarTemplate(await template('msg_aniversario'), { nome: primeiroNome(nomeCompleto) });
 }
 
 /** Confirmação — 1 dia antes do agendamento */
-export function msgConfirmacaoVespera(params: {
+export async function msgConfirmacaoVespera(params: {
   nome: string; data: string; hora: string; servico: string; profissional: string;
-}): string {
-  const nome = primeiroNome(params.nome);
-  const data = formatarDataBR(params.data);
-  return (
-    `Oi, ${nome}! 👋\n\n` +
-    `Passando para confirmar seu horário *amanhã, ${data} às ${params.hora}*, para *${params.servico}* com ${params.profissional}.\n\n` +
-    `Tudo certo? Responda:\n✅ *1* — Vou comparecer\n🔁 *2* — Quero reagendar\n\n` +
-    `Te esperamos! ✨\n— ${STUDIO}`
-  );
+}): Promise<string> {
+  return aplicarTemplate(await template('msg_confirmacao'), {
+    nome: primeiroNome(params.nome),
+    servico: params.servico,
+    data: formatarDataBR(params.data),
+    hora: params.hora,
+    profissional: primeiroNome(params.profissional) || params.profissional,
+  });
 }
 
 /** Lembrete — no dia do atendimento */
-export function msgLembreteMesmoDia(params: {
+export async function msgLembreteMesmoDia(params: {
   nome: string; hora: string; servico: string;
-}): string {
-  const nome = primeiroNome(params.nome);
-  return (
-    `Oi, ${nome}! ⏰\n\n` +
-    `Seu horário é *HOJE às ${params.hora}* para *${params.servico}*.\n\n` +
-    `Estamos te esperando! Se precisar remarcar, responda esta mensagem o quanto antes.\n\n` +
-    `Até já! 💛\n— ${STUDIO}`
-  );
+}): Promise<string> {
+  return aplicarTemplate(await template('msg_lembrete'), {
+    nome: primeiroNome(params.nome),
+    servico: params.servico,
+    hora: params.hora,
+  });
 }
 
 /** Feedback pós-procedimento (mechas, coloração, tratamentos...) */
-export function msgFeedback(params: { nome: string; servico: string }): string {
-  const nome = primeiroNome(params.nome);
-  return (
-    `Oi, ${nome}! 😍\n\n` +
-    `Como está ficando o resultado do seu *${params.servico}*?\n\n` +
-    `Sua opinião vale ouro para nós: responda com uma nota de *0 a 10* e, se quiser, conte como foi sua experiência.\n\n` +
-    `Adoramos acompanhar você! 💛\n— ${STUDIO}`
-  );
-
+export async function msgFeedback(params: { nome: string; servico: string }): Promise<string> {
+  return aplicarTemplate(await template('msg_feedback'), {
+    nome: primeiroNome(params.nome),
+    servico: params.servico,
+  });
 }
 
 /** Reativação — cliente sumida (tempo sem aparecer) */
-export function msgReativacao(nomeCompleto: string, diasDesdeUltima: number): string {
-  const nome = primeiroNome(nomeCompleto);
+export async function msgReativacao(nomeCompleto: string, diasDesdeUltima: number): Promise<string> {
   const meses = Math.floor(diasDesdeUltima / 30);
-  const tempo = meses >= 1 ? `${meses} mês${meses > 1 ? 'es' : ''}` : `${diasDesdeUltima} dias`;
-  return (
-    `Oi, ${nome}! ✨\n\n` +
-    `Sentimos sua falta no ${STUDIO} — já faz *${tempo}* desde seu último cuidado.\n\n` +
-    `Que tal reservar um momento só seu? Responda esta mensagem que guardamos o melhor horário para você.\n\n` +
-    `💛 Equipe Agnaldo Gomes`
-  );
+  const tempo = meses >= 1 ? `${meses} ${meses > 1 ? 'meses' : 'mês'}` : `${diasDesdeUltima} dias`;
+  return aplicarTemplate(await template('msg_reativacao'), {
+    nome: primeiroNome(nomeCompleto),
+    tempo,
+  });
 }
 
 /** Normaliza telefone brasileiro para formato wa.me/Evolution (55 + DDD + número) */

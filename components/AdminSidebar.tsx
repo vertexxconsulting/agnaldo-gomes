@@ -180,7 +180,13 @@ export function AdminSidebar({
         </nav>
 
         <div className="px-3 py-2 border-t border-[var(--border-subtle)] space-y-1">
-          {footerItems ?? (
+          {footerItems ? (
+            typeof footerItems === 'object' && 'props' in (footerItems as any)
+              ? (
+                  {...footerItems, props: { ...(footerItems as any).props, isCollapsed }} as any
+                )
+              : footerItems
+          ) : (
             <Link href="/loja">
               <div className="flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-foreground/60 hover:bg-foreground/5 hover:text-foreground transition-colors">
                 <ExternalLink size={17} className="shrink-0" />
@@ -188,7 +194,7 @@ export function AdminSidebar({
               </div>
             </Link>
           )}
-          {footerItems === null && (
+          {!footerItems && (
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 hover:text-danger transition-colors"
@@ -240,7 +246,7 @@ export function AdminSidebar({
               transition={{ type: 'tween', duration: 0.25 }}
               className="fixed inset-y-0 left-0 w-64 bg-[var(--color-card)] z-50 md:hidden flex flex-col shadow-2xl"
             >
-              <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-subtle)] shrink-0">
                 <div className="relative h-12 w-36 -ml-2">
                   <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain object-left" />
                 </div>
@@ -260,18 +266,26 @@ export function AdminSidebar({
                 </Link>
                 {links.map(link => renderLinkItem(link, () => setIsMobileMenuOpen(false)))}
               </nav>
-              <div className="p-3 border-t border-[var(--border-subtle)] space-y-1">
-                {footerItems}
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    handleLogout();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 transition-colors"
-                >
-                  <LogOut size={17} className="shrink-0" />
-                  Sair
-                </button>
+              <div className="p-3 border-t border-[var(--border-subtle)] space-y-1 shrink-0 pb-safe">
+                {footerItems ? (
+                  typeof footerItems === 'object' && 'props' in (footerItems as any)
+                    ? (
+                        {...footerItems, props: { ...(footerItems as any).props, isCollapsed: false }} as any
+                      )
+                    : footerItems
+                ) : null}
+                {!footerItems && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 transition-colors"
+                  >
+                    <LogOut size={17} className="shrink-0" />
+                    Sair
+                  </button>
+                )}
               </div>
             </motion.aside>
           </>

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function GET() {
   try {
-    const { data: courses, error } = await supabase
+    const { data: courses, error } = await supabaseAdmin
       .from('academy_vip_courses')
       .select('*')
       .eq('is_published', true)
@@ -12,7 +12,7 @@ export async function GET() {
     if (error) throw error;
     
     // Fetch all active schedules regardless of course
-    const { data: allSchedules } = await supabase
+    const { data: allSchedules } = await supabaseAdmin
       .from('academy_vip_schedules')
       .select('*')
       .eq('is_active', true)

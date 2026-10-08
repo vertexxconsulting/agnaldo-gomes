@@ -8,18 +8,23 @@
 
 Plataforma unificada para o **Studio de Beleza & Academy Agnaldo Gomes**, contemplando:
 - **Site Institucional & Portfólio**: Apresentação de tratamentos, terapias capilares, transformações e Dia da Noiva.
-- **Sistema de Agendamento Online**: Fluxo guiado em 5 passos com cobrança automática de sinal PIX para noivas.
-- **Painel de Gestão Administrativa**: CRM de clientes, controle de agenda, cadastro de profissionais, serviços e faturamento.
-- **Agnaldo Gomes Academy**: Plataforma de cursos para cabeleireiros, módulos e videoaulas com Vimeo integrado.
-- **Loja de Cosméticos e Equipamentos**: Venda de produtos físicos locais e afiliados Mercado Livre.
+- **Sistema de Agendamento Online**: Fluxo guiado em passos com seleção de profissional/serviço e cobrança automática de sinal PIX para noivas.
+- **Painel de Gestão Administrativa (Studio)**: CRM de clientes, controle de agenda, cadastro de profissionais, serviços, comissões, estoque, notas fiscais e faturamento.
+- **Central de Módulos (Command Center / Hub)**: Acesso unificado aos sistemas do salão, loja, cursos e recepção com identificação do usuário logado.
+- **Agnaldo Gomes Academy**: Plataforma de cursos para cabeleireiros, módulos, turmas presenciais/VIPs, certificados digitais e videoaulas.
+- **Loja de Cosméticos e Equipamentos**: Venda de produtos físicos locais e afiliados Mercado Livre com carrinho persistente em sessão.
 
 ### 🛠️ Stack Tecnológica
-- **Framework Frontend/Backend**: Next.js 15 (App Router, Server Components & Route Handlers).
-- **Linguagem**: TypeScript (Strict Mode).
-- **Estilização**: TailwindCSS + CSS Glassmorphism + Framer Motion.
+- **Framework Frontend/Backend**: Next.js 16 (App Router, Server Components & Route Handlers).
+- **Linguagem**: TypeScript 5.8 (Strict Mode).
+- **Estilização**: TailwindCSS v4 + CSS Glassmorphism + Framer Motion.
 - **Banco de Dados & Auth**: Supabase (PostgreSQL com Row Level Security).
+- **Clientes Supabase**:
+  - `lib/supabase/client.ts`: Cliente universal híbrido (SSR/Node.js e navegador).
+  - `lib/supabase-admin.ts`: Cliente com Service Role Key para rotas de servidor e bypass seguro de RLS.
+  - `lib/supabase/server.ts`: Cliente com sessão baseada em cookies para Server Components e Route Handlers.
 - **CRM Externo**: Bolten.io (Webhooks e REST API v1).
-- **Gateway de Pagamento**: Mercado Pago SDK (PIX dinâmico com QR Code e Copia-e-Cola).
+- **Gateways de Pagamento**: Mercado Pago SDK (PIX dinâmico com QR Code e Copia-e-Cola), Stripe e Asaas.
 - **Hospedagem & CI/CD**: Vercel.
 - **Repositório Oficial**: `vertexxconsulting/agnaldo-gomes` (branch `main`).
 
@@ -54,22 +59,23 @@ O banco de dados PostgreSQL no Supabase (`salon_customers`) é o **SISTEMA MÃE*
 - **Prevenção de Duplicação**: Função `upsertClienteMae()` normaliza o telefone (apenas números) e e-mail antes de qualquer gravação.
 - **Idempotência**: Se o cliente já existe por telefone ou e-mail, seus dados são atualizados mantendo o mesmo `id` (UUID v4).
 - **Desacoplamento**: O salvamento no sistema mãe nunca é travado caso o CRM externo esteja offline ou sem chave configurada.
-- **Leads Externos (`app/api/webhooks/bolten/route.ts`)**: Quando eventos chegam do Bolten ou formulários externos, o sistema valida a base interna, confirmando cadastros existentes e inserindo apenas leads inéditos.
+- **Leads Externos (`app/api/webhooks/bolten/route.ts`)**: Valida a base interna, confirmando cadastros existentes e inserindo apenas leads inéditos.
 
 ### 🛡️ Políticas de RLS & Acesso Server-Side
-- Para evitar bloqueios do **Row Level Security (RLS)** no navegador (erro 42501), todas as operações de leitura e escrita administrativa utilizam Route Handlers server-side com `getSupabaseServiceClient()` (`service_role`):
+- Para evitar bloqueios do **Row Level Security (RLS)** no navegador (erro 42501), todas as operações de leitura e escrita administrativa utilizam Route Handlers server-side com `getSupabaseServiceClient()` ou `supabaseAdmin`:
   - `/api/clientes` (GET, POST, DELETE)
   - `/api/servicos` (GET, POST, DELETE)
   - `/api/profissionais` (GET, POST, DELETE)
   - `/api/profissionais/vinculos` (POST)
   - `/api/agendamentos/admin` (GET, POST)
+  - `/api/cart` (GET, POST, PATCH, DELETE) — suporte seguro a sessões de visitantes anônimos e clientes logados.
 
 ---
 
 ## 3. Padrão de Identificadores (UUIDs)
 
 - **Regra Rígida**: NUNCA utilizar IDs sequenciais com zeros (ex: `a0000001-...` ou `b0000001-...`).
-- **Padrão Oficial**: Todos os registros usam **UUID v4 criptograficamente aleatório** gerado por `gen_random_uuid()` no Postgres ou funções UUID seguras.
+- **Padrão Oficial**: Todos os registros usam **UUID v4 criptograficamente aleatório** gerado por `gen_random_uuid()` no Postgres.
 - **Identificadores Base**:
   - **Agnaldo Gomes**: `e47b1a20-8d3f-4e92-91bc-3a817452d901`
   - **Equipe Studio**: `f82c4d31-9a5e-4b73-82cd-4b928563e012`
@@ -113,79 +119,76 @@ Todos os valores exibidos e cadastrados utilizam a premissa de **"Tudo sempre a 
 
 ---
 
-## 5. Fluxo de Agendamento Inteligente
+## 5. Módulo de Marketing & Mensagens WhatsApp
 
-1. **Inversão da Lógica**:
-   - Passo 1: Identificação (WhatsApp / CRM Mãe).
-   - Passo 2: **Escolha do Profissional** (Agnaldo Gomes ou Equipe Studio).
-   - Passo 3: **Seleção de Serviço**: O seletor filtra dinamicamente exibindo **apenas os procedimentos habilitados para o profissional escolhido**.
-   - Passo 4: **Data e Horário**: Cruzamento de horários disponíveis.
-   - Passo 5: Confirmação e Pagamento de Sinal (quando aplicável).
+### 💬 Centralização em `lib/mensagens.ts`
+- **Fonte Única de Verdade**: Centraliza os templates oficiais de comunicação do Studio.
+- **Templates Padrão (`MENSAGENS_PADRAO`)**:
+  - `msg_confirmacao`: Confirmação enviada 1 dia antes do agendamento com data, hora, serviço e profissional.
+  - `msg_lembrete`: Lembrete enviado no dia do atendimento.
+  - `msg_feedback`: Avaliação pós-procedimento enviada 1 dia após o serviço concluído.
+  - `msg_aniversario`: Parabéns no dia do aniversário às 08h.
+  - `msg_reativacao`: Reengajamento para clientes sem visita há mais de 90 dias.
+- **Interpolação de Variáveis**: O helper `aplicarTemplate` aceita tanto a sintaxe `{variavel}` quanto `{{variavel}}`:
+  - `{nome}`, `{servico}`, `{profissional}`, `{data}`, `{hora}`, `{tempo}`.
+- **Cache Otimizado**: Carregamento de configurações de `salon_system_settings` com cache em memória com TTL de 60 segundos e função `invalidarCacheMensagens()` acionada imediatamente ao salvar no painel.
 
-2. **Separação de Horários Salão vs. Profissional**:
-   - **Salão**: Terça a Sexta (09:00 às 19:00), Sábado (08:00 às 17:00), Domingo e Segunda (Fechado).
-   - **Profissional**: Cada profissional possui sua jornada semanal individual configurada no banco (`weekly_schedule`).
-   - A grade cruza a abertura do salão com a jornada do profissional e desabilita slots já agendados ou com bloqueio de horário.
-
----
-
-## 6. Integrações & Variáveis de Ambiente
-
-### Bolten.io CRM
-- Gerenciado via variáveis de ambiente da Vercel (sem formulários complexos no painel).
-- Variáveis:
-  - `BOLTEN_API_KEY`: Bearer token da API Bolten.
-  - `BOLTEN_PROJECT_ID`: ID do projeto no Bolten.
-  - `BOLTEN_KANBAN_COMPONENT_ID`: Componente do funil/Kanban de agendamentos.
-  - `BOLTEN_CONTACT_COMPONENT_ID`: Componente de contatos.
-  - `BOLTEN_WEBHOOK_KEY`: Token de autenticação do webhook.
-  - `BOLTEN_WEBHOOK_URL`: URL do webhook para notificações instantâneas.
-
-### WhatsApp
-- Totalmente baseado na API de links diretos `wa.me` com mensagens personalizadas pré-formatadas.
-- A biblioteca Evolution API foi **completamente removida** do projeto.
+### 🎨 Painel de Gestão (`/admin/marketing`)
+- **Cards de Mensagens Automáticas Padrão**: Visualização em cartões de cada regra com botão de edição rápida, chips clicáveis para inserir variáveis e pré-visualização estilo balão do WhatsApp.
+- **Cards de Regras Personalizadas**: Criação, edição e exclusão de regras por serviço, offset de dias (antes ou após) e método de disparo (Automático ou Manual via WhatsApp).
+- **Selo de Personalização**: Destaca visualmente no card quando o administrador alterou o texto original do sistema.
 
 ---
 
-## 7. Módulo de Relatórios & Exportação (PDF e SVG)
+## 6. Automações & Crons (`app/api/cron/*`)
 
-- **Filtros Temporais Inteligentes**: Consulta por Dia específico, Mês Atual, Mês Anterior, Ano Atual, Ano Anterior, Mês Específico e Histórico Total.
-- **Exportação para PDF (`lib/export-reports.ts`)**: Gera documento A4 formatado com cabeçalho oficial do Studio Agnaldo Gomes, cartões de KPIs (Faturamento, Atendimentos, Ticket Médio, Cancelamentos), tabelas de serviços e profissionais, além de histórico detalhado de clientes com paginação automática.
-- **Exportação para SVG Vetorial (`lib/export-reports.ts`)**: Renderiza infográfico vetorial completo com gradientes dourados `#D4AF37` e visual glassmorphism em alta resolução para apresentações e compartilhamento instantâneo.
+Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retornam relatório JSON com links `wa.me` diretos e envio automático via Evolution API (quando conectada):
 
----
-
-## 8. Módulo da IA Assistente (`/admin/ia-assistente`)
-
-- **Controle Administrativo Restrito**: Acesso exclusivo para o administrador gerenciar o comportamento e automações da IA.
-- **Master Switch**: Ativação e desativação em tempo real com indicador visual de status.
-- **Relatórios Automáticos para o Agnaldo via Cron & Bolten.io**: Configuração de envio periódico automatizado via Vercel Cron (`/api/cron/relatorio-ia`, agendado diariamente às 20h BRT) integrado diretamente com o Bolten.io CRM e WhatsApp (`wa.me`). Inclui botão no painel para disparo manual imediato.
-- **Separação por Sistemas de Gestão**:
-  - **Salão (Studio)**: Agendamentos, jornada dos profissionais, intervalos e contratos de noivas.
-  - **Loja (Store)**: Estoque local de cosméticos e links de afiliados oficiais do Mercado Livre.
-  - **Academy (Cursos)**: Regras de videoaulas no Vimeo, certificação e suporte a alunos.
-- **Horários de Atendimento do Salão 100% Editáveis**: Editor visual de abertura/fechamento (Domingo a Sábado) com horários de início e fim que atualizam a IA, o agendamento público e a agenda administrativa em tempo real.
-- **Simulador Interativo (Playground)**: Chat interno para testar respostas e simular cenários antes de colocar em prática.
+1. **`/api/cron/agenda`** (Diário 09h BRT):
+   - Confirmações de véspera (`D+1`) e lembretes do mesmo dia (`D0`).
+2. **`/api/cron/aniversarios`** (Diário 08h BRT):
+   - Localiza aniversariantes pelo dia e mês de nascimento e dispara saudações personalizadas.
+3. **`/api/cron/feedback`** (Diário 09h BRT):
+   - Busca atendimentos concluídos (`COMPLETED`/`CONFIRMED`) de ontem e anteontem solicitando nota e feedback.
+4. **`/api/cron/reativacao`** (Mensal / Sob Demanda):
+   - Analisa o histórico de atendimentos e lista clientes inativos há 90+ dias com link pronto para retomada.
 
 ---
 
-## 9. Comandos Úteis
+## 7. E-commerce & Loja (`/loja` e `/admin-loja`)
+
+- **Carrinho Persistente (`/api/cart`)**: Gerencia o carrinho do cliente por cookie `cart_session_id` para visitantes ou por `user_id` para usuários autenticados, com operações de `GET`, `POST` (adicionar), `PATCH` (quantidade) e `DELETE` (remover).
+- **Zustand Store (`store/cartStore.ts`)**: Hidratação automática do carrinho e cálculo de subtotal/quantidade de itens.
+- **Painel Administrativo da Loja (`/admin-loja`)**: Gerenciamento de produtos locais e afiliados do Mercado Livre, pedidos e configurações de entrega.
+
+---
+
+## 8. Agnaldo Gomes Academy
+
+- **Estrutura de Cursos**: Cursos online (`academy_courses`), módulos (`academy_modules`) e aulas (`academy_lessons`).
+- **Turmas Presenciais & VIPs**: Gestão de mentorias exclusivas (`academy_vip_courses`) com agenda de turmas e checkout direto.
+- **Certificados Digitais**: Geração e verificação pública de certificados com código de validação em `/verificar-certificado`.
+- **Área do Aluno (`/aluno/*`)**: Dashboard do estudante, reprodutor de vídeo, comunidade e download de certificados.
+
+---
+
+## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
 # Instalar dependências
 npm install
 
-# Executar ambiente local
+# Executar ambiente local com Next.js
 npm run dev
 
-# Validação estrita de TypeScript
+# Validação estrita de TypeScript (auditoria de tipos)
 npx tsc --noEmit
 
 # Build de produção
 npm run build
 
-# Enviar atualizações para o GitHub da Vertex
+# Enviar atualizações para o repositório oficial
 git add .
 git commit -m "tipo: descrição clara da alteração"
-git push vertexx main
+git push origin main
 ```

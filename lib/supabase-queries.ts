@@ -1353,11 +1353,30 @@ export async function salvarItemComanda(
 }
 
 // --------------------------------------------------------------------------------
+// CONFIGURAÇÕES DO SISTEMA
+// --------------------------------------------------------------------------------
+
+export async function fetchSystemSettings(): Promise<{key: string, value: string}[]> {
+  const { data, error } = await supabase.from('salon_system_settings').select('*');
+  if (error) {
+    logSupabaseError('[fetchSystemSettings]', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function updateSystemSetting(key: string, value: string): Promise<{ok: boolean, error?: string}> {
+  const { error } = await supabase.from('salon_system_settings').upsert({ key, value }, { onConflict: 'key' });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// --------------------------------------------------------------------------------
 // REGRAS DE MARKETING
 // --------------------------------------------------------------------------------
 
 export async function fetchMarketingRules(): Promise<any[]> {
-  const { data, error } = await supabase.from('salon_marketing_rules').select('*, service:salon_services(nome)').order('created_at', { ascending: false });
+  const { data, error } = await supabase.from('salon_marketing_rules').select('*, service:salon_services(name)').order('created_at', { ascending: false });
   if (error) {
     logSupabaseError('[fetchMarketingRules]', error);
     return [];

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { cookies } from 'next/headers';
 
 const CART_SESSION_COOKIE = 'cart_session_id';
 
-async function getOrCreateCart(supabase: any, userId: string | null): Promise<string> {
+async function getOrCreateCart(userId: string | null): Promise<string> {
   if (userId) {
     // Usuário logado: buscar ou criar carrinho por user_id
-    let { data: cart } = await supabase
+    let { data: cart } = await supabaseAdmin
       .from('carts')
       .select('id')
       .eq('user_id', userId)
@@ -16,7 +16,7 @@ async function getOrCreateCart(supabase: any, userId: string | null): Promise<st
       .maybeSingle();
 
     if (!cart) {
-      const { data: newCart, error } = await supabase
+      const { data: newCart, error } = await supabaseAdmin
         .from('carts')
         .insert({ user_id: userId })
         .select('id')
@@ -41,7 +41,7 @@ async function getOrCreateCart(supabase: any, userId: string | null): Promise<st
       });
     }
 
-    let { data: cart } = await supabase
+    let { data: cart } = await supabaseAdmin
       .from('carts')
       .select('id')
       .eq('session_id', sessionId)
@@ -50,7 +50,7 @@ async function getOrCreateCart(supabase: any, userId: string | null): Promise<st
       .maybeSingle();
 
     if (!cart) {
-      const { data: newCart, error } = await supabase
+      const { data: newCart, error } = await supabaseAdmin
         .from('carts')
         .insert({ session_id: sessionId })
         .select('id')
@@ -67,9 +67,9 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
 
   try {
-    const cartId = await getOrCreateCart(supabase, user?.id ?? null);
+    const cartId = await getOrCreateCart(user?.id ?? null);
 
-    const { data: items, error } = await supabase
+    const { data: items, error } = await supabaseAdmin
       .from('cart_items')
       .select(`
         *,
@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'productId e quantity são obrigatórios' }, { status: 400 });
     }
 
-    const cartId = await getOrCreateCart(supabase, user?.id ?? null);
+    const cartId = await getOrCreateCart(user?.id ?? null);
 
     // Buscar preço atual do produto
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await supabaseAdmin
       .from('products')
       .select('id, price, stock_quantity, type')
       .eq('id', productId)
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert item no carrinho
-    const { data: item, error: itemError } = await supabase
+    const { data: item, error: itemError } = await supabaseAdmin
       .from('cart_items')
       .upsert({
         cart_id: cartId,
@@ -165,11 +165,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'productId e quantity são obrigatórios' }, { status: 400 });
     }
 
-    const cartId = await getOrCreateCart(supabase, user?.id ?? null);
+    const cartId = await getOrCreateCart(user?.id ?? null);
 
     if (quantity === 0) {
       // Remover item
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('cart_items')
         .delete()
         .eq('cart_id', cartId)
@@ -179,7 +179,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verificar estoque
-    const { data: product } = await supabase
+    const { data: product } = await supabaseAdmin
       .from('products')
       .select('stock_quantity, type')
       .eq('id', productId)
@@ -193,7 +193,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Atualizar quantidade
-    const { data: item, error } = await supabase
+    const { data: item, error } = await supabaseAdmin
       .from('cart_items')
       .update({ quantity, updated_at: new Date().toISOString() })
       .eq('cart_id', cartId)
@@ -221,11 +221,11 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
 
-    const cartId = await getOrCreateCart(supabase, user?.id ?? null);
+    const cartId = await getOrCreateCart(user?.id ?? null);
 
     if (productId) {
       // Remover item específico
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('cart_items')
         .delete()
         .eq('cart_id', cartId)
@@ -233,7 +233,7 @@ export async function DELETE(request: NextRequest) {
       if (error) throw error;
     } else {
       // Limpar carrinho inteiro
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('cart_items')
         .delete()
         .eq('cart_id', cartId);

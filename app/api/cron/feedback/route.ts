@@ -55,12 +55,12 @@ export async function GET(req: Request) {
       return Array.isArray(a.servico) ? a.servico[0] : a.servico;
     };
 
-    const itens = ((concluidos ?? []) as unknown as AgendamentoJoin[]).map((a) => {
+    const itens = await Promise.all(((concluidos ?? []) as unknown as AgendamentoJoin[]).map(async (a) => {
       const cliente = getCliente(a);
       const servico = getServico(a);
       const telefone = normalizarTelefone(cliente?.phone ?? '');
       const nomeProcedimento = servico?.name ?? 'procedimento';
-      const msg = msgFeedback({ nome: cliente?.name ?? '', servico: nomeProcedimento });
+      const msg = await msgFeedback({ nome: cliente?.name ?? '', servico: nomeProcedimento });
 
       return {
         tipo: 'feedback',
@@ -72,7 +72,7 @@ export async function GET(req: Request) {
         wa_link: telefone ? waMeLink(telefone, msg) : '',
         enviada_via_api: false as boolean,
       };
-    });
+    }));
 
     const falhas: { nome: string | null; error: string }[] = [];
     let enviadosAutomaticos = 0;

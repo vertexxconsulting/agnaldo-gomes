@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (authError) return authError;
 
     if (!API_URL || !API_KEY) {
-      return NextResponse.json({ error: 'Evolution API não configurada no .env' }, { status: 500 });
+      return NextResponse.json({ configured: false, state: 'disconnected', error: 'Evolution API não configurada no .env' }, { status: 200 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CRON diÃ¡rio (09h BRT): confirmaÃ§Ãµes de agendamento + feedback pÃ³s-atendimento.
  * - AmanhÃ£: mensagem de confirmaÃ§Ã£o (vÃ©spera)
  * - Hoje: lembrete de mesmo dia
@@ -58,13 +58,7 @@ export async function GET(req: Request) {
     if (vesperaRes.error) throw vesperaRes.error;
     if (hojeRes.error) throw hojeRes.error;
 
-    // ConcluÃ­dos ontem â†’ feedback
-    const { data: concluidos, error: errConcl } = await supabase
-      .from('salon_appointments')
-      .select(selectAg)
-      .eq('date', ontem)
-      .in('status', ['COMPLETED', 'CONFIRMED']);
-    if (errConcl) throw errConcl;
+
 
     type ItemMsg = {
       tipo: string;
@@ -90,7 +84,7 @@ export async function GET(req: Request) {
     const itens: ItemMsg[] = [];
 
     for (const a of (vesperaRes.data ?? []) as unknown as AgendamentoJoin[]) {
-      itens.push(montar(a, 'confirmacao_vespera', msgConfirmacaoVespera({
+      itens.push(montar(a, 'confirmacao_vespera', await msgConfirmacaoVespera({
         nome: a.cliente?.name ?? '', data: a.date,
         hora: (a.start_time ?? '').slice(0, 5),
         servico: a.servico?.name ?? 'seu atendimento',
@@ -98,18 +92,13 @@ export async function GET(req: Request) {
       })));
     }
     for (const a of (hojeRes.data ?? []) as unknown as AgendamentoJoin[]) {
-      itens.push(montar(a, 'lembrete_hoje', msgLembreteMesmoDia({
+      itens.push(montar(a, 'lembrete_hoje', await msgLembreteMesmoDia({
         nome: a.cliente?.name ?? '',
         hora: (a.start_time ?? '').slice(0, 5),
         servico: a.servico?.name ?? 'seu atendimento',
       })));
     }
-    for (const a of (concluidos ?? []) as unknown as AgendamentoJoin[]) {
-      itens.push(montar(a, 'feedback', msgFeedback({
-        nome: a.cliente?.name ?? '',
-        servico: a.servico?.name ?? 'procedimento',
-      })));
-    }
+
 
     const falhas: { nome: string | null; error: string }[] = [];
     let enviadosAutomaticos = 0;

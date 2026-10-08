@@ -57,14 +57,14 @@ export async function GET(req: Request) {
     });
 
     // 4. Montar mensagens
-    const itens = inativos.map(c => {
+    const itens = await Promise.all(inativos.map(async c => {
       const ultima = ultimaConclusaoPorCliente.get(c.id);
       let dias: number | null = null;
       if (ultima) {
         const diff = Date.now() - new Date(`${ultima}T12:00:00`).getTime();
         dias = Math.floor(diff / (24 * 3600 * 1000));
       }
-      const msg = msgReativacao(c.name ?? '', dias ?? DIAS_INATIVO);
+      const msg = await msgReativacao(c.name ?? '', dias ?? DIAS_INATIVO);
       const telefone = normalizarTelefone(c.phone ?? '');
       return {
         id: c.id,
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
         wa_link: telefone ? waMeLink(telefone, msg) : '',
         enviada_via_api: false as boolean,
       };
-    });
+    }));
 
     // 5. Disparar via Evolution API
     const falhas: { nome: string; error: string }[] = [];

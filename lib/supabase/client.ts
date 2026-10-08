@@ -1,6 +1,5 @@
-'use client';
-
 import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -51,6 +50,10 @@ function createDummyClient(): any {
 
 const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-export const supabase = isConfigured
-  ? createBrowserClient(supabaseUrl, supabaseAnonKey)
-  : createDummyClient();
+export const supabase = !isConfigured
+  ? createDummyClient()
+  : typeof window === 'undefined'
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : createBrowserClient(supabaseUrl, supabaseAnonKey);

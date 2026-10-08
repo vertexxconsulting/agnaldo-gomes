@@ -92,10 +92,20 @@ export default function HubCentralPage() {
   const [cursos, setCursos] = useState<CursoType[]>([]);
   const [progresso, setProgresso] = useState<Progresso[]>([]);
   const [role, setRole] = useState<Role | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
       const meta = data?.user?.user_metadata;
+      
+      if (meta) {
+        const name = meta.full_name || meta.name || meta.nome || data.user.email?.split('@')[0] || '';
+        if (name) {
+          const firstName = name.split(' ')[0];
+          setUserName(firstName);
+        }
+      }
+
       if (meta && typeof meta.role === 'string') {
         const roleStr = meta.role === 'admin' ? 'ADMIN' : meta.role;
         setRole((Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null);
@@ -186,7 +196,6 @@ export default function HubCentralPage() {
           links={sidebarLinks}
           backLabel="Voltar ao Site Público"
           backHref="/"
-          brand={{ icon: Command, text: 'Gestão AG' }}
           footerItems={<AdminUserButton isCollapsed={false} logoutHref="/login" />}
         />
       }
@@ -202,7 +211,7 @@ export default function HubCentralPage() {
           <div className="text-left">
             <p className="text-[10px] uppercase tracking-[0.22em] text-gold font-bold mb-1.5">Agnaldo Gomes • Ecossistema Digital</p>
             <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">
-              Olá, Agnaldo. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
+              Olá, {userName || 'Agnaldo'}. Bem-vindo ao seu <span className="text-gradient">centro de comando</span>
             </h1>
             <p className="text-sm text-foreground/70 mt-1.5 max-w-2xl">
               {role === ROLES.STUDIO_SECRETARIA

@@ -178,9 +178,13 @@ export default function MarketingPage() {
       {loading && <div className="text-center py-10 text-foreground/50">Carregando painel de marketing...</div>}
 
       {!loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* COLUNA 1: OPERAÇÕES DIÁRIAS */}
-          <div className="space-y-6">
+        <div className="space-y-6">
+          {/* REGRAS PERSONALIZADAS NO TOPO */}
+          <RegrasMarketing />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* COLUNA 1: OPERAÇÕES DIÁRIAS */}
+            <div className="space-y-6">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 px-2 flex items-center gap-2">
               <Activity size={14} /> Operações Diárias
             </h3>
@@ -266,9 +270,8 @@ export default function MarketingPage() {
                 </ul>
               )}
             </Panel>
-            
-            <RegrasMarketing />
           </div>
+        </div>
         </div>
       )}
     </div>
@@ -320,7 +323,7 @@ function BotaoReativar({ nome, telefone, dias }: { nome: string; telefone: strin
       const { msgReativacao, normalizarTelefone, waMeLink } = await import('@/lib/mensagens');
       const num = normalizarTelefone(telefone);
       if (!num) return;
-      setUrl(waMeLink(num, msgReativacao(nome, dias ?? DIAS_INATIVO)));
+      setUrl(waMeLink(num, await msgReativacao(nome, dias ?? DIAS_INATIVO)));
     })();
   }, [nome, telefone, dias]);
 
