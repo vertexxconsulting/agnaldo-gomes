@@ -68,7 +68,8 @@ export const MOCK_PROFISSIONAIS: Profissional[] = [
     id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901',
     nome: 'Agnaldo Gomes',
     foto_url: '/agnaldo1.webp',
-    especialidades: ['Cortes', 'Coloração', 'Mechas', 'Terapia Capilar', 'Noivas'],
+    categoria: 'Cabelo',
+    especialidades: ['Cortes', 'Coloração', 'Mechas', 'Terapia Capilar', 'Noivas', 'Cabelo'],
     ativo: true,
     jornada_semanal: {
       seg: { ativo: false, inicio: '09:00', fim: '19:00' },
@@ -85,10 +86,29 @@ export const MOCK_PROFISSIONAIS: Profissional[] = [
     id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012',
     nome: 'Equipe Studio',
     foto_url: '/agnaldo2.webp',
-    especialidades: ['Cortes', 'Escova', 'Tratamentos', 'Barbearia', 'Unhas', 'Podologia', 'Estética'],
+    categoria: 'Cabelo',
+    especialidades: ['Cortes', 'Escova', 'Tratamentos', 'Barbearia', 'Cabelo'],
     ativo: true,
     jornada_semanal: {
       seg: { ativo: true, inicio: '09:00', fim: '19:00' },
+      ter: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qua: { ativo: true, inicio: '09:00', fim: '19:00' },
+      qui: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sex: { ativo: true, inicio: '09:00', fim: '19:00' },
+      sab: { ativo: true, inicio: '08:00', fim: '17:00' },
+      dom: { ativo: false, inicio: '09:00', fim: '13:00' },
+    },
+    criado_em: new Date().toISOString(),
+  },
+  {
+    id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303',
+    nome: 'Camila Silva (Unhas)',
+    foto_url: '/agnaldo4.webp',
+    categoria: 'Unhas',
+    especialidades: ['Unhas', 'Manicure', 'Pedicure', 'Esmaltação em Gel', 'Podologia'],
+    ativo: true,
+    jornada_semanal: {
+      seg: { ativo: false, inicio: '09:00', fim: '19:00' },
       ter: { ativo: true, inicio: '09:00', fim: '19:00' },
       qua: { ativo: true, inicio: '09:00', fim: '19:00' },
       qui: { ativo: true, inicio: '09:00', fim: '19:00' },
@@ -149,6 +169,11 @@ export const MOCK_PROF_SERVICO: ProfissionalServico[] = [
   { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd4b0c275-adba-4eb6-c467-8fd62aa7d420' },
   { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd5c1d386-becb-4fc7-d578-90e73bb8e521' },
   { profissional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012', servico_id: 'd6d2e497-cfdc-40d8-e689-a1f84cc9f622' },
+
+  // Camila Silva (Unhas)
+  { profissional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303', servico_id: 'd3afb164-9caf-4da5-b356-7ec51996c319' }, // Mão
+  { profissional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303', servico_id: 'd4b0c275-adba-4eb6-c467-8fd62aa7d420' }, // Pé
+  { profissional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303', servico_id: 'd5c1d386-becb-4fc7-d578-90e73bb8e521' }, // Podologia
 ];
 
 export function updateMockProfissionalServicos(profissionalId: string, servicoIds: string[]) {

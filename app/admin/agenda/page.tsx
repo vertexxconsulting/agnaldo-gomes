@@ -31,11 +31,34 @@ function formatPhone(val: string) {
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
+export function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
+  if (p.categoria) {
+    const catNorm = p.categoria.trim().toLowerCase();
+    if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic')) return 'Unhas';
+    if (catNorm.includes('cabelo') || catNorm.includes('capilar')) return 'Cabelo';
+    return p.categoria;
+  }
+  // Fallback por especialidades se a coluna ainda não estiver populada
+  if (p.especialidades && p.especialidades.length > 0) {
+    const tags = p.especialidades.map(e => e.toLowerCase()).join(' ');
+    if (tags.includes('unha') || tags.includes('manicure') || tags.includes('pedicure') || tags.includes('esmalte') || tags.includes('podolog')) {
+      return 'Unhas';
+    }
+  }
+  // Fallback por nome
+  const nomeLower = (p.nome || '').toLowerCase();
+  if (nomeLower.includes('unha') || nomeLower.includes('manicure') || nomeLower.includes('camila')) {
+    return 'Unhas';
+  }
+  return 'Cabelo';
+}
+
 function AgendaContent() {
   const searchParams = useSearchParams();
   const hoje = new Date().toISOString().split('T')[0];
   const [dataSelecionada, setDataSelecionada] = useState(searchParams.get('date') || hoje);
   const [profFiltro, setProfFiltro] = useState<string>('todos');
+  const [categoriaFiltro, setCategoriaFiltro] = useState<'todas' | 'Cabelo' | 'Unhas' | string>('todas');
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [bloqueiosDia, setBloqueiosDia] = useState<BloqueioAgenda[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
@@ -221,11 +244,53 @@ function AgendaContent() {
     carregarDados();
   }, [dataSelecionada]);
 
-  // Filtro por data e profissional na visualização
+  // Contagem de profissionais por categoria
+  const countPorCategoria = useMemo(() => {
+    const counts: { todas: number; Cabelo: number; Unhas: number; [key: string]: number } = {
+      todas: profissionais.length,
+      Cabelo: 0,
+      Unhas: 0
+    };
+    for (const p of profissionais) {
+      const cat = getCategoriaProfissional(p);
+      if (cat === 'Unhas') {
+        counts.Unhas = (counts.Unhas || 0) + 1;
+      } else if (cat === 'Cabelo') {
+        counts.Cabelo = (counts.Cabelo || 0) + 1;
+      } else {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [profissionais]);
+
+  // Profissionais filtrados pela categoria selecionada (ou todas)
+  const profissionaisFiltradosPorCategoria = useMemo(() => {
+    if (categoriaFiltro === 'todas') return profissionais;
+    return profissionais.filter(p => getCategoriaProfissional(p) === categoriaFiltro);
+  }, [profissionais, categoriaFiltro]);
+
+  // Troca de categoria com auto-reset do filtro de profissional se não pertencer à nova categoria
+  const handleCategoriaChange = (cat: string) => {
+    setCategoriaFiltro(cat);
+    if (profFiltro !== 'todos') {
+      const prof = profissionais.find(p => p.id === profFiltro);
+      if (prof && cat !== 'todas' && getCategoriaProfissional(prof) !== cat) {
+        setProfFiltro('todos');
+      }
+    }
+  };
+
+  // Profissionais visíveis na agenda (colunas do Kanban)
+  const profissionaisVisiveisNaAgenda = useMemo(() => {
+    return profissionaisFiltradosPorCategoria.filter(p => profFiltro === 'todos' || p.id === profFiltro);
+  }, [profissionaisFiltradosPorCategoria, profFiltro]);
+
+  const idsVisiveis = useMemo(() => new Set(profissionaisVisiveisNaAgenda.map(p => p.id)), [profissionaisVisiveisNaAgenda]);
+
+  // Filtro por data e profissional na visualização respeitando a categoria ativa
   const doDia = agendamentos.filter(a => a.data === dataSelecionada);
-  let agendamentosFiltrados = profFiltro === 'todos'
-    ? doDia
-    : doDia.filter(a => a.profissional_id === profFiltro);
+  let agendamentosFiltrados = doDia.filter(a => idsVisiveis.has(a.profissional_id));
 
   if (buscaClienteAgenda.trim()) {
     const termo = buscaClienteAgenda.toLowerCase().trim();
@@ -243,7 +308,7 @@ function AgendaContent() {
   agendamentosFiltrados.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
   const bloqueiosFiltrados = bloqueiosDia.filter(b => {
-    const matchProf = profFiltro === 'todos' || profFiltro === b.profissional_id;
+    const matchProf = idsVisiveis.has(b.profissional_id);
     const matchData = b.data_inicio.slice(0, 10) === dataSelecionada || b.data_fim.slice(0, 10) === dataSelecionada;
     return matchProf && matchData;
   });
@@ -503,37 +568,101 @@ function AgendaContent() {
     <div className="py-4">
       <SectionTitle title="Agenda do Salão" subtitle="Gerenciamento de horários e profissionais" align="left" />
 
-      {/* Filtro Profissionais (Cards) */}
-      <div className="mt-8 mb-4">
+      {/* Filtro por Categoria de Profissional (Cabelo / Unhas) e Profissionais */}
+      <div className="mt-8 mb-4 space-y-3">
+        {/* Seletor de Categoria */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground/50 mr-1 flex items-center gap-1">
+            <Sparkles size={13} className="text-gold" /> Categoria:
+          </span>
+          <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl gap-1 shadow-sm">
+            <button
+              onClick={() => handleCategoriaChange('todas')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                categoriaFiltro === 'todas'
+                  ? 'bg-gold text-background shadow'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+              }`}
+            >
+              <span>Todos os Atendimentos</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                categoriaFiltro === 'todas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+              }`}>
+                {countPorCategoria.todas || 0}
+              </span>
+            </button>
+            <button
+              onClick={() => handleCategoriaChange('Cabelo')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                categoriaFiltro === 'Cabelo'
+                  ? 'bg-gold text-background shadow'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+              }`}
+            >
+              <span>✂️ Cabelo</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                categoriaFiltro === 'Cabelo' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+              }`}>
+                {countPorCategoria.Cabelo || 0}
+              </span>
+            </button>
+            <button
+              onClick={() => handleCategoriaChange('Unhas')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                categoriaFiltro === 'Unhas'
+                  ? 'bg-gold text-background shadow'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+              }`}
+            >
+              <span>💅 Unhas</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                categoriaFiltro === 'Unhas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+              }`}>
+                {countPorCategoria.Unhas || 0}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filtro Profissionais (Cards) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
           <button
             onClick={() => setProfFiltro('todos')}
-            className={`shrink-0 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${
+            className={`shrink-0 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${
               profFiltro === 'todos' 
                 ? 'bg-gold border-gold text-background shadow-md' 
                 : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
             }`}
           >
-            Todos
+            {categoriaFiltro === 'todas' ? 'Todos os Profissionais' : `Todos (${categoriaFiltro})`}
+            <span className="ml-1.5 text-xs opacity-80 font-mono">({profissionaisFiltradosPorCategoria.length})</span>
           </button>
-          {profissionais.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setProfFiltro(p.id)}
-              className={`shrink-0 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all flex items-center gap-2 ${
-                profFiltro === p.id 
-                  ? 'bg-gold border-gold text-background shadow-md' 
-                  : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
-              }`}
-            >
-              {p.foto_url ? (
-                <img src={p.foto_url} alt={p.nome} className="w-5 h-5 rounded-full object-cover border border-background/20" />
-              ) : (
-                <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
-              )}
-              {p.nome}
-            </button>
-          ))}
+          {profissionaisFiltradosPorCategoria.map(p => {
+            const cat = getCategoriaProfissional(p);
+            return (
+              <button
+                key={p.id}
+                onClick={() => setProfFiltro(p.id)}
+                className={`shrink-0 px-4 py-2 rounded-xl border text-sm font-bold transition-all flex items-center gap-2 ${
+                  profFiltro === p.id 
+                    ? 'bg-gold border-gold text-background shadow-md' 
+                    : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
+                }`}
+              >
+                {p.foto_url ? (
+                  <img src={p.foto_url} alt={p.nome} className="w-5 h-5 rounded-full object-cover border border-background/20" />
+                ) : (
+                  <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
+                )}
+                <span>{p.nome}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  profFiltro === p.id ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                }`}>
+                  {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -652,8 +781,20 @@ function AgendaContent() {
 
           {/* Agenda Kanban (Colunas por Profissional) */}
           <div className="overflow-x-auto w-full pb-4">
+            {profissionaisVisiveisNaAgenda.length === 0 ? (
+              <div className="p-12 text-center border border-dashed border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] text-foreground/60">
+                <p className="text-base font-semibold">Nenhum profissional encontrado na categoria "{categoriaFiltro}".</p>
+                <p className="text-xs text-foreground/40 mt-1">Selecione "Todos os Atendimentos" ou cadastre um novo profissional na aba Profissionais.</p>
+                <button
+                  onClick={() => { setCategoriaFiltro('todas'); setProfFiltro('todos'); }}
+                  className="mt-4 px-4 py-2 bg-gold/15 text-gold hover:bg-gold hover:text-background font-bold text-xs rounded-lg transition-colors inline-block"
+                >
+                  Ver todos os profissionais
+                </button>
+              </div>
+            ) : (
             <div className="flex border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] overflow-hidden shadow-sm min-h-[600px] w-max min-w-full">
-              {profissionais.filter(p => profFiltro === 'todos' || p.id === profFiltro).map(prof => {
+              {profissionaisVisiveisNaAgenda.map(prof => {
                 const isAgnaldo = (prof.nome || '').toLowerCase().includes('agnaldo') || prof.id === 'agnaldo';
                 const interval = isAgnaldo ? 20 : 30;
 
@@ -730,7 +871,12 @@ function AgendaContent() {
                         </div>
                       )}
                       <div className="flex flex-col text-left">
-                        <span className="font-bold text-foreground text-sm uppercase tracking-wide leading-tight">{prof.nome}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-foreground text-sm uppercase tracking-wide leading-tight">{prof.nome}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold">
+                            {getCategoriaProfissional(prof) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                          </span>
+                        </div>
                         <div className="text-[10px] text-foreground/50 mt-0.5">
                           {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
                           {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
@@ -796,6 +942,7 @@ function AgendaContent() {
                 );
               })}
             </div>
+            )}
           </div>
         </div>
       )}
@@ -1495,9 +1642,16 @@ function AgendaContent() {
 
               {/* 2. Profissional PRIMEIRO */}
               <div>
-                <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center gap-1.5">
-                  <User2 size={14} className="text-gold" />
-                  2. Profissional *
+                <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <User2 size={14} className="text-gold" />
+                    2. Profissional *
+                  </span>
+                  {categoriaFiltro !== 'todas' && (
+                    <span className="text-[10px] text-gold font-medium">
+                      Filtro ativo: {categoriaFiltro === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                    </span>
+                  )}
                 </label>
                 <select 
                   className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-semibold"
@@ -1509,9 +1663,27 @@ function AgendaContent() {
                   required
                 >
                   <option value="">Selecione quem irá atender</option>
-                  {profissionais.map(p => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
+                  {profissionais.some(p => getCategoriaProfissional(p) === 'Cabelo') && (
+                    <optgroup label="✂️ Cabelo">
+                      {profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo').map(p => (
+                        <option key={p.id} value={p.id}>{p.nome}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {profissionais.some(p => getCategoriaProfissional(p) === 'Unhas') && (
+                    <optgroup label="💅 Unhas">
+                      {profissionais.filter(p => getCategoriaProfissional(p) === 'Unhas').map(p => (
+                        <option key={p.id} value={p.id}>{p.nome}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {profissionais.some(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))) && (
+                    <optgroup label="Outras Categorias">
+                      {profissionais.filter(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))).map(p => (
+                        <option key={p.id} value={p.id}>{p.nome}</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 

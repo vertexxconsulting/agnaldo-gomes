@@ -29,15 +29,16 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, foto_url, especialidades, ativo, jornada_semanal } = body;
+    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal } = body;
 
     if (!nome) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
     }
 
-    const payload = {
+    const payload: Record<string, any> = {
       name: String(nome).trim(),
       photo_url: foto_url || null,
+      categoria: categoria || null,
       specialties: Array.isArray(especialidades) ? especialidades : [],
       active: ativo ?? true,
       weekly_schedule: jornada_semanal || {},

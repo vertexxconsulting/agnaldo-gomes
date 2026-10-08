@@ -38,6 +38,7 @@ export default function ProfissionaisPage() {
   const [diasAtivos, setDiasAtivos] = useState<number[]>([]);
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<'Cabelo' | 'Unhas' | string>('Cabelo');
 
   // Estados para Acesso ao Sistema
   const [criarAcesso, setCriarAcesso] = useState(false);
@@ -143,6 +144,7 @@ export default function ProfissionaisPage() {
     const profissionalData = {
       nome: form.get('nome') as string,
       foto_url: fotoLocal || editando?.foto_url || null,
+      categoria: categoriaSelecionada,
       especialidades: especialidadesSelecionadas,
       ativo: true,
       jornada_semanal: jornada,
@@ -240,11 +242,13 @@ export default function ProfissionaisPage() {
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
+      setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo'));
     } else {
       setEditando(null);
       setFotoLocal(null);
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
+      setCategoriaSelecionada('Cabelo');
       setDiasAtivos([]);
       setCriarAcesso(false);
       setAcessoData({
@@ -307,6 +311,33 @@ export default function ProfissionaisPage() {
                 <div className="sm:col-span-2">
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                </div>
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaSelecionada('Cabelo')}
+                      className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                        categoriaSelecionada === 'Cabelo'
+                          ? 'bg-gold border-gold text-background shadow-sm'
+                          : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                      }`}
+                    >
+                      <span>✂️</span> Cabelo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaSelecionada('Unhas')}
+                      className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                        categoriaSelecionada === 'Unhas'
+                          ? 'bg-gold border-gold text-background shadow-sm'
+                          : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                      }`}
+                    >
+                      <span>💅</span> Unhas
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/60 mb-1">Comissão Prod. (%)</label>
@@ -617,8 +648,15 @@ export default function ProfissionaisPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold text-lg truncate">{prof.nome}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
+                          ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                          : 'bg-gold/15 text-gold border border-gold/30'
+                      }`}>
+                        {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                      </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${prof.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                         {prof.ativo ? 'Ativo' : 'Inativo'}
                       </span>

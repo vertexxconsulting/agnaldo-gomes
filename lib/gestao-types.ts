@@ -35,6 +35,7 @@ export interface Profissional {
   id: UUID;
   nome: string;
   foto_url?: string | null;
+  categoria?: 'Cabelo' | 'Unhas' | string | null; // Categoria do profissional (ex: 'Cabelo', 'Unhas')
   especialidades?: string[] | null; // tags
   ativo: boolean;
   jornada_semanal: JornadaSemanal;

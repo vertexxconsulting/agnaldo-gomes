@@ -101,6 +101,7 @@ function mapProfissional(r: Row): Profissional {
     id: r.id,
     nome: r.name ?? '',
     foto_url: r.photo_url ?? null,
+    categoria: r.categoria ?? r.category ?? null,
     especialidades: r.specialties ?? [],
     ativo: r.active ?? true,
     jornada_semanal: (r.weekly_schedule ?? {}) as Profissional['jornada_semanal'],
@@ -501,6 +502,7 @@ export async function excluirCliente(id: string): Promise<{ ok: boolean; error?:
 export async function criarProfissional(payload: {
   nome: string;
   foto_url?: string | null;
+  categoria?: string | null;
   especialidades?: string[];
   ativo?: boolean;
   jornada_semanal?: Record<number, { inicio: string; fim: string }>;
@@ -523,6 +525,7 @@ export async function criarProfissional(payload: {
   const insert: Row = {
     name: payload.nome,
     photo_url: payload.foto_url ?? null,
+    categoria: payload.categoria ?? null,
     specialties: payload.especialidades ?? [],
     active: payload.ativo ?? true,
     weekly_schedule: payload.jornada_semanal ?? {},
@@ -545,6 +548,7 @@ export async function criarProfissional(payload: {
 export async function atualizarProfissional(id: string, payload: Partial<{
   nome: string;
   foto_url: string | null;
+  categoria: string | null;
   especialidades: string[];
   ativo: boolean;
   jornada_semanal: Record<number, { inicio: string; fim: string }>;
@@ -567,6 +571,7 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   const patch: Row = {};
   if (payload.nome !== undefined) patch.name = payload.nome;
   if (payload.foto_url !== undefined) patch.photo_url = payload.foto_url;
+  if (payload.categoria !== undefined) patch.categoria = payload.categoria;
   if (payload.especialidades !== undefined) patch.specialties = payload.especialidades;
   if (payload.ativo !== undefined) patch.active = payload.ativo;
   if (payload.jornada_semanal !== undefined) patch.weekly_schedule = payload.jornada_semanal;
