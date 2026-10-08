@@ -146,9 +146,11 @@ Suas diretrizes fundamentais e inegociáveis são:
 
   ajudaTutorial: {
     ativo: true,
-    faqCustomizado: `Como cadastrar novo serviço: Acesse Menu > Serviços > Novo Serviço > Preencha nome, preço base, duração e vincule aos profissionais.
-Como bloquear horário: Acesse Menu > Agenda > Bloqueio de Horário > Selecione data, profissional e motivo.
-Como tirar relatório: Acesse Menu > Relatórios > Escolha o período (dia, mês ou ano) e clique em Exportar PDF ou SVG.`,
+    faqCustomizado: `Como o profissional preenche a Comanda Digital? Acesse a aba "Meu Painel" no celular ou tablet, clique em "Iniciar" ou "Editar" e selecione os serviços realizados, produtos vendidos (upsell) e insumos consumidos. Não há cobrança nesta etapa.
+Como a recepção finaliza o Checkout? Acesse a Dashboard (Painel Inicial), visualize o card do agendamento em andamento e clique em "Ir para o Caixa". O sistema trará tudo que o profissional lançou. Defina a forma de pagamento e finalize para gerar comissões.
+Como funciona a Vitrine de Afiliados? Cada profissional possui uma aba "Afiliados / Vitrine" no "Meu Painel" com links exclusivos que contêm seu código. O profissional pode copiar e enviar pelo WhatsApp. As vendas externas geram comissão no seu saldo.
+Como lidar com Comissões e Taxas? O checkout abate automaticamente as taxas da bandeira do cartão. Se o serviço tiver 100% de comissão, o profissional assume as taxas e o recebimento será em 3 parcelas de 30, 60 e 90 dias.
+Como cadastrar clientes antigos: Os clientes importados do sistema FOX já possuem um campo "Código" vinculado. O sistema usa esse código como chave principal para não duplicar fichas.`,
   },
 
   atualizadoEm: new Date().toISOString(),
