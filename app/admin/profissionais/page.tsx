@@ -153,12 +153,12 @@ export default function ProfissionaisPage() {
       const filePath = `profissionais/${fileName}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('avatares')
+        .from('avatars')
         .upload(filePath, fotoFile, { upsert: true });
 
       if (!uploadError) {
         const { data: { publicUrl } } = supabase.storage
-          .from('avatares')
+          .from('avatars')
           .getPublicUrl(filePath);
         finalFotoUrl = publicUrl;
       } else {

@@ -77,14 +77,14 @@ export default function AdminPerfilPage() {
       const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatares')
+        .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       // Obter URL pública
       const { data: { publicUrl } } = supabase.storage
-        .from('avatares')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       // Atualizar metadados do Auth
