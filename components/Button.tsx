@@ -17,7 +17,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50',
           {
             'bg-primary text-background hover:bg-primary-hover shadow-md hover:shadow-lg': variant === 'primary',
-            'bg-secondary text-background hover:bg-white': variant === 'secondary',
+            'bg-secondary text-foreground hover:opacity-80': variant === 'secondary',
             'border border-primary text-primary hover:bg-primary/10': variant === 'outline',
             'hover:bg-primary/10 text-foreground': variant === 'ghost',
             'h-8 px-3 text-xs': size === 'sm',

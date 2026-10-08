@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { cliente_id, profissional_id, servico_id, data, hora_inicio, hora_fim, status, canal, is_fixed, recurrence_type, recurrence_custom_day } = body;
+    const { cliente_id, profissional_id, servico_id, sub_servicos, data, hora_inicio, hora_fim, status, canal, is_fixed, recurrence_type, recurrence_custom_day, allow_overlap } = body;
 
     if (!cliente_id || !profissional_id || !servico_id || !data || !hora_inicio) {
       return NextResponse.json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' }, { status: 400 });
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       customer_id: cliente_id,
       professional_id: profissional_id,
       service_id: servico_id,
+      sub_services: Array.isArray(sub_servicos) && sub_servicos.length > 0 ? sub_servicos.filter((id: string) => id.trim() !== '') : null,
       date: data,
       start_time: hora_inicio,
       end_time: hora_fim || hora_inicio,

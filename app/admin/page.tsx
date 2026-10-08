@@ -115,6 +115,27 @@ export default function ReceptionDashboard() {
         />
       </div>
 
+      {/* Atalhos Rápidos no Topo */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-gold hover:text-gold transition-colors text-foreground">
+          <Clock size={20} className="text-gold" />
+          Novo Agendamento
+        </Link>
+        <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-blue-400 hover:text-blue-400 transition-colors text-foreground">
+          <UserPlus size={20} className="text-blue-400" />
+          Novo Cliente
+        </Link>
+        <Link href="/admin/loja" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-green-400 hover:text-green-400 transition-colors text-foreground">
+          <ShoppingCart size={20} className="text-green-400" />
+          Venda Balcão
+        </Link>
+        <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-purple-400 hover:text-purple-400 transition-colors text-foreground">
+          <Wallet size={20} className="text-purple-400" />
+          Despesas / Resumo
+        </Link>
+      </div>
+
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         {/* 2. Na Cadeira / Aguardando Checkout */}
@@ -196,28 +217,7 @@ export default function ReceptionDashboard() {
             )}
           </div>
 
-          <h2 className="text-xl font-bold mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center gap-2">
-            <TrendingDown className="text-foreground/50" />
-            Atalhos Rápidos
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-gold hover:text-gold transition-colors text-foreground">
-              <Clock size={20} className="text-gold" />
-              Novo Agendamento
-            </Link>
-            <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-blue-400 hover:text-blue-400 transition-colors text-foreground">
-              <UserPlus size={20} className="text-blue-400" />
-              Novo Cliente
-            </Link>
-            <Link href="/admin/loja" onClick={(e) => { e.preventDefault(); alert("Módulo Venda Balcão em breve!"); }} className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-green-400 hover:text-green-400 transition-colors text-foreground">
-              <ShoppingCart size={20} className="text-green-400" />
-              Venda Balcão
-            </Link>
-            <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-purple-400 hover:text-purple-400 transition-colors text-foreground">
-              <Wallet size={20} className="text-purple-400" />
-              Despesas / Resumo
-            </Link>
-          </div>
+
         </div>
       </div>
     </div>

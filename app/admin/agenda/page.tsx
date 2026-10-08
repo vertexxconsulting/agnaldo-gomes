@@ -107,6 +107,7 @@ function AgendaContent() {
     cliente_id: '',
     profissional_id: '',
     servico_id: '',
+    sub_servicos: [] as string[],
     data: hoje,
     hora_inicio: '09:00',
     duracao_min: '',
@@ -626,6 +627,7 @@ function AgendaContent() {
       cliente_id: '',
       profissional_id: profId,
       servico_id: '',
+      sub_servicos: [] as string[],
       data: dataSelecionada,
       hora_inicio: hora,
       duracao_min: '',
@@ -664,6 +666,7 @@ function AgendaContent() {
           cliente_id: formData.cliente_id,
           profissional_id: formData.profissional_id,
           servico_id: formData.servico_id,
+          sub_servicos: formData.sub_servicos,
           data: formData.data,
           hora_inicio: formData.hora_inicio,
           hora_fim: horaFim,
@@ -693,7 +696,7 @@ function AgendaContent() {
       setAgendamentos(prev => [...prev, novoAgendamento]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
       setBuscaCliente('');
       setClienteDropdownAberto(false);
       setCadastrandoNovoCliente(false);
@@ -1041,7 +1044,11 @@ function AgendaContent() {
                               ) : (
                                 appts.map(a => {
                                   const cliente = getClienteNome(a.cliente_id, clientes);
-                                  const servico = getServicoNome(a.servico_id, servicos);
+                                  let servico = getServicoNome(a.servico_id, servicos);
+                                  if (a.sub_servicos && a.sub_servicos.length > 0) {
+                                    const subNomes = a.sub_servicos.map(subId => getServicoNome(subId, servicos));
+                                    servico += ' + ' + subNomes.join(' + ');
+                                  }
                                   return (
                                     <div 
                                       key={a.id} 
@@ -1083,6 +1090,9 @@ function AgendaContent() {
                 </h3>
                 <p className="text-sm text-gold">
                   {getServicoNome(selectedAppt.servico_id, servicos)}
+                  {selectedAppt.sub_servicos && selectedAppt.sub_servicos.length > 0 && 
+                    ' + ' + selectedAppt.sub_servicos.map(subId => getServicoNome(subId, servicos)).join(' + ')
+                  }
                 </p>
               </div>
               <button onClick={() => setSelectedAppt(null)} className="text-foreground/50 hover:text-foreground">
@@ -1145,9 +1155,17 @@ function AgendaContent() {
               <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
                 <p className="text-sm text-foreground/60">Serviço Agendado:</p>
                 <div className="flex justify-between items-center mt-1">
-                  <p className="font-bold">{getServicoNome(checkoutAppt.servico_id, servicos)}</p>
+                  <p className="font-bold">
+                    {getServicoNome(checkoutAppt.servico_id, servicos)}
+                    {checkoutAppt.sub_servicos && checkoutAppt.sub_servicos.length > 0 && 
+                      ' + ' + checkoutAppt.sub_servicos.map(subId => getServicoNome(subId, servicos)).join(' + ')
+                    }
+                  </p>
                   <p className="font-bold text-gold">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getServicoPreco(checkoutAppt.servico_id, servicos))}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      getServicoPreco(checkoutAppt.servico_id, servicos) +
+                      (checkoutAppt.sub_servicos || []).reduce((acc, subId) => acc + getServicoPreco(subId, servicos), 0)
+                    )}
                   </p>
                 </div>
               </div>
@@ -1524,7 +1542,7 @@ function AgendaContent() {
 
               {/* TOTAL + DESCONTO GERAL + COMISSÃO */}
               {(() => {
-                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
+                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos) + (checkoutAppt.sub_servicos || []).reduce((acc, subId) => acc + getServicoPreco(subId, servicos), 0);
                 const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
                 const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
@@ -2115,6 +2133,72 @@ function AgendaContent() {
                   ))}
                 </select>
               </div>
+
+              {/* Sub-serviços (Adicionais) */}
+              {formData.servico_id && (
+                <div>
+                  <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center justify-between">
+                    <span>Adicionais / Subserviços (Opcional)</span>
+                  </label>
+                  <div className="flex flex-col gap-2">
+                    {formData.sub_servicos.map((subId, index) => {
+                      const s = servicos.find(srv => srv.id === subId);
+                      return (
+                        <div key={index} className="flex items-center gap-2">
+                          <select
+                            value={subId}
+                            onChange={e => {
+                              const novasubs = [...formData.sub_servicos];
+                              const oldId = novasubs[index];
+                              novasubs[index] = e.target.value;
+                              
+                              // Recalcula duracao total
+                              const main = servicos.find(srv => srv.id === formData.servico_id);
+                              let dur = main?.duracao_min ?? 60;
+                              novasubs.forEach(id => {
+                                const sub = servicos.find(srv => srv.id === id);
+                                if (sub) dur += sub.duracao_min;
+                              });
+                              
+                              setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                            }}
+                            className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
+                          >
+                            <option value="">Selecione...</option>
+                            {servicosDoProfissional.filter(srv => srv.id !== formData.servico_id && !formData.sub_servicos.includes(srv.id) || srv.id === subId).map(srv => (
+                              <option key={srv.id} value={srv.id}>{srv.nome} (+ {srv.duracao_min} min)</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const novasubs = formData.sub_servicos.filter((_, i) => i !== index);
+                              const main = servicos.find(srv => srv.id === formData.servico_id);
+                              let dur = main?.duracao_min ?? 60;
+                              novasubs.forEach(id => {
+                                const sub = servicos.find(srv => srv.id === id);
+                                if (sub) dur += sub.duracao_min;
+                              });
+                              setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                            }}
+                            className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setFormData(f => ({ ...f, sub_servicos: [...f.sub_servicos, ''] }))}
+                      className="text-xs font-bold text-gold hover:text-gold-dim self-start flex items-center gap-1 mt-1"
+                    >
+                      <Plus size={14} /> Adicionar subserviço (ex: Escova)
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               
               {/* Edição de Tempo */}
               {formData.servico_id && (

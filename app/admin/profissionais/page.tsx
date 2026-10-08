@@ -302,41 +302,71 @@ export default function ProfissionaisPage() {
           <div className="text-center py-6 text-foreground/50">Carregando profissionais...</div>
         )}
 
-        {/* Form */}
+        {/* Form Modal */}
         {showForm && (
-          <CardGlass className="mb-6">
-            <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Profissional' : 'Novo Profissional'}</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
+            <CardGlass className="w-full max-w-4xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold">{editando ? 'Editar Profissional' : 'Novo Profissional'}</h3>
+                <button 
+                  onClick={() => { setShowForm(false); setEditando(null); setFotoLocal(null); setServicosSelecionados([]); setDiasAtivos([]); }}
+                  className="p-2 hover:bg-[var(--background)] rounded-full text-foreground/50 hover:text-foreground transition-colors"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
             <form onSubmit={salvar} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <div>
+                <div className="sm:col-span-1">
                   <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCategoriaSelecionada('Cabelo')}
-                      className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                        categoriaSelecionada === 'Cabelo'
-                          ? 'bg-gold border-gold text-background shadow-sm'
-                          : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
-                      }`}
-                    >
-                      <span>✂️</span> Cabelo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCategoriaSelecionada('Unhas')}
-                      className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                        categoriaSelecionada === 'Unhas'
-                          ? 'bg-gold border-gold text-background shadow-sm'
-                          : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
-                      }`}
-                    >
-                      <span>💅</span> Unhas
-                    </button>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCategoriaSelecionada('Cabelo')}
+                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                          categoriaSelecionada === 'Cabelo'
+                            ? 'bg-gold border-gold text-background shadow-sm'
+                            : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                        }`}
+                      >
+                        <span>✂️</span> Cabelo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCategoriaSelecionada('Unhas')}
+                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                          categoriaSelecionada === 'Unhas'
+                            ? 'bg-gold border-gold text-background shadow-sm'
+                            : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                        }`}
+                      >
+                        <span>💅</span> Unhas
+                      </button>
+                      {(categoriaSelecionada === 'Cabelo' || categoriaSelecionada === 'Unhas') && (
+                         <button 
+                           type="button" 
+                           onClick={() => setCategoriaSelecionada('')} 
+                           className="flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
+                         >
+                           + Outra
+                         </button>
+                      )}
+                    </div>
+                    {categoriaSelecionada !== 'Cabelo' && categoriaSelecionada !== 'Unhas' && (
+                       <input 
+                         type="text" 
+                         value={categoriaSelecionada} 
+                         onChange={e => setCategoriaSelecionada(e.target.value)}
+                         placeholder="Digite a nova categoria..."
+                         required
+                         className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
+                       />
+                    )}
                   </div>
                 </div>
                 <div>
@@ -620,12 +650,13 @@ export default function ProfissionaisPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" variant="primary" size="md">Salvar</Button>
+              <div className="flex justify-end gap-2 pt-6 mt-6 border-t border-[var(--border-subtle)] sticky bottom-0 bg-[var(--background)] py-4 z-10">
                 <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setFotoLocal(null); setServicosSelecionados([]); setDiasAtivos([]); }}>Cancelar</Button>
+                <Button type="submit" variant="primary" size="md">Salvar</Button>
               </div>
             </form>
-          </CardGlass>
+            </CardGlass>
+          </div>
         )}
 
         {/* Cards de profissionais */}

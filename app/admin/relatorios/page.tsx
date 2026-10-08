@@ -15,7 +15,7 @@ import { gerarRelatorioFiltrado, ReportData, TipoPeriodoRelatorio, FiltroRelator
 import { exportarRelatorioPDF, exportarRelatorioSVG } from '@/lib/export-reports';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/mock-data';
 
-const COLORS = ['#D4AF37', '#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6', '#06B6D4', '#EF4444'];
+const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#14B8A6'];
 
 export default function RelatoriosPage() {
   const hoje = new Date();
@@ -298,6 +298,7 @@ export default function RelatoriosPage() {
                         outerRadius={85}
                         paddingAngle={4}
                         dataKey="quantidade"
+                        nameKey="nome"
                       >
                         {data.servicosMaisProcurados.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -340,7 +341,11 @@ export default function RelatoriosPage() {
                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
                         formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, 'Faturamento']}
                       />
-                      <Bar dataKey="faturamento" fill="#D4AF37" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
+                        {data.performanceProfissionais.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

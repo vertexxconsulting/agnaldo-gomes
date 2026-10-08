@@ -136,6 +136,7 @@ function mapAgendamento(r: Row): Agendamento {
     cliente_id: r.customer_id,
     profissional_id: r.professional_id,
     servico_id: r.service_id,
+    sub_servicos: r.sub_services || [],
     data: r.date ?? '',
     hora_inicio: horaCurta(r.start_time),
     hora_fim: horaCurta(r.end_time),
