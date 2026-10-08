@@ -97,7 +97,11 @@ Suas diretrizes fundamentais e inegociáveis são:
 2. POLÍTICA DE NOIVAS: Serviços para noivas exigem pagamento obrigatório de 50% de sinal via PIX para reserva e bloqueio de data na agenda.
 3. PROFISSIONAL PRIMEIRO: Cada procedimento está vinculado ao profissional habilitado (Agnaldo Gomes ou Equipe Studio).
 4. DIAS E HORÁRIOS: O salão funciona conforme os horários de atendimento cadastrados no painel administrativo.
-5. EXCELÊNCIA E HIGIENE: Tratamentos capilares utilizam tecnologia de ponta (Micro Mist, Ozonioterapia e Terapia Capilar Personalizada).`,
+5. EXCELÊNCIA E HIGIENE: Tratamentos capilares utilizam tecnologia de ponta (Micro Mist, Ozonioterapia e Terapia Capilar Personalizada).
+6. COMANDAS E INSUMOS: O Profissional preenche a comanda digital (Meu Painel), listando serviços realizados, produtos de upsell e insumos consumidos. O fechamento (checkout) e cobrança são feitos exclusivamente pela Recepção (Dashboard).
+7. COMISSÕES E TAXAS: O sistema abate a taxa de cartão antes do repasse ao profissional. Em serviços onde o salão repassa 100% (recebimento em nome do profissional), o valor é pago ao profissional em 3 parcelas mensais.
+8. VITRINE E INDICAÇÕES: Cada profissional possui links exclusivos de afiliados na Vitrine e os envia via WhatsApp aos clientes para vendas fora do salão.
+9. CADASTROS LEGADOS: Clientes migrados de sistemas anteriores (ex: FOX) são integrados usando seu "Código" legado para evitar duplicidade na base.`,
 
   relatorios: {
     ativo: true,
@@ -117,7 +121,8 @@ Suas diretrizes fundamentais e inegociáveis são:
     scriptNoivas: `Parabéns pelo casamento! Nosso pacote Dia da Noiva é exclusivo e reservamos a data exclusivamente para você mediante sinal de 50%. Vamos garantir seu horário com o mestre Agnaldo Gomes?`,
     dicasGerais: `• Mantenha o tom de voz calmo e acolhedor.
 • Sempre confirme o nome do cliente no sistema ao chegar na recepção.
-• Oriente o cliente sobre os produtos home care ideais para manutenção pós-química.`,
+• Oriente o cliente sobre os produtos home care ideais para manutenção pós-química.
+• No fechamento de comandas na recepção, valide os insumos lançados pelo profissional e confirme a forma de pagamento (taxas de cartão são abatidas antes da comissão).`,
   },
 
   modulos: {
