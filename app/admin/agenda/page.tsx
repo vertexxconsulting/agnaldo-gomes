@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SectionTitle } from '@/components/SectionTitle';
@@ -14,8 +14,20 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag } from 'lucide-react';
+import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
+
+function formatPhone(val: string) {
+  if (!val) return '';
+  const clean = val.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  if (clean.length === 10) {
+    return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  return val;
+}
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
@@ -61,6 +73,112 @@ function AgendaContent() {
     allow_overlap: false,
   });
 
+  // Busca e filtro de clientes no modal de agendamento
+  const [buscaCliente, setBuscaCliente] = useState('');
+  const [clienteDropdownAberto, setClienteDropdownAberto] = useState(false);
+  const [cadastrandoNovoCliente, setCadastrandoNovoCliente] = useState(false);
+  const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [novoClienteTelefone, setNovoClienteTelefone] = useState('');
+  const [salvandoNovoCliente, setSalvandoNovoCliente] = useState(false);
+  const clienteSearchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Busca de cliente na visualização da Agenda
+  const [buscaClienteAgenda, setBuscaClienteAgenda] = useState('');
+
+  // Fechar dropdown de clientes ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clienteSearchContainerRef.current && !clienteSearchContainerRef.current.contains(event.target as Node)) {
+        setClienteDropdownAberto(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const clienteSelecionado = useMemo(() => {
+    return clientes.find(c => c.id === formData.cliente_id) || null;
+  }, [clientes, formData.cliente_id]);
+
+  const clientesFiltradosModal = useMemo(() => {
+    const termo = buscaCliente.toLowerCase().trim();
+    const termoApenasDigitos = termo.replace(/\D/g, '');
+
+    if (!termo) {
+      return [...clientes].sort((a, b) => (a.nome || '').localeCompare(b.nome || '')).slice(0, 20);
+    }
+
+    return clientes
+      .filter(c => {
+        const nomeMatch = (c.nome || '').toLowerCase().includes(termo);
+        const emailMatch = (c.email || '').toLowerCase().includes(termo);
+        const foneMatch = termoApenasDigitos
+          ? (c.telefone || '').replace(/\D/g, '').includes(termoApenasDigitos)
+          : (c.telefone || '').includes(termo);
+        const codigoMatch = c.codigo ? String(c.codigo).includes(termo) : false;
+        return nomeMatch || emailMatch || foneMatch || codigoMatch;
+      })
+      .sort((a, b) => {
+        const aStarts = (a.nome || '').toLowerCase().startsWith(termo);
+        const bStarts = (b.nome || '').toLowerCase().startsWith(termo);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return (a.nome || '').localeCompare(b.nome || '');
+      })
+      .slice(0, 30);
+  }, [clientes, buscaCliente]);
+
+  const handleSalvarNovoClienteRapido = async () => {
+    const nome = novoClienteNome.trim();
+    const telefone = novoClienteTelefone.trim();
+    if (!nome || !telefone) {
+      alert('Nome e Telefone são obrigatórios.');
+      return;
+    }
+
+    setSalvandoNovoCliente(true);
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao cadastrar cliente');
+
+      const savedCliente: Cliente = data.cliente ? {
+        id: data.cliente.id,
+        codigo: data.cliente.codigo,
+        nome: data.cliente.nome || data.cliente.name || nome,
+        telefone: data.cliente.telefone || data.cliente.phone || telefone,
+        email: data.cliente.email,
+        cpf: data.cliente.cpf,
+        endereco: data.cliente.endereco || data.cliente.address,
+        nascimento: data.cliente.nascimento || data.cliente.birth_date,
+        observacoes: data.cliente.observacoes || data.cliente.notes,
+        criado_em: data.cliente.created_at || new Date().toISOString(),
+      } : {
+        id: `c_${Date.now()}`,
+        nome,
+        telefone,
+        criado_em: new Date().toISOString(),
+      };
+
+      setClientes(prev => [savedCliente, ...prev]);
+      setFormData(f => ({ ...f, cliente_id: savedCliente.id }));
+      setCadastrandoNovoCliente(false);
+      setNovoClienteNome('');
+      setNovoClienteTelefone('');
+      setBuscaCliente('');
+      setClienteDropdownAberto(false);
+    } catch (err: any) {
+      console.error('Erro ao cadastrar cliente rápido:', err);
+      alert(`Erro ao cadastrar cliente: ${err.message}`);
+    } finally {
+      setSalvandoNovoCliente(false);
+    }
+  };
+
   // Carregar dados do Supabase (com fallback para mock)
   useEffect(() => {
     const carregarDados = async () => {
@@ -105,9 +223,22 @@ function AgendaContent() {
 
   // Filtro por data e profissional na visualização
   const doDia = agendamentos.filter(a => a.data === dataSelecionada);
-  const agendamentosFiltrados = profFiltro === 'todos'
+  let agendamentosFiltrados = profFiltro === 'todos'
     ? doDia
     : doDia.filter(a => a.profissional_id === profFiltro);
+
+  if (buscaClienteAgenda.trim()) {
+    const termo = buscaClienteAgenda.toLowerCase().trim();
+    const digitos = termo.replace(/\D/g, '');
+    agendamentosFiltrados = agendamentosFiltrados.filter(a => {
+      const c = clientes.find(cli => cli.id === a.cliente_id);
+      if (!c) return false;
+      const nomeMatch = (c.nome || '').toLowerCase().includes(termo);
+      const foneMatch = digitos ? (c.telefone || '').replace(/\D/g, '').includes(digitos) : (c.telefone || '').includes(termo);
+      const codMatch = c.codigo ? String(c.codigo).includes(termo) : false;
+      return nomeMatch || foneMatch || codMatch;
+    });
+  }
 
   agendamentosFiltrados.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
@@ -299,13 +430,20 @@ function AgendaContent() {
       recurrence_custom_day: '',
       allow_overlap: false,
     });
+    setBuscaCliente(buscaClienteAgenda || '');
+    setClienteDropdownAberto(Boolean(buscaClienteAgenda));
+    setCadastrandoNovoCliente(false);
     setShowForm(true);
   };
 
   const handleSalvarAgendamento = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.cliente_id || !formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
-      alert('Preencha todos os campos obrigatórios.');
+    if (!formData.cliente_id) {
+      alert('Por favor, busque e selecione um cliente para o agendamento.');
+      return;
+    }
+    if (!formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
+      alert('Preencha todos os campos obrigatórios (Profissional, Serviço, Data e Horário).');
       return;
     }
     const servicoSel = servicos.find(s => s.id === formData.servico_id);
@@ -352,6 +490,9 @@ function AgendaContent() {
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
       setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+      setBuscaCliente('');
+      setClienteDropdownAberto(false);
+      setCadastrandoNovoCliente(false);
     } catch (err: any) {
       console.error('Erro ao salvar agendamento:', err);
       alert(`Erro ao salvar no banco: ${err.message}`);
@@ -423,6 +564,27 @@ function AgendaContent() {
           )}
         </div>
 
+        {/* Busca rápida por cliente na agenda */}
+        <div className="relative w-full sm:w-64">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 pointer-events-none" />
+          <input
+            type="text"
+            value={buscaClienteAgenda}
+            onChange={e => setBuscaClienteAgenda(e.target.value)}
+            placeholder="Buscar cliente na agenda..."
+            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-gold rounded-lg pl-9 pr-8 py-2 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none transition-colors shadow-sm"
+          />
+          {buscaClienteAgenda && (
+            <button
+              onClick={() => setBuscaClienteAgenda('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground p-0.5"
+              title="Limpar filtro"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
         {/* View Toggle */}
         <div className="sm:ml-auto flex gap-2 w-full sm:w-auto">
           <ViewToggle 
@@ -433,9 +595,40 @@ function AgendaContent() {
             selectedId={viewMode} 
             onChange={setViewMode} 
           />
-          <Button variant="primary" onClick={() => setShowForm(true)}>+ Novo Agendamento</Button>
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              setBuscaCliente(buscaClienteAgenda || '');
+              setClienteDropdownAberto(Boolean(buscaClienteAgenda));
+              setCadastrandoNovoCliente(false);
+              setShowForm(true);
+            }}
+          >
+            + Novo Agendamento
+          </Button>
         </div>
       </div>
+
+      {/* Indicador de filtro ativo por cliente */}
+      {buscaClienteAgenda.trim() && (
+        <div className="mb-4 px-3.5 py-2.5 bg-gold/10 border border-gold/30 rounded-xl flex items-center justify-between text-xs animate-in fade-in">
+          <div className="flex items-center gap-2 text-foreground">
+            <Search size={14} className="text-gold shrink-0" />
+            <span>
+              Filtrando agenda por cliente: <strong className="text-gold">"{buscaClienteAgenda}"</strong>{' '}
+              <span className="text-foreground/60 font-mono">
+                ({agendamentosFiltrados.length} {agendamentosFiltrados.length === 1 ? 'horário encontrado' : 'horários encontrados'})
+              </span>
+            </span>
+          </div>
+          <button
+            onClick={() => setBuscaClienteAgenda('')}
+            className="text-xs font-bold text-gold hover:underline flex items-center gap-1 shrink-0 ml-2"
+          >
+            <X size={13} /> Limpar
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="p-8 text-center text-foreground/50">Carregando horários...</div>
@@ -1056,20 +1249,248 @@ function AgendaContent() {
             </div>
             
             <form onSubmit={handleSalvarAgendamento} className="space-y-4">
-              {/* 1. Cliente */}
-              <div>
-                <label className="block text-xs font-bold text-foreground/70 mb-1.5">1. Cliente *</label>
-                <select 
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold"
-                  value={formData.cliente_id}
-                  onChange={e => setFormData(f => ({ ...f, cliente_id: e.target.value }))}
-                  required
-                >
-                  <option value="">Selecione o cliente</option>
-                  {clientes.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome} ({c.telefone})</option>
-                  ))}
-                </select>
+              {/* 1. Cliente com Busca e Seleção Inteligente */}
+              <div ref={clienteSearchContainerRef} className="space-y-1.5">
+                <label className="block text-xs font-bold text-foreground/70 flex items-center justify-between">
+                  <span>1. Cliente *</span>
+                  {clienteSelecionado ? (
+                    <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1">
+                      <Check size={12} /> Cliente selecionado
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-normal text-foreground/50">
+                      {clientes.length} clientes cadastrados
+                    </span>
+                  )}
+                </label>
+
+                <input type="hidden" name="cliente_id" value={formData.cliente_id} required />
+
+                {clienteSelecionado ? (
+                  /* Card do Cliente Selecionado */
+                  <div className="p-3 bg-gold/10 border border-gold/40 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-gold text-background font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                        {clienteSelecionado.nome.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-foreground flex items-center gap-2">
+                          <span className="truncate">{clienteSelecionado.nome}</span>
+                          {clienteSelecionado.codigo && (
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-gold/20 text-gold rounded shrink-0">
+                              #{clienteSelecionado.codigo}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-foreground/60 flex items-center gap-2 mt-0.5">
+                          {clienteSelecionado.telefone && (
+                            <span className="flex items-center gap-1">
+                              <Phone size={11} className="text-gold" />
+                              {formatPhone(clienteSelecionado.telefone)}
+                            </span>
+                          )}
+                          {clienteSelecionado.email && (
+                            <span className="truncate max-w-[150px] hidden sm:inline text-foreground/40">
+                              • {clienteSelecionado.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(f => ({ ...f, cliente_id: '' }));
+                        setBuscaCliente('');
+                        setClienteDropdownAberto(true);
+                      }}
+                      className="text-xs text-gold hover:text-gold-dim border border-gold/40 hover:border-gold px-3 py-1.5 rounded-lg transition-colors font-bold shrink-0 bg-background/50 hover:bg-background"
+                    >
+                      Trocar
+                    </button>
+                  </div>
+                ) : cadastrandoNovoCliente ? (
+                  /* Formulário de Cadastro Rápido de Novo Cliente */
+                  <div className="p-3.5 bg-[var(--background)] border border-gold/40 rounded-xl space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
+                      <span className="text-xs font-bold text-gold flex items-center gap-1.5">
+                        <UserPlus size={14} /> Cadastrar Novo Cliente Rápido
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCadastrandoNovoCliente(false)}
+                        className="text-xs text-foreground/50 hover:text-foreground"
+                      >
+                        Voltar à busca
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-foreground/70 mb-1">Nome Completo *</label>
+                        <input
+                          type="text"
+                          value={novoClienteNome}
+                          onChange={e => setNovoClienteNome(e.target.value)}
+                          placeholder="Nome da cliente"
+                          className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-gold"
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-foreground/70 mb-1">WhatsApp / Telefone *</label>
+                        <input
+                          type="tel"
+                          value={novoClienteTelefone}
+                          onChange={e => setNovoClienteTelefone(e.target.value)}
+                          placeholder="(42) 99999-9999"
+                          className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-gold font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setCadastrandoNovoCliente(false)}
+                        className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/70 hover:bg-white/5"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={salvandoNovoCliente || !novoClienteNome.trim() || !novoClienteTelefone.trim()}
+                        onClick={handleSalvarNovoClienteRapido}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-gold text-background font-bold hover:bg-gold-dim transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                      >
+                        {salvandoNovoCliente ? 'Salvando...' : 'Salvar e Selecionar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Campo de Busca Interativo com Autocomplete */
+                  <div className="relative">
+                    <div className="flex items-center bg-[var(--background)] border border-[var(--border-subtle)] focus-within:border-gold rounded-lg px-3 py-2.5 transition-colors">
+                      <Search size={16} className="text-foreground/40 shrink-0 mr-2" />
+                      <input
+                        type="text"
+                        value={buscaCliente}
+                        onChange={e => {
+                          setBuscaCliente(e.target.value);
+                          setClienteDropdownAberto(true);
+                        }}
+                        onFocus={() => setClienteDropdownAberto(true)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (clientesFiltradosModal.length > 0) {
+                              const c = clientesFiltradosModal[0];
+                              setFormData(f => ({ ...f, cliente_id: c.id }));
+                              setClienteDropdownAberto(false);
+                              setBuscaCliente('');
+                            }
+                          }
+                        }}
+                        placeholder="Buscar cliente por nome, telefone ou código..."
+                        className="w-full bg-transparent text-sm text-foreground focus:outline-none placeholder:text-foreground/40"
+                        autoFocus
+                      />
+                      {buscaCliente && (
+                        <button
+                          type="button"
+                          onClick={() => setBuscaCliente('')}
+                          className="text-foreground/40 hover:text-foreground p-0.5 shrink-0"
+                          title="Limpar texto"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Dropdown Flutuante */}
+                    {clienteDropdownAberto && (
+                      <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-[var(--border-subtle)] animate-in fade-in zoom-in-95">
+                        {clientesFiltradosModal.length > 0 ? (
+                          <>
+                            <div className="p-2 text-[10px] font-bold text-foreground/50 uppercase tracking-wider bg-foreground/[0.02]">
+                              {buscaCliente ? `Resultados (${clientesFiltradosModal.length}) — Pressione Enter para selecionar` : 'Clientes recentes / ordem alfabética'}
+                            </div>
+                            {clientesFiltradosModal.map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData(f => ({ ...f, cliente_id: c.id }));
+                                  setClienteDropdownAberto(false);
+                                  setBuscaCliente('');
+                                }}
+                                className="w-full text-left p-2.5 hover:bg-gold/10 transition-colors flex items-center justify-between gap-3 group"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-full bg-gold/15 text-gold font-bold text-xs flex items-center justify-center shrink-0">
+                                    {c.nome.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-sm text-foreground truncate group-hover:text-gold transition-colors flex items-center gap-1.5">
+                                      <span>{c.nome}</span>
+                                      {c.codigo && (
+                                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-foreground/10 text-foreground/70 rounded">
+                                          #{c.codigo}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-foreground/50 flex items-center gap-2 mt-0.5">
+                                      {c.telefone && <span>{formatPhone(c.telefone)}</span>}
+                                      {c.email && <span className="truncate max-w-[140px] hidden sm:inline">• {c.email}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="text-xs text-gold font-semibold shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  Selecionar →
+                                </span>
+                              </button>
+                            ))}
+                          </>
+                        ) : (
+                          <div className="p-4 text-center">
+                            <p className="text-xs text-foreground/60 mb-2">
+                              Nenhum cliente encontrado com "{buscaCliente}"
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCadastrandoNovoCliente(true);
+                                setNovoClienteNome(buscaCliente);
+                                setClienteDropdownAberto(false);
+                              }}
+                              className="text-xs font-bold text-gold hover:underline flex items-center justify-center gap-1.5 mx-auto"
+                            >
+                              <UserPlus size={14} /> Cadastrar "{buscaCliente}" como novo cliente
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Botão Atalho para Cadastrar Novo */}
+                    <div className="mt-1.5 flex justify-between items-center text-[11px]">
+                      <span className="text-foreground/40 italic">
+                        {buscaCliente ? 'Clique no cliente desejado' : 'Digite para buscar na lista'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCadastrandoNovoCliente(true);
+                          setNovoClienteNome(buscaCliente);
+                          setClienteDropdownAberto(false);
+                        }}
+                        className="text-gold hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <UserPlus size={12} /> + Novo cliente
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 2. Profissional PRIMEIRO */}
