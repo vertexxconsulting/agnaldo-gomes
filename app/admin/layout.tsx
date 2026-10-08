@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign } from 'lucide-react';
+import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign, Wallet } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
@@ -18,7 +18,7 @@ const links = [
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays, id: 'agenda' },
   { href: '/admin/clientes', label: 'Clientes (CRM)', icon: Users, id: 'clientes' },
   { href: '/admin/noivas', label: 'Dia da Noiva', icon: Heart, id: 'noivas' },
-  { href: '/admin/pagamentos', label: 'Pagamentos', icon: ShieldCheck, adminOnly: true, id: 'pagamentos' },
+  { href: '/admin/pagamentos', label: 'Financeiro & Caixa', icon: Wallet, adminOnly: true, id: 'pagamentos' },
   { href: '/admin/notas-fiscais', label: 'Notas Fiscais', icon: Receipt, id: 'notas-fiscais' },
   // Cadastros
   { href: '/admin/servicos', label: 'Serviços', icon: Scissors, id: 'servicos' },
