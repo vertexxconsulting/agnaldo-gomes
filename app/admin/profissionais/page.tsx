@@ -305,7 +305,7 @@ export default function ProfissionaisPage() {
         {/* Form Modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
-            <CardGlass className="w-full max-w-4xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-4xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto bg-[var(--background)] rounded-2xl shadow-2xl border border-[var(--border-subtle)]">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold">{editando ? 'Editar Profissional' : 'Novo Profissional'}</h3>
                 <button 
@@ -316,12 +316,12 @@ export default function ProfissionaisPage() {
                 </button>
               </div>
             <form onSubmit={salvar} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="sm:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
+                <div className="sm:col-span-12">
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
-                  <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                  <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <div className="sm:col-span-1">
+                <div className="sm:col-span-8">
                   <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
@@ -331,7 +331,7 @@ export default function ProfissionaisPage() {
                         className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
                           categoriaSelecionada === 'Cabelo'
                             ? 'bg-gold border-gold text-background shadow-sm'
-                            : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
                         }`}
                       >
                         <span>✂️</span> Cabelo
@@ -342,7 +342,7 @@ export default function ProfissionaisPage() {
                         className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
                           categoriaSelecionada === 'Unhas'
                             ? 'bg-gold border-gold text-background shadow-sm'
-                            : 'bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
                         }`}
                       >
                         <span>💅</span> Unhas
@@ -351,7 +351,7 @@ export default function ProfissionaisPage() {
                          <button 
                            type="button" 
                            onClick={() => setCategoriaSelecionada('')} 
-                           className="flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--background)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
+                           className="flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
                          >
                            + Outra
                          </button>
@@ -364,19 +364,19 @@ export default function ProfissionaisPage() {
                          onChange={e => setCategoriaSelecionada(e.target.value)}
                          placeholder="Digite a nova categoria..."
                          required
-                         className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
+                         className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
                        />
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="sm:col-span-4">
                   <label className="block text-xs text-foreground/60 mb-1">Comissão Prod. (%)</label>
                   <div className="relative">
-                    <input name="product_commission_pct" type="number" min="0" max="100" step="0.5" defaultValue={editando?.product_commission_pct ?? 0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                    <input name="product_commission_pct" type="number" min="0" max="100" step="0.5" defaultValue={editando?.product_commission_pct ?? 0} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold text-xs">%</span>
                   </div>
                 </div>
-                <div>
+                <div className="sm:col-span-7">
                   <label className="block text-xs text-foreground/60 mb-2">Especialidades</label>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(new Set(servicosCache.map(s => s.categoria || 'Outros'))).map(cat => {
@@ -403,7 +403,7 @@ export default function ProfissionaisPage() {
                   </div>
                   <p className="text-[10px] text-foreground/40 mt-2">Você pode clicar para adicionar manualmente, ou selecionar os serviços abaixo para adicionar automaticamente.</p>
                 </div>
-                <div>
+                <div className="sm:col-span-5">
                   <label className="block text-xs text-foreground/60 mb-1">Foto <span className="text-foreground/30">(opcional)</span></label>
                   <div className="flex items-center gap-3">
                     {fotoLocal && (
@@ -424,7 +424,7 @@ export default function ProfissionaisPage() {
 
               {/* Acesso ao Sistema */}
               {!editando && (
-                <div className="bg-[var(--background)] p-4 rounded-xl border border-[var(--border-subtle)] space-y-4">
+                <div className="bg-[var(--color-card)] p-4 rounded-xl border border-[var(--border-subtle)] space-y-4">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-gold">
                     <input 
                       type="checkbox" 
@@ -655,7 +655,7 @@ export default function ProfissionaisPage() {
                 <Button type="submit" variant="primary" size="md">Salvar</Button>
               </div>
             </form>
-            </CardGlass>
+            </div>
           </div>
         )}
 
