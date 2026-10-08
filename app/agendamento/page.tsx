@@ -184,7 +184,7 @@ export default function AgendamentoPage() {
   const verificarTelefone = async () => {
     const rawClean = (formData.telefone || '').replace(/\D/g, '');
     if (!rawClean || rawClean.length < 10) {
-      setErrorWhatsApp('Digite um WhatsApp válido com DDD (Ex: 42 99129-5941)');
+      setErrorWhatsApp('Digite um WhatsApp válido com DDD (Ex: 11 99999-9999)');
       return;
     }
     setErrorWhatsApp('');
@@ -565,7 +565,7 @@ export default function AgendamentoPage() {
                     type="tel"
                     value={formData.telefone}
                     onChange={e => handleInputChange('telefone', e.target.value)}
-                    placeholder="(42) 99129-5941"
+                    placeholder="(XX) XXXXX-XXXX"
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold font-mono text-base font-bold tracking-widest shadow-inner"
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
