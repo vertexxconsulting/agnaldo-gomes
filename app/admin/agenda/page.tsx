@@ -260,7 +260,7 @@ function AgendaContent() {
       return {
         inventory_id: i.inventory_id,
         name: prod?.name || 'Insumo',
-        unit: prod?.unit || 'GR',
+        unit: prod?.unit || 'g',
         price_per_gram: prod?.cost_price || 0,
         qty_used: i.qty,
         custo_unitario: custoUn,
