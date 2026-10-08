@@ -188,6 +188,25 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.2 Gestão de Comissões, Fechamento Semanal & Regra D+30 de Cartão
+
+- **Regra Oficial de Repasse de Cartão de Crédito (D+30)**:
+  - Comissões provenientes de pagamentos em **Cartão de Crédito** têm carência e são liberadas **30 dias após o recebimento/atendimento** (`due_date = data + 30 dias`).
+  - Atendimentos em **Dinheiro, PIX e Débito** são de liberação **imediata**, entrando diretamente no fechamento da semana em que foram realizados.
+- **Fechamento de Caixa Semanal de Comissões (`/admin/comissoes?aba=fechamento`)**:
+  - Navegador dinâmico de semanas (Segunda a Domingo).
+  - Discrimina por profissional: Produção Bruta, Comissões Liberadas na Semana (Imediato da semana + Crédito D+30 maduro), e Comissões Retidas em Carência (Crédito D+30 futuro).
+  - Ação em 1 clique para **Dar Baixa / Fechar Semana** via `pagarLoteParcelas()`.
+  - **Extrato / Recibo Semanal**: Modal com layout timbrado para conferência, botão de impressão/PDF (`window.print()`) e botão de **Copiar para WhatsApp** com texto formatado.
+- **Consulta de Recebíveis por Período (`/admin/comissoes?aba=recebiveis`)**:
+  - Filtro flexível por atalhos (Esta Semana, Semana Passada, Próxima Semana, Este Mês, Mês Passado, Personalizado).
+  - Filtros avançados por profissional, forma de pagamento e status (Liberados, Carência D+30, Já Quitados).
+  - Indicadores em tempo real de dias restantes para liberação de vendas em crédito.
+- **Painel do Profissional (`/admin/meu-painel`)**:
+  - Cards de acesso rápido para consulta de recebíveis e fechamento semanal.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

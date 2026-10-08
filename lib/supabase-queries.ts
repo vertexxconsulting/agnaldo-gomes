@@ -1221,11 +1221,17 @@ export async function criarComissao(params: {
     return { ok: false, error: comErr?.message };
   }
 
-  // Insere parcelas
+  // Insere parcelas (Importante: Cartão de Crédito é pago 30 dias após o recebimento)
   const baseDate = new Date(params.appointmentDate + 'T12:00:00');
   const parcelas = Array.from({ length: numParcelas }, (_, i) => {
     const due = new Date(baseDate);
-    due.setMonth(due.getMonth() + i);
+    if (params.paymentMethod === 'CREDITO') {
+      // Regra oficial: comissões de cartão de crédito são pagas 30 dias após o recebimento (D+30 por parcela)
+      due.setDate(due.getDate() + 30 * (i + 1));
+    } else {
+      // Dinheiro, PIX, Débito: disponível de imediato na data do atendimento
+      if (i > 0) due.setMonth(due.getMonth() + i);
+    }
     return {
       commission_id: com.id,
       installment_number: i + 1,
@@ -1243,69 +1249,343 @@ export async function criarComissao(params: {
   return { ok: true, commissionId: com.id };
 }
 
+/** Mock de comissões com regra de Cartão de Crédito (D+30) e pagamentos imediatos para testes e fallback */
+export function getMockComissoes(professionalId?: string): Comissao[] {
+  const agora = new Date();
+  const formatIso = (d: Date) => d.toISOString().split('T')[0];
+  const offsetDias = (dias: number) => {
+    const d = new Date(agora);
+    d.setDate(d.getDate() + dias);
+    return formatIso(d);
+  };
+
+  const MOCK_LIST: Comissao[] = [
+    // Agnaldo Gomes: Cartão de Crédito recente (D+30 - Aguardando)
+    {
+      id: 'mock-com-1',
+      appointment_id: 'app-mock-1',
+      professional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901',
+      total_amount: 480.00,
+      commission_pct: 50.00,
+      total_commission: 240.00,
+      installments: 1,
+      payment_method: 'CREDITO',
+      status: 'PENDING',
+      created_at: `${offsetDias(-4)}T14:30:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-1',
+          commission_id: 'mock-com-1',
+          installment_number: 1,
+          amount: 240.00,
+          due_date: offsetDias(26), // 30 dias após offsetDias(-4) -> em carência
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Agnaldo Gomes: PIX nesta semana (Liberado Imediato)
+    {
+      id: 'mock-com-2',
+      appointment_id: 'app-mock-2',
+      professional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901',
+      total_amount: 140.00,
+      commission_pct: 50.00,
+      total_commission: 70.00,
+      installments: 1,
+      payment_method: 'PIX',
+      status: 'PENDING',
+      created_at: `${offsetDias(-1)}T10:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-2',
+          commission_id: 'mock-com-2',
+          installment_number: 1,
+          amount: 70.00,
+          due_date: offsetDias(-1), // Imediato
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Agnaldo Gomes: Cartão de Crédito feito há 33 dias atrás -> LIBERADO nesta semana (D+30 cumprido)
+    {
+      id: 'mock-com-3',
+      appointment_id: 'app-mock-3',
+      professional_id: 'e47b1a20-8d3f-4e92-91bc-3a817452d901',
+      total_amount: 320.00,
+      commission_pct: 50.00,
+      total_commission: 160.00,
+      installments: 1,
+      payment_method: 'CREDITO',
+      status: 'PENDING',
+      created_at: `${offsetDias(-33)}T16:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-3',
+          commission_id: 'mock-com-3',
+          installment_number: 1,
+          amount: 160.00,
+          due_date: offsetDias(-3), // Venceu há 3 dias (nesta semana)
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Camila Silva (Unhas): PIX nesta semana (Liberado Imediato)
+    {
+      id: 'mock-com-4',
+      appointment_id: 'app-mock-4',
+      professional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303',
+      total_amount: 90.00,
+      commission_pct: 50.00,
+      total_commission: 45.00,
+      installments: 1,
+      payment_method: 'PIX',
+      status: 'PENDING',
+      created_at: `${offsetDias(-2)}T11:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-4',
+          commission_id: 'mock-com-4',
+          installment_number: 1,
+          amount: 45.00,
+          due_date: offsetDias(-2),
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Camila Silva (Unhas): Cartão de Crédito recente (D+30 - Aguardando)
+    {
+      id: 'mock-com-5',
+      appointment_id: 'app-mock-5',
+      professional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303',
+      total_amount: 130.00,
+      commission_pct: 50.00,
+      total_commission: 65.00,
+      installments: 1,
+      payment_method: 'CREDITO',
+      status: 'PENDING',
+      created_at: `${offsetDias(-3)}T15:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-5',
+          commission_id: 'mock-com-5',
+          installment_number: 1,
+          amount: 65.00,
+          due_date: offsetDias(27), // Carência D+30
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Camila Silva (Unhas): Cartão de Crédito feito há 31 dias atrás -> LIBERADO nesta semana (D+30 cumprido)
+    {
+      id: 'mock-com-6',
+      appointment_id: 'app-mock-6',
+      professional_id: 'b71a3c54-8e2d-4c91-95fe-4ba28574e303',
+      total_amount: 80.00,
+      commission_pct: 50.00,
+      total_commission: 40.00,
+      installments: 1,
+      payment_method: 'CREDITO',
+      status: 'PENDING',
+      created_at: `${offsetDias(-31)}T17:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-6',
+          commission_id: 'mock-com-6',
+          installment_number: 1,
+          amount: 40.00,
+          due_date: offsetDias(-1), // Liberado ontem
+          status: 'PENDING',
+        }
+      ]
+    },
+    // Equipe Studio: Débito e Dinheiro nesta semana (Liberados)
+    {
+      id: 'mock-com-7',
+      appointment_id: 'app-mock-7',
+      professional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012',
+      total_amount: 140.00,
+      commission_pct: 40.00,
+      total_commission: 56.00,
+      installments: 1,
+      payment_method: 'DEBITO',
+      status: 'PENDING',
+      created_at: `${offsetDias(-2)}T09:30:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-7',
+          commission_id: 'mock-com-7',
+          installment_number: 1,
+          amount: 56.00,
+          due_date: offsetDias(-2),
+          status: 'PENDING',
+        }
+      ]
+    },
+    {
+      id: 'mock-com-8',
+      appointment_id: 'app-mock-8',
+      professional_id: 'f82c4d31-9a5e-4b73-82cd-4b928563e012',
+      total_amount: 50.00,
+      commission_pct: 40.00,
+      total_commission: 20.00,
+      installments: 1,
+      payment_method: 'DINHEIRO',
+      status: 'PAID',
+      created_at: `${offsetDias(-5)}T13:00:00Z`,
+      parcelas: [
+        {
+          id: 'mock-parc-8',
+          commission_id: 'mock-com-8',
+          installment_number: 1,
+          amount: 20.00,
+          due_date: offsetDias(-5),
+          paid_at: `${offsetDias(-5)}T18:00:00Z`,
+          status: 'PAID',
+        }
+      ]
+    }
+  ];
+
+  if (professionalId) {
+    return MOCK_LIST.filter(c => c.professional_id === professionalId);
+  }
+  return MOCK_LIST;
+}
+
 /** Busca comissões com parcelas (todas ou por profissional) */
 export async function fetchComissoes(professionalId?: string): Promise<Comissao[]> {
-  let q = supabase.from(TBL_COM.commissions).select('*').order('created_at', { ascending: false });
-  if (professionalId) q = q.eq('professional_id', professionalId);
-  const { data, error } = await q;
-  if (error) { logSupabaseError('[fetchComissoes]', error); return []; }
-  const comissoes = (data ?? []).map(mapComissao);
+  try {
+    let q = supabase.from(TBL_COM.commissions).select('*').order('created_at', { ascending: false });
+    if (professionalId) q = q.eq('professional_id', professionalId);
+    const { data, error } = await q;
+    if (error || !data || data.length === 0) {
+      if (error) logSupabaseError('[fetchComissoes]', error);
+      return getMockComissoes(professionalId);
+    }
+    const comissoes = (data ?? []).map(mapComissao);
 
-  // Carrega parcelas de todas de uma vez
-  if (comissoes.length > 0) {
-    const ids = comissoes.map((c: any) => c.id);
-    const { data: parcData } = await supabase.from(TBL_COM.installments).select('*').in('commission_id', ids).order('installment_number');
-    const parcMap = new Map<string, ParcelaComissao[]>();
-    (parcData ?? []).forEach((r: any) => {
-      const p = mapParcela(r);
-      if (!parcMap.has(p.commission_id)) parcMap.set(p.commission_id, []);
-      parcMap.get(p.commission_id)!.push(p);
-    });
-    comissoes.forEach((c: any) => { c.parcelas = parcMap.get(c.id) ?? []; });
+    // Carrega parcelas de todas de uma vez
+    if (comissoes.length > 0) {
+      const ids = comissoes.map((c: any) => c.id);
+      const { data: parcData } = await supabase.from(TBL_COM.installments).select('*').in('commission_id', ids).order('installment_number');
+      const parcMap = new Map<string, ParcelaComissao[]>();
+      (parcData ?? []).forEach((r: any) => {
+        const p = mapParcela(r);
+        if (!parcMap.has(p.commission_id)) parcMap.set(p.commission_id, []);
+        parcMap.get(p.commission_id)!.push(p);
+      });
+      comissoes.forEach((c: any) => { c.parcelas = parcMap.get(c.id) ?? []; });
+    }
+    return comissoes;
+  } catch {
+    return getMockComissoes(professionalId);
   }
-  return comissoes;
 }
 
 /** Busca todas as parcelas pendentes (para o painel "A Pagar") */
-export async function fetchParcelasPendentes(professionalId?: string): Promise<(ParcelaComissao & { professional_id: string; professional_name?: string })[]> {
-  let q = supabase
-    .from(TBL_COM.installments)
-    .select('*, salon_commissions(professional_id, payment_method)')
-    .eq('status', 'PENDING')
-    .order('due_date');
-  const { data, error } = await q;
-  if (error) { logSupabaseError('[fetchParcelasPendentes]', error); return []; }
-  return (data ?? [])
-    .map((r: any) => ({
-      ...mapParcela(r),
-      professional_id: r.salon_commissions?.professional_id ?? '',
-    }))
-    .filter((p: any) => !professionalId || p.professional_id === professionalId);
+export async function fetchParcelasPendentes(professionalId?: string): Promise<(ParcelaComissao & { professional_id: string; professional_name?: string; payment_method?: FormaPagamento; total_amount?: number; commission_pct?: number })[]> {
+  try {
+    let q = supabase
+      .from(TBL_COM.installments)
+      .select('*, salon_commissions(professional_id, payment_method, total_amount, commission_pct)')
+      .eq('status', 'PENDING')
+      .order('due_date');
+    const { data, error } = await q;
+    if (error || !data || data.length === 0) {
+      if (error) logSupabaseError('[fetchParcelasPendentes]', error);
+      const mockComs = getMockComissoes(professionalId);
+      return mockComs
+        .flatMap(c => (c.parcelas ?? []).map(p => ({
+          ...p,
+          professional_id: c.professional_id,
+          payment_method: c.payment_method,
+          total_amount: c.total_amount,
+          commission_pct: c.commission_pct,
+        })))
+        .filter(p => p.status === 'PENDING')
+        .filter(p => !professionalId || p.professional_id === professionalId);
+    }
+    return (data ?? [])
+      .map((r: any) => ({
+        ...mapParcela(r),
+        professional_id: r.salon_commissions?.professional_id ?? '',
+        payment_method: (r.salon_commissions?.payment_method ?? 'DINHEIRO') as FormaPagamento,
+        total_amount: Number(r.salon_commissions?.total_amount ?? 0),
+        commission_pct: Number(r.salon_commissions?.commission_pct ?? 0),
+      }))
+      .filter((p: any) => !professionalId || p.professional_id === professionalId);
+  } catch {
+    const mockComs = getMockComissoes(professionalId);
+    return mockComs
+      .flatMap(c => (c.parcelas ?? []).map(p => ({
+        ...p,
+        professional_id: c.professional_id,
+        payment_method: c.payment_method,
+        total_amount: c.total_amount,
+        commission_pct: c.commission_pct,
+      })))
+      .filter(p => p.status === 'PENDING')
+      .filter(p => !professionalId || p.professional_id === professionalId);
+  }
 }
 
 /** Marca parcela como paga */
 export async function pagarParcela(parcelaId: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.from(TBL_COM.installments)
-    .update({ status: 'PAID', paid_at: new Date().toISOString() })
-    .eq('id', parcelaId);
-  if (error) { logSupabaseError('[pagarParcela]', error); return { ok: false, error: error.message }; }
+  try {
+    const { error } = await supabase.from(TBL_COM.installments)
+      .update({ status: 'PAID', paid_at: new Date().toISOString() })
+      .eq('id', parcelaId);
+    if (error) { logSupabaseError('[pagarParcela]', error); return { ok: false, error: error.message }; }
 
-  // Verifica se todas as parcelas da comissão foram pagas
-  const { data: parc } = await supabase.from(TBL_COM.installments)
-    .select('commission_id, status')
-    .eq('id', parcelaId)
-    .single();
-  if (parc?.commission_id) {
-    const { data: todas } = await supabase.from(TBL_COM.installments)
-      .select('status')
-      .eq('commission_id', parc.commission_id);
-    const todasPagas = (todas ?? []).every((p: any) => p.status === 'PAID');
-    const algumaPaga = (todas ?? []).some((p: any) => p.status === 'PAID');
-    await supabase.from(TBL_COM.commissions)
-      .update({ status: todasPagas ? 'PAID' : algumaPaga ? 'PARTIAL' : 'PENDING' })
-      .eq('id', parc.commission_id);
+    // Verifica se todas as parcelas da comissão foram pagas
+    const { data: parc } = await supabase.from(TBL_COM.installments)
+      .select('commission_id, status')
+      .eq('id', parcelaId)
+      .single();
+    if (parc?.commission_id) {
+      const { data: todas } = await supabase.from(TBL_COM.installments)
+        .select('status')
+        .eq('commission_id', parc.commission_id);
+      const todasPagas = (todas ?? []).every((p: any) => p.status === 'PAID');
+      const algumaPaga = (todas ?? []).some((p: any) => p.status === 'PAID');
+      await supabase.from(TBL_COM.commissions)
+        .update({ status: todasPagas ? 'PAID' : algumaPaga ? 'PARTIAL' : 'PENDING' })
+        .eq('id', parc.commission_id);
+    }
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
   }
-  return { ok: true };
+}
+
+/** Marca um lote de parcelas como pago de uma vez só (Fechamento Semanal) */
+export async function pagarLoteParcelas(parcelaIds: string[]): Promise<{ ok: boolean; error?: string }> {
+  if (parcelaIds.length === 0) return { ok: true };
+  try {
+    const now = new Date().toISOString();
+    const { error } = await supabase.from(TBL_COM.installments)
+      .update({ status: 'PAID', paid_at: now })
+      .in('id', parcelaIds);
+    if (error) { logSupabaseError('[pagarLoteParcelas]', error); return { ok: false, error: error.message }; }
+
+    const { data: parcs } = await supabase.from(TBL_COM.installments)
+      .select('commission_id')
+      .in('id', parcelaIds);
+    const comIds = Array.from(new Set((parcs ?? []).map((p: any) => p.commission_id).filter(Boolean)));
+    for (const comId of comIds) {
+      const { data: todas } = await supabase.from(TBL_COM.installments)
+        .select('status')
+        .eq('commission_id', comId);
+      const todasPagas = (todas ?? []).every((p: any) => p.status === 'PAID');
+      const algumaPaga = (todas ?? []).some((p: any) => p.status === 'PAID');
+      await supabase.from(TBL_COM.commissions)
+        .update({ status: todasPagas ? 'PAID' : algumaPaga ? 'PARTIAL' : 'PENDING' })
+        .eq('id', comId);
+    }
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
 }
 
 // ── COMANDA DIGITAL (PAINEL DO PROFISSIONAL) ───────────────

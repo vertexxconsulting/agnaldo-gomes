@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { 
-  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker
+  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -231,6 +232,28 @@ export default function MeuPainelPage() {
               <Button variant="secondary" className="flex-1" onClick={() => setCatalogoModalOpen(true)}>
                 <Share2 size={16} /> Abrir Catálogo para Compartilhar
               </Button>
+            </div>
+          </CardGlass>
+
+          <h2 className="text-xl font-bold mt-8 flex items-center gap-2">
+            <DollarSign className="text-gold" />
+            Minhas Comissões & Fechamento Semanal
+          </h2>
+          <CardGlass className="p-6">
+            <p className="text-sm text-foreground/70 mb-4">
+              Consulte seus recebíveis semanais, comissões liberadas e valores em carência de cartão de crédito (D+30).
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/admin/comissoes?aba=fechamento" className="flex-1">
+                <Button variant="secondary" className="w-full text-xs">
+                  <CalendarDays size={15} /> Fechamento Semanal
+                </Button>
+              </Link>
+              <Link href="/admin/comissoes?aba=recebiveis" className="flex-1">
+                <Button variant="primary" className="w-full text-xs">
+                  <DollarSign size={15} /> Consultar Recebíveis (D+30)
+                </Button>
+              </Link>
             </div>
           </CardGlass>
         </div>
