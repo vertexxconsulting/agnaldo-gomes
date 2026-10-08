@@ -144,6 +144,15 @@ export interface Produto {
 
 export type UnidadeEstoque = 'g' | 'ml' | 'un';
 
+export interface ItemComanda {
+  id: string;
+  appointment_id: string;
+  inventory_id: string;
+  type: 'INSUMO' | 'PRODUTO';
+  qty: number;
+  price: number;
+}
+
 /** Produto do estoque interno do salão (insumo e/ou venda) */
 export interface ProdutoEstoque {
   id: UUID;

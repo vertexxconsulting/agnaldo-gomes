@@ -57,6 +57,7 @@ function AgendaContent() {
     is_fixed: false,
     recurrence_type: 'WEEKLY',
     recurrence_custom_day: '',
+    allow_overlap: false,
   });
 
   // Carregar dados do Supabase (com fallback para mock)
@@ -251,6 +252,7 @@ function AgendaContent() {
       is_fixed: false,
       recurrence_type: 'WEEKLY',
       recurrence_custom_day: '',
+      allow_overlap: false,
     });
     setShowForm(true);
   };
@@ -282,7 +284,8 @@ function AgendaContent() {
           canal: 'recepcao',
           is_fixed: formData.is_fixed,
           recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
-          recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null
+          recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null,
+          allow_overlap: formData.allow_overlap
         })
       });
       const data = await res.json();
@@ -303,7 +306,7 @@ function AgendaContent() {
       setAgendamentos(prev => [...prev, novoAgendamento]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '' });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
     } catch (err: any) {
       console.error('Erro ao salvar agendamento:', err);
       alert(`Erro ao salvar no banco: ${err.message}`);
@@ -1091,6 +1094,20 @@ function AgendaContent() {
                     <p className="text-[11px] text-foreground/50 mt-2">O sistema irá marcar este agendamento como fixo para o cliente.</p>
                   </div>
                 )}
+              </div>
+
+              {/* Permitir sobreposição (Encaixe) */}
+              <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={formData.allow_overlap}
+                    onChange={e => setFormData(f => ({ ...f, allow_overlap: e.target.checked }))}
+                    className="w-4 h-4 rounded border-[var(--border-subtle)] bg-[var(--background)] text-gold focus:ring-gold accent-gold"
+                  />
+                  <span className="text-sm font-bold text-foreground">Permitir sobreposição (Encaixe/Pausa)</span>
+                </label>
+                <p className="text-[11px] text-foreground/50 ml-6">Marque caso este atendimento ocorra no mesmo horário de outro já existente na agenda do profissional.</p>
               </div>
 
               {/* 4. Data & Horário Inteligente */}

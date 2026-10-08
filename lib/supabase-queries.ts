@@ -13,7 +13,7 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
   ProdutoEstoque, MovimentacaoEstoque, ServicoProduto,
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
-  InsumoAtendimento,
+  InsumoAtendimento, ItemComanda
 } from './gestao-types';
 
 export function isUUID(str: string): boolean {
@@ -39,6 +39,7 @@ const TBL = {
   profServicos: 'salon_professional_services',
   agendamentos: 'salon_appointments',
   bloqueios: 'salon_schedule_blocks',
+  appointment_items: 'salon_appointment_items',
 } as const;
 
 // ── ENUMS (DB usa UPPERCASE, app usa minúsculas) ───────────
@@ -1272,6 +1273,55 @@ export async function pagarParcela(parcelaId: string): Promise<{ ok: boolean; er
     await supabase.from(TBL_COM.commissions)
       .update({ status: todasPagas ? 'PAID' : algumaPaga ? 'PARTIAL' : 'PENDING' })
       .eq('id', parc.commission_id);
+  }
+  return { ok: true };
+}
+
+// ── COMANDA DIGITAL (PAINEL DO PROFISSIONAL) ───────────────
+
+function mapItemComanda(r: Row): ItemComanda {
+  return {
+    id: r.id,
+    appointment_id: r.appointment_id,
+    inventory_id: r.inventory_id,
+    type: r.type,
+    qty: Number(r.qty),
+    price: Number(r.price),
+  };
+}
+
+export async function fetchItensComanda(appointmentId: string): Promise<ItemComanda[]> {
+  const { data, error } = await supabase
+    .from(TBL.appointment_items)
+    .select('*')
+    .eq('appointment_id', appointmentId);
+  if (error) {
+    logSupabaseError('[fetchItensComanda]', error);
+    return [];
+  }
+  return (data ?? []).map(mapItemComanda);
+}
+
+export async function salvarItemComanda(
+  appointmentId: string, 
+  item: Omit<ItemComanda, 'id' | 'appointment_id'>
+): Promise<{ ok: boolean; error?: string }> {
+  // Faz um upsert: se o mesmo inventory_id e type já existirem pro appointment_id, atualiza a quantidade
+  const payload = {
+    appointment_id: appointmentId,
+    inventory_id: item.inventory_id,
+    type: item.type,
+    qty: item.qty,
+    price: item.price
+  };
+
+  const { error } = await supabase
+    .from(TBL.appointment_items)
+    .upsert(payload, { onConflict: 'appointment_id,inventory_id,type' });
+
+  if (error) {
+    logSupabaseError('[salvarItemComanda]', error);
+    return { ok: false, error: error.message };
   }
   return { ok: true };
 }
