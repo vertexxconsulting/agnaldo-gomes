@@ -99,6 +99,7 @@ export default function ServicosPage() {
       preco_variavel: isVariablePrice,
       preco_maximo: isVariablePrice ? Number(form.get('preco_maximo')) : null,
       default_commission_pct: Number(form.get('default_commission_pct')) || 0,
+      is_addon: form.get('is_addon') === 'on',
     };
 
     if (editando) {
@@ -123,6 +124,7 @@ export default function ServicosPage() {
         preco_variavel: payload.preco_variavel,
         preco_maximo: payload.preco_maximo,
         default_commission_pct: payload.default_commission_pct,
+        is_addon: payload.is_addon,
         ativo: true,
         visivel_app: true,
       }]);
@@ -200,6 +202,12 @@ export default function ServicosPage() {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
                 </div>
               </div>
+              <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-2 mb-2">
+                <input type="checkbox" name="is_addon" id="is_addon_new" className="accent-gold" />
+                <label htmlFor="is_addon_new" className="text-sm text-foreground/80 cursor-pointer">
+                  Marcar como Adicional / Subserviço (Aparece como extra nos agendamentos)
+                </label>
+              </div>
               <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5">
                 <Button type="submit" variant="primary" size="md" className="flex-1">Criar Serviço</Button>
                 <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
@@ -263,6 +271,12 @@ export default function ServicosPage() {
                               <input name="default_commission_pct" type="number" min={0} max={100} step={0.5} required defaultValue={editando?.default_commission_pct ?? 40} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
                             </div>
+                          </div>
+                          <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-2">
+                            <input type="checkbox" name="is_addon" id={`is_addon_edit_${s.id}`} defaultChecked={editando?.is_addon} className="accent-gold" />
+                            <label htmlFor={`is_addon_edit_${s.id}`} className="text-sm text-foreground/80 cursor-pointer">
+                              Marcar como Adicional / Subserviço (Aparece como extra nos agendamentos)
+                            </label>
                           </div>
                           <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5 mt-2">
                             <Button type="submit" variant="primary" size="sm" className="flex-1">Salvar Alterações</Button>

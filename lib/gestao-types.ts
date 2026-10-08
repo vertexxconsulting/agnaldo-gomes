@@ -59,6 +59,7 @@ export interface Servico {
   preco_variavel?: boolean; // Novo: Indica se o serviço tem faixa de preço
   ativo: boolean;
   visivel_app: boolean;
+  is_addon?: boolean;
   points_reward?: number;
   points_cost?: number;
   default_commission_pct?: number;

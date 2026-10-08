@@ -2163,7 +2163,7 @@ function AgendaContent() {
                               className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
                             >
                               <option value="">Selecione...</option>
-                              {servicosDoProfissional.filter(srv => srv.id !== formData.servico_id && !formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId).map(srv => (
+                              {servicosDoProfissional.filter(srv => (srv.is_addon || srv.id === subId) && srv.id !== formData.servico_id && (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)).map(srv => (
                                 <option key={srv.id} value={srv.id}>{srv.nome}</option>
                               ))}
                             </select>
