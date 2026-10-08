@@ -59,6 +59,7 @@ export default function SistemaPage() {
   const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
+  const [agendamentoDireto, setAgendamentoDireto] = useState(false);
   const [whatsappContato, setWhatsappContato] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
@@ -76,6 +77,7 @@ export default function SistemaPage() {
         if (resLoja.ok) {
           const lojaData = await resLoja.json();
           setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
+          setAgendamentoDireto(lojaData.agendamento_direto ?? false);
           setWhatsappContato(lojaData.whatsapp_contato ?? '');
         }
       } catch (e) {
@@ -102,6 +104,24 @@ export default function SistemaPage() {
     } catch (e) {
       console.error('Erro ao salvar config agendamento:', e);
       setAgendamentoAtivo(!novoStatus); // reverte em caso de erro
+    }
+  };
+
+  const toggleAgendamentoDireto = async () => {
+    const novoStatus = !agendamentoDireto;
+    setAgendamentoDireto(novoStatus);
+    try {
+      const res = await fetch('/api/admin/loja/settings');
+      const current = await res.json();
+
+      await fetch('/api/admin/loja/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...current, agendamento_direto: novoStatus }),
+      });
+    } catch (e) {
+      console.error('Erro ao salvar config agendamento direto:', e);
+      setAgendamentoDireto(!novoStatus); // reverte em caso de erro
     }
   };
 
@@ -235,6 +255,34 @@ return (
               className={!agendamentoAtivo ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-none' : 'border-red-500 text-red-500 hover:bg-red-500/10'}
             >
               {agendamentoAtivo ? 'Desabilitar Agendamento' : 'Habilitar Agendamento'}
+            </Button>
+          )}
+        </div>
+      </CardGlass>
+
+      {/* Agendamento Direto pelo Sistema (Novo Fluxo) */}
+      <CardGlass className={`p-6 border-l-4 transition-colors duration-300 ${agendamentoDireto ? 'border-l-blue-500' : 'border-l-foreground/20'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-lg ${agendamentoDireto ? 'bg-blue-500/10 text-blue-500' : 'bg-foreground/10 text-foreground/50'}`}>
+              <CheckCircle2 size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-foreground">Agendamento Automático via Sistema</h3>
+              <p className="text-sm text-foreground/60">
+                {agendamentoDireto 
+                  ? 'Ativo: Os clientes escolhem o serviço e marcam diretamente um horário na agenda pelo sistema, sem precisar ir ao WhatsApp.' 
+                  : 'Inativo: Atualmente o cliente apenas visualiza os serviços e é redirecionado para concluir o agendamento no WhatsApp.'}
+              </p>
+            </div>
+          </div>
+          {!loadingLojaSettings && (
+            <Button 
+              onClick={toggleAgendamentoDireto} 
+              variant={agendamentoDireto ? 'outline' : 'primary'}
+              className={!agendamentoDireto ? 'bg-blue-600 hover:bg-blue-700 text-white border-none' : 'border-foreground/20 hover:bg-foreground/5'}
+            >
+              {agendamentoDireto ? 'Voltar para WhatsApp' : 'Habilitar Agendamento Automático'}
             </Button>
           )}
         </div>

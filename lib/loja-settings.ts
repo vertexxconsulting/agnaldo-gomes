@@ -19,6 +19,7 @@ export interface LojaSettings {
   envio_manual: boolean;
   fidelidade_ativa: boolean;
   agendamento_ativo: boolean;
+  agendamento_direto?: boolean;
   whatsapp_contato?: string;
 }
 
@@ -42,6 +43,7 @@ export async function getLojaSettings(): Promise<LojaSettings | null> {
     envio_manual: data.envio_manual ?? true,
     fidelidade_ativa: data.fidelidade_ativa ?? true,
     agendamento_ativo: data.agendamento_ativo ?? true,
+    agendamento_direto: data.agendamento_direto ?? false,
     whatsapp_contato: data.whatsapp_contato || '',
   };
 }
