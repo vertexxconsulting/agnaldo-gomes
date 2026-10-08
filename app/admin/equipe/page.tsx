@@ -216,7 +216,7 @@ export default function TeamManagementPage() {
                 </td>
                 <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
                 <td className="px-6 py-4">
-                  <span className="px-3 py-1 rounded-full bg-foreground/10 text-foreground text-xs font-bold border border-foreground/20">
+                  <span className="inline-block whitespace-nowrap px-3 py-1 rounded-full bg-foreground/10 text-foreground text-xs font-bold border border-foreground/20">
                     {ROLE_LABELS[profile.role as Role] || profile.role}
                   </span>
                 </td>
