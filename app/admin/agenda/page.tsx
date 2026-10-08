@@ -339,11 +339,11 @@ function AgendaContent() {
       .filter(ps => ps.profissional_id === formData.profissional_id)
       .map(ps => ps.servico_id);
     
-    // Se houver vínculos específicos cadastrados, filtra por eles; senão mostra os serviços ativos
+    // Retorna EXCLUSIVAMENTE os procedimentos vinculados ao profissional (sem fallback geral)
     if (idsVinculados.length > 0) {
       return servicos.filter(s => s.ativo && idsVinculados.includes(s.id));
     }
-    return servicos.filter(s => s.ativo);
+    return [];
   }, [formData.profissional_id, profServicos, servicos]);
 
   // Horários disponíveis calculados cruzando Salão + Profissional + Agendamentos existentes
@@ -2089,7 +2089,9 @@ function AgendaContent() {
                   <option value="">
                     {!formData.profissional_id 
                       ? '← Selecione o profissional primeiro' 
-                      : 'Selecione o procedimento'}
+                      : (servicosDoProfissional.length === 0
+                          ? 'Nenhum procedimento vinculado a este profissional'
+                          : 'Selecione o procedimento')}
                   </option>
                   {servicosDoProfissional.map(s => (
                     <option key={s.id} value={s.id}>

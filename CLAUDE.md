@@ -243,6 +243,21 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.4 Vínculo Estrito de Procedimentos por Profissional no Agendamento
+
+- **Regra de Segurança da Agenda (`/agendamento` e `/admin/agenda`)**:
+  - Ao selecionar o profissional, o sistema consulta a tabela `salon_professional_services` e exibe **apenas e exclusivamente os procedimentos vinculados àquele profissional**.
+  - **Eliminação de Fallback Genérico**: foi extinto o comportamento anterior que retornava todos os serviços do salão caso não houvesse filtro prévio. Manicures (ex: Gabriella e Lohayne) realizam exclusivamente procedimentos de Unhas; Cabeleireiros e auxiliares realizam apenas procedimentos capilares/barba/tratamentos autorizados.
+  - **Interface do Cliente (`/agendamento`)**:
+    - Passo 3 lista somente procedimentos do profissional selecionado, com contador dinâmico de opções.
+    - Barra de busca instantânea e filtro por categorias (ex: Unhas, Cortes, Tratamentos, Coloração).
+    - Estado vazio inteligente: alerta amigável e botão de troca de profissional caso o profissional selecionado não possua procedimentos cadastrados.
+    - Troca de profissional limpa automaticamente qualquer procedimento pré-selecionado para impedir agendamentos cruzados inválidos.
+  - **Agenda Administrativa (`/admin/agenda`)**:
+    - O dropdown de seleção de procedimentos carrega estritamente os procedimentos autorizados para o profissional escolhido, evitando erros operacionais da recepção.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

@@ -43,6 +43,8 @@ export default function AgendamentoPage() {
   // (Step 'data' oculto: data/hora definida pela secretaria do salão)
   const [step, setStep] = useState<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
+  const [buscaServico, setBuscaServico] = useState('');
+  const [catServicoFiltro, setCatServicoFiltro] = useState('todas');
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
   const [copiadoPix, setCopiadoPix] = useState(false);
   const [pixNoivaData, setPixNoivaData] = useState<{
@@ -117,18 +119,35 @@ export default function AgendamentoPage() {
   // Profissional selecionado
   const profissionalSelecionado = profissionais.find(p => p.id === formData.profissionalId);
 
-  // Serviços filtrados pelo profissional selecionado
+  // Serviços filtrados estritamente pelo profissional selecionado (sem fallback geral)
   const servicosDoProfissional = useMemo(() => {
     if (!formData.profissionalId) return [];
     const idsVinculados = profServicos
       .filter(ps => ps.profissional_id === formData.profissionalId)
       .map(ps => ps.servico_id);
 
+    // Retorna EXCLUSIVAMENTE os procedimentos que estão vinculados a este profissional
     if (idsVinculados.length > 0) {
       return servicos.filter(s => s.ativo && s.visivel_app && idsVinculados.includes(s.id));
     }
-    return servicos.filter(s => s.ativo && s.visivel_app);
+    // NUNCA retornar todos os procedimentos se não houver vínculo
+    return [];
   }, [formData.profissionalId, profServicos, servicos]);
+
+  const categoriasProfissional = useMemo(() => {
+    const cats = new Set(servicosDoProfissional.map(s => s.categoria).filter(Boolean));
+    return ['todas', ...Array.from(cats)];
+  }, [servicosDoProfissional]);
+
+  const servicosExibidos = useMemo(() => {
+    return servicosDoProfissional.filter(s => {
+      const matchCat = catServicoFiltro === 'todas' || s.categoria === catServicoFiltro;
+      const matchBusca = !buscaServico.trim() ||
+        s.nome.toLowerCase().includes(buscaServico.toLowerCase()) ||
+        (s.categoria || '').toLowerCase().includes(buscaServico.toLowerCase());
+      return matchCat && matchBusca;
+    });
+  }, [servicosDoProfissional, catServicoFiltro, buscaServico]);
 
   // Serviço selecionado
   const servicoSelecionado = servicos.find(s => s.id === formData.servicoId);
@@ -629,6 +648,8 @@ export default function AgendamentoPage() {
                     onClick={() => {
                       handleInputChange('profissionalId', prof.id);
                       handleInputChange('servicoId', ''); // limpa serviço ao trocar de profissional
+                      setBuscaServico('');
+                      setCatServicoFiltro('todas');
                       nextStep();
                     }}
                     className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 ${
@@ -676,52 +697,122 @@ export default function AgendamentoPage() {
                   <Search size={20} className="text-gold" /> Procedimentos de {profissionalSelecionado?.nome || 'Salão'}
                 </h2>
                 <span className="text-xs text-gold font-mono bg-gold/10 px-2.5 py-1 rounded-full border border-gold/20">
-                  {servicosDoProfissional.length} opções
+                  {servicosDoProfissional.length} {servicosDoProfissional.length === 1 ? 'opção' : 'opções'}
                 </span>
               </div>
-              <p className="text-xs text-foreground/60 mb-6">
-                Valores oficiais do Studio. Todos os serviços são &quot;a partir de&quot; conforme comprimento e necessidade.
+              <p className="text-xs text-foreground/60 mb-4">
+                Procedimentos realizados exclusivamente por {profissionalSelecionado?.nome || 'este profissional'}. Todos os valores são &quot;a partir de&quot;.
               </p>
 
-              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                {servicosDoProfissional.map(servico => {
-                  const isServicoNoiva = servico.categoria === 'Noivas' || servico.nome.toLowerCase().includes('noiva');
-                  const isSelected = formData.servicoId === servico.id;
-
-                  return (
-                    <div
-                      key={servico.id}
-                      onClick={() => {
-                        handleInputChange('servicoId', servico.id);
-                        nextStep();
-                      }}
-                      className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 flex justify-between items-center gap-4 ${
-                        isSelected
-                          ? 'border-gold bg-gold/10 ring-2 ring-primary/20'
-                          : 'border-[var(--border-subtle)] hover:border-gold/40 bg-[var(--background)]'
-                      }`}
+              {/* Se o profissional não tiver procedimentos atrelados */}
+              {servicosDoProfissional.length === 0 ? (
+                <div className="p-8 border border-dashed border-[var(--border-subtle)] rounded-2xl text-center space-y-3 bg-foreground/[0.02] my-4">
+                  <AlertTriangle size={36} className="mx-auto text-amber-400" />
+                  <h3 className="text-base font-bold text-foreground">
+                    Nenhum procedimento disponível para {profissionalSelecionado?.nome || 'este profissional'}
+                  </h3>
+                  <p className="text-xs text-foreground/60 max-w-md mx-auto">
+                    Este profissional não possui procedimentos vinculados para agendamento online no momento. Por favor, volte e escolha outro profissional da equipe.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      className="px-4 py-2 text-xs font-semibold rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
                     >
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                          {isServicoNoiva && <Crown size={16} className="text-amber-500 shrink-0" />}
-                          <span className="truncate">{servico.nome}</span>
-                        </h3>
-                        <span className="text-[11px] text-foreground/50 block mt-0.5">{servico.categoria}</span>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="font-bold text-gold text-base text-right max-w-[120px] leading-tight block">
-                          {servico.preco_variavel 
-                            ? (servico.preco_maximo 
-                                ? `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')} a R$ ${Number(servico.preco_maximo).toFixed(2).replace('.', ',')}` 
-                                : `A partir de R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`)
-                            : `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`}
-                        </span>
-                        <span className="text-[11px] text-foreground/50 block">{servico.duracao_min} min</span>
-                      </div>
+                      ← Escolher outro profissional
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Busca e Filtro de Categorias */}
+                  <div className="space-y-2.5 mb-4">
+                    <div className="relative">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                      <input
+                        type="text"
+                        placeholder="Buscar procedimento por nome..."
+                        value={buscaServico}
+                        onChange={(e) => setBuscaServico(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-gold placeholder:text-foreground/40"
+                      />
                     </div>
-                  );
-                })}
-              </div>
+
+                    {categoriasProfissional.length > 2 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {categoriasProfissional.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setCatServicoFiltro(cat)}
+                            className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                              catServicoFiltro === cat
+                                ? 'bg-gold/15 border-gold/40 text-gold font-bold'
+                                : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                            }`}
+                          >
+                            {cat === 'todas' ? 'Todos' : cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {servicosExibidos.length === 0 ? (
+                    <div className="p-6 border border-dashed border-[var(--border-subtle)] rounded-xl text-center text-xs text-foreground/50 my-4">
+                      Nenhum procedimento encontrado para &quot;{buscaServico}&quot;.
+                      <button
+                        type="button"
+                        onClick={() => { setBuscaServico(''); setCatServicoFiltro('todas'); }}
+                        className="block mx-auto text-gold font-semibold mt-2 hover:underline"
+                      >
+                        Limpar filtros
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                      {servicosExibidos.map(servico => {
+                        const isServicoNoiva = servico.categoria === 'Noivas' || servico.nome.toLowerCase().includes('noiva');
+                        const isSelected = formData.servicoId === servico.id;
+
+                        return (
+                          <div
+                            key={servico.id}
+                            onClick={() => {
+                              handleInputChange('servicoId', servico.id);
+                              nextStep();
+                            }}
+                            className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 flex justify-between items-center gap-4 ${
+                              isSelected
+                                ? 'border-gold bg-gold/10 ring-2 ring-primary/20'
+                                : 'border-[var(--border-subtle)] hover:border-gold/40 bg-[var(--background)]'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                                {isServicoNoiva && <Crown size={16} className="text-amber-500 shrink-0" />}
+                                <span className="truncate">{servico.nome}</span>
+                              </h3>
+                              <span className="text-[11px] text-foreground/50 block mt-0.5">{servico.categoria}</span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="font-bold text-gold text-base text-right max-w-[120px] leading-tight block">
+                                {servico.preco_variavel 
+                                  ? (servico.preco_maximo 
+                                      ? `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')} a R$ ${Number(servico.preco_maximo).toFixed(2).replace('.', ',')}` 
+                                      : `A partir de R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`)
+                                  : `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`}
+                              </span>
+                              <span className="text-[11px] text-foreground/50 block">{servico.duracao_min} min</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
 
               <div className="flex justify-between items-center mt-6 pt-4 border-t border-[var(--border-subtle)]">
                 <button type="button" onClick={prevStep} className="text-xs text-foreground/60 hover:text-foreground font-semibold">
