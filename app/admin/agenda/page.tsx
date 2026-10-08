@@ -758,45 +758,31 @@ function AgendaContent() {
           </div>
         </div>
 
-        {/* Filtro Profissionais (Cards) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
-          <button
-            onClick={() => setProfFiltro('todos')}
-            className={`shrink-0 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${
-              profFiltro === 'todos' 
-                ? 'bg-gold border-gold text-background shadow-md' 
-                : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
-            }`}
+        {/* Filtro Profissionais (Select) */}
+        <div className="relative w-full max-w-md">
+          <User2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gold pointer-events-none" />
+          <select
+            value={profFiltro}
+            onChange={(e) => setProfFiltro(e.target.value)}
+            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-gold rounded-xl pl-10 pr-10 py-3 text-sm font-bold text-foreground appearance-none shadow-sm cursor-pointer transition-colors hover:border-gold/50"
           >
-            {categoriaFiltro === 'todas' ? 'Todos os Profissionais' : `Todos (${categoriaFiltro})`}
-            <span className="ml-1.5 text-xs opacity-80 font-mono">({profissionaisFiltradosPorCategoria.length})</span>
-          </button>
-          {profissionaisFiltradosPorCategoria.map(p => {
-            const cat = getCategoriaProfissional(p);
-            return (
-              <button
-                key={p.id}
-                onClick={() => setProfFiltro(p.id)}
-                className={`shrink-0 px-4 py-2 rounded-xl border text-sm font-bold transition-all flex items-center gap-2 ${
-                  profFiltro === p.id 
-                    ? 'bg-gold border-gold text-background shadow-md' 
-                    : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
-                }`}
-              >
-                {p.foto_url ? (
-                  <img src={p.foto_url} alt={p.nome} className="w-5 h-5 rounded-full object-cover border border-background/20" />
-                ) : (
-                  <User2 size={16} className={profFiltro === p.id ? 'text-background/80' : 'text-gold'} />
-                )}
-                <span>{p.nome}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                  profFiltro === p.id ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-                }`}>
-                  {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
-                </span>
-              </button>
-            );
-          })}
+            <option value="todos" className="font-bold">
+              {categoriaFiltro === 'todas' ? 'Todos os Profissionais' : `Todos (${categoriaFiltro})`} ({profissionaisFiltradosPorCategoria.length})
+            </option>
+            {profissionaisFiltradosPorCategoria.map(p => {
+              const cat = getCategoriaProfissional(p);
+              return (
+                <option key={p.id} value={p.id} className="font-medium">
+                  {p.nome} — {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                </option>
+              );
+            })}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </div>
         </div>
       </div>
 
