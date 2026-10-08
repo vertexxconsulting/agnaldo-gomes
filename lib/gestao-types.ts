@@ -222,6 +222,11 @@ export interface PaymentFee {
   updated_at?: string;
 }
 
+export interface ConfigTaxas {
+  descontarTaxaComissao: boolean;
+}
+
+
 // ── COMISSÕES DOS PROFISSIONAIS ────────────────────────────
 
 export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO' | 'BOLETO';

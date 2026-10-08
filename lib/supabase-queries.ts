@@ -13,7 +13,7 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
   ProdutoEstoque, MovimentacaoEstoque, ServicoProduto,
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
-  InsumoAtendimento, ItemComanda
+  InsumoAtendimento, ItemComanda, PaymentFee, ConfigTaxas
 } from './gestao-types';
 
 export function isUUID(str: string): boolean {
@@ -1163,16 +1163,236 @@ export async function excluirRegraComissao(id: string): Promise<{ ok: boolean; e
   }
 }
 
-/** Calcula a taxa administrativa/maquininha com base na forma de pagamento e parcelas */
-export function getTaxaCartao(method: FormaPagamento, parcelas: number): number {
-  if (method === 'DINHEIRO' || method === 'PIX') return 0;
-  if (method === 'DEBITO') return 1.99; // Exemplo: 1.99% débito
-  if (method === 'CREDITO') {
-    if (parcelas <= 1) return 4.98; // Exemplo: 4.98% crédito à vista
-    // Exemplo: 4.98% base + 1.5% por parcela adicional
-    return 4.98 + (1.5 * (parcelas - 1));
+// ══════════════════════════════════════════════════════════════
+// TAXAS DE PAGAMENTO E MAQUININHAS (GATEWAYS / CARTÕES)
+// ══════════════════════════════════════════════════════════════
+
+export interface ResultadoCalculoTaxa {
+  regra: PaymentFee | null;
+  regraNome: string;
+  feePercentage: number;
+  feeFixed: number;
+  daysToReceive: number;
+  valorTaxa: number;
+  valorLiquido: number;
+}
+
+/** Busca todas as regras de taxas de maquininhas e configurações gerais */
+export async function fetchTaxasPagamento(): Promise<{ taxas: PaymentFee[]; config: ConfigTaxas }> {
+  try {
+    const res = await fetch('/api/admin/taxas');
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        taxas: data.taxas ?? [],
+        config: data.config ?? { descontarTaxaComissao: true },
+      };
+    }
+  } catch (e) {
+    console.warn('[fetchTaxasPagamento API error, fallback direto]', e);
   }
-  return 0;
+
+  // Fallback direto via Supabase client
+  try {
+    const { data, error } = await supabase
+      .from('payment_fees')
+      .select('*')
+      .order('active', { ascending: false })
+      .order('payment_type', { ascending: true })
+      .order('fee_percentage', { ascending: true });
+    if (!error && data) {
+      return {
+        taxas: data as PaymentFee[],
+        config: { descontarTaxaComissao: true },
+      };
+    }
+  } catch (err) {
+    logSupabaseError('[fetchTaxasPagamento supabase]', err);
+  }
+
+  return {
+    taxas: [
+      { id: '1', name: 'Dinheiro', payment_type: 'dinheiro', fee_percentage: 0, fee_fixed: 0, days_to_receive: 0, active: true, created_at: '' },
+      { id: '2', name: 'Pix', payment_type: 'pix', fee_percentage: 0.99, fee_fixed: 0, days_to_receive: 0, active: true, created_at: '' },
+      { id: '3', name: 'Débito', payment_type: 'debito', fee_percentage: 1.99, fee_fixed: 0, days_to_receive: 1, active: true, created_at: '' },
+      { id: '4', name: 'Crédito à Vista', payment_type: 'credito', fee_percentage: 3.19, fee_fixed: 0, days_to_receive: 30, active: true, created_at: '' },
+      { id: '5', name: 'Crédito Parcelado', payment_type: 'credito', fee_percentage: 3.79, fee_fixed: 0, days_to_receive: 30, active: true, created_at: '' },
+    ],
+    config: { descontarTaxaComissao: true },
+  };
+}
+
+/** Cria ou atualiza uma regra de taxa de maquininha */
+export async function salvarTaxaPagamento(taxa: Partial<PaymentFee>): Promise<{ ok: boolean; taxa?: PaymentFee; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/taxas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taxa),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao salvar regra de taxa.' };
+    }
+    return { ok: true, taxa: json.taxa };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro ao conectar ao servidor.' };
+  }
+}
+
+/** Exclui uma regra de taxa de maquininha */
+export async function excluirTaxaPagamento(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/taxas?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao excluir regra de taxa.' };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro ao excluir taxa.' };
+  }
+}
+
+/** Atualiza configuração global (ex: descontar ou não taxa da comissão) */
+export async function salvarConfigTaxas(config: ConfigTaxas): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/taxas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao salvar configuração.' };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro ao salvar configuração.' };
+  }
+}
+
+/** Alterna status ativo/inativo de uma regra de taxa */
+export async function alternarStatusTaxa(id: string, active: boolean): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/taxas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, active }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: json.error || 'Erro ao alterar status da taxa.' };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro ao conectar.' };
+  }
+}
+
+/** Calcula a taxa administrativa/maquininha com base na forma de pagamento e regras */
+export function calcularTaxaMaquininha(
+  method: FormaPagamento | string,
+  parcelas: number = 1,
+  valorBruto: number = 0,
+  taxasCustom?: PaymentFee[]
+): ResultadoCalculoTaxa {
+  const normMethod = String(method || '').toUpperCase();
+  const numParc = Math.max(1, parcelas || 1);
+
+  if (normMethod === 'DINHEIRO') {
+    return {
+      regra: null,
+      regraNome: 'Dinheiro',
+      feePercentage: 0,
+      feeFixed: 0,
+      daysToReceive: 0,
+      valorTaxa: 0,
+      valorLiquido: valorBruto,
+    };
+  }
+
+  // Se foram passadas regras customizadas (ou ativas carregadas do banco)
+  if (taxasCustom && taxasCustom.length > 0) {
+    const ativas = taxasCustom.filter(t => t.active);
+    let matched: PaymentFee | undefined;
+
+    if (normMethod === 'PIX') {
+      matched = ativas.find(t => t.payment_type === 'pix');
+    } else if (normMethod === 'DEBITO') {
+      matched = ativas.find(t => t.payment_type === 'debito');
+    } else if (normMethod === 'CREDITO') {
+      if (numParc > 1) {
+        matched = ativas.find(t => t.payment_type === 'credito' && /parcel/i.test(t.name))
+          || ativas.filter(t => t.payment_type === 'credito').sort((a, b) => b.fee_percentage - a.fee_percentage)[0];
+      } else {
+        matched = ativas.find(t => t.payment_type === 'credito' && /vista/i.test(t.name))
+          || ativas.find(t => t.payment_type === 'credito');
+      }
+    } else if (normMethod === 'BOLETO') {
+      matched = ativas.find(t => t.payment_type === 'boleto');
+    }
+
+    if (matched) {
+      const valorTaxa = Number(((valorBruto * (matched.fee_percentage / 100)) + (matched.fee_fixed || 0)).toFixed(2));
+      const valorLiquido = Math.max(0, Number((valorBruto - valorTaxa).toFixed(2)));
+      return {
+        regra: matched,
+        regraNome: matched.name,
+        feePercentage: Number(matched.fee_percentage),
+        feeFixed: Number(matched.fee_fixed || 0),
+        daysToReceive: matched.days_to_receive,
+        valorTaxa,
+        valorLiquido,
+      };
+    }
+  }
+
+  // Fallbacks padrão inteligentes
+  let pct = 0;
+  let fixed = 0;
+  let days = 0;
+  let nome = normMethod;
+
+  if (normMethod === 'PIX') {
+    pct = 0.99;
+    days = 0;
+    nome = 'Pix';
+  } else if (normMethod === 'DEBITO') {
+    pct = 1.99;
+    days = 1;
+    nome = 'Débito';
+  } else if (normMethod === 'CREDITO') {
+    if (numParc <= 1) {
+      pct = 3.19;
+      days = 30;
+      nome = 'Crédito à Vista';
+    } else {
+      pct = 3.79 + (0.5 * (numParc - 1));
+      days = 30;
+      nome = `Crédito Parcelado (${numParc}x)`;
+    }
+  }
+
+  const valorTaxa = Number(((valorBruto * (pct / 100)) + fixed).toFixed(2));
+  const valorLiquido = Math.max(0, Number((valorBruto - valorTaxa).toFixed(2)));
+
+  return {
+    regra: null,
+    regraNome: nome,
+    feePercentage: pct,
+    feeFixed: fixed,
+    daysToReceive: days,
+    valorTaxa,
+    valorLiquido,
+  };
+}
+
+/** Calcula o percentual de taxa da maquininha (compatibilidade retroativa) */
+export function getTaxaCartao(method: FormaPagamento, parcelas: number, taxas?: PaymentFee[]): number {
+  return calcularTaxaMaquininha(method, parcelas, 100, taxas).feePercentage;
 }
 
 /** Cria comissão + parcelas ao finalizar atendimento */
@@ -1184,6 +1404,8 @@ export async function criarComissao(params: {
   paymentMethod: FormaPagamento;
   installments: number;
   appointmentDate: string; // YYYY-MM-DD
+  taxasCustom?: PaymentFee[];
+  descontarTaxaMaquininha?: boolean;
 }): Promise<{ ok: boolean; commissionId?: string; error?: string }> {
   const pct = await getComissaoPct(params.professionalId, params.serviceId);
   if (pct === 0) return { ok: true }; // sem regra de comissão configurada
@@ -1195,16 +1417,29 @@ export async function criarComissao(params: {
     numParcelas = 3;
   }
 
-  // Lógica de Taxas do Cartão: Descontar a taxa da bandeira antes de calcular a comissão
-  const taxaPercent = getTaxaCartao(params.paymentMethod, numParcelas);
-  const valorTaxa = params.totalAmount * (taxaPercent / 100);
-  const valorLiquidoParaSplit = params.totalAmount - valorTaxa;
+  // 1. Busca regras de taxas e configuração se não foram passadas
+  let taxas = params.taxasCustom;
+  let descontar = params.descontarTaxaMaquininha;
 
-  // Calcula a comissão sobre o valor líquido (após taxa da maquininha)
-  const totalComissao = Number((valorLiquidoParaSplit * pct / 100).toFixed(2));
+  if (!taxas || descontar === undefined) {
+    try {
+      const configData = await fetchTaxasPagamento();
+      if (!taxas) taxas = configData.taxas;
+      if (descontar === undefined) descontar = configData.config.descontarTaxaComissao;
+    } catch {
+      descontar = true;
+    }
+  }
+
+  // 2. Lógica de Taxas do Cartão: Descontar a taxa da operadora antes de calcular a comissão
+  const taxaCalc = calcularTaxaMaquininha(params.paymentMethod, numParcelas, params.totalAmount, taxas);
+  const valorBaseSplit = descontar ? taxaCalc.valorLiquido : params.totalAmount;
+
+  // 3. Calcula a comissão sobre a base (líquida após taxa da maquininha se ativo)
+  const totalComissao = Number((valorBaseSplit * pct / 100).toFixed(2));
   const valorParcela = Number((totalComissao / numParcelas).toFixed(2));
 
-  // Insere comissão
+  // 4. Insere comissão
   const { data: com, error: comErr } = await supabase.from(TBL_COM.commissions).insert({
     appointment_id: params.appointmentId,
     professional_id: params.professionalId,
@@ -1221,25 +1456,37 @@ export async function criarComissao(params: {
     return { ok: false, error: comErr?.message };
   }
 
-  // Insere parcelas (Importante: Cartão de Crédito é pago 30 dias após o recebimento)
+  // 5. Insere parcelas com data de vencimento baseada no prazo real de compensação
   const baseDate = new Date(params.appointmentDate + 'T12:00:00');
+  const daysToReceive = taxaCalc.daysToReceive;
+
   const parcelas = Array.from({ length: numParcelas }, (_, i) => {
     const due = new Date(baseDate);
     if (params.paymentMethod === 'CREDITO') {
-      // Regra oficial: comissões de cartão de crédito são pagas 30 dias após o recebimento (D+30 por parcela)
-      due.setDate(due.getDate() + 30 * (i + 1));
+      // Usa o prazo da operadora (ex: D+30 por parcela)
+      const diasPrazo = daysToReceive > 0 ? daysToReceive : 30;
+      due.setDate(due.getDate() + diasPrazo * (i + 1));
+    } else if (params.paymentMethod === 'DEBITO') {
+      // Débito: D+1 ou D+0
+      due.setDate(due.getDate() + daysToReceive);
     } else {
-      // Dinheiro, PIX, Débito: disponível de imediato na data do atendimento
+      // Dinheiro, PIX: disponível de imediato (D+0)
       if (i > 0) due.setMonth(due.getMonth() + i);
     }
+
+    const noteDesc = taxaCalc.valorTaxa > 0
+      ? `Taxa ${taxaCalc.regraNome} (${taxaCalc.feePercentage}% = -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaCalc.valorTaxa)})${descontar ? ' descontada da base' : ' (salão absorveu)'}`
+      : null;
+
     return {
       commission_id: com.id,
       installment_number: i + 1,
       amount: i === numParcelas - 1
-        ? Number((totalComissao - valorParcela * (numParcelas - 1)).toFixed(2)) // ajuste centavos na última
+        ? Number((totalComissao - valorParcela * (numParcelas - 1)).toFixed(2)) // ajuste de centavos
         : valorParcela,
       due_date: due.toISOString().split('T')[0],
       status: 'PENDING',
+      notes: noteDesc,
     };
   });
 

@@ -13,9 +13,10 @@ import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
 import {
   fetchEstoque, salvarProdutoEstoque, registrarMovimentacao,
-  fetchMovimentacoes, fetchClientes, fetchProfissionais, criarComissao
+  fetchMovimentacoes, fetchClientes, fetchProfissionais, criarComissao,
+  fetchTaxasPagamento, calcularTaxaMaquininha
 } from '@/lib/supabase-queries';
-import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque, Cliente, Profissional, FormaPagamento } from '@/lib/gestao-types';
+import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque, Cliente, Profissional, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number, u: string) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${u}`;
@@ -65,6 +66,7 @@ export default function EstoquePage() {
   const [movs, setMovs] = useState<MovimentacaoEstoque[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [taxasPagamento, setTaxasPagamento] = useState<PaymentFee[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [catFiltro, setCatFiltro] = useState('todas');
@@ -104,16 +106,18 @@ export default function EstoquePage() {
 
   const carregarDados = async () => {
     setLoading(true);
-    const [prods, movimentacoes, clis, profs] = await Promise.all([
+    const [prods, movimentacoes, clis, profs, taxasRes] = await Promise.all([
       fetchEstoque(),
       fetchMovimentacoes(),
       fetchClientes(),
-      fetchProfissionais()
+      fetchProfissionais(),
+      fetchTaxasPagamento()
     ]);
     setProdutos(prods);
     setMovs(movimentacoes);
     setClientes(clis);
     setProfissionais(profs);
+    setTaxasPagamento(taxasRes.taxas || []);
     setLoading(false);
   };
 
@@ -277,6 +281,11 @@ export default function EstoquePage() {
   const valorDescVenda = Math.min(subtotalVenda, Math.max(0, parseFloat(vendaDescValor) || 0));
   const totalFinalVenda = Math.max(0, subtotalVenda - valorDescVenda);
 
+  const taxaMaqVenda = useMemo(() => {
+    const numParcelas = vendaPagamento === 'CREDITO' ? vendaParcelas : 1;
+    return calcularTaxaMaquininha(vendaPagamento, numParcelas, totalFinalVenda, taxasPagamento);
+  }, [totalFinalVenda, vendaPagamento, vendaParcelas, taxasPagamento]);
+
   const registrarVenda = async () => {
     if (vendaItens.length === 0) {
       return alert('Adicione pelo menos um produto ao carrinho de venda.');
@@ -314,7 +323,7 @@ export default function EstoquePage() {
         });
       }
 
-      // 2. Se houver profissional vendedor, registrar comissão com valor líquido pós-desconto
+      // 2. Se houver profissional vendedor, registrar comissão com valor líquido pós-desconto e taxa de máquina
       if (vendaProfissionalId) {
         const hojeIso = new Date().toISOString().split('T')[0];
         await criarComissao({
@@ -325,6 +334,7 @@ export default function EstoquePage() {
           paymentMethod: vendaPagamento,
           installments: vendaPagamento === 'CREDITO' ? vendaParcelas : 1,
           appointmentDate: hojeIso,
+          taxasCustom: taxasPagamento,
         });
       }
 
@@ -336,8 +346,9 @@ export default function EstoquePage() {
         vendaItens.map(it => `• ${it.name} (${it.qty}x ${fmt(it.precoUnit)}) = ${fmt(it.precoUnit * it.qty)}`).join('\n') +
         `\n\nSubtotal: ${fmt(subtotalVenda)}` +
         (valorDescVenda > 0 ? `\nDesconto: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)` : '') +
-        `\nTotal Líquido a Pagar: ${fmt(totalFinalVenda)}` +
-        `\n\nEstoque atualizado e comissão registrada.`
+        `\nTotal Cobrado do Cliente: ${fmt(totalFinalVenda)}` +
+        (taxaMaqVenda.valorTaxa > 0 ? `\nTaxa Maquininha (${taxaMaqVenda.regraNome || vendaPagamento}): -${fmt(taxaMaqVenda.valorTaxa)} (${taxaMaqVenda.feePercentage}%)\nRecebimento Líquido Salão: ${fmt(taxaMaqVenda.valorLiquido)} (Previsão: ${taxaMaqVenda.daysToReceive === 0 ? 'D+0' : `D+${taxaMaqVenda.daysToReceive}`})` : '') +
+        `\n\nEstoque atualizado e comissão registrada com deduções de taxa.`
       );
     } catch (err: any) {
       console.error('Erro ao registrar venda:', err);
@@ -1198,13 +1209,32 @@ export default function EstoquePage() {
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)]">
-                  <span className="text-sm font-bold text-foreground">Total Líquido a Pagar:</span>
+                  <span className="text-sm font-bold text-foreground">Total Cobrado do Cliente:</span>
                   <span className="text-xl font-bold font-serif text-gold font-mono">{fmt(totalFinalVenda)}</span>
                 </div>
                 {vendaPagamento === 'CREDITO' && vendaParcelas > 1 && (
                   <p className="text-right text-[11px] text-blue-400">
                     {vendaParcelas}x de {fmt(totalFinalVenda / vendaParcelas)}
                   </p>
+                )}
+
+                {/* Taxa da Maquininha e Líquido Salão */}
+                {taxaMaqVenda.valorTaxa > 0 && (
+                  <div className="mt-2 pt-2 border-t border-dashed border-[var(--border-subtle)] space-y-1 bg-amber-500/5 p-2 rounded-lg">
+                    <div className="flex justify-between text-amber-500 font-medium">
+                      <span>Taxa Maquininha ({taxaMaqVenda.regraNome || vendaPagamento} • {taxaMaqVenda.feePercentage}%):</span>
+                      <span className="font-mono">- {fmt(taxaMaqVenda.valorTaxa)}</span>
+                    </div>
+                    <div className="flex justify-between text-foreground/80 font-semibold">
+                      <span>Líquido Salão (Previsão {taxaMaqVenda.daysToReceive === 0 ? 'D+0' : `D+${taxaMaqVenda.daysToReceive}`}):</span>
+                      <span className="font-mono text-emerald-400 font-bold">{fmt(taxaMaqVenda.valorLiquido)}</span>
+                    </div>
+                    {vendaProfissionalId && (
+                      <p className="text-[10px] text-foreground/50 italic">
+                        * A taxa da maquininha é deduzida da base de comissão do vendedor conforme a regra do salão.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

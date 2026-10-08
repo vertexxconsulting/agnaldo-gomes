@@ -7,12 +7,12 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
-import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento } from '@/lib/gestao-types';
+import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
 import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
@@ -90,6 +90,7 @@ function AgendaContent() {
   // Pagamento e comissão
   const [checkoutPagamento, setCheckoutPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [checkoutParcelas, setCheckoutParcelas] = useState<number>(1);
+  const [taxasPagamento, setTaxasPagamento] = useState<PaymentFee[]>([]);
 
   // Desconto no Atendimento (com ajuste sincronizado entre % e R$)
   const [checkoutDescontoPct, setCheckoutDescontoPct] = useState<string>('');
@@ -254,10 +255,15 @@ function AgendaContent() {
       setClientes(clientesData);
       setServicos(servicosData);
       setProfServicos(profServData);
-      // Carrega estoque e vínculos serviço-produto
-      const [estoqueData, spData] = await Promise.all([fetchEstoque(true), fetchTodosServicoProdutos()]);
+      // Carrega estoque, vínculos serviço-produto e taxas de pagamento
+      const [estoqueData, spData, taxasData] = await Promise.all([
+        fetchEstoque(true),
+        fetchTodosServicoProdutos(),
+        fetchTaxasPagamento()
+      ]);
       setEstoque(estoqueData);
       setServicoProdutos(spData);
+      setTaxasPagamento(taxasData.taxas);
       setLoading(false);
     };
     carregarDados();
@@ -1662,6 +1668,22 @@ function AgendaContent() {
                           <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>
                         </div>
                       )}
+                      {(() => {
+                        const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalGeral, taxasPagamento);
+                        if (taxaMaq.valorTaxa <= 0) return null;
+                        return (
+                          <>
+                            <div className="flex justify-between text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                              <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
+                              <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
+                            </div>
+                            <div className="flex justify-between text-blue-400 text-xs font-bold">
+                              <span>Líquido Real da Venda (Salão)</span>
+                              <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorLiquido)}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                     
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
@@ -1681,6 +1703,7 @@ function AgendaContent() {
                           Cancelar
                         </Button>
                         <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
+                          const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalGeral, taxasPagamento);
                           // 1. Finalizar o atendimento principal
                           await mudarStatus(checkoutAppt.id, 'concluido');
                           
@@ -1730,7 +1753,7 @@ function AgendaContent() {
                             }
                           }
 
-                          // 4. Gerar comissão para o profissional (com o valor líquido recebido pós-desconto)
+                          // 4. Gerar comissão para o profissional (com o valor líquido recebido pós-desconto e pós-taxa de cartão)
                           const descDetalhes = valorDesconto > 0 
                             ? ` [Desc Geral: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct}%)${checkoutDescontoMotivo ? ` - ${checkoutDescontoMotivo}` : ''}]` 
                             : '';
@@ -1743,10 +1766,11 @@ function AgendaContent() {
                             paymentMethod: checkoutPagamento,
                             installments: checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1,
                             appointmentDate: checkoutAppt.data,
+                            taxasCustom: taxasPagamento,
                           });
                           
                           fecharCheckout();
-                          alert(`Atendimento concluído com sucesso!\nTotal recebido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}${valorDesconto > 0 ? `\nDesconto concedido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct || '0'}%)` : ''}\nInsumos, produtos e comissão registrados.`);
+                          alert(`Atendimento concluído com sucesso!\nTotal recebido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}${valorDesconto > 0 ? `\nDesconto cliente: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct || '0'}%)` : ''}${taxaMaq.valorTaxa > 0 ? `\nTaxa maquininha (${taxaMaq.regraNome}): -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}\nLíquido do Salão: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorLiquido)}` : ''}\nInsumos, produtos e comissão registrados.`);
                         }}>
                           Confirmar Recebimento
                         </Button>

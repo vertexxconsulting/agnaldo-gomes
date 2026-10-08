@@ -6,7 +6,8 @@ import {
   Plus, Edit, Trash2, X, TrendingUp, CreditCard,
   Banknote, Smartphone, RefreshCw, Filter, SlidersHorizontal,
   CalendarDays, Calendar, ChevronLeft, ChevronRight, Info,
-  Check, Copy, Printer, Sparkles, Share2, Search, ArrowRight
+  Check, Copy, Printer, Sparkles, Share2, Search, ArrowRight,
+  Calculator, ShieldCheck, CheckCircle
 } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
@@ -15,10 +16,12 @@ import {
   fetchRegrasComissao, salvarRegraComissao, excluirRegraComissao,
   fetchComissoes, fetchParcelasPendentes, pagarParcela, pagarLoteParcelas,
   fetchProfissionais, fetchServicos,
+  fetchTaxasPagamento, salvarTaxaPagamento, excluirTaxaPagamento,
+  salvarConfigTaxas, alternarStatusTaxa, calcularTaxaMaquininha
 } from '@/lib/supabase-queries';
 import type {
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
-  Profissional, Servico
+  Profissional, Servico, PaymentFee, ConfigTaxas
 } from '@/lib/gestao-types';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -190,6 +193,35 @@ export default function ComissoesPage() {
   const [salvandoRegra, setSalvandoRegra] = useState(false);
   const [erroModal, setErroModal] = useState<string | null>(null);
 
+  // Estados de Taxas e Maquininhas
+  const [taxas, setTaxas] = useState<PaymentFee[]>([]);
+  const [descontarTaxaComissao, setDescontarTaxaComissao] = useState<boolean>(true);
+  const [salvandoConfigTaxa, setSalvandoConfigTaxa] = useState(false);
+  const [modalTaxaAberto, setModalTaxaAberto] = useState(false);
+  const [taxaEmEdicao, setTaxaEmEdicao] = useState<PaymentFee | null>(null);
+  const [formTaxa, setFormTaxa] = useState<{
+    name: string;
+    payment_type: 'credito' | 'debito' | 'pix' | 'dinheiro' | 'boleto';
+    fee_percentage: number;
+    fee_fixed: number;
+    days_to_receive: number;
+    active: boolean;
+  }>({
+    name: '',
+    payment_type: 'credito',
+    fee_percentage: 3.19,
+    fee_fixed: 0,
+    days_to_receive: 30,
+    active: true,
+  });
+  const [salvandoTaxa, setSalvandoTaxa] = useState(false);
+  const [erroModalTaxa, setErroModalTaxa] = useState<string | null>(null);
+
+  // Estados do Simulador de Taxas
+  const [simValor, setSimValor] = useState<number>(100);
+  const [simRegraId, setSimRegraId] = useState<string>('');
+  const [simComissaoPct, setSimComissaoPct] = useState<number>(50);
+
   useEffect(() => {
     carregarDados();
     if (typeof window !== 'undefined') {
@@ -209,16 +241,101 @@ export default function ComissoesPage() {
 
   const carregarDados = async () => {
     setLoading(true);
-    const [profs, svcs, rgs, coms, parcs] = await Promise.all([
+    const [profs, svcs, rgs, coms, parcs, taxasData] = await Promise.all([
       fetchProfissionais(), fetchServicos(), fetchRegrasComissao(),
-      fetchComissoes(), fetchParcelasPendentes(),
+      fetchComissoes(), fetchParcelasPendentes(), fetchTaxasPagamento(),
     ]);
     setProfissionais(profs.filter(p => p.ativo));
     setServicos(svcs.filter(s => s.ativo));
     setRegras(rgs);
     setComissoes(coms);
     setParcelas(parcs as any);
+    setTaxas(taxasData.taxas);
+    setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
+    if (taxasData.taxas.length > 0) {
+      const defaultCard = taxasData.taxas.find(t => t.payment_type === 'credito' && t.active) || taxasData.taxas[0];
+      setSimRegraId(defaultCard.id);
+    }
     setLoading(false);
+  };
+
+  const abrirNovaTaxa = () => {
+    setTaxaEmEdicao(null);
+    setFormTaxa({
+      name: '',
+      payment_type: 'credito',
+      fee_percentage: 3.19,
+      fee_fixed: 0,
+      days_to_receive: 30,
+      active: true,
+    });
+    setErroModalTaxa(null);
+    setModalTaxaAberto(true);
+  };
+
+  const abrirEdicaoTaxa = (t: PaymentFee) => {
+    setTaxaEmEdicao(t);
+    setFormTaxa({
+      name: t.name,
+      payment_type: t.payment_type,
+      fee_percentage: Number(t.fee_percentage),
+      fee_fixed: Number(t.fee_fixed),
+      days_to_receive: t.days_to_receive,
+      active: t.active,
+    });
+    setErroModalTaxa(null);
+    setModalTaxaAberto(true);
+  };
+
+  const handleSalvarTaxa = async () => {
+    if (!formTaxa.name.trim()) {
+      setErroModalTaxa('Informe o nome da regra de taxa.');
+      return;
+    }
+    setSalvandoTaxa(true);
+    setErroModalTaxa(null);
+    const res = await salvarTaxaPagamento({
+      ...formTaxa,
+      id: taxaEmEdicao?.id,
+    });
+    setSalvandoTaxa(false);
+    if (!res.ok) {
+      setErroModalTaxa(res.error || 'Erro ao salvar taxa.');
+      return;
+    }
+    setModalTaxaAberto(false);
+    await carregarDados();
+  };
+
+  const handleExcluirTaxa = async (id: string, name: string) => {
+    if (!confirm(`Deseja realmente excluir a regra de taxa "${name}"?`)) return;
+    const res = await excluirTaxaPagamento(id);
+    if (res.ok) {
+      await carregarDados();
+    } else {
+      alert(`Erro: ${res.error}`);
+    }
+  };
+
+  const handleToggleAtivoTaxa = async (id: string, currentActive: boolean) => {
+    const res = await alternarStatusTaxa(id, !currentActive);
+    if (res.ok) {
+      setTaxas(prev => prev.map(t => t.id === id ? { ...t, active: !currentActive } : t));
+    } else {
+      alert(`Erro: ${res.error}`);
+    }
+  };
+
+  const handleToggleConfigTaxa = async () => {
+    setSalvandoConfigTaxa(true);
+    const novoValor = !descontarTaxaComissao;
+    const res = await salvarConfigTaxas({ descontarTaxaComissao: novoValor });
+    setSalvandoConfigTaxa(false);
+    if (res.ok) {
+      setDescontarTaxaComissao(novoValor);
+    } else {
+      alert(`Erro ao salvar configuração: ${res.error}`);
+    }
   };
 
   const getProfNome = (id: string) => profissionais.find(p => p.id === id)?.nome ?? id.slice(0, 8);
@@ -244,6 +361,7 @@ export default function ComissoesPage() {
     return comissoes.flatMap(c => {
       const prof = profissionais.find(p => p.id === c.professional_id);
       const dataAtendimento = c.created_at.slice(0, 10);
+      const taxaInfo = calcularTaxaMaquininha(c.payment_method, c.installments, c.total_amount, taxas);
       return (c.parcelas ?? []).map(p => {
         const d30Info = getD30Status({ due_date: p.due_date, payment_method: c.payment_method, status: p.status });
         return {
@@ -265,10 +383,15 @@ export default function ComissoesPage() {
           status: p.status,
           paid_at: p.paid_at,
           d30Info,
+          taxa_nome: taxaInfo.regraNome,
+          taxa_pct: taxaInfo.feePercentage,
+          taxa_valor: taxaInfo.valorTaxa,
+          valor_liquido_venda: taxaInfo.valorLiquido,
+          liquido_salao: Math.max(0, Number((taxaInfo.valorLiquido - p.amount).toFixed(2))),
         };
       });
     });
-  }, [comissoes, profissionais]);
+  }, [comissoes, profissionais, taxas]);
 
   // Fechamento semanal consolidado por profissional
   const fechamentoSemanalData = useMemo(() => {
@@ -594,7 +717,7 @@ export default function ComissoesPage() {
               { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
               { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
               { id: 'regras', label: 'Regras de Comissão', icon: DollarSign, badge: regras.length },
-              { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote },
+              { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length },
             ].map(tabItem => {
               const active = aba === tabItem.id;
               const Icon = tabItem.icon;
@@ -1005,7 +1128,9 @@ export default function ComissoesPage() {
                     <th className="py-3 px-4">Data Atendimento</th>
                     <th className="py-3 px-4">Forma Pagamento</th>
                     <th className="py-3 px-4">Valor Total</th>
+                    <th className="py-3 px-4">Taxa Cartão</th>
                     <th className="py-3 px-4">Comissão Líquida</th>
+                    <th className="py-3 px-4">Líquido Salão</th>
                     <th className="py-3 px-4">Liberação (Prazo)</th>
                     <th className="py-3 px-4 text-right">Ação</th>
                   </tr>
@@ -1041,10 +1166,25 @@ export default function ComissoesPage() {
                         <td className="py-3.5 px-4 text-foreground/80 font-medium">
                           {fmt(item.total_amount)}
                         </td>
+                        <td className="py-3.5 px-4">
+                          {(item as any).taxa_valor > 0 ? (
+                            <span className="text-xs font-mono text-red-400 font-semibold" title={(item as any).taxa_nome}>
+                              -{fmt((item as any).taxa_valor)}
+                              <span className="text-[10px] text-foreground/40 ml-1">({(item as any).taxa_pct}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-foreground/30 font-mono">—</span>
+                          )}
+                        </td>
                         <td className="py-3.5 px-4 font-bold text-gold">
                           {fmt(item.amount)}
                           <span className="text-[10px] text-foreground/40 font-normal ml-1">
                             ({item.commission_pct}%)
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            {fmt((item as any).liquido_salao ?? 0)}
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
@@ -1514,22 +1654,333 @@ export default function ComissoesPage() {
             ABA 7: TAXAS E MAQUININHAS
            ══════════════════════════════════════════════════════════════ */}
         {!loading && aba === 'taxas' && (
-          <div>
-            <div className="flex flex-col justify-between items-start mb-6">
-              <h3 className="text-lg font-bold">Taxas de Pagamento e Maquininhas</h3>
-              <p className="text-xs text-foreground/50">
-                Configure as taxas cobradas pelos meios de pagamento (cartão de crédito, débito, pix).
-                Isso permite descontar a taxa da operadora ANTES de calcular a comissão do profissional,
-                garantindo que o salão não pague a comissão sobre um valor que ficou com a maquininha.
-              </p>
+          <div className="space-y-6">
+            {/* Topo / Título & Botão de Criação */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="text-xl font-bold font-serif flex items-center gap-2 text-foreground">
+                  <Banknote className="text-gold" size={22} />
+                  Taxas de Cartões e Maquininhas
+                </h3>
+                <p className="text-xs text-foreground/60 mt-1 max-w-2xl leading-relaxed">
+                  Cadastre as taxas das suas maquininhas (Crédito à vista, Crédito parcelado, Débito e PIX). 
+                  O sistema deduz a taxa no financeiro e desconta proporcionalmente da 
+                  base de cálculo de comissão do profissional, garantindo proteção total da margem do salão.
+                </p>
+              </div>
+
+              <Button
+                variant="primary"
+                onClick={abrirNovaTaxa}
+                className="shrink-0 flex items-center gap-2 shadow-lg shadow-gold/10"
+              >
+                <Plus size={16} /> Nova Regra de Taxa
+              </Button>
             </div>
 
-            <CardGlass className="p-12 text-center text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
-              <Banknote size={40} className="mx-auto mb-3 opacity-30 text-gold" />
-              <h4 className="text-lg font-semibold text-foreground/70 mb-2">Configuração de Taxas e Split de Pagamentos</h4>
-              <p className="max-w-md mx-auto text-sm">
-                As taxas das operadoras (ex: Débito 1,99%, Crédito à vista 3,19%, Crédito 2x-6x 4,99%) são aplicadas no cálculo das comissões com abatimento do valor bruto antes da partilha com o profissional.
-              </p>
+            {/* Painel de Configuração do Desconto da Taxa na Comissão */}
+            <CardGlass className="p-5 border-l-4 border-l-gold bg-gradient-to-r from-gold/5 via-transparent to-transparent">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="text-gold" size={18} />
+                    <h4 className="text-sm font-bold text-foreground">
+                      Desconto da Taxa na Base da Comissão
+                    </h4>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      descontarTaxaComissao 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {descontarTaxaComissao ? 'Ativado (Recomendado)' : 'Desativado'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/60 max-w-2xl leading-relaxed">
+                    {descontarTaxaComissao
+                      ? 'Ao vender por cartão, a taxa da maquininha é deduzida antes da partilha. O profissional recebe a porcentagem contratada sobre o valor líquido real recebido pelo salão.'
+                      : 'O salão assume 100% das taxas de cartão sozinho. O profissional recebe a comissão calculada sobre o valor bruto integral, diminuindo a margem do salão.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={salvandoConfigTaxa}
+                  onClick={handleToggleConfigTaxa}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                    descontarTaxaComissao
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
+                      : 'bg-foreground/10 border border-foreground/20 text-foreground/70 hover:bg-foreground/20'
+                  }`}
+                >
+                  <SlidersHorizontal size={14} />
+                  {salvandoConfigTaxa ? 'Salvando...' : descontarTaxaComissao ? 'Desativar Desconto' : 'Ativar Desconto da Taxa'}
+                </button>
+              </div>
+            </CardGlass>
+
+            {/* Grid de Cards de Regras Cadastradas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {taxas.map(taxa => {
+                const tipoConfig = {
+                  credito: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+                  debito: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+                  pix: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+                  dinheiro: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                  boleto: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400 bg-gray-500/10 border-gray-500/20' },
+                }[taxa.payment_type] || { label: taxa.payment_type, icon: CreditCard, cor: 'text-foreground/70 bg-foreground/10 border-foreground/20' };
+
+                const Icon = tipoConfig.icon;
+
+                return (
+                  <CardGlass
+                    key={taxa.id}
+                    className={`p-4 transition-all relative flex flex-col justify-between ${
+                      !taxa.active ? 'opacity-60 border-dashed' : 'border-[var(--border-subtle)] hover:border-gold/40'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`p-2 rounded-lg ${tipoConfig.cor}`}>
+                            <Icon size={16} />
+                          </span>
+                          <div>
+                            <h4 className="font-bold text-sm text-foreground line-clamp-1">{taxa.name}</h4>
+                            <span className="text-[10px] text-foreground/50 uppercase tracking-wider">
+                              {tipoConfig.label}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                          taxa.active 
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' 
+                            : 'bg-foreground/10 text-foreground/40'
+                        }`}>
+                          {taxa.active ? 'Ativa' : 'Inativa'}
+                        </span>
+                      </div>
+
+                      <div className="bg-foreground/[0.03] rounded-lg p-3 border border-[var(--border-subtle)] space-y-2 mb-3">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-xs text-foreground/60">Taxa Percentual:</span>
+                          <span className="text-lg font-bold font-mono text-gold">
+                            {Number(taxa.fee_percentage).toFixed(2)}%
+                          </span>
+                        </div>
+                        {Number(taxa.fee_fixed) > 0 && (
+                          <div className="flex justify-between items-baseline text-xs text-foreground/60">
+                            <span>Taxa Fixa por Venda:</span>
+                            <span className="font-mono font-semibold text-foreground/80">{fmt(Number(taxa.fee_fixed))}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-baseline text-xs text-foreground/60">
+                          <span>Prazo de Compensação:</span>
+                          <span className="font-mono font-semibold text-foreground/80">
+                            {taxa.days_to_receive === 0 ? 'D+0 (Imediato)' : `D+${taxa.days_to_receive} dias`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAtivoTaxa(taxa.id, taxa.active)}
+                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
+                          taxa.active 
+                            ? 'text-foreground/50 hover:text-amber-400' 
+                            : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {taxa.active ? 'Pausar' : 'Ativar'}
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => abrirEdicaoTaxa(taxa)}
+                          className="p-1.5 rounded-md hover:bg-foreground/10 text-foreground/60 hover:text-gold transition-colors"
+                          title="Editar regra"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExcluirTaxa(taxa.id, taxa.name)}
+                          className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/40 hover:text-red-400 transition-colors"
+                          title="Excluir regra"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </CardGlass>
+                );
+              })}
+            </div>
+
+            {/* SIMULADOR INTERATIVO DE DESCONTO E COMISSÃO */}
+            <CardGlass className="p-6 border border-gold/30 space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gold/10 text-gold">
+                    <Calculator size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-foreground">
+                      Simulador de Venda, Taxa de Cartão & Repasse
+                    </h4>
+                    <p className="text-xs text-foreground/50">
+                      Teste em tempo real como o desconto da taxa protege a receita do salão e calcula o valor líquido do profissional.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Controles do Simulador */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-semibold">Valor da Venda / Serviço (R$)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-foreground/40">R$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="5"
+                      value={simValor}
+                      onChange={e => setSimValor(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm font-mono font-bold focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-semibold">Regra de Taxa / Meio de Pagamento</label>
+                  <select
+                    value={simRegraId}
+                    onChange={e => setSimRegraId(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm focus:outline-none focus:border-gold"
+                  >
+                    {taxas.filter(t => t.active).map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({Number(t.fee_percentage).toFixed(2)}% {Number(t.fee_fixed) > 0 ? `+ ${fmt(Number(t.fee_fixed))}` : ''})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-semibold">Comissão do Profissional (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={simComissaoPct}
+                      onChange={e => setSimComissaoPct(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-3 pr-8 text-sm font-mono font-bold focus:outline-none focus:border-gold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-foreground/40">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resultados do Simulador */}
+              {(() => {
+                const regraEscolhida = taxas.find(t => t.id === simRegraId) || taxas.find(t => t.active) || taxas[0];
+                const pctTaxa = regraEscolhida ? Number(regraEscolhida.fee_percentage) : 0;
+                const fixaTaxa = regraEscolhida ? Number(regraEscolhida.fee_fixed) : 0;
+                const valorTaxa = Number(((simValor * (pctTaxa / 100)) + fixaTaxa).toFixed(2));
+                const valorLiquidoVenda = Math.max(0, simValor - valorTaxa);
+
+                // Com o desconto da taxa ativo (base líquida):
+                const comissaoComRegra = Number((valorLiquidoVenda * (simComissaoPct / 100)).toFixed(2));
+                const liquidoSalaoComRegra = Number((valorLiquidoVenda - comissaoComRegra).toFixed(2));
+
+                // Sem o desconto da taxa (base bruta):
+                const comissaoSemRegra = Number((simValor * (simComissaoPct / 100)).toFixed(2));
+                const liquidoSalaoSemRegra = Number((valorLiquidoVenda - comissaoSemRegra).toFixed(2));
+                const economiaSalao = Number((comissaoSemRegra - comissaoComRegra).toFixed(2));
+
+                return (
+                  <div className="space-y-4 pt-2 border-t border-[var(--border-subtle)]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl">
+                        <span className="text-[11px] text-foreground/50 block">Valor Bruto</span>
+                        <span className="text-lg font-bold font-mono text-foreground">{fmt(simValor)}</span>
+                      </div>
+                      <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-xl">
+                        <span className="text-[11px] text-red-400 block">Taxa da Maquininha ({pctTaxa}%)</span>
+                        <span className="text-lg font-bold font-mono text-red-400">- {fmt(valorTaxa)}</span>
+                      </div>
+                      <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                        <span className="text-[11px] text-blue-400 block">Líquido Real que Entra</span>
+                        <span className="text-lg font-bold font-mono text-blue-400">{fmt(valorLiquidoVenda)}</span>
+                      </div>
+                      <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                        <span className="text-[11px] text-emerald-400 block">Economia p/ o Salão</span>
+                        <span className="text-lg font-bold font-mono text-emerald-400">+{fmt(economiaSalao)}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Cenário A: Com Desconto da Taxa */}
+                      <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <CheckCircle size={14} /> Cenário Atual (Com Desconto da Taxa)
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                            Base: {fmt(valorLiquidoVenda)}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-foreground/80">
+                          <div className="flex justify-between">
+                            <span>Repasse ao Profissional ({simComissaoPct}% da base líquida):</span>
+                            <span className="font-bold font-mono text-gold">{fmt(comissaoComRegra)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Líquido Retido pelo Salão:</span>
+                            <span className="font-bold font-mono text-emerald-400">{fmt(liquidoSalaoComRegra)}</span>
+                          </div>
+                          <div className="flex justify-between text-foreground/50 text-[11px] pt-1 border-t border-emerald-500/20">
+                            <span>Operadora de Cartão:</span>
+                            <span className="font-mono">{fmt(valorTaxa)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cenário B: Sem Desconto da Taxa */}
+                      <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-foreground/[0.02] space-y-3 opacity-80">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
+                            <AlertTriangle size={14} className="text-amber-400" /> Sem Desconto (Salão Absorve Sozinho)
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-foreground/10 text-foreground/60 font-bold">
+                            Base: {fmt(simValor)}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-foreground/70">
+                          <div className="flex justify-between">
+                            <span>Repasse ao Profissional ({simComissaoPct}% do bruto):</span>
+                            <span className="font-bold font-mono text-foreground">{fmt(comissaoSemRegra)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Líquido Retido pelo Salão (prejudicado):</span>
+                            <span className="font-bold font-mono text-amber-400">{fmt(liquidoSalaoSemRegra)}</span>
+                          </div>
+                          <div className="flex justify-between text-foreground/40 text-[11px] pt-1 border-t border-[var(--border-subtle)]">
+                            <span>Salão perdeu nesta venda:</span>
+                            <span className="font-mono text-red-400 font-bold">-{fmt(economiaSalao)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardGlass>
           </div>
         )}
@@ -1830,6 +2281,153 @@ export default function ComissoesPage() {
               </Button>
               <Button variant="primary" className="flex-1" onClick={salvarRegra} disabled={salvandoRegra}>
                 {salvandoRegra ? 'Salvando...' : editRegra ? 'Salvar Alterações' : 'Criar Regra'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* MODAL: FORMULÁRIO DE REGRA DE TAXA DE PAGAMENTO */}
+      {modalTaxaAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95 border border-gold/30 shadow-2xl">
+            <div className="flex justify-between items-center mb-5 border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="text-xl font-bold font-serif flex items-center gap-2 text-foreground">
+                <Banknote size={20} className="text-gold" />
+                {taxaEmEdicao ? 'Editar Regra de Taxa' : 'Nova Regra de Taxa'}
+              </h3>
+              <button onClick={() => setModalTaxaAberto(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            {erroModalTaxa && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs leading-relaxed">
+                <strong>Atenção:</strong> {erroModalTaxa}
+              </div>
+            )}
+
+            <div className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1 font-semibold">Nome da Regra *</label>
+                <input
+                  type="text"
+                  value={formTaxa.name}
+                  onChange={e => setFormTaxa(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Ex: Visa Crédito à Vista, Débito Stone, Crédito 2x-6x..."
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1 font-semibold">Meio / Tipo de Pagamento *</label>
+                <select
+                  value={formTaxa.payment_type}
+                  onChange={e => setFormTaxa(f => ({ ...f, payment_type: e.target.value as any }))}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold font-medium"
+                >
+                  <option value="credito">Cartão de Crédito</option>
+                  <option value="debito">Cartão de Débito</option>
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="boleto">Boleto Bancário</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-semibold">Taxa Percentual (%) *</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formTaxa.fee_percentage}
+                      onChange={e => setFormTaxa(f => ({ ...f, fee_percentage: parseFloat(e.target.value) || 0 }))}
+                      placeholder="Ex: 3.19"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-sm focus:outline-none focus:border-gold font-mono font-bold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 font-bold">%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-foreground/60 mb-1 font-semibold">Taxa Fixa por Venda (R$)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value={formTaxa.fee_fixed}
+                      onChange={e => setFormTaxa(f => ({ ...f, fee_fixed: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-gold font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                  Prazo de Compensação / Liberação (Dias)
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: 'D+0 (Hoje)', val: 0 },
+                    { label: 'D+1 (1 dia)', val: 1 },
+                    { label: 'D+14 (14d)', val: 14 },
+                    { label: 'D+30 (30d)', val: 30 },
+                  ].map(opt => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => setFormTaxa(f => ({ ...f, days_to_receive: opt.val }))}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${
+                        formTaxa.days_to_receive === opt.val
+                          ? 'border-gold bg-gold/15 text-gold'
+                          : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-foreground/50">Outro prazo:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="180"
+                    value={formTaxa.days_to_receive}
+                    onChange={e => setFormTaxa(f => ({ ...f, days_to_receive: parseInt(e.target.value, 10) || 0 }))}
+                    className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1 px-2 text-xs font-mono"
+                  />
+                  <span className="text-xs text-foreground/50">dias corridos</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="chkTaxaAtiva"
+                  checked={formTaxa.active}
+                  onChange={e => setFormTaxa(f => ({ ...f, active: e.target.checked }))}
+                  className="rounded border-[var(--border-subtle)] text-gold focus:ring-gold h-4 w-4"
+                />
+                <label htmlFor="chkTaxaAtiva" className="text-xs text-foreground/80 font-medium cursor-pointer">
+                  Regra ativa no cálculo de comissões e vendas
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-3 border-t border-[var(--border-subtle)]">
+              <Button variant="ghost" className="flex-1" onClick={() => setModalTaxaAberto(false)}>
+                Cancelar
+              </Button>
+              <Button variant="primary" className="flex-1" onClick={handleSalvarTaxa} disabled={salvandoTaxa}>
+                {salvandoTaxa ? 'Salvando...' : taxaEmEdicao ? 'Salvar Alterações' : 'Criar Regra'}
               </Button>
             </div>
           </CardGlass>
