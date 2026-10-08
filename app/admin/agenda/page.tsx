@@ -107,7 +107,7 @@ function AgendaContent() {
     cliente_id: '',
     profissional_id: '',
     servico_id: '',
-    sub_servicos: [] as string[],
+    sub_servicos: [] as any[],
     data: hoje,
     hora_inicio: '09:00',
     duracao_min: '',
@@ -627,7 +627,7 @@ function AgendaContent() {
       cliente_id: '',
       profissional_id: profId,
       servico_id: '',
-      sub_servicos: [] as string[],
+      sub_servicos: [] as any[],
       data: dataSelecionada,
       hora_inicio: hora,
       duracao_min: '',
@@ -1046,7 +1046,7 @@ function AgendaContent() {
                                   const cliente = getClienteNome(a.cliente_id, clientes);
                                   let servico = getServicoNome(a.servico_id, servicos);
                                   if (a.sub_servicos && a.sub_servicos.length > 0) {
-                                    const subNomes = a.sub_servicos.map(subId => getServicoNome(subId, servicos));
+                                    const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
                                     servico += ' + ' + subNomes.join(' + ');
                                   }
                                   return (
@@ -1091,7 +1091,7 @@ function AgendaContent() {
                 <p className="text-sm text-gold">
                   {getServicoNome(selectedAppt.servico_id, servicos)}
                   {selectedAppt.sub_servicos && selectedAppt.sub_servicos.length > 0 && 
-                    ' + ' + selectedAppt.sub_servicos.map(subId => getServicoNome(subId, servicos)).join(' + ')
+                    ' + ' + selectedAppt.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos)).join(' + ')
                   }
                 </p>
               </div>
@@ -1158,13 +1158,13 @@ function AgendaContent() {
                   <p className="font-bold">
                     {getServicoNome(checkoutAppt.servico_id, servicos)}
                     {checkoutAppt.sub_servicos && checkoutAppt.sub_servicos.length > 0 && 
-                      ' + ' + checkoutAppt.sub_servicos.map(subId => getServicoNome(subId, servicos)).join(' + ')
+                      ' + ' + checkoutAppt.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos)).join(' + ')
                     }
                   </p>
                   <p className="font-bold text-gold">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                       getServicoPreco(checkoutAppt.servico_id, servicos) +
-                      (checkoutAppt.sub_servicos || []).reduce((acc, subId) => acc + getServicoPreco(subId, servicos), 0)
+                      (checkoutAppt.sub_servicos || []).reduce((acc, sub) => acc + (typeof sub === 'object' && sub.is_free ? 0 : getServicoPreco(typeof sub === 'string' ? sub : sub.id, servicos)), 0)
                     )}
                   </p>
                 </div>
@@ -1542,7 +1542,7 @@ function AgendaContent() {
 
               {/* TOTAL + DESCONTO GERAL + COMISSÃO */}
               {(() => {
-                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos) + (checkoutAppt.sub_servicos || []).reduce((acc, subId) => acc + getServicoPreco(subId, servicos), 0);
+                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos) + (checkoutAppt.sub_servicos || []).reduce((acc, sub) => acc + (typeof sub === 'object' && sub.is_free ? 0 : getServicoPreco(typeof sub === 'string' ? sub : sub.id, servicos)), 0);
                 const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
                 const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
@@ -1796,7 +1796,7 @@ function AgendaContent() {
       {/* Modal de Novo Agendamento Dinâmico (Profissional -> Serviço -> Horários) */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-lg p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-bold font-serif text-foreground">Novo Agendamento</h3>
@@ -2141,56 +2141,66 @@ function AgendaContent() {
                     <span>Adicionais / Subserviços (Opcional)</span>
                   </label>
                   <div className="flex flex-col gap-2">
-                    {formData.sub_servicos.map((subId, index) => {
+                    {formData.sub_servicos.map((subItem, index) => {
+                      const subId = typeof subItem === 'string' ? subItem : subItem.id;
+                      const isFree = typeof subItem === 'object' ? subItem.is_free : false;
                       const s = servicos.find(srv => srv.id === subId);
                       return (
-                        <div key={index} className="flex items-center gap-2">
-                          <select
-                            value={subId}
-                            onChange={e => {
-                              const novasubs = [...formData.sub_servicos];
-                              const oldId = novasubs[index];
-                              novasubs[index] = e.target.value;
-                              
-                              // Recalcula duracao total
-                              const main = servicos.find(srv => srv.id === formData.servico_id);
-                              let dur = main?.duracao_min ?? 60;
-                              novasubs.forEach(id => {
-                                const sub = servicos.find(srv => srv.id === id);
-                                if (sub) dur += sub.duracao_min;
-                              });
-                              
-                              setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
-                            }}
-                            className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
-                          >
-                            <option value="">Selecione...</option>
-                            {servicosDoProfissional.filter(srv => srv.id !== formData.servico_id && !formData.sub_servicos.includes(srv.id) || srv.id === subId).map(srv => (
-                              <option key={srv.id} value={srv.id}>{srv.nome} (+ {srv.duracao_min} min)</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const novasubs = formData.sub_servicos.filter((_, i) => i !== index);
-                              const main = servicos.find(srv => srv.id === formData.servico_id);
-                              let dur = main?.duracao_min ?? 60;
-                              novasubs.forEach(id => {
-                                const sub = servicos.find(srv => srv.id === id);
-                                if (sub) dur += sub.duracao_min;
-                              });
-                              setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
-                            }}
-                            className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        <div key={index} className="flex flex-col gap-2 p-3 bg-foreground/5 border border-[var(--border-subtle)] rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={subId}
+                              onChange={e => {
+                                const novasubs = [...formData.sub_servicos];
+                                novasubs[index] = { id: e.target.value, is_free: isFree };
+                                
+                                // Recalcula duracao total (agora NAO soma a duracao do subservico, mantem so a do principal)
+                                const main = servicos.find(srv => srv.id === formData.servico_id);
+                                let dur = main?.duracao_min ?? 60;
+                                
+                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                              }}
+                              className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
+                            >
+                              <option value="">Selecione...</option>
+                              {servicosDoProfissional.filter(srv => srv.id !== formData.servico_id && !formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId).map(srv => (
+                                <option key={srv.id} value={srv.id}>{srv.nome}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const novasubs = formData.sub_servicos.filter((_, i) => i !== index);
+                                const main = servicos.find(srv => srv.id === formData.servico_id);
+                                let dur = main?.duracao_min ?? 60;
+                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                              }}
+                              className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          {subId && (
+                            <label className="flex items-center gap-2 text-xs font-semibold text-foreground/70 cursor-pointer w-fit pl-1">
+                              <input 
+                                type="checkbox" 
+                                checked={isFree} 
+                                onChange={e => {
+                                  const novasubs = [...formData.sub_servicos];
+                                  novasubs[index] = { id: subId, is_free: e.target.checked };
+                                  setFormData(f => ({ ...f, sub_servicos: novasubs }));
+                                }}
+                                className="accent-gold w-3.5 h-3.5" 
+                              />
+                              Marcar como Brinde (R$ 0 na comanda)
+                            </label>
+                          )}
                         </div>
                       );
                     })}
                     <button
                       type="button"
-                      onClick={() => setFormData(f => ({ ...f, sub_servicos: [...f.sub_servicos, ''] }))}
+                      onClick={() => setFormData(f => ({ ...f, sub_servicos: [...f.sub_servicos, { id: '', is_free: false }] }))}
                       className="text-xs font-bold text-gold hover:text-gold-dim self-start flex items-center gap-1 mt-1"
                     >
                       <Plus size={14} /> Adicionar subserviço (ex: Escova)

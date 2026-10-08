@@ -74,7 +74,7 @@ export interface Agendamento {
   cliente_id: UUID;
   profissional_id: UUID;
   servico_id: UUID;
-  sub_servicos?: string[];
+  sub_servicos?: any[];
   data: string; // date YYYY-MM-DD
   hora_inicio: string; // "09:00"
   hora_fim: string;

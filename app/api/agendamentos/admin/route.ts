@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       customer_id: cliente_id,
       professional_id: profissional_id,
       service_id: servico_id,
-      sub_services: Array.isArray(sub_servicos) && sub_servicos.length > 0 ? sub_servicos.filter((id: string) => id.trim() !== '') : null,
+      sub_services: Array.isArray(sub_servicos) && sub_servicos.length > 0 ? sub_servicos.filter((sub: any) => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== '') : null,
       date: data,
       start_time: hora_inicio,
       end_time: hora_fim || hora_inicio,
