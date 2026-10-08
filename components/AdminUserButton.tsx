@@ -27,6 +27,7 @@ export function AdminUserButton({
   const [userName, setUserName] = useState('');
   const [userInitials, setUserInitials] = useState('AG');
   const [userRoleLabel, setUserRoleLabel] = useState('');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
@@ -37,6 +38,7 @@ export function AdminUserButton({
         setUserEmail(email);
         setUserName(name || email.split('@')[0]);
         setUserRoleLabel(role ? (ROLE_LABELS[role] || role) : 'Usuário');
+        setUserAvatar(user.user_metadata?.avatar_url || null);
         
         // Calcular iniciais
         if (name) {
@@ -95,9 +97,13 @@ export function AdminUserButton({
         >
           <motion.div 
             layoutId="user-avatar"
-            className="w-10 h-10 rounded-full bg-gold/20 text-gold flex flex-shrink-0 items-center justify-center font-bold"
+            className="w-10 h-10 rounded-full bg-gold/20 text-gold flex flex-shrink-0 items-center justify-center font-bold overflow-hidden"
           >
-            {userInitials}
+            {userAvatar ? (
+              <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              userInitials
+            )}
           </motion.div>
           {!isCollapsed && (
             <motion.div 
