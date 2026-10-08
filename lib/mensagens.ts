@@ -141,5 +141,5 @@ export function normalizarTelefone(telefone: string): string {
 /** Link wa.me para envio manual (fallback quando Evolution não está conectada) */
 export function waMeLink(telefone: string, mensagem: string): string {
   const num = normalizarTelefone(telefone);
-  return `https://wa.me/${num}?text=${encodeURIComponent(mensagem)}`;
+  return `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(mensagem)}`;
 }

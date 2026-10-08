@@ -81,7 +81,7 @@ export default function CheckoutVIP() {
     }
     
     const message = `Olá, gostaria de adquirir o curso VIP *${course.title}*.\n\n*Detalhes do Agendamento:*\nData: ${dateStr}\nHorário: ${schedule.time || 'A definir'}\nLocal: ${schedule.location || 'A definir'}\nValor: ${formatPrice(course.price)}\n\nComo posso proceder com o pagamento e garantir minha vaga?`;
-    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+    const url = `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(message)}`;
     
     window.location.href = url;
   };

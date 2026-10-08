@@ -275,7 +275,7 @@ return (
                 onClick={() => {
                   const limpo = whatsappContato.replace(/\D/g, '');
                   const num = limpo.length === 10 || limpo.length === 11 ? `55${limpo}` : limpo;
-                  window.open(`https://wa.me/${num}?text=${encodeURIComponent('Olá! Teste de recepção de agendamentos do Studio Agnaldo Gomes.')}`, '_blank');
+                  window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent('Olá! Teste de recepção de agendamentos do Studio Agnaldo Gomes.')}`, '_blank');
                 }}
               >
                 Testar Link

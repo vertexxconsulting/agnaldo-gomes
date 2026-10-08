@@ -595,7 +595,7 @@ export default function MeuPainelPage() {
               ) : (
                 produtosDeVenda.map(p => {
                   const url = `${window.location.origin}/loja/produto/${p.id}?ref=${PROFISSIONAL_ID}`;
-                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.sale_price}\n\nCompre por aqui: ${url}`)}`;
+                  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.sale_price}\n\nCompre por aqui: ${url}`)}`;
                   
                   return (
                     <div key={p.id} className="flex justify-between items-center p-3 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">

@@ -55,7 +55,7 @@ export default function IAAssistentePage() {
     
     setTimeout(() => {
       // Abre o WhatsApp (tenta app nativo primeiro, depois web)
-      window.open(`https://wa.me/${fone}?text=${encodeURIComponent(msg)}`, '_blank');
+      window.open(`https://api.whatsapp.com/send?phone=${fone}&text=${encodeURIComponent(msg)}`, '_blank');
       setResultadoCron('✅ Redirecionado para o WhatsApp com sucesso!');
       setDisparandoCron(false);
     }, 600);
@@ -152,7 +152,7 @@ export default function IAAssistentePage() {
     const msg = encodeURIComponent(
       `📊 *STUDIO AGNALDO GOMES — TESTE DE RELATÓRIO IA*\n\nOlá Mestre Agnaldo Gomes! Este é um teste do envio automático de relatórios e insights de gestão configurados pela IA Assistente no painel administrativo.`
     );
-    window.open(`https://wa.me/${fone}?text=${msg}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?phone=${fone}&text=${msg}`, '_blank');
   };
 
   return (

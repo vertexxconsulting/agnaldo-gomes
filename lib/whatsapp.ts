@@ -66,7 +66,7 @@ ${actionLink}
 
 _Olá! Acabei de solicitar meu agendamento de noiva pelo site e gerei o sinal de 50% via PIX. Segue meu comprovante para confirmação e bloqueio da data!_`;
 
-    return `https://wa.me/${destino}?text=${encodeURIComponent(text)}`;
+    return `https://api.whatsapp.com/send?phone=${destino}&text=${encodeURIComponent(text)}`;
   }
   
   const text = `*Novo Agendamento Solicitado* 📅
@@ -84,7 +84,7 @@ ${actionLink}
 
 _Por favor, entre em contato com o cliente para definir a data e horário._`;
 
-  return `https://wa.me/${destino}?text=${encodeURIComponent(text)}`;
+  return `https://api.whatsapp.com/send?phone=${destino}&text=${encodeURIComponent(text)}`;
 }
 
 /**
@@ -107,5 +107,5 @@ export function getWhatsAppCancelUrl(data: AppointmentNotifyData, motivo: string
 
 _O horário foi liberado no sistema interno, confirme para finalizar._`;
 
-  return `https://wa.me/${destino}?text=${encodeURIComponent(text)}`;
+  return `https://api.whatsapp.com/send?phone=${destino}&text=${encodeURIComponent(text)}`;
 }

@@ -447,7 +447,7 @@ export default function AcademyPage() {
               <div className="text-center p-6 bg-foreground/[0.02] rounded-lg border border-[var(--border-subtle)]">
                 <p className="text-foreground/80 text-sm font-medium mb-2">Nenhuma data com vagas abertas no momento.</p>
                 <a 
-                  href={`https://wa.me/5542991295941?text=${encodeURIComponent(`Olá! Tenho interesse em abrir uma turma para o curso VIP: ${selectedVipCourse?.title}. Podemos conversar?`)}`}
+                  href={`https://api.whatsapp.com/send?phone=5542991295941&text=${encodeURIComponent(`Olá! Tenho interesse em abrir uma turma para o curso VIP: ${selectedVipCourse?.title}. Podemos conversar?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-xs font-bold text-gold hover:text-gold-dim transition-colors"

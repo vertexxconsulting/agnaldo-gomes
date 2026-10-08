@@ -408,7 +408,7 @@ export default function AgendamentoPage() {
       // Fallback de segurança: se a API retornar instabilidade, envia os dados diretamente para o WhatsApp do salão
       const destino = whatsappSalaoFormatado || '5542998271222';
       const msgTexto = `*Novo Agendamento Solicitado* 📅\n\n👤 *Cliente:* ${formData.nome || 'Cliente'}\n📞 *Telefone:* ${formData.telefone}\n✂️ *Serviço:* ${servicoSelecionado?.nome || 'Serviço'}\n👤 *Profissional:* ${profissionalSelecionado?.nome || 'Especialista'}\n💰 *Valor:* R$ ${valorTotalServico.toFixed(2).replace('.', ',')}\n\n🗓️ *Data/Hora:* A ser definida pela secretaria\n\n_Olá! Gostaria de agendar este procedimento no Studio Agnaldo Gomes._`;
-      const fallbackUrl = `https://wa.me/${destino}?text=${encodeURIComponent(msgTexto)}`;
+      const fallbackUrl = `https://api.whatsapp.com/send?phone=${destino}&text=${encodeURIComponent(msgTexto)}`;
 
       const tentarDireto = confirm(`Aviso do agendamento: ${err.message || 'Houve uma instabilidade temporária'}.\n\nDeseja enviar sua solicitação diretamente para o WhatsApp do salão agora?`);
       if (tentarDireto) {
@@ -441,7 +441,7 @@ export default function AgendamentoPage() {
           <Button 
             variant="primary" 
             className="w-full font-bold flex items-center justify-center gap-2"
-            onClick={() => window.open(`https://wa.me/${whatsappSalaoFormatado}?text=${encodeURIComponent('Olá, gostaria de saber sobre a disponibilidade de horários.')}`, '_blank')}
+            onClick={() => window.open(`https://api.whatsapp.com/send?phone=${whatsappSalaoFormatado}&text=${encodeURIComponent('Olá, gostaria de saber sobre a disponibilidade de horários.')}`, '_blank')}
           >
             <MessageCircle size={18} />
             Falar pelo WhatsApp
