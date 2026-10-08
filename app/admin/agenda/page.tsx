@@ -7,7 +7,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
@@ -43,6 +43,7 @@ function AgendaContent() {
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
   const [servicoProdutos, setServicoProdutos] = useState<ServicoProduto[]>([]);
   const [checkoutInsumos, setCheckoutInsumos] = useState<InsumoAtendimento[]>([]);
+  const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{ id: string; inventory_id: string; qty: number; preco: number }>>([]);
   // Pagamento e comissão
   const [checkoutPagamento, setCheckoutPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [checkoutParcelas, setCheckoutParcelas] = useState<number>(1);
@@ -240,6 +241,47 @@ function AgendaContent() {
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     }
   }
+
+  const abrirCheckout = async (appt: Agendamento) => {
+    setCheckoutAppt(appt);
+    setCheckoutExtras([]);
+    setCheckoutInsumos([]);
+    setCheckoutProdutos([]);
+    setCheckoutPagamento('DINHEIRO');
+    setCheckoutParcelas(1);
+
+    const itens = await fetchItensComanda(appt.id);
+    
+    // Insumos
+    const insumosDaComanda = itens.filter(i => i.type === 'INSUMO');
+    const mapInsumos: InsumoAtendimento[] = insumosDaComanda.map(i => {
+      const prod = estoque.find(p => p.id === i.inventory_id);
+      const custoUn = prod?.cost_price || 0;
+      return {
+        inventory_id: i.inventory_id,
+        qty_used: i.qty,
+        custo_unitario: custoUn,
+        custo_total: custoUn * i.qty
+      };
+    });
+    
+    // Merge com insumos padrão do serviço se o profissional não tiver lançado?
+    // O ideal é a secretária ver só o que o profissional lançou, ou preencher manualmente se faltar.
+    // Vamos apenas carregar os lançados na comanda.
+    setCheckoutInsumos(mapInsumos);
+
+    // Produtos (Upsell)
+    const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
+    const mapProdutos = produtosDaComanda.map(i => {
+      return {
+        id: Date.now().toString() + i.id, // Random id for list
+        inventory_id: i.inventory_id,
+        qty: i.qty,
+        preco: i.price
+      };
+    });
+    setCheckoutProdutos(mapProdutos);
+  };
 
   const abrirFormNovo = (hora: string, profId: string) => {
     setFormData({
@@ -599,7 +641,7 @@ function AgendaContent() {
                 </Button>
               )}
               {selectedAppt.status === 'em_atendimento' && (
-                <Button variant="primary" onClick={() => { setCheckoutAppt(selectedAppt); setSelectedAppt(null); }}>
+                <Button variant="primary" onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}>
                   <CheckCircle2 size={16} className="mr-2"/> Concluir
                 </Button>
               )}
@@ -782,6 +824,32 @@ function AgendaContent() {
                 );
               })()}
 
+              {/* PRODUTOS (Upsell - Lançados pelo Profissional) */}
+              {checkoutProdutos.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <ShoppingBag size={15} className="text-gold" />
+                    Produtos Vendidos (Upsell)
+                  </h4>
+                  <div className="space-y-2">
+                    {checkoutProdutos.map((prod) => {
+                      const itemEstoque = estoque.find(e => e.id === prod.inventory_id);
+                      return (
+                        <div key={prod.id} className="flex justify-between items-center p-3 bg-gold/5 border border-gold/15 rounded-lg text-sm">
+                          <div className="flex-1">
+                            <span className="font-bold text-foreground">{itemEstoque?.name || 'Produto'}</span>
+                            <span className="text-foreground/50 text-xs ml-2">{prod.qty}x</span>
+                          </div>
+                          <div className="font-bold text-gold">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.preco * prod.qty)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* FORMA DE PAGAMENTO */}
               <div>
                 <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
@@ -838,13 +906,14 @@ function AgendaContent() {
                 const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
                 const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
-                const totalGeral = totalServico + totalExtras + totalInsumos;
+                const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
+                const totalGeral = totalServico + totalExtras + totalInsumos + totalProdutos;
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
 
                 return (
                   <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
                     {/* Breakdown */}
-                    {(totalExtras > 0 || totalInsumos > 0) && (
+                    {(totalExtras > 0 || totalInsumos > 0 || totalProdutos > 0) && (
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between text-foreground/60">
                           <span>Serviço</span>
@@ -860,6 +929,12 @@ function AgendaContent() {
                           <div className="flex justify-between text-amber-400">
                             <span>Insumos</span>
                             <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalInsumos)}</span>
+                          </div>
+                        )}
+                        {totalProdutos > 0 && (
+                          <div className="flex justify-between text-gold">
+                            <span>Produtos (Upsell)</span>
+                            <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
                           </div>
                         )}
                       </div>
@@ -915,17 +990,28 @@ function AgendaContent() {
                               });
                             }
                           }
+                          
+                          // 3.5. Baixar produtos vendidos (Upsell)
+                          for (const prod of checkoutProdutos) {
+                            if (prod.qty > 0) {
+                              await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
+                                appointmentId: checkoutAppt.id,
+                                notes: `Venda Direta: ${getServicoNome(checkoutAppt.servico_id, servicos)}`,
+                              });
+                            }
+                          }
 
                           // 4. Gerar comissão para o profissional
-                          const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos);
+                          const totalServicoCom = getServicoPreco(checkoutAppt.servico_id, servicos);
                           const totalExtrasVal = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
-                          const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
-                          const totalGeral = totalServico + totalExtrasVal + totalInsumos;
+                          const totalInsumosCom = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
+                          const totalProdutosCom = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
+                          const totalGeralCom = totalServicoCom + totalExtrasVal + totalInsumosCom + totalProdutosCom;
                           await criarComissao({
                             appointmentId: checkoutAppt.id,
                             professionalId: checkoutAppt.profissional_id,
                             serviceId: checkoutAppt.servico_id,
-                            totalAmount: totalGeral,
+                            totalAmount: totalGeralCom,
                             paymentMethod: checkoutPagamento,
                             installments: checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1,
                             appointmentDate: checkoutAppt.data,
@@ -935,9 +1021,10 @@ function AgendaContent() {
                           setCheckoutExtras([]);
                           setExtraServiceSelect('');
                           setCheckoutInsumos([]);
+                          setCheckoutProdutos([]);
                           setCheckoutPagamento('DINHEIRO');
                           setCheckoutParcelas(1);
-                          alert('Atendimento concluído! Insumos e comissão registrados com sucesso.');
+                          alert('Atendimento concluído! Insumos, produtos e comissão registrados com sucesso.');
                         }}>
                           Confirmar Recebimento
                         </Button>
