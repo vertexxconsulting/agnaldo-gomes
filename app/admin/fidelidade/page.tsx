@@ -225,13 +225,13 @@ export default function FidelidadePage() {
 
             <div className="flex gap-2 mb-6 bg-[var(--background)] border border-[var(--border-subtle)] p-1 rounded-lg">
               <button
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'existente' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors border-2 ${addMode === 'existente' ? 'border-foreground bg-foreground text-background shadow-sm' : 'border-transparent text-foreground/60 hover:text-foreground'}`}
                 onClick={() => setAddMode('existente')}
               >
                 Do Estoque
               </button>
               <button
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${addMode === 'novo' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors border-2 ${addMode === 'novo' ? 'border-foreground bg-foreground text-background shadow-sm' : 'border-transparent text-foreground/60 hover:text-foreground'}`}
                 onClick={() => setAddMode('novo')}
               >
                 Criar Novo

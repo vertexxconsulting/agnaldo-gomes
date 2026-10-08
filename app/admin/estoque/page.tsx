@@ -57,7 +57,7 @@ const FORM_VAZIO = {
   name: '', brand: '', category: '', unit: 'g' as UnidadeEstoque,
   stock_qty: 0, stock_alert_qty: 50, cost_price: 0, sale_price: '',
   price_per_gram: '', allow_sale: false, allow_procedure_use: true,
-  active: true, notes: '',
+  active: true, notes: '', allow_points_redeem: false, points_cost: '',
 };
 
 export default function EstoquePage() {
@@ -389,6 +389,8 @@ export default function EstoquePage() {
         price_per_gram: p.price_per_gram?.toString() ?? '',
         allow_sale: p.allow_sale, allow_procedure_use: p.allow_procedure_use,
         active: p.active, notes: p.notes ?? '',
+        allow_points_redeem: p.points_cost != null && p.points_cost > 0,
+        points_cost: p.points_cost?.toString() ?? '',
       });
     } else {
       setEditando(null);
@@ -406,6 +408,7 @@ export default function EstoquePage() {
       cost_price: Number(form.cost_price),
       sale_price: form.sale_price !== '' ? Number(form.sale_price) : null,
       price_per_gram: form.price_per_gram !== '' ? Number(form.price_per_gram) : null,
+      points_cost: form.allow_points_redeem && form.points_cost !== '' ? Number(form.points_cost) : null,
       allow_sale: form.allow_sale, allow_procedure_use: form.allow_procedure_use,
       active: form.active, image_url: null, notes: form.notes || null,
     };
@@ -722,9 +725,29 @@ export default function EstoquePage() {
               {/* Categoria */}
               <div>
                 <label className="block text-xs text-foreground/60 mb-1">Categoria *</label>
-                <input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                  list="cat-sugest" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: Química" />
-                <datalist id="cat-sugest">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+                <select 
+                  value={allCategories.includes(form.category) ? form.category : (form.category === '' ? '' : '__nova__')} 
+                  onChange={e => {
+                    if (e.target.value === '__nova__') {
+                      setForm(f => ({ ...f, category: 'Nova Categoria' }));
+                    } else {
+                      setForm(f => ({ ...f, category: e.target.value }));
+                    }
+                  }}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+                >
+                  <option value="">Selecione...</option>
+                  {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__nova__">+ Criar Nova Categoria</option>
+                </select>
+                {(!allCategories.includes(form.category) || form.category === 'Nova Categoria') && (
+                  <input 
+                    value={form.category === 'Nova Categoria' ? '' : form.category} 
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" 
+                    placeholder="Nome da nova categoria" 
+                  />
+                )}
               </div>
               {/* Unidade */}
               <div>
@@ -771,6 +794,10 @@ export default function EstoquePage() {
                   <input type="checkbox" checked={form.allow_sale} onChange={e => setForm(f => ({ ...f, allow_sale: e.target.checked }))} className="accent-gold" />
                   <span className="text-sm">Disponível para venda direta</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.allow_points_redeem} onChange={e => setForm(f => ({ ...f, allow_points_redeem: e.target.checked }))} className="accent-gold" />
+                  <span className="text-sm">Disponível para Resgate (Fidelidade)</span>
+                </label>
               </div>
               {/* Preço de venda */}
               {form.allow_sale && (
@@ -778,6 +805,14 @@ export default function EstoquePage() {
                   <label className="block text-xs text-foreground/60 mb-1">Preço de Venda (R$)</label>
                   <input type="number" min={0} step={0.01} value={form.sale_price} onChange={e => setForm(f => ({ ...f, sale_price: e.target.value }))}
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: 45.00" />
+                </div>
+              )}
+              {/* Custo Resgate */}
+              {form.allow_points_redeem && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs text-foreground/60 mb-1">Custo para Resgate (Pontos) *</label>
+                  <input type="number" min={0} step={1} value={form.points_cost} onChange={e => setForm(f => ({ ...f, points_cost: e.target.value }))}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: 500" />
                 </div>
               )}
               {/* Notas */}
