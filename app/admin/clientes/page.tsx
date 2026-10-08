@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History, X } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
@@ -173,9 +173,17 @@ export default function ClienteModule() {
           <input
             value={busca}
             onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
-            className="w-full pl-10 pr-3 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full pl-10 pr-10 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
             placeholder="Buscar por nome, telefone ou e-mail..."
           />
+          {busca && (
+            <button 
+              onClick={() => { setBusca(''); setPagina(1); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground transition-colors p-1"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
         <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={() => { setEditando(null); setShowForm(true); }}>
           <UserPlus size={18} className="mr-2" /> Novo Cliente
