@@ -18,11 +18,12 @@ import {
   Sparkles,
   AlertTriangle,
   UserCheck,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/Button';
-import { getServicos, getProfissionais, getClientes, getProfissionalServico } from '@/lib/mock-data';
-import type { Servico, Profissional, Cliente, ProfissionalServico } from '@/lib/gestao-types';
+import { getServicos, getProfissionais, getProfissionalServico } from '@/lib/mock-data';
+import type { Servico, Profissional, ProfissionalServico } from '@/lib/gestao-types';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { normalizarTelefoneDestino } from '@/lib/whatsapp';
 
@@ -35,7 +36,6 @@ export default function AgendamentoPage() {
 
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
@@ -45,6 +45,8 @@ export default function AgendamentoPage() {
   // (Step 'data' oculto: data/hora definida pela secretaria do salão)
   const [step, setStep] = useState<'telefone' | 'profissional' | 'servico' | 'data' | 'confirmacao' | 'pagamento_noiva'>('telefone');
   const [telefoneVerificado, setTelefoneVerificado] = useState(false);
+  const [verificandoTelefone, setVerificandoTelefone] = useState(false);
+  const [clienteReconhecido, setClienteReconhecido] = useState<string | null>(null);
   const [buscaServico, setBuscaServico] = useState('');
   const [catServicoFiltro, setCatServicoFiltro] = useState('todas');
   const [errorWhatsApp, setErrorWhatsApp] = useState('');
@@ -76,15 +78,13 @@ export default function AgendamentoPage() {
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      const [sData, pData, cData, psData] = await Promise.all([
+      const [sData, pData, psData] = await Promise.all([
         getServicos(),
         getProfissionais(),
-        getClientes(),
         getProfissionalServico()
       ]);
       setServicos(sData);
       setProfissionais(pData.filter(p => p.ativo));
-      setClientes(cData);
       setProfServicos(psData);
 
       // Se veio com servicoParam, tenta pré-selecionar o profissional vinculado
@@ -181,28 +181,49 @@ export default function AgendamentoPage() {
     setFormData(prev => ({ ...prev, [field]: finalValue }));
   };
 
-  const verificarTelefone = () => {
-    if (!formData.telefone || formData.telefone.length < 10) {
-      setErrorWhatsApp('Digite um WhatsApp válido com DDD');
+  const verificarTelefone = async () => {
+    const rawClean = (formData.telefone || '').replace(/\D/g, '');
+    if (!rawClean || rawClean.length < 10) {
+      setErrorWhatsApp('Digite um WhatsApp válido com DDD (Ex: 42 99129-5941)');
       return;
     }
     setErrorWhatsApp('');
-    const numLimpo = formData.telefone.replace(/\D/g, '');
-    const clienteExistente = clientes.find(c => (c.telefone || '').replace(/\D/g, '') === numLimpo);
-    
-    if (clienteExistente) {
-      setFormData(prev => ({
-        ...prev,
-        nome: clienteExistente.nome,
-        email: clienteExistente.email || '',
-        cpf: clienteExistente.cpf || '',
-        endereco: clienteExistente.endereco || '',
-        clienteId: clienteExistente.id
-      }));
-      nextStep();
-    } else {
-      setTelefoneVerificado(true);
+    setVerificandoTelefone(true);
+
+    try {
+      const res = await fetch('/api/agendamento/verificar-cliente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone: formData.telefone })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.found && data.cliente) {
+          setFormData(prev => ({
+            ...prev,
+            clienteId: data.cliente.id,
+            nome: data.cliente.nome,
+            email: data.cliente.email || '',
+            cpf: data.cliente.cpf || '',
+            endereco: data.cliente.endereco || '',
+          }));
+          setClienteReconhecido(data.cliente.nome);
+          setTelefoneVerificado(true);
+          // Avança imediatamente para o passo do profissional
+          nextStep();
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar cadastro por telefone:', err);
+    } finally {
+      setVerificandoTelefone(false);
     }
+
+    // Não encontrado: libera formulário para novo cliente
+    setClienteReconhecido(null);
+    setTelefoneVerificado(true);
   };
 
   const buscarCep = async (cep: string) => {
@@ -555,12 +576,39 @@ export default function AgendamentoPage() {
                     autoFocus
                   />
                   {errorWhatsApp && <p className="text-red-500 text-xs mt-1.5">{errorWhatsApp}</p>}
-                  <Button type="button" variant="primary" className="mt-6 w-full font-bold" onClick={verificarTelefone}>
-                    Continuar para Escolha do Profissional →
+                  <Button 
+                    type="button" 
+                    variant="primary" 
+                    className="mt-6 w-full font-bold flex items-center justify-center gap-2" 
+                    onClick={verificarTelefone}
+                    disabled={verificandoTelefone}
+                  >
+                    {verificandoTelefone ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin text-foreground" />
+                        Consultando cadastro...
+                      </>
+                    ) : (
+                      'Continuar para Escolha do Profissional →'
+                    )}
                   </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {clienteReconhecido ? (
+                    <div className="md:col-span-2 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center gap-3 text-xs text-emerald-400">
+                      <UserCheck size={20} className="text-emerald-400 shrink-0" />
+                      <div>
+                        <p className="font-bold text-foreground text-sm">Cadastro localizado!</p>
+                        <p className="text-foreground/70">Bem-vindo(a) de volta, <strong>{clienteReconhecido}</strong>. Seus dados foram carregados.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="md:col-span-2 p-3 bg-gold/10 border border-gold/25 rounded-xl flex items-center gap-2 text-xs text-gold">
+                      <Sparkles size={16} className="shrink-0" />
+                      <span>Primeiro agendamento conosco! Complete seus dados abaixo para continuar.</span>
+                    </div>
+                  )}
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-foreground/70 mb-1.5">WhatsApp</label>
                     <div className="flex gap-2">

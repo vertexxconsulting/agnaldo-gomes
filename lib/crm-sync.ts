@@ -23,6 +23,72 @@ export interface ClienteInput {
 }
 
 /**
+ * Busca cliente no banco de forma resiliente a variações de formato telefônico
+ * (com/sem DDI 55, com/sem 0 inicial, com/sem 9º dígito, ou busca por sufixo dos últimos 8 dígitos).
+ */
+export async function buscarClientePorTelefone(supabase: any, telefone: string | null | undefined) {
+  if (!supabase || !telefone) return null;
+  const clean = String(telefone).replace(/\D/g, '');
+  if (clean.length < 8) return null;
+
+  let semDdi = clean;
+  if (clean.startsWith('55') && clean.length >= 12) {
+    semDdi = clean.slice(2);
+  } else if (clean.startsWith('0') && clean.length >= 11) {
+    semDdi = clean.slice(1);
+  }
+
+  const candidates = new Set<string>();
+  candidates.add(clean);
+  candidates.add(semDdi);
+  candidates.add('55' + semDdi);
+  candidates.add('0' + semDdi);
+
+  // Variação de 9º dígito móvel brasileiro (ex: 42 99153-4011 vs 42 9153-4011)
+  if (semDdi.length === 11 && semDdi[2] === '9') {
+    candidates.add(semDdi.slice(0, 2) + semDdi.slice(3));
+  } else if (semDdi.length === 10) {
+    candidates.add(semDdi.slice(0, 2) + '9' + semDdi.slice(2));
+  }
+
+  // 1. Busca direta pelas variações exatas
+  const { data: directMatches, error: errDirect } = await supabase
+    .from('salon_customers')
+    .select('*')
+    .in('phone', Array.from(candidates))
+    .limit(1);
+
+  if (!errDirect && directMatches && directMatches.length > 0) {
+    return directMatches[0];
+  }
+
+  // 2. Fallback: busca por sufixo dos últimos 8 dígitos (ignora formatação legada ou pontuações no banco)
+  const last8 = semDdi.slice(-8);
+  if (last8.length === 8) {
+    const { data: suffixMatches, error: errSuffix } = await supabase
+      .from('salon_customers')
+      .select('*')
+      .ilike('phone', '%' + last8)
+      .limit(5);
+
+    if (!errSuffix && suffixMatches && suffixMatches.length > 0) {
+      // Prioriza cliente com o mesmo DDD
+      const ddd = semDdi.length >= 10 ? semDdi.slice(0, 2) : '';
+      if (ddd) {
+        const comMesmoDdd = suffixMatches.find((c: any) => {
+          const cPhone = (c.phone || '').replace(/\D/g, '');
+          return cPhone.includes(ddd);
+        });
+        if (comMesmoDdd) return comMesmoDdd;
+      }
+      return suffixMatches[0];
+    }
+  }
+
+  return null;
+}
+
+/**
  * CRM SISTEMA MÃE — Single Source of Truth
  * Garante que o cliente seja criado ou atualizado no Supabase (salon_customers)
  * sem duplicação de registros por telefone ou e-mail.
@@ -50,14 +116,9 @@ export async function upsertClienteMae(input: ClienteInput) {
     clienteExistente = data;
   }
 
-  // 2. Se não achou por ID, buscar por Telefone (identificador principal do Salão)
+  // 2. Se não achou por ID, buscar por Telefone (identificador principal do Salão de forma resiliente)
   if (!clienteExistente && phoneClean.length >= 8) {
-    const { data } = await supabase
-      .from('salon_customers')
-      .select('*')
-      .eq('phone', phoneClean)
-      .maybeSingle();
-    clienteExistente = data;
+    clienteExistente = await buscarClientePorTelefone(supabase, phoneClean);
   }
 
   // 3. Se não achou por telefone, buscar por E-mail (se fornecido)
