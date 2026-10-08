@@ -262,14 +262,14 @@ export default function TeamManagementPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] rounded-3xl w-full max-w-md border border-[var(--border-subtle)] shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-foreground/5">
+          <div className="bg-[var(--color-card)] rounded-3xl w-full max-w-md border border-[var(--border-subtle)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-foreground/5 shrink-0">
               <h3 className="text-xl font-bold text-foreground">Adicionar Novo Membro</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-foreground/40 hover:text-foreground transition-colors">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="flex flex-col gap-1">
                 <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Nome Completo</label>
                 <input 
@@ -292,13 +292,13 @@ export default function TeamManagementPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Nickname de Login (Opcional)</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-gold font-bold text-sm">@</span>
+                <div className="relative flex items-center">
+                  <span className="absolute left-4 text-gold font-bold text-sm">@</span>
                   <input 
                     type="text" 
                     value={newUser.nickname}
                     onChange={e => setNewUser({...newUser, nickname: e.target.value})}
-                    className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
+                    className="w-full bg-background border border-[var(--border-subtle)] rounded-xl pl-8 pr-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
                     placeholder="ex: agnaldo"
                   />
                 </div>
@@ -399,6 +399,8 @@ export default function TeamManagementPage() {
                 </div>
               </div>
 
+            </div>
+            <div className="p-6 border-t border-[var(--border-subtle)] bg-foreground/5 shrink-0">
               <button 
                 onClick={handleCreateUser}
                 disabled={creating}
@@ -428,14 +430,14 @@ export default function TeamManagementPage() {
               {/* Nickname de Login */}
               <div className="p-4 bg-foreground/5 rounded-2xl border border-[var(--border-subtle)]">
                 <label className="block text-xs font-bold text-gold uppercase mb-1.5">Nickname de Acesso (@)</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-gold font-bold text-base">@</span>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-gold font-bold text-sm">@</span>
                   <input 
                     type="text"
                     value={editingNickname}
                     onChange={e => setEditingNickname(e.target.value)}
                     placeholder="ex: agnaldo"
-                    className="flex-1 bg-background border border-[var(--border-subtle)] text-foreground text-sm rounded-xl px-3 py-2 outline-none focus:border-gold font-mono"
+                    className="flex-1 bg-background border border-[var(--border-subtle)] text-foreground text-sm rounded-xl pl-8 pr-3 py-2 outline-none focus:border-gold font-mono"
                   />
                 </div>
                 <p className="text-[11px] text-foreground/50 mt-1.5">
