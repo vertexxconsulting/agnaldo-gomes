@@ -911,6 +911,12 @@ export async function salvarProdutoEstoque(
   return { ok: true, id: data?.id };
 }
 
+export async function atualizarProdutoEstoqueParcial(id: string, payload: Partial<ProdutoEstoque>): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from(TBL_INV.inventory).update(payload).eq('id', id);
+  if (error) { logSupabaseError('[atualizarProdutoEstoqueParcial]', error); return { ok: false, error: error.message }; }
+  return { ok: true };
+}
+
 /** Registra movimentação de estoque e atualiza stock_qty */
 export async function registrarMovimentacao(
   inventoryId: string,

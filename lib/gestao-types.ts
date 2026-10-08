@@ -165,6 +165,7 @@ export interface ProdutoEstoque {
   cost_price: number;
   sale_price?: number | null;
   price_per_gram?: number | null;  // custo por grama/ml calculado
+  points_cost?: number | null;     // custo em pontos para resgate
   allow_sale: boolean;
   allow_procedure_use: boolean;
   active: boolean;
