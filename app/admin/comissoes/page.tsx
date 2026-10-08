@@ -709,48 +709,48 @@ export default function ComissoesPage() {
           ))}
         </div>
 
-        {/* NAVEGAÇÃO DE ABAS PADRONIZADA */}
-        <div className="border-b border-[var(--border-subtle)] mb-8">
-          <nav className="flex space-x-2 sm:space-x-6 -mb-px overflow-x-auto scrollbar-none" aria-label="Abas de Comissões">
-            {[
-              { id: 'fechamento', label: 'Fechamento Semanal', icon: CalendarDays, highlight: true },
-              { id: 'recebiveis', label: 'Recebíveis por Período', icon: Search },
-              { id: 'resumo', label: 'Resumo por Profissional', icon: TrendingUp },
-              { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
-              { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
-              { id: 'regras', label: 'Regras de Comissão', icon: DollarSign, badge: regras.length },
-              { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length },
-            ].map(tabItem => {
-              const active = aba === tabItem.id;
-              const Icon = tabItem.icon;
-              return (
-                <button
-                  key={tabItem.id}
-                  onClick={() => setAba(tabItem.id as Aba)}
-                  className={`group inline-flex items-center gap-2 py-3 px-3 sm:px-1 border-b-2 text-sm font-medium whitespace-nowrap transition-all ${
-                    active
-                      ? 'border-gold text-gold font-semibold'
-                      : 'border-transparent text-foreground/50 hover:text-foreground hover:border-foreground/20'
-                  }`}
-                >
-                  <Icon size={16} className={active ? 'text-gold' : 'text-foreground/40 group-hover:text-foreground/70'} />
-                  <span>{tabItem.label}</span>
-                  {tabItem.highlight && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold uppercase bg-gold/20 text-gold border border-gold/30">
-                      Semana
-                    </span>
-                  )}
-                  {tabItem.badge !== undefined && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold transition-colors ${
-                      active ? 'bg-gold/15 text-gold' : 'bg-foreground/5 text-foreground/50 group-hover:bg-foreground/10'
-                    }`}>
-                      {tabItem.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+        {/* NAVEGAÇÃO DE ABAS (Botões Clicáveis) */}
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          {[
+            { id: 'fechamento', label: 'Fechamento Semanal', icon: CalendarDays, highlight: true },
+            { id: 'recebiveis', label: 'Recebíveis por Período', icon: Search },
+            { id: 'resumo', label: 'Resumo por Profissional', icon: TrendingUp },
+            { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
+            { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
+            { id: 'regras', label: 'Regras de Comissão', icon: DollarSign, badge: regras.length },
+            { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length },
+          ].map(tabItem => {
+            const active = aba === tabItem.id;
+            const Icon = tabItem.icon;
+            return (
+              <button
+                key={tabItem.id}
+                onClick={() => setAba(tabItem.id as Aba)}
+                className={`group inline-flex items-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-bold transition-all ${
+                  active
+                    ? 'bg-gold border-gold text-background shadow-md'
+                    : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
+                }`}
+              >
+                <Icon size={16} className={active ? 'text-background/80' : 'text-gold opacity-80'} />
+                <span>{tabItem.label}</span>
+                {tabItem.highlight && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                    active ? 'bg-black/20 text-background' : 'bg-gold/20 text-gold border border-gold/30'
+                  }`}>
+                    Semana
+                  </span>
+                )}
+                {tabItem.badge !== undefined && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                    active ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                  }`}>
+                    {tabItem.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {loading && (
