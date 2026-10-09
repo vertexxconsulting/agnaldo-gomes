@@ -145,7 +145,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
     const diasRestantes = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     return { 
       tipo: 'CARENCIA_D30', 
-      label: `Carência D+30 (Faltam ${diasRestantes} dias · ${fmtDate(item.due_date)})`, 
+      label: `Carência (Faltam ${diasRestantes} dias · ${fmtDate(item.due_date)})`, 
       badge: `D+30 (${diasRestantes}d)`,
       cor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
     };
@@ -636,7 +636,7 @@ export default function ComissoesPage() {
       `-----------------------------------------\n` +
       `💈 *Produção Bruta da Semana:* ${fmt(totalBrutoSemana)}\n` +
       `✅ *Comissão Liberada p/ Repasse:* ${fmt(totalLiberadoSemana)}\n` +
-      `⏳ *Carência Cartão (D+30 a Liberar):* ${fmt(totalRetidoD30)}\n` +
+      `⏳ *Carência Cartão (a Liberar):* ${fmt(totalRetidoD30)}\n` +
       `📌 *Status do Fechamento:* ${statusFechamento === 'QUITADO' ? 'PAGO & FECHADO' : 'PENDENTE DE PAGAMENTO'}\n` +
       `-----------------------------------------\n` +
       `*Atendimentos Liberados na Semana:*\n` +
@@ -869,7 +869,7 @@ export default function ComissoesPage() {
                     <th className="py-3 px-4">Atendimentos</th>
                     <th className="py-3 px-4">Faturamento Bruto</th>
                     <th className="py-3 px-4">Liberado na Semana</th>
-                    <th className="py-3 px-4">Carência Cartão (D+30)</th>
+                    <th className="py-3 px-4">Carência Cartão</th>
                     <th className="py-3 px-4">Status Caixa</th>
                     <th className="py-3 px-4 text-right">Ações</th>
                   </tr>
@@ -980,7 +980,7 @@ export default function ComissoesPage() {
                     <Search size={18} className="text-gold" /> Consulta de Recebíveis
                   </h3>
                   <p className="text-xs text-foreground/50">
-                    Filtre os recebíveis semanais ou mensais dos profissionais com cálculo exato de carência em cartão de crédito (D+30).
+                    Filtre os recebíveis semanais ou mensais dos profissionais com cálculo exato de carência em cartão de crédito.
                   </p>
                 </div>
 
@@ -1071,7 +1071,7 @@ export default function ComissoesPage() {
                   >
                     <option value="todos">Todos os status</option>
                     <option value="liberados">🟢 Liberados p/ Pagamento</option>
-                    <option value="carencia">🟡 Carência Cartão (D+30)</option>
+                    <option value="carencia">🟡 Carência Cartão</option>
                     <option value="pagos">🔵 Já Quitados / Pagos</option>
                   </select>
                 </div>
@@ -1101,7 +1101,7 @@ export default function ComissoesPage() {
               </CardGlass>
 
               <CardGlass className="p-4 border-l-4 border-l-amber-400">
-                <p className="text-xs text-foreground/50">Carência Cartão (D+30)</p>
+                <p className="text-xs text-foreground/50">Carência Cartão</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
                   {fmt(recebiveisFiltrados.filter(i => i.d30Info.tipo === 'CARENCIA_D30').reduce((s, i) => s + i.amount, 0))}
                 </p>
@@ -2053,7 +2053,7 @@ export default function ComissoesPage() {
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-center print:border-black/20 print:bg-amber-50">
-                <p className="text-[11px] text-foreground print:text-amber-800 font-bold">Carência D+30 (Futuro)</p>
+                <p className="text-[11px] text-foreground print:text-amber-800 font-bold">Carência (Futuro)</p>
                 <p className="text-base font-bold text-foreground print:text-amber-900 mt-0.5">
                   {fmt(reciboModalData.totalRetidoD30)}
                 </p>
@@ -2086,7 +2086,7 @@ export default function ComissoesPage() {
                           <td className="py-2 px-3 font-mono">{fmtDate(p.due_date || p.appointment_date)}</td>
                           <td className="py-2 px-3">
                             <span className="font-semibold">{PAGAMENTO_CONFIG[p.payment_method as FormaPagamento]?.label ?? p.payment_method}</span>
-                            {p.payment_method === 'CREDITO' && <span className="ml-1 text-[10px] text-foreground font-bold">(D+30)</span>}
+                            {p.payment_method === 'CREDITO' && <span className="ml-1 text-[10px] text-foreground font-bold">(Prazo)</span>}
                           </td>
                           <td className="py-2 px-3 text-right font-bold text-foreground print:text-black">
                             {fmt(p.amount)}
@@ -2114,7 +2114,7 @@ export default function ComissoesPage() {
             {reciboModalData.parcelasRetidasD30.length > 0 && (
               <div className="mb-6">
                 <h5 className="text-xs font-bold uppercase tracking-wider text-foreground print:text-black mb-2 flex items-center justify-between">
-                  <span>Vendas em Cartão D+30 (Aguardando Prazo de 30 Dias)</span>
+                  <span>Vendas em Cartão (Aguardando Prazo)</span>
                   <span className="text-[11px] font-normal text-foreground print:text-black font-mono">
                     Total: {fmt(reciboModalData.totalRetidoD30)}
                   </span>
@@ -2132,7 +2132,7 @@ export default function ComissoesPage() {
                       {reciboModalData.parcelasRetidasD30.map((p: any) => (
                         <tr key={p.id}>
                           <td className="py-2 px-3 font-mono">{fmtDate(p.appointment_date)}</td>
-                          <td className="py-2 px-3 text-foreground font-semibold">{fmtDate(p.due_date)} (D+30)</td>
+                          <td className="py-2 px-3 text-foreground font-semibold">{fmtDate(p.due_date)}</td>
                           <td className="py-2 px-3 text-right font-bold text-foreground/80">{fmt(p.amount)}</td>
                         </tr>
                       ))}
