@@ -363,7 +363,7 @@ export default function EstoquePage() {
   const marcas = [...new Set(produtos.map(p => p.brand).filter(Boolean))].sort();
 
   const filtrados = useMemo(() => {
-    return produtos.filter(p => {
+    const list = produtos.filter(p => {
       const matchBusca = p.name.toLowerCase().includes(busca.toLowerCase()) ||
         (p.brand ?? '').toLowerCase().includes(busca.toLowerCase());
       const matchCat = catFiltro === 'todas' || p.category === catFiltro;
@@ -371,6 +371,14 @@ export default function EstoquePage() {
         (tipFiltro === 'insumo' && p.allow_procedure_use) ||
         (tipFiltro === 'venda' && p.allow_sale);
       return matchBusca && matchCat && matchTip;
+    });
+
+    return list.sort((a, b) => {
+      const aTemEstoque = a.stock_qty > 0;
+      const bTemEstoque = b.stock_qty > 0;
+      if (aTemEstoque && !bTemEstoque) return -1;
+      if (!aTemEstoque && bTemEstoque) return 1;
+      return a.name.localeCompare(b.name);
     });
   }, [produtos, busca, catFiltro, tipFiltro]);
 
@@ -435,7 +443,7 @@ export default function EstoquePage() {
 
   // KPIs
   const totalProdutos = produtos.filter(p => p.active).length;
-  const totalEmEstoque = produtos.reduce((s, p) => s + p.stock_qty * p.cost_price, 0);
+  const totalEmEstoque = produtos.reduce((s, p) => s + (p.stock_qty > 0 ? p.stock_qty * p.cost_price : 0), 0);
   const produtosVenda = produtos.filter(p => p.allow_sale && p.active).length;
 
   return (
@@ -535,7 +543,7 @@ export default function EstoquePage() {
                 {filtrados.map(p => {
                   const badge = estoqueBadge(p);
                   return (
-                    <CardGlass key={p.id} className={`p-4 ${!p.active ? 'opacity-50' : ''}`}>
+                    <CardGlass key={p.id} className={`p-4 ${!p.active || p.stock_qty <= 0 ? 'opacity-60 grayscale-[30%]' : ''}`}>
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-foreground truncate">{p.name}</h3>
