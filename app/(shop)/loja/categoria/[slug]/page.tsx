@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { MOCK_PRODUCTS, type ShopProduct } from '@/lib/shop-mock';
+import { type ShopProduct } from '@/lib/shop-mock';
 
 // Mapeia o slug da URL para a categoria usada na vitrine/mock
 const SLUG_CATEGORY: Record<string, string> = {
@@ -69,14 +69,14 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
         if (error) {
           console.error('Supabase error:', error.message);
           setError(error.message);
-          setProducts(MOCK_PRODUCTS);
-        } else if (data && data.length > 0) {
+          setProducts([]);
+        } else if (data) {
           setProducts(data.map(toProduct));
         } else {
-          setProducts(MOCK_PRODUCTS);
+          setProducts([]);
         }
       } catch {
-        if (!cancelled) setProducts(MOCK_PRODUCTS);
+        if (!cancelled) setProducts([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

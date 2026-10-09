@@ -10,7 +10,7 @@ import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { supabase } from '@/lib/supabase';
-import { MOCK_PRODUCTS, type ShopProduct } from '@/lib/shop-mock';
+import { type ShopProduct } from '@/lib/shop-mock';
 
 function toProduct(p: any): ShopProduct {
   return {
@@ -58,21 +58,15 @@ export default function ProductDetailPage() {
         const data = await loadFromSupabase();
         setProduto(toProduct(data));
       } catch {
-        const mock = MOCK_PRODUCTS.find(p => p.id === id);
-        if (mock) setProduto(mock);
+        // Not found
       }
       setLoading(false);
     }
     fetchProduct();
   }, [id]);
 
-  const related = useMemo(
-    () =>
-      produto
-        ? MOCK_PRODUCTS.filter(p => p.active && p.category === produto.category && p.id !== produto.id).slice(0, 4)
-        : [],
-    [produto]
-  );
+  // Produtos relacionados poderiam ser buscados do DB. Por hora deixamos vazio sem os mocks.
+  const related: ShopProduct[] = [];
 
   // Galeria: a imagem principal + 3 variações (usando a mesma imagem como placeholder)
   const gallery = useMemo(() => {

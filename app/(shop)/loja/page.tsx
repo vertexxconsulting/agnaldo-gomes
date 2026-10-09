@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@/store/cartStore';
 
 import { supabase } from '@/lib/supabase';
-import { MOCK_PRODUCTS, type ShopProduct } from '@/lib/shop-mock';
+import { type ShopProduct } from '@/lib/shop-mock';
 
 const heroSlides = [
   { type: 'video', src: '/opt/hero-loop.mp4' },
@@ -63,16 +63,14 @@ export default function LojaHome() {
         if (error) {
           console.error('Supabase error:', error.message);
           setFetchError(error.message);
-          // Fallback para catálogo de demonstração profissional
-          setProducts(MOCK_PRODUCTS);
-        } else if (data && data.length > 0) {
+          setProducts([]);
+        } else if (data) {
           setProducts(data.map(toProduct));
         } else {
-          // Supabase vazio: catálogo de demonstração
-          setProducts(MOCK_PRODUCTS);
+          setProducts([]);
         }
       } catch {
-        setProducts(MOCK_PRODUCTS);
+        setProducts([]);
       }
       setLoading(false);
     }
