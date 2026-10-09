@@ -123,6 +123,7 @@ function mapServico(r: Row): Servico {
     visivel_app: r.visible_in_app ?? true,
     points_reward: r.points_reward ?? 0,
     points_cost: r.points_cost ?? 0,
+    is_addon: r.is_addon ?? false,
   };
 }
 
@@ -707,6 +708,7 @@ export async function criarServico(payload: {
   preco_variavel?: boolean;
   preco_maximo?: number | null;
   default_commission_pct?: number;
+  is_addon?: boolean;
 }): Promise<{ id?: string; error?: string }> {
   try {
     const res = await fetch('/api/servicos', {
@@ -735,6 +737,7 @@ export async function criarServico(payload: {
   if (payload.preco_variavel !== undefined) insertPayload.preco_variavel = payload.preco_variavel;
   if (payload.preco_maximo !== undefined) insertPayload.preco_maximo = payload.preco_maximo;
   if (payload.default_commission_pct !== undefined) insertPayload.default_commission_pct = payload.default_commission_pct;
+  if (payload.is_addon !== undefined) insertPayload.is_addon = payload.is_addon;
 
   const { data, error } = await supabase
     .from(TBL.servicos)
@@ -761,6 +764,7 @@ export async function atualizarServico(id: string, payload: Partial<{
   preco_variavel: boolean;
   preco_maximo: number | null;
   default_commission_pct: number;
+  is_addon: boolean;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
@@ -789,6 +793,7 @@ export async function atualizarServico(id: string, payload: Partial<{
   if (payload.preco_variavel !== undefined) patch.preco_variavel = payload.preco_variavel;
   if (payload.preco_maximo !== undefined) patch.preco_maximo = payload.preco_maximo;
   if (payload.default_commission_pct !== undefined) patch.default_commission_pct = payload.default_commission_pct;
+  if (payload.is_addon !== undefined) patch.is_addon = payload.is_addon;
 
   const { error } = await supabase
     .from(TBL.servicos)
@@ -864,6 +869,7 @@ function mapProdutoEstoque(r: Row): ProdutoEstoque {
     notes: r.notes ?? null,
     created_at: r.created_at ?? '',
     updated_at: r.updated_at ?? undefined,
+    points_cost: r.points_cost != null ? Number(r.points_cost) : null,
   };
 }
 

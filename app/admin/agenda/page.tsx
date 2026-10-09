@@ -741,7 +741,7 @@ function AgendaContent() {
                   : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
               }`}
             >
-              <span>✂️ Cabelo</span>
+              <span>Cabelo</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                 categoriaFiltro === 'Cabelo' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
               }`}>
@@ -756,7 +756,7 @@ function AgendaContent() {
                   : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
               }`}
             >
-              <span>💅 Unhas</span>
+              <span>Unhas</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                 categoriaFiltro === 'Unhas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
               }`}>
@@ -781,7 +781,7 @@ function AgendaContent() {
               const cat = getCategoriaProfissional(p);
               return (
                 <option key={p.id} value={p.id} className="font-medium">
-                  {p.nome} — {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                  {p.nome} — {cat === 'Unhas' ? 'Unhas' : 'Cabelo'}
                 </option>
               );
             })}
@@ -1002,7 +1002,7 @@ function AgendaContent() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-foreground text-sm uppercase tracking-wide leading-tight">{prof.nome}</span>
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold">
-                            {getCategoriaProfissional(prof) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                            {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
                           </span>
                         </div>
                         <div className="text-[10px] text-foreground/50 mt-0.5">

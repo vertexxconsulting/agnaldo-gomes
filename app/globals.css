@@ -4,11 +4,11 @@
 @theme {
   --color-background: #faf8f3;
   --color-foreground: #1d1b18;
-  --color-primary: #064e3b;
+  --color-primary: #C5A059;
   --color-primary-foreground: #ffffff;
-  --color-primary-hover: #065f46;
-  --color-gold: #064e3b;
-  --color-gold-dim: #065f46;
+  --color-primary-hover: #a38345;
+  --color-gold: #C5A059;
+  --color-gold-dim: #a38345;
   --color-secondary: #eae3d1;
   --color-card: #ffffff;
   --color-success: #10b981;
@@ -33,11 +33,11 @@
   color-scheme: dark;
   --color-background: #0f0f11;
   --color-foreground: #ebebeb;
-  --color-primary: #d4af37;
+  --color-primary: #D4AF37;
   --color-primary-foreground: #0d0d0d;
-  --color-primary-hover: #b5952f;
-  --color-gold: #d4af37;
-  --color-gold-dim: #b5952f;
+  --color-primary-hover: #B5952F;
+  --color-gold: #D4AF37;
+  --color-gold-dim: #B5952F;
   --color-secondary: #f5f5dc;
   --color-card: #1a1a1d;
   --background: #0f0f11;
@@ -80,11 +80,11 @@ body {
   color-scheme: dark;
   --color-background: #0f0f11;
   --color-foreground: #ebebeb;
-  --color-primary: #d4af37;
+  --color-primary: #D4AF37;
   --color-primary-foreground: #0d0d0d;
-  --color-primary-hover: #b5952f;
-  --color-gold: #d4af37;
-  --color-gold-dim: #b5952f;
+  --color-primary-hover: #B5952F;
+  --color-gold: #D4AF37;
+  --color-gold-dim: #B5952F;
   --color-card: #1a1a1d;
   --background: #0f0f11;
   --foreground: #ebebeb;
@@ -105,4 +105,10 @@ body {
 .animate-carousel {
   animation: slide-carousel 40s linear infinite;
   will-change: transform;
+}
+
+/* ============ REFINAMENTO VISUAL (ÍCONES) ============ */
+/* Reduz a espessura dos traços dos ícones Lucide para um aspecto mais premium e delicado */
+svg.lucide {
+  stroke-width: 1.5 !important;
 }
