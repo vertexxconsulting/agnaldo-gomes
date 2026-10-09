@@ -39,13 +39,13 @@ const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: typeof Ban
   DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400', badge: 'Imediato' },
   PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400', badge: 'Imediato' },
   DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400', badge: 'Imediato' },
-  CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-400', badge: 'D+30' },
+  CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground', badge: 'D+30' },
   BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400', badge: 'D+3' },
 };
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = {
-    PENDING: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+    PENDING: 'bg-amber-500/15 text-foreground border border-amber-500/20',
     PARTIAL: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
     PAID: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
     OVERDUE: 'bg-red-500/15 text-red-400 border border-red-500/20',
@@ -147,7 +147,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
       tipo: 'CARENCIA_D30', 
       label: `Carência (Faltam ${diasRestantes} dias · ${fmtDate(item.due_date)})`, 
       badge: `D+30 (${diasRestantes}d)`,
-      cor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
+      cor: 'text-foreground bg-amber-500/10 border-amber-500/20' 
     };
   }
   return { 
@@ -665,13 +665,13 @@ export default function ComissoesPage() {
         {/* ALERTA DE REGRA DE NEGÓCIO OFICIAL */}
         <div className="mt-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-gold/10 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+            <div className="p-2 rounded-lg bg-amber-500/20 text-foreground shrink-0">
               <CreditCard size={18} />
             </div>
             <div>
               <p className="font-bold text-foreground text-sm flex items-center gap-2">
                 <span>Regra Oficial de Repasse: Cartão de Crédito em D+30</span>
-                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Regra Salão</span>
+                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-foreground font-mono">Regra Salão</span>
               </p>
               <p className="text-foreground/70 mt-0.5 leading-relaxed">
                 As comissões de recebimentos em <strong>Cartão de Crédito</strong> são pagas <strong>30 dias após o recebimento</strong>. 
@@ -692,10 +692,10 @@ export default function ComissoesPage() {
         {/* KPIs Globais */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { icon: Clock, label: 'A Pagar (Total Geral)', value: fmt(totalPendente), cor: 'text-amber-400' },
+            { icon: Clock, label: 'A Pagar (Total Geral)', value: fmt(totalPendente), cor: 'text-foreground' },
             { icon: CheckCircle2, label: 'Pago (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-emerald-400' },
             { icon: AlertTriangle, label: 'Parcelas Vencidas', value: vencidas, cor: vencidas > 0 ? 'text-red-400' : 'text-foreground/40' },
-            { icon: User2, label: 'Profissionais Ativos', value: profissionais.length, cor: 'text-gold' },
+            { icon: User2, label: 'Profissionais Ativos', value: profissionais.length, cor: 'text-foreground' },
           ].map((k, i) => (
             <CardGlass key={i} className="p-4 flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-foreground/5 shrink-0">
@@ -732,11 +732,11 @@ export default function ComissoesPage() {
                     : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/50 hover:bg-white/5'
                 }`}
               >
-                <Icon size={16} className={active ? 'text-background/80' : 'text-gold opacity-80'} />
+                <Icon size={16} className={active ? 'text-background/80' : 'text-foreground opacity-80'} />
                 <span>{tabItem.label}</span>
                 {tabItem.highlight && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                    active ? 'bg-black/20 text-background' : 'bg-gold/20 text-gold border border-gold/30'
+                    active ? 'bg-black/20 text-background' : 'bg-gold/20 text-foreground border border-gold/30'
                   }`}>
                     Semana
                   </span>
@@ -755,7 +755,7 @@ export default function ComissoesPage() {
 
         {loading && (
           <div className="text-center py-16 text-foreground/40 flex flex-col items-center gap-3">
-            <RefreshCw size={24} className="animate-spin text-gold" />
+            <RefreshCw size={24} className="animate-spin text-foreground" />
             <p className="text-sm">Carregando dados financeiros...</p>
           </div>
         )}
@@ -769,7 +769,7 @@ export default function ComissoesPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)]">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase font-bold tracking-wider text-gold flex items-center gap-1">
+                  <span className="text-xs uppercase font-bold tracking-wider text-foreground flex items-center gap-1">
                     <CalendarDays size={14} /> Fechamento de Caixa Semanal
                   </span>
                   {semanaOffset === 0 && (
@@ -794,7 +794,7 @@ export default function ComissoesPage() {
                 {semanaOffset !== 0 && (
                   <button
                     onClick={() => setSemanaOffset(0)}
-                    className="px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/30 hover:bg-gold hover:text-background text-xs font-bold transition-colors"
+                    className="px-3 py-1.5 rounded-lg bg-gold/15 text-foreground border border-gold/30 hover:bg-gold hover:text-background text-xs font-bold transition-colors"
                   >
                     Semana Atual
                   </button>
@@ -841,17 +841,17 @@ export default function ComissoesPage() {
 
               <CardGlass className="p-4 border-l-4 border-l-amber-400">
                 <p className="text-xs text-foreground/50">Aguardando Prazo Cartão (D+30)</p>
-                <p className="text-xl font-bold text-amber-400 mt-1">
+                <p className="text-xl font-bold text-foreground mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalRetidoD30, 0))}
                 </p>
-                <p className="text-[11px] text-amber-400/80 mt-1">
+                <p className="text-[11px] text-foreground/80 mt-1">
                   Liberado 30 dias após o atendimento
                 </p>
               </CardGlass>
 
               <CardGlass className="p-4 border-l-4 border-l-gold">
                 <p className="text-xs text-foreground/50">Pendente de Repasse (Semana)</p>
-                <p className="text-xl font-bold text-gold mt-1">
+                <p className="text-xl font-bold text-foreground mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalPendenteSemana, 0))}
                 </p>
                 <p className="text-[11px] text-foreground/50 mt-1">
@@ -884,13 +884,13 @@ export default function ComissoesPage() {
                             {item.prof.foto_url ? (
                               <img src={item.prof.foto_url} alt={item.prof.nome} className="w-9 h-9 rounded-full object-cover border border-[var(--border-subtle)]" />
                             ) : (
-                              <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold">
+                              <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center text-foreground font-bold">
                                 {item.prof.nome.charAt(0)}
                               </div>
                             )}
                             <div>
                               <p className="font-bold text-foreground">{item.prof.nome}</p>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-gold font-bold">
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-foreground font-bold">
                                 {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                               </span>
                             </div>
@@ -905,12 +905,12 @@ export default function ComissoesPage() {
                         <td className="py-3.5 px-4 font-bold text-emerald-400">
                           {fmt(item.totalLiberadoSemana)}
                           {item.totalPendenteSemana > 0 && (
-                            <span className="block text-[10px] text-amber-400 font-normal">
+                            <span className="block text-[10px] text-foreground font-normal">
                               ({fmt(item.totalPendenteSemana)} pendente)
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-amber-400/90">
+                        <td className="py-3.5 px-4 font-medium text-foreground/90">
                           {fmt(item.totalRetidoD30)}
                           {item.totalRetidoD30 > 0 && (
                             <span className="block text-[10px] text-foreground/40 font-normal">
@@ -925,7 +925,7 @@ export default function ComissoesPage() {
                             </span>
                           )}
                           {item.statusFechamento === 'PENDENTE' && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-amber-500/15 text-foreground border border-amber-500/20">
                               <Clock size={12} /> Aberto
                             </span>
                           )}
@@ -940,7 +940,7 @@ export default function ComissoesPage() {
                             <button
                               onClick={() => setReciboModalData(item)}
                               title="Ver Extrato e Recibo Semanal"
-                              className="px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] text-xs text-foreground/70 hover:text-gold hover:border-gold/30 font-semibold transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] text-xs text-foreground/70 hover:text-foreground hover:border-gold/30 font-semibold transition-colors flex items-center gap-1"
                             >
                               <Printer size={13} /> Extrato
                             </button>
@@ -977,7 +977,7 @@ export default function ComissoesPage() {
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                    <Search size={18} className="text-gold" /> Consulta de Recebíveis
+                    <Search size={18} className="text-foreground" /> Consulta de Recebíveis
                   </h3>
                   <p className="text-xs text-foreground/50">
                     Filtre os recebíveis semanais ou mensais dos profissionais com cálculo exato de carência em cartão de crédito.
@@ -1102,10 +1102,10 @@ export default function ComissoesPage() {
 
               <CardGlass className="p-4 border-l-4 border-l-amber-400">
                 <p className="text-xs text-foreground/50">Carência Cartão</p>
-                <p className="text-xl font-bold text-amber-400 mt-1">
+                <p className="text-xl font-bold text-foreground mt-1">
                   {fmt(recebiveisFiltrados.filter(i => i.d30Info.tipo === 'CARENCIA_D30').reduce((s, i) => s + i.amount, 0))}
                 </p>
-                <p className="text-[11px] text-amber-400/80 mt-1">
+                <p className="text-[11px] text-foreground/80 mt-1">
                   Liberado 30 dias após o atendimento
                 </p>
               </CardGlass>
@@ -1146,7 +1146,7 @@ export default function ComissoesPage() {
                         <td className="py-3.5 px-4 font-semibold">
                           <div className="flex items-center gap-2">
                             <span>{item.prof_nome}</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-gold font-bold">
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-foreground font-bold">
                               {item.prof_categoria === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                             </span>
                           </div>
@@ -1159,7 +1159,7 @@ export default function ComissoesPage() {
                             <PagIcon size={14} className={pagCor} />
                             <span>{PAGAMENTO_CONFIG[item.payment_method]?.label ?? item.payment_method}</span>
                             <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                              item.payment_method === 'CREDITO' ? 'bg-amber-500/20 text-amber-400' : 'bg-foreground/10 text-foreground/60'
+                              item.payment_method === 'CREDITO' ? 'bg-amber-500/20 text-foreground' : 'bg-foreground/10 text-foreground/60'
                             }`}>
                               {PAGAMENTO_CONFIG[item.payment_method]?.badge}
                             </span>
@@ -1178,7 +1178,7 @@ export default function ComissoesPage() {
                             <span className="text-xs text-foreground/30 font-mono">—</span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-gold">
+                        <td className="py-3.5 px-4 font-bold text-foreground">
                           {fmt(item.amount)}
                           <span className="text-[10px] text-foreground/40 font-normal ml-1">
                             ({item.commission_pct}%)
@@ -1219,7 +1219,7 @@ export default function ComissoesPage() {
                   {recebiveisFiltrados.length === 0 && (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-foreground/40">
-                        <Calendar size={36} className="mx-auto mb-2 text-gold opacity-40" />
+                        <Calendar size={36} className="mx-auto mb-2 text-foreground opacity-40" />
                         <p className="font-semibold text-foreground/70">Nenhum recebível encontrado no período selecionado.</p>
                         <p className="text-xs text-foreground/40 mt-1">Tente ajustar as datas inicial e final ou mudar o filtro de profissional.</p>
                       </td>
@@ -1258,12 +1258,12 @@ export default function ComissoesPage() {
                             <img src={prof.foto_url} alt={prof.nome} className="w-11 h-11 rounded-full object-cover border border-[var(--border-subtle)]" />
                           ) : (
                             <div className="w-11 h-11 rounded-full bg-gold/15 flex items-center justify-center border border-gold/20">
-                              <User2 size={20} className="text-gold" />
+                              <User2 size={20} className="text-foreground" />
                             </div>
                           )}
                           <div>
                             <p className="font-semibold text-base">{prof.nome}</p>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-gold font-bold">
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-foreground font-bold">
                               {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                             </span>
                           </div>
@@ -1277,14 +1277,14 @@ export default function ComissoesPage() {
                               abrirRegra(r);
                             }}
                             title="Clique para editar a comissão"
-                            className="px-2.5 py-1 rounded-lg bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 text-xs font-bold transition-colors flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-gold/10 text-foreground border border-gold/30 hover:bg-gold/20 text-xs font-bold transition-colors flex items-center gap-1"
                           >
                             {pct}% <Edit size={11} />
                           </button>
                         ) : (
                           <button
                             onClick={() => abrirRegra(undefined, prof.id)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 text-xs font-medium transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-foreground border border-amber-500/20 hover:bg-amber-500/20 text-xs font-medium transition-colors"
                           >
                             + Definir %
                           </button>
@@ -1294,7 +1294,7 @@ export default function ComissoesPage() {
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="p-3 bg-amber-500/8 rounded-lg border border-amber-500/15">
                           <p className="text-xs text-foreground/50 mb-0.5">A Pagar Total</p>
-                          <p className="font-bold text-amber-400 text-base">{fmt(totalPendente)}</p>
+                          <p className="font-bold text-foreground text-base">{fmt(totalPendente)}</p>
                         </div>
                         <div className="p-3 bg-emerald-500/8 rounded-lg border border-emerald-500/15">
                           <p className="text-xs text-foreground/50 mb-0.5">Pago (Mês Atual)</p>
@@ -1306,7 +1306,7 @@ export default function ComissoesPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setProfFiltroFechamento(prof.id); setAba('fechamento'); }}
-                        className="flex-1 py-2 text-xs text-gold border border-gold/30 rounded-lg hover:bg-gold/10 transition-colors font-medium flex items-center justify-center gap-1"
+                        className="flex-1 py-2 text-xs text-foreground border border-gold/30 rounded-lg hover:bg-gold/10 transition-colors font-medium flex items-center justify-center gap-1"
                       >
                         Fechamento Semanal →
                       </button>
@@ -1349,7 +1349,7 @@ export default function ComissoesPage() {
                   <option value="todos">Todos os profissionais</option>
                   {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
-                <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold transition-colors">
+                <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-foreground transition-colors">
                   <RefreshCw size={14} />
                 </button>
               </div>
@@ -1380,7 +1380,7 @@ export default function ComissoesPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-foreground/60">Parcela {p.installment_number}</td>
-                        <td className="py-3 px-4 font-bold text-gold">{fmt(p.amount)}</td>
+                        <td className="py-3 px-4 font-bold text-foreground">{fmt(p.amount)}</td>
                         <td className="py-3 px-4">
                           <StatusBadge status={vencida && p.status === 'PENDING' ? 'OVERDUE' : p.status} />
                         </td>
@@ -1438,7 +1438,7 @@ export default function ComissoesPage() {
                   <option value="todos">Todos os profissionais</option>
                   {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
-                <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold transition-colors">
+                <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-foreground transition-colors">
                   <RefreshCw size={14} />
                 </button>
               </div>
@@ -1447,7 +1447,7 @@ export default function ComissoesPage() {
             <div className="space-y-3">
               {comissoesFiltradas.length === 0 ? (
                 <CardGlass className="text-center py-12 text-foreground/40">
-                  <CreditCard size={36} className="mx-auto mb-2 opacity-30 text-gold" />
+                  <CreditCard size={36} className="mx-auto mb-2 opacity-30 text-foreground" />
                   <p>Nenhuma comissão registrada até o momento.</p>
                 </CardGlass>
               ) : comissoesFiltradas.map(c => {
@@ -1458,7 +1458,7 @@ export default function ComissoesPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center shrink-0 border border-gold/20">
-                          <User2 size={18} className="text-gold" />
+                          <User2 size={18} className="text-foreground" />
                         </div>
                         <div>
                           <p className="font-semibold">{getProfNome(c.professional_id)}</p>
@@ -1468,7 +1468,7 @@ export default function ComissoesPage() {
                             <PagIcon size={12} className={pagCor} />
                             <span>{PAGAMENTO_CONFIG[c.payment_method]?.label ?? c.payment_method}</span>
                             {c.payment_method === 'CREDITO' && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-foreground font-bold">
                                 D+30
                               </span>
                             )}
@@ -1484,7 +1484,7 @@ export default function ComissoesPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-foreground/50">{c.commission_pct}% comissão</p>
-                          <p className="font-bold text-gold text-base">{fmt(c.total_commission)}</p>
+                          <p className="font-bold text-foreground text-base">{fmt(c.total_commission)}</p>
                         </div>
                         <StatusBadge status={c.status} />
                       </div>
@@ -1499,7 +1499,7 @@ export default function ComissoesPage() {
                             className={`text-xs px-2.5 py-1 rounded-md border font-mono ${
                               p.status === 'PAID'
                                 ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5'
-                                : 'border-amber-500/30 text-amber-400 bg-amber-500/5'
+                                : 'border-amber-500/30 text-foreground bg-amber-500/5'
                             }`}
                           >
                             P{p.installment_number}/{c.parcelas!.length}: {fmt(p.amount)} · Venc: {fmtDate(p.due_date)}
@@ -1542,7 +1542,7 @@ export default function ComissoesPage() {
                   <CardGlass key={r.id} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center border border-gold/20">
-                        <User2 size={16} className="text-gold" />
+                        <User2 size={16} className="text-foreground" />
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{getProfNome(r.professional_id)}</p>
@@ -1550,12 +1550,12 @@ export default function ComissoesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-gold">{r.commission_pct}%</span>
+                      <span className="text-2xl font-bold text-foreground">{r.commission_pct}%</span>
                       <div className="flex flex-col gap-1">
                         <button
                           onClick={() => abrirRegra(r)}
                           title="Editar regra"
-                          className="p-1 rounded text-foreground/50 hover:text-gold transition-colors"
+                          className="p-1 rounded text-foreground/50 hover:text-foreground transition-colors"
                         >
                           <Edit size={14} />
                         </button>
@@ -1573,7 +1573,7 @@ export default function ComissoesPage() {
 
                 {regras.filter(r => !r.service_id).length === 0 && (
                   <div className="col-span-3 text-center py-8 text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
-                    <SlidersHorizontal size={28} className="mx-auto mb-2 opacity-30 text-gold" />
+                    <SlidersHorizontal size={28} className="mx-auto mb-2 opacity-30 text-foreground" />
                     <p className="text-sm">Nenhuma regra geral configurada ainda.</p>
                     <p className="text-xs text-foreground/40 mt-0.5">Clique em "Nova Regra" acima para definir a comissão dos profissionais.</p>
                   </div>
@@ -1619,13 +1619,13 @@ export default function ComissoesPage() {
                         <tr key={r.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5">
                           {profFiltro === 'todos' && <td className="py-3 px-4 font-semibold">{getProfNome(r.professional_id)}</td>}
                           <td className="py-3 px-4 text-foreground/80">{getSvcNome(r.service_id)}</td>
-                          <td className="py-3 px-4 font-bold text-gold text-base">{r.commission_pct}%</td>
+                          <td className="py-3 px-4 font-bold text-foreground text-base">{r.commission_pct}%</td>
                           <td className="py-3 px-4 text-right">
                             <div className="inline-flex gap-1">
                               <button
                                 onClick={() => abrirRegra(r)}
                                 title="Editar regra"
-                                className="p-1.5 rounded hover:bg-foreground/5 text-foreground/60 hover:text-gold"
+                                className="p-1.5 rounded hover:bg-foreground/5 text-foreground/60 hover:text-foreground"
                               >
                                 <Edit size={14} />
                               </button>
@@ -1661,7 +1661,7 @@ export default function ComissoesPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-xl font-bold font-serif flex items-center gap-2 text-foreground">
-                  <Banknote className="text-gold" size={22} />
+                  <Banknote className="text-foreground" size={22} />
                   Taxas de Cartões e Maquininhas
                 </h3>
                 <p className="text-xs text-foreground/60 mt-1 max-w-2xl leading-relaxed">
@@ -1685,14 +1685,14 @@ export default function ComissoesPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="text-gold" size={18} />
+                    <ShieldCheck className="text-foreground" size={18} />
                     <h4 className="text-sm font-bold text-foreground">
                       Desconto da Taxa na Base da Comissão
                     </h4>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                       descontarTaxaComissao 
                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        : 'bg-amber-500/20 text-foreground border border-amber-500/30'
                     }`}>
                       {descontarTaxaComissao ? 'Ativado (Recomendado)' : 'Desativado'}
                     </span>
@@ -1724,7 +1724,7 @@ export default function ComissoesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {taxas.map(taxa => {
                 const tipoConfig = {
-                  credito: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+                  credito: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground bg-amber-500/10 border-amber-500/20' },
                   debito: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
                   pix: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
                   dinheiro: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
@@ -1766,7 +1766,7 @@ export default function ComissoesPage() {
                       <div className="bg-foreground/[0.03] rounded-lg p-3 border border-[var(--border-subtle)] space-y-2 mb-3">
                         <div className="flex justify-between items-baseline">
                           <span className="text-xs text-foreground/60">Taxa Percentual:</span>
-                          <span className="text-lg font-bold font-mono text-gold">
+                          <span className="text-lg font-bold font-mono text-foreground">
                             {Number(taxa.fee_percentage).toFixed(2)}%
                           </span>
                         </div>
@@ -1791,7 +1791,7 @@ export default function ComissoesPage() {
                         onClick={() => handleToggleAtivoTaxa(taxa.id, taxa.active)}
                         className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                           taxa.active 
-                            ? 'text-foreground/50 hover:text-amber-400' 
+                            ? 'text-foreground/50 hover:text-foreground' 
                             : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
                         }`}
                       >
@@ -1802,7 +1802,7 @@ export default function ComissoesPage() {
                         <button
                           type="button"
                           onClick={() => abrirEdicaoTaxa(taxa)}
-                          className="p-1.5 rounded-md hover:bg-foreground/10 text-foreground/60 hover:text-gold transition-colors"
+                          className="p-1.5 rounded-md hover:bg-foreground/10 text-foreground/60 hover:text-foreground transition-colors"
                           title="Editar regra"
                         >
                           <Edit size={14} />
@@ -1826,7 +1826,7 @@ export default function ComissoesPage() {
             <CardGlass className="p-6 border border-gold/30 space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-subtle)] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gold/10 text-gold">
+                  <div className="p-2.5 rounded-xl bg-gold/10 text-foreground">
                     <Calculator size={22} />
                   </div>
                   <div>
@@ -1941,7 +1941,7 @@ export default function ComissoesPage() {
                         <div className="space-y-1.5 text-xs text-foreground/80">
                           <div className="flex justify-between">
                             <span>Repasse ao Profissional ({simComissaoPct}% da base líquida):</span>
-                            <span className="font-bold font-mono text-gold">{fmt(comissaoComRegra)}</span>
+                            <span className="font-bold font-mono text-foreground">{fmt(comissaoComRegra)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Líquido Retido pelo Salão:</span>
@@ -1958,7 +1958,7 @@ export default function ComissoesPage() {
                       <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-foreground/[0.02] space-y-3 opacity-80">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
-                            <AlertTriangle size={14} className="text-amber-400" /> Sem Desconto (Salão Absorve Sozinho)
+                            <AlertTriangle size={14} className="text-foreground" /> Sem Desconto (Salão Absorve Sozinho)
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded bg-foreground/10 text-foreground/60 font-bold">
                             Base: {fmt(simValor)}
@@ -1971,7 +1971,7 @@ export default function ComissoesPage() {
                           </div>
                           <div className="flex justify-between">
                             <span>Líquido Retido pelo Salão (prejudicado):</span>
-                            <span className="font-bold font-mono text-amber-400">{fmt(liquidoSalaoSemRegra)}</span>
+                            <span className="font-bold font-mono text-foreground">{fmt(liquidoSalaoSemRegra)}</span>
                           </div>
                           <div className="flex justify-between text-foreground/40 text-[11px] pt-1 border-t border-[var(--border-subtle)]">
                             <span>Salão perdeu nesta venda:</span>
@@ -2295,7 +2295,7 @@ export default function ComissoesPage() {
           <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95 border border-gold/30 shadow-2xl">
             <div className="flex justify-between items-center mb-5 border-b border-[var(--border-subtle)] pb-3">
               <h3 className="text-xl font-bold font-serif flex items-center gap-2 text-foreground">
-                <Banknote size={20} className="text-gold" />
+                <Banknote size={20} className="text-foreground" />
                 {taxaEmEdicao ? 'Editar Regra de Taxa' : 'Nova Regra de Taxa'}
               </h3>
               <button onClick={() => setModalTaxaAberto(false)} className="text-foreground/50 hover:text-foreground">
@@ -2388,7 +2388,7 @@ export default function ComissoesPage() {
                       onClick={() => setFormTaxa(f => ({ ...f, days_to_receive: opt.val }))}
                       className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${
                         formTaxa.days_to_receive === opt.val
-                          ? 'border-gold bg-gold/15 text-gold'
+                          ? 'border-gold bg-gold/15 text-foreground'
                           : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
                       }`}
                     >
@@ -2416,7 +2416,7 @@ export default function ComissoesPage() {
                   id="chkTaxaAtiva"
                   checked={formTaxa.active}
                   onChange={e => setFormTaxa(f => ({ ...f, active: e.target.checked }))}
-                  className="rounded border-[var(--border-subtle)] text-gold focus:ring-gold h-4 w-4"
+                  className="rounded border-[var(--border-subtle)] text-foreground focus:ring-gold h-4 w-4"
                 />
                 <label htmlFor="chkTaxaAtiva" className="text-xs text-foreground/80 font-medium cursor-pointer">
                   Regra ativa no cálculo de comissões e vendas
