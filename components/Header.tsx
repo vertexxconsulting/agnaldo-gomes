@@ -103,7 +103,7 @@ export function Header() {
             )}
           </Link>
           <Link 
-            href={urls.academy === '/academy' ? '/academy/login' : `${urls.academy}/login`} 
+            href="/academy/login" 
             className={cn(
               "text-[12px] font-medium transition-colors",
               isDarkHeader ? "text-white/80 hover:text-white" : "text-foreground/75 hover:text-primary"
@@ -140,7 +140,7 @@ export function Header() {
               Agendar meu Horário
             </Button>
           </Link>
-          <Link href={urls.academy === '/academy' ? '/academy/login' : `${urls.academy}/login`} onClick={() => setMobileMenuOpen(false)} className="text-lg font-medium text-foreground hover:text-primary transition-colors">
+          <Link href="/academy/login" onClick={() => setMobileMenuOpen(false)} className="text-lg font-medium text-foreground hover:text-primary transition-colors">
             Área do Aluno
           </Link>
         </div>
