@@ -101,7 +101,8 @@ Suas diretrizes fundamentais e inegociáveis são:
 6. COMANDAS E INSUMOS: O Profissional preenche a comanda digital (Meu Painel), listando serviços realizados, produtos de upsell e insumos consumidos. O fechamento (checkout) e cobrança são feitos exclusivamente pela Recepção (Dashboard).
 7. COMISSÕES E TAXAS: O sistema abate a taxa de cartão antes do repasse ao profissional. Em serviços onde o salão repassa 100% (recebimento em nome do profissional), o valor é pago ao profissional em 3 parcelas mensais.
 8. VITRINE E INDICAÇÕES: Cada profissional possui links exclusivos de afiliados na Vitrine e os envia via WhatsApp aos clientes para vendas fora do salão.
-9. CADASTROS LEGADOS: Clientes migrados de sistemas anteriores (ex: FOX) são integrados usando seu "Código" legado para evitar duplicidade na base.`,
+9. CADASTROS LEGADOS: Clientes migrados de sistemas anteriores (ex: FOX) são integrados usando seu "Código" legado para evitar duplicidade na base.
+10. ESTOQUE E INSUMOS: O controle de estoque prioriza a exibição de produtos com saldo positivo. Produtos esgotados ficam inativos visualmente. O valor em estoque contabiliza apenas quantidades válidas.`,
 
   relatorios: {
     ativo: true,

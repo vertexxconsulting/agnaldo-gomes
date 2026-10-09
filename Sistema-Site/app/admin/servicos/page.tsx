@@ -1,0 +1,353 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, Clock, Eye, EyeOff } from 'lucide-react';
+import { SectionTitle } from '@/components/SectionTitle';
+import { CardGlass } from '@/components/CardGlass';
+import { Button } from '@/components/Button';
+import {
+  getServicos, getProfissionalServico, getProfissionais,
+} from '@/lib/mock-data';
+import {
+  criarServico, atualizarServico, excluirServico,
+} from '@/lib/supabase-queries';
+import type { Servico, Profissional, ProfissionalServico } from '@/lib/gestao-types';
+
+export default function ServicosPage() {
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [profisiconalServicoData, setProfisiconalServicoData] = useState<ProfissionalServico[]>([]);
+  const [profissionaisData, setProfissionaisData] = useState<Profissional[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState('');
+  const [catFiltro, setCatFiltro] = useState<string>('todas');
+  const [editando, setEditando] = useState<Servico | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [isVariablePrice, setIsVariablePrice] = useState(false);
+
+  // Carregar dados do Supabase
+  useEffect(() => {
+    const carregarDados = async () => {
+      setLoading(true);
+      const [servicosData, psData, profData] = await Promise.all([
+        getServicos(),
+        getProfissionalServico(),
+        getProfissionais(),
+      ]);
+      setServicos(servicosData);
+      setProfisiconalServicoData(psData);
+      setProfissionaisData(profData);
+      setLoading(false);
+    };
+    carregarDados();
+  }, []);
+
+  // Categorias derivadas dos serviços reais carregados
+  const categorias = [...new Set(servicos.map(s => s.categoria))].sort();
+
+  const filtrados = servicos.filter(s => {
+    const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) || s.categoria.toLowerCase().includes(busca.toLowerCase());
+    const matchCat = catFiltro === 'todas' || s.categoria === catFiltro;
+    return matchBusca && matchCat;
+  });
+
+  const profsPorServico = (servicoId: string): string[] => {
+    const ids = profisiconalServicoData.filter(ps => ps.servico_id === servicoId).map(ps => ps.profissional_id);
+    return profissionaisData.filter(p => ids.includes(p.id)).map(p => p.nome);
+  };
+
+  const toggleAtivo = async (id: string) => {
+    const atual = servicos.find(s => s.id === id);
+    if (!atual) return;
+    const resultado = await atualizarServico(id, { ativo: !atual.ativo });
+    if (resultado.ok) {
+      setServicos(prev => prev.map(s => s.id === id ? { ...s, ativo: !s.ativo } : s));
+    } else {
+      alert(`Erro ao atualizar: ${resultado.error}`);
+    }
+  };
+
+  const toggleVisivel = async (id: string) => {
+    const atual = servicos.find(s => s.id === id);
+    if (!atual) return;
+    const resultado = await atualizarServico(id, { visivel_app: !atual.visivel_app });
+    if (resultado.ok) {
+      setServicos(prev => prev.map(s => s.id === id ? { ...s, visivel_app: !s.visivel_app } : s));
+    } else {
+      alert(`Erro ao atualizar: ${resultado.error}`);
+    }
+  };
+
+  const excluir = async (id: string) => {
+    if (!confirm('Excluir este serviço? Ele será removido também dos profissionais vinculados.')) return;
+    const resultado = await excluirServico(id);
+    if (resultado.ok) {
+      setServicos(prev => prev.filter(s => s.id !== id));
+      setProfisiconalServicoData(prev => prev.filter(ps => ps.servico_id !== id));
+    } else {
+      alert(`Erro ao excluir: ${resultado.error}`);
+    }
+  };
+
+  const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const payload = {
+      nome: form.get('nome') as string,
+      categoria: form.get('categoria') as string,
+      duracao_min: Number(form.get('duracao_min')),
+      preco: Number(form.get('preco')),
+      preco_variavel: isVariablePrice,
+      preco_maximo: isVariablePrice ? Number(form.get('preco_maximo')) : null,
+      default_commission_pct: Number(form.get('default_commission_pct')) || 0,
+      is_addon: form.get('is_addon') === 'on',
+    };
+
+    if (editando) {
+      const resultado = await atualizarServico(editando.id, payload);
+      if (!resultado.ok) {
+        alert(`Erro ao salvar: ${resultado.error}`);
+        return;
+      }
+      setServicos(prev => prev.map(s => s.id === editando.id ? { ...s, ...payload } : s));
+    } else {
+      const resultado = await criarServico({ ...payload, ativo: true, visivel_app: true });
+      if (resultado.error || !resultado.id) {
+        alert(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
+        return;
+      }
+      setServicos(prev => [...prev, {
+        id: resultado.id!,
+        nome: payload.nome,
+        categoria: payload.categoria,
+        duracao_min: payload.duracao_min,
+        preco: payload.preco,
+        preco_variavel: payload.preco_variavel,
+        preco_maximo: payload.preco_maximo,
+        default_commission_pct: payload.default_commission_pct,
+        is_addon: payload.is_addon,
+        ativo: true,
+        visivel_app: true,
+      }]);
+    }
+    setEditando(null);
+    setShowForm(false);
+  };
+
+  return (
+    <div className="py-8">
+      <div className="container mx-auto px-6">
+        <SectionTitle title="Serviços" subtitle="Cadastro · Categorias · Duração · Preço" align="left" />
+
+        {/* Ações */}
+        <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+            <input
+              value={busca} onChange={e => setBusca(e.target.value)}
+              className="w-full pl-10 pr-3 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Buscar serviço..."
+            />
+          </div>
+          <select
+            value={catFiltro} onChange={e => setCatFiltro(e.target.value)}
+            className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="todas">Todas categorias</option>
+            {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <Button variant="primary" size="md" onClick={() => { setEditando(null); setIsVariablePrice(false); setShowForm(true); }}>
+            <Plus size={18} className="mr-2" /> Novo Serviço
+          </Button>
+        </div>
+
+        {loading && (
+          <div className="text-center py-6 text-foreground/50">Carregando serviços...</div>
+        )}
+
+        {/* Form inline para Novo Serviço */}
+        {showForm && !editando && (
+          <CardGlass className="mb-6 border-gold/50 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Plus size={18} className="text-gold"/> Novo Serviço</h3>
+            <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Nome</label>
+                <input name="nome" required className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Categoria</label>
+                <input name="categoria" required list="categorias-list" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                <datalist id="categorias-list">{categorias.map(c => <option key={c} value={c} />)}</datalist>
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Duração (min)</label>
+                <input name="duracao_min" type="number" min={5} required defaultValue={30} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
+                <input name="preco" type="number" min={0} step={0.01} required defaultValue={0} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1 cursor-pointer flex items-center gap-2">
+                  <input type="checkbox" checked={isVariablePrice} onChange={(e) => setIsVariablePrice(e.target.checked)} className="accent-gold" />
+                  Preço Variável (A partir de)
+                </label>
+                {isVariablePrice && (
+                  <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx (Opcional)" className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-foreground/60 mb-1">Comissão Padrão (%)</label>
+                <div className="relative">
+                  <input name="default_commission_pct" type="number" min={0} max={100} step={0.5} required defaultValue={40} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
+                </div>
+              </div>
+              <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-2 mb-2">
+                <input type="checkbox" name="is_addon" id="is_addon_new" className="accent-gold" />
+                <label htmlFor="is_addon_new" className="text-sm text-foreground/80 cursor-pointer">
+                  Marcar como Adicional / Subserviço (Aparece como extra nos agendamentos)
+                </label>
+              </div>
+              <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5">
+                <Button type="submit" variant="primary" size="md" className="flex-1">Criar Serviço</Button>
+                <Button type="button" variant="ghost" size="md" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
+              </div>
+            </form>
+          </CardGlass>
+        )}
+
+        {/* Tabela */}
+        <CardGlass className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-foreground/40 text-xs uppercase tracking-wider border-b border-[var(--border-subtle)]">
+                <th className="py-3 pr-4">Serviço</th>
+                <th className="py-3 pr-4">Categoria</th>
+                <th className="py-3 pr-4">Duração</th>
+                <th className="py-3 pr-4">Preço</th>
+                <th className="py-3 pr-4">Comissão</th>
+                <th className="py-3 pr-4">Profissionais</th>
+                <th className="py-3 pr-4">Status</th>
+                <th className="py-3 pr-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map(s => {
+                if (editando?.id === s.id && showForm) {
+                  return (
+                    <tr key={s.id} className="border-b border-[var(--border-subtle)] bg-[var(--color-card)] relative">
+                      <td colSpan={7} className="p-4 shadow-[0_4px_20px_rgba(0,0,0,0.3)] inset-0 z-10 rounded-lg">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold"></div>
+                        <h3 className="text-sm font-bold mb-4 text-gold flex items-center gap-2"><Edit size={16}/> Editando: {s.nome}</h3>
+                        <form onSubmit={salvar} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Nome</label>
+                            <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Categoria</label>
+                            <input name="categoria" required defaultValue={editando?.categoria ?? ''} list="categorias-list" className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Duração (min)</label>
+                            <input name="duracao_min" type="number" min={5} required defaultValue={editando?.duracao_min ?? 30} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Preço (R$)</label>
+                            <input name="preco" type="number" min={0} step={0.01} required defaultValue={editando?.preco ?? 0} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1 cursor-pointer flex items-center gap-2">
+                              <input type="checkbox" checked={isVariablePrice} onChange={(e) => setIsVariablePrice(e.target.checked)} className="accent-gold" />
+                              Preço Variável
+                            </label>
+                            {isVariablePrice && (
+                              <input name="preco_maximo" type="number" min={0} step={0.01} placeholder="Preço Máx" defaultValue={editando?.preco_maximo ?? ''} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold mt-1" />
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs text-foreground/60 mb-1">Comissão Padrão (%)</label>
+                            <div className="relative">
+                              <input name="default_commission_pct" type="number" min={0} max={100} step={0.5} required defaultValue={editando?.default_commission_pct ?? 40} className="w-full bg-[var(--background)] border border-gold/30 rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
+                            </div>
+                          </div>
+                          <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-2">
+                            <input type="checkbox" name="is_addon" id={`is_addon_edit_${s.id}`} defaultChecked={editando?.is_addon} className="accent-gold" />
+                            <label htmlFor={`is_addon_edit_${s.id}`} className="text-sm text-foreground/80 cursor-pointer">
+                              Marcar como Adicional / Subserviço (Aparece como extra nos agendamentos)
+                            </label>
+                          </div>
+                          <div className="flex items-end gap-2 col-span-1 sm:col-span-2 lg:col-span-5 mt-2">
+                            <Button type="submit" variant="primary" size="sm" className="flex-1">Salvar Alterações</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setEditando(null); setIsVariablePrice(false); }}>Cancelar</Button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={s.id} className={`border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5 ${!s.ativo ? 'opacity-50' : ''}`}>
+                    <td className="py-3 pr-4 font-medium text-foreground">{s.nome}</td>
+                    <td className="py-3 pr-4"><span className="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{s.categoria}</span></td>
+                    <td className="py-3 pr-4 text-foreground/70"><Clock size={13} className="inline mr-1" />{s.duracao_min} min</td>
+                    <td className="py-3 pr-4 text-gold font-semibold">
+                      {s.preco_variavel 
+                        ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
+                        : `R$ ${Number(s.preco).toFixed(2)}`}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/70 font-semibold">{s.default_commission_pct ?? 40}%</td>
+                    <td className="py-3 pr-4 text-foreground/60 text-xs">
+                      {(() => {
+                        const profs = profsPorServico(s.id);
+                        return profs.length > 0 ? profs.join(', ') : <span className="text-foreground/30">Nenhum</span>;
+                      })()}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="flex gap-2">
+                        <button onClick={() => toggleAtivo(s.id)} title={s.ativo ? 'Desativar' : 'Ativar'}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                          {s.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                        <button onClick={() => toggleVisivel(s.id)} title={s.visivel_app ? 'Ocultar do app' : 'Mostrar no app'}
+                          className="text-foreground/40 hover:text-foreground/70">
+                          {s.visivel_app ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 text-right">
+                      <div className="inline-flex gap-1">
+                        <button onClick={() => { setEditando(s); setIsVariablePrice(s.preco_variavel || false); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
+                        <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtrados.length === 0 && (
+                <tr><td colSpan={7} className="py-8 text-center text-foreground/50">Nenhum serviço encontrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </CardGlass>
+
+        {/* Resumo */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+          {[
+            { label: 'Total', value: servicos.length },
+            { label: 'Ativos', value: servicos.filter(s => s.ativo).length },
+            { label: 'Categorias', value: categorias.length },
+            { label: 'Ticket médio', value: `R$ ${Math.round(servicos.filter(s => s.ativo).reduce((a, s) => a + s.preco, 0) / Math.max(1, servicos.filter(s => s.ativo).length))}` },
+          ].map((item, i) => (
+            <CardGlass key={i} className="text-center py-4">
+              <span className="text-xs text-foreground/50 uppercase tracking-wider">{item.label}</span>
+              <div className="text-2xl font-bold text-gold mt-1">{item.value}</div>
+            </CardGlass>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
