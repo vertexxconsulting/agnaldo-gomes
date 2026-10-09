@@ -101,7 +101,7 @@ export function Footer() {
       <div className="container mx-auto px-6 md:px-12 border-t border-[var(--border-subtle)] pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-foreground/60">
         <div className="flex flex-col items-center md:items-start gap-1">
           <p>&copy; {new Date().getFullYear()} Agnaldo Gomes. Todos os direitos reservados.</p>
-          <p className="text-foreground/40">Desenvolvido por <span className="font-semibold text-foreground/50">Vertex Consulting</span> — Anderson Alves</p>
+          <p className="text-foreground/40">Desenvolvido por <a href="https://www.instagram.com/vertexxconsulting" target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground/50 hover:text-primary transition-colors">Vertex Consulting</a> — Anderson Alves</p>
         </div>
         <div className="flex gap-6">
           <Link href="/politica-de-privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link>

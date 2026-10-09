@@ -477,7 +477,7 @@ export default function HubCentralPage() {
         {/* ===== FOOTER ===== */}
         <footer className="pt-6 pb-2 text-center">
           <p className="text-[10px] text-foreground/30">
-            Desenvolvido por <span className="font-semibold text-foreground/40">Vertex Consulting</span> • Agnaldo Gomes — Studio, Academy & Loja
+            Desenvolvido por <a href="https://www.instagram.com/vertexxconsulting" target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground/40 hover:text-white transition-colors">Vertex Consulting</a> • Agnaldo Gomes — Studio, Academy & Loja
           </p>
         </footer>
       </div>

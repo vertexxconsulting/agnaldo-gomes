@@ -196,7 +196,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
         <div className="container mx-auto px-4 md:px-6 mt-6 pt-4 border-t border-[#E5E0D8] text-[10px] text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1 text-center md:text-left">
             <p>© {new Date().getFullYear()} Agnaldo Gomes Store. Todos os direitos reservados.</p>
-            <p>Desenvolvido por <span className="font-semibold text-slate-600">Vertex Consulting</span></p>
+            <p>Desenvolvido por <a href="https://www.instagram.com/vertexxconsulting" target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-600 hover:text-amber-600 transition-colors">Vertex Consulting</a></p>
           </div>
           <div className="flex gap-3 opacity-60">
             <Image src="/pagamentos/pix.svg" alt="Pix" width={24} height={24} className="h-4 w-auto grayscale" />
