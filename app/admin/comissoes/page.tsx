@@ -1994,7 +1994,7 @@ export default function ComissoesPage() {
           <CardGlass className="w-full max-w-2xl max-h-[92vh] overflow-y-auto p-6 animate-in fade-in zoom-in-95 border border-gold/40 shadow-2xl print:border-none print:shadow-none print:bg-white print:text-black">
             <div className="flex justify-between items-start mb-6 border-b border-[var(--border-subtle)] pb-4 print:border-black/20">
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-gold print:text-black">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-700 dark:text-gold print:text-black">
                   Studio Agnaldo Gomes • Gestão Financeira
                 </span>
                 <h3 className="text-2xl font-bold font-serif text-foreground print:text-black">
@@ -2015,7 +2015,7 @@ export default function ComissoesPage() {
             {/* Informações do Profissional */}
             <div className="p-4 rounded-xl bg-gold/5 border border-gold/20 mb-6 flex items-center justify-between print:border-black/20 print:bg-gray-50">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold text-lg flex items-center justify-center border border-gold/30 print:bg-gray-200 print:text-black">
+                <div className="w-12 h-12 rounded-full bg-gold/20 text-amber-700 dark:text-gold font-bold text-lg flex items-center justify-center border border-gold/30 print:bg-gray-200 print:text-black">
                   {reciboModalData.prof.nome.charAt(0)}
                 </div>
                 <div>
@@ -2030,8 +2030,8 @@ export default function ComissoesPage() {
               <div className="text-right">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase ${
                   reciboModalData.statusFechamento === 'QUITADO' 
-                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 print:bg-emerald-100 print:text-emerald-800' 
-                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/20 print:bg-amber-100 print:text-amber-800'
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 print:bg-emerald-100 print:text-emerald-800' 
+                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20 print:bg-amber-100 print:text-amber-800'
                 }`}>
                   {reciboModalData.statusFechamento === 'QUITADO' ? '✅ Quitado' : '⏳ Em Aberto'}
                 </span>
@@ -2047,14 +2047,14 @@ export default function ComissoesPage() {
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-center print:border-black/20 print:bg-emerald-50">
-                <p className="text-[11px] text-emerald-400 print:text-emerald-800 font-bold">Comissão Liberada</p>
-                <p className="text-base font-bold text-emerald-400 print:text-emerald-900 mt-0.5">
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 print:text-emerald-800 font-bold">Comissão Liberada</p>
+                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 print:text-emerald-900 mt-0.5">
                   {fmt(reciboModalData.totalLiberadoSemana)}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-center print:border-black/20 print:bg-amber-50">
-                <p className="text-[11px] text-amber-400 print:text-amber-800 font-bold">Carência D+30 (Futuro)</p>
-                <p className="text-base font-bold text-amber-400 print:text-amber-900 mt-0.5">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 print:text-amber-800 font-bold">Carência D+30 (Futuro)</p>
+                <p className="text-base font-bold text-amber-700 dark:text-amber-400 print:text-amber-900 mt-0.5">
                   {fmt(reciboModalData.totalRetidoD30)}
                 </p>
               </div>
@@ -2064,7 +2064,7 @@ export default function ComissoesPage() {
             <div className="mb-6">
               <h5 className="text-xs font-bold uppercase tracking-wider text-foreground/70 print:text-black mb-2 flex items-center justify-between">
                 <span>Comissões Liberadas Para Pagamento Nesta Semana</span>
-                <span className="text-[11px] font-normal text-gold print:text-black">
+                <span className="text-[11px] font-normal text-amber-700 dark:text-gold print:text-black">
                   {reciboModalData.parcelasLiberadasNaSemana.length} lançamentos
                 </span>
               </h5>
@@ -2086,14 +2086,14 @@ export default function ComissoesPage() {
                           <td className="py-2 px-3 font-mono">{fmtDate(p.due_date || p.appointment_date)}</td>
                           <td className="py-2 px-3">
                             <span className="font-semibold">{PAGAMENTO_CONFIG[p.payment_method as FormaPagamento]?.label ?? p.payment_method}</span>
-                            {p.payment_method === 'CREDITO' && <span className="ml-1 text-[10px] text-amber-400 font-bold">(D+30)</span>}
+                            {p.payment_method === 'CREDITO' && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 font-bold">(D+30)</span>}
                           </td>
-                          <td className="py-2 px-3 text-right font-bold text-gold print:text-black">
+                          <td className="py-2 px-3 text-right font-bold text-amber-700 dark:text-gold print:text-black">
                             {fmt(p.amount)}
                           </td>
                           <td className="py-2 px-3 text-right">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              p.status === 'PAID' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+                              p.status === 'PAID' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : 'text-amber-700 dark:text-amber-400 bg-amber-500/10'
                             }`}>
                               {p.status === 'PAID' ? 'Pago' : 'Pendente'}
                             </span>
@@ -2113,15 +2113,15 @@ export default function ComissoesPage() {
             {/* Lançamentos em Carência D+30 (Futuros) */}
             {reciboModalData.parcelasRetidasD30.length > 0 && (
               <div className="mb-6">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-amber-400 print:text-black mb-2 flex items-center justify-between">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 print:text-black mb-2 flex items-center justify-between">
                   <span>Vendas em Cartão D+30 (Aguardando Prazo de 30 Dias)</span>
-                  <span className="text-[11px] font-normal text-amber-300 print:text-black font-mono">
+                  <span className="text-[11px] font-normal text-amber-700 dark:text-amber-300 print:text-black font-mono">
                     Total: {fmt(reciboModalData.totalRetidoD30)}
                   </span>
                 </h5>
                 <div className="border border-amber-500/20 rounded-lg overflow-hidden text-xs print:border-black/20">
                   <table className="w-full">
-                    <thead className="bg-amber-500/10 text-amber-300 print:bg-gray-100 print:text-black">
+                    <thead className="bg-amber-500/10 text-amber-800 dark:text-amber-300 print:bg-gray-100 print:text-black">
                       <tr>
                         <th className="py-2 px-3 text-left">Data Atendimento</th>
                         <th className="py-2 px-3 text-left">Previsão Liberação</th>
@@ -2132,7 +2132,7 @@ export default function ComissoesPage() {
                       {reciboModalData.parcelasRetidasD30.map((p: any) => (
                         <tr key={p.id}>
                           <td className="py-2 px-3 font-mono">{fmtDate(p.appointment_date)}</td>
-                          <td className="py-2 px-3 text-amber-400 font-semibold">{fmtDate(p.due_date)} (D+30)</td>
+                          <td className="py-2 px-3 text-amber-700 dark:text-amber-400 font-semibold">{fmtDate(p.due_date)} (D+30)</td>
                           <td className="py-2 px-3 text-right font-bold text-foreground/80">{fmt(p.amount)}</td>
                         </tr>
                       ))}
