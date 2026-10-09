@@ -261,12 +261,7 @@ export default function AcademyPage() {
     };
   });
 
-  // Filtra hardcoded que já vieram do banco pelo título (para não duplicar)
-  const dbTitles = new Set([...vipMapped, ...onlineMapped].map(c => normalize(c.title)));
-  const filteredHardcoded = hardcodedMapped.filter(c => !dbTitles.has(normalize(c.title)));
-
   const cursosComStatus = [
-    ...filteredHardcoded,
     ...vipMapped,
     ...onlineMapped
   ];
