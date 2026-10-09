@@ -224,38 +224,46 @@ export default function AcademyPage() {
     enrolled: c.enrolled,
   }));
 
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   // Combinar os cursos online do banco de dados com os VIPs (BD + Hardcoded)
-  const vipMapped = dbCursos.map(c => ({
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    thumbnail_url: c.thumbnail_url,
-    price: c.price,
-    original_price: c.original_price,
-    destaque: c.is_featured,
-    isVip: true,
-    schedules: c.schedules || [],
-    purchasable: true,
-    enrolled: false,
-  }));
+  const vipMapped = dbCursos.map(c => {
+    const mock = cursosVenda.find(m => normalize(m.title) === normalize(c.title));
+    return {
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      thumbnail_url: c.thumbnail_url || (mock ? mock.thumbnail_url : null),
+      price: c.price,
+      original_price: c.original_price,
+      destaque: c.is_featured,
+      isVip: true,
+      schedules: c.schedules || [],
+      purchasable: true,
+      enrolled: false,
+    };
+  });
 
-  const onlineMapped = onlineCursos.map(c => ({
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    thumbnail_url: c.thumbnail_url,
-    price: c.price,
-    original_price: c.original_price,
-    destaque: false,
-    isVip: false,
-    schedules: [],
-    purchasable: !enrolledMap[c.id],
-    enrolled: !!enrolledMap[c.id],
-  }));
+  const onlineMapped = onlineCursos.map(c => {
+    const mock = cursosVenda.find(m => normalize(m.title) === normalize(c.title));
+    return {
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      thumbnail_url: c.thumbnail_url || (mock ? mock.thumbnail_url : null),
+      price: c.price,
+      original_price: c.original_price,
+      destaque: false,
+      isVip: false,
+      schedules: [],
+      purchasable: !enrolledMap[c.id],
+      enrolled: !!enrolledMap[c.id],
+    };
+  });
 
-  // Filtra hardcoded que já vieram do banco pelo ID (para não duplicar)
-  const dbVipIds = new Set(vipMapped.map(c => c.id));
-  const filteredHardcoded = hardcodedMapped.filter(c => !dbVipIds.has(c.id));
+  // Filtra hardcoded que já vieram do banco pelo título (para não duplicar)
+  const dbTitles = new Set([...vipMapped, ...onlineMapped].map(c => normalize(c.title)));
+  const filteredHardcoded = hardcodedMapped.filter(c => !dbTitles.has(normalize(c.title)));
 
   const cursosComStatus = [
     ...filteredHardcoded,
