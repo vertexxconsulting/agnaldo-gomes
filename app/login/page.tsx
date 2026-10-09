@@ -1,5 +1,6 @@
 import { SplitLogin } from '@/components/SplitLogin';
 import { ROLES } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 /**
  * Login unificado — Área do Aluno ou Gestão AG.
@@ -22,8 +23,12 @@ export default async function LoginPage({
 
   const adminRoutes = ['/hub', '/admin-academy', '/admin-loja', '/admin-secretaria', '/studio'];
   const alunoRoutes = ['/aluno', '/academy/curso'];
+  
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+
   const isAdminArea = adminRoutes.some((route) => next.startsWith(route));
-  const isAlunoArea = alunoRoutes.some((route) => next.startsWith(route));
+  const isAlunoArea = alunoRoutes.some((route) => next.startsWith(route)) || host.includes('academy');
 
   if (isAdminArea) {
     return (
@@ -53,7 +58,7 @@ export default async function LoginPage({
         formTitle="Área do Aluno"
         formSubtitle="Acesse seus cursos online e acompanhe seu progresso"
         cta="Entrar nos Cursos"
-        redirectTo={next || '/hub'}
+        redirectTo={next || '/aluno'}
         requiredRole={ROLES.ALUNO}
       />
     );
