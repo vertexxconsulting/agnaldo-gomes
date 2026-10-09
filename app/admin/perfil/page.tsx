@@ -6,6 +6,7 @@ import { CardGlass } from '@/components/CardGlass';
 import { User, Mail, Lock, Shield, Camera } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export default function AdminPerfilPage() {
   const [userEmail, setUserEmail] = useState('');
@@ -99,9 +100,9 @@ export default function AdminPerfilPage() {
       });
 
       setUserAvatar(publicUrl);
-      alert('Foto de perfil salva com sucesso no banco de dados!');
+      toast.success('Foto de perfil salva com sucesso no banco de dados!');
     } catch (error: any) {
-      alert(`Erro ao fazer upload da foto: ${error.message}`);
+      toast.error(`Erro ao fazer upload da foto: ${error.message}`);
       // Reverter preview em caso de erro
       setUserAvatar(null);
     }
@@ -134,9 +135,9 @@ export default function AdminPerfilPage() {
       setUserName(newName);
       setUserPhone(newPhone);
       setUserNickname(newNickname);
-      alert('Perfil atualizado com sucesso!');
+      toast.success('Perfil atualizado com sucesso!');
     } catch (e: any) {
-      alert(`Erro ao atualizar perfil: ${e.message}`);
+      toast.error(`Erro ao atualizar perfil: ${e.message}`);
     }
   };
 
@@ -147,16 +148,16 @@ export default function AdminPerfilPage() {
     const confirmPassword = formData.get('confirmPassword') as string;
 
     if (newPassword !== confirmPassword) {
-      alert('As senhas não coincidem!');
+      toast.error('As senhas não coincidem!');
       return;
     }
 
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      alert('Senha atualizada com sucesso!');
+      toast.success('Senha atualizada com sucesso!');
     } catch (e: any) {
-      alert(`Erro ao atualizar senha: ${e.message}`);
+      toast.error(`Erro ao atualizar senha: ${e.message}`);
     }
   };
 

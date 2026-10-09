@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { canAccess, UserPermissions } from '@/lib/permissions';
 import { getUserRole } from '@/lib/auth';
+import { Toaster } from 'sonner';
 
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true, adminOnly: true, id: 'hub' },
@@ -86,6 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </div>
       </main>
+      <Toaster position="top-right" richColors />
     </div>
   );
 }
