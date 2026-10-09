@@ -187,9 +187,9 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           <div>
             <h3 className="text-slate-900 font-bold text-xs uppercase tracking-widest mb-4">Políticas</h3>
             <ul className="space-y-2 text-xs text-slate-600">
-                <li><Link href="/politica-de-privacidade" className="hover:text-amber-600 transition-colors">Política de Privacidade</Link></li>
-                <li><Link href="/termos-de-uso" className="hover:text-amber-600 transition-colors">Termos de Uso</Link></li>
-                <li><Link href="/proposta" className="hover:text-amber-600 transition-colors">Sobre os Preços</Link></li>
+                <li><Link href="/loja/politica-de-privacidade" className="hover:text-amber-600 transition-colors">Política de Privacidade</Link></li>
+                <li><Link href="/loja/termos-de-uso" className="hover:text-amber-600 transition-colors">Termos de Uso</Link></li>
+                <li><Link href="/loja/sobre-os-precos" className="hover:text-amber-600 transition-colors">Sobre os Preços</Link></li>
               </ul>
           </div>
         </div>
