@@ -45,7 +45,7 @@ export default function AdminFinanceiro() {
         .from('caixa_diario')
         .select('*')
         .eq('status', 'OPEN')
-        .order('opened_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
 
       if (caixas && caixas.length > 0) {
@@ -55,7 +55,7 @@ export default function AdminFinanceiro() {
           .from('financial_transactions')
           .select('*')
           .eq('caixa_id', caixas[0].id)
-          .order('transaction_date', { ascending: false });
+          .order('created_at', { ascending: false });
         
         setTransacoes(txs || []);
       } else {
