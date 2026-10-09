@@ -353,16 +353,6 @@ export default function AdminFinanceiro() {
         </>
       )}
 
-      {/* Alerta de Tabelas SQL (Apenas informativo para você, desenvolvedor) */}
-      <div className="mt-12 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-        <h4 className="font-bold text-blue-500 flex items-center gap-2 mb-2">
-          <AlertTriangle size={18} /> Requisito de Banco de Dados
-        </h4>
-        <p className="text-sm text-blue-400/80 mb-2">
-          Para que o módulo de Caixa e Financeiro funcione plenamente, as tabelas <code className="bg-blue-900/30 px-1 rounded">caixa_diario</code> e <code className="bg-blue-900/30 px-1 rounded">financial_transactions</code> precisam ser criadas no Supabase. O SQL necessário está detalhado abaixo para ser executado no SQL Editor do seu Supabase.
-        </p>
-      </div>
-
     </div>
   );
 }
