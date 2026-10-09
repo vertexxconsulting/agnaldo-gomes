@@ -80,7 +80,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
               <span>Atendimento</span>
             </a>
             
-            <Link href="/perfil" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
+            <Link href="/loja/minha-conta" className="hidden xl:flex items-center gap-2 hover:text-amber-600 transition-colors text-xs font-medium">
               <User size={20} />
               <span>Minha Conta</span>
             </Link>
