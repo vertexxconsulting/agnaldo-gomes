@@ -4,11 +4,11 @@
 @theme {
   --color-background: #faf8f3;
   --color-foreground: #1d1b18;
-  --color-primary: #a8862a;
+  --color-primary: #064e3b;
   --color-primary-foreground: #ffffff;
-  --color-primary-hover: #93751f;
-  --color-gold: #a8862a;
-  --color-gold-dim: #93751f;
+  --color-primary-hover: #065f46;
+  --color-gold: #064e3b;
+  --color-gold-dim: #065f46;
   --color-secondary: #eae3d1;
   --color-card: #ffffff;
   --color-success: #10b981;
@@ -24,7 +24,7 @@
   --background: #faf8f3;
   --foreground: #1d1b18;
   --glass-bg: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(168, 134, 42, 0.25);
+  --glass-border: rgba(6, 78, 59, 0.15);
   --border-subtle: rgba(20, 18, 14, 0.1);
 }
 
