@@ -1,7 +1,7 @@
 import {
   BookOpen, CalendarDays, Users, Scissors, UserCircle,
   PlaySquare, GraduationCap, MessagesSquare, Award, MonitorPlay,
-  CreditCard, ShieldCheck
+  CreditCard, ShieldCheck, HelpCircle, CheckCircle2, FileText, Settings, Wallet, AlertTriangle
 } from 'lucide-react';
 
 interface SystemTutorialProps {
@@ -11,54 +11,129 @@ interface SystemTutorialProps {
 export function SystemTutorial({ module }: SystemTutorialProps) {
   if (module === 'admin') {
     return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-20 mt-6">
-        <div className="bg-primary/10 border border-primary/20 p-8 rounded-2xl">
-          <div className="flex items-center gap-4 mb-4">
-            <BookOpen className="text-primary" size={32} />
-            <h2 className="text-2xl font-bold">Guia de Uso: Gestão do Studio</h2>
+      <div className="flex flex-col gap-10 max-w-5xl mx-auto pb-20 mt-6">
+        {/* HERO SECTION */}
+        <div className="bg-gradient-to-r from-primary/20 to-transparent border border-primary/20 p-8 rounded-3xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <BookOpen size={120} />
           </div>
-          <p className="text-foreground/80 leading-relaxed text-base">
-            Bem-vindo ao painel de administração do Studio Agnaldo Gomes. Aqui você gerencia toda a operação diária do salão, desde os agendamentos até o cadastro de profissionais.
-          </p>
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-primary/20 p-3 rounded-2xl">
+                <BookOpen className="text-primary" size={32} />
+              </div>
+              <h2 className="text-3xl font-bold">Guia Completo: Gestão do Studio</h2>
+            </div>
+            <p className="text-foreground/80 leading-relaxed text-lg max-w-2xl">
+              Bem-vindo ao centro de comando do Studio Agnaldo Gomes. Este manual detalhado ajudará você a extrair o máximo do sistema, desde o controle de fluxo de caixa diário até o relacionamento avançado com seus clientes.
+            </p>
+          </div>
         </div>
 
+        {/* RECURSOS PRINCIPAIS */}
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">O que você encontra aqui?</h3>
+          <h3 className="text-2xl font-bold border-b border-white/10 pb-3 flex items-center gap-3">
+            <Settings className="text-primary" size={24} /> 
+            Módulos e Funcionalidades
+          </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <CalendarDays className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Agenda</h4>
-              <p className="text-sm text-foreground/70">Visualize todos os horários marcados. Os agendamentos feitos pelo site caem aqui com status &quot;Pendente&quot; aguardando sua aprovação.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <CalendarDays className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Agenda Inteligente</h4>
+              <p className="text-sm text-foreground/70 mb-4">Central de marcações. Agendamentos pelo site chegam como "Pendentes" (cor Laranja).</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Arraste para remarcar.</li>
+                <li>Filtro por profissional.</li>
+                <li>Bloqueio de horários (almoço/folga).</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <Users className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Clientes (CRM)</h4>
-              <p className="text-sm text-foreground/70">Histórico de todos os clientes, contatos e serviços realizados. Essencial para criar relacionamento e fidelização.</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <Users className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Clientes (CRM)</h4>
+              <p className="text-sm text-foreground/70 mb-4">Mais do que contatos, um histórico completo de relacionamento e serviços prestados.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Registro de alergias (química).</li>
+                <li>Histórico de cortes/coloração.</li>
+                <li>Alerta de aniversariantes.</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <UserCircle className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Profissionais</h4>
-              <p className="text-sm text-foreground/70">Gerencie a equipe, horários de expediente e atribua serviços a cada profissional.</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <Wallet className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Comandas e Caixa</h4>
+              <p className="text-sm text-foreground/70 mb-4">Controle financeiro do dia. Vinculação automática de serviços da agenda para o caixa.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Cálculo automático de comissões.</li>
+                <li>Divisão por forma de pagamento.</li>
+                <li>Fechamento diário (Resumo).</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <Scissors className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Serviços</h4>
-              <p className="text-sm text-foreground/70">Catálogo de serviços oferecidos pelo salão com preços e duração (ex: Corte Feminino, Morena Iluminada).</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <UserCircle className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Profissionais</h4>
+              <p className="text-sm text-foreground/70 mb-4">Gestão da sua equipe de especialistas, barbeiros e cabeleireiros.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Definição de expediente.</li>
+                <li>Regras de comissionamento.</li>
+                <li>Serviços habilitados por pessoa.</li>
+              </ul>
+            </div>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <Scissors className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Catálogo de Serviços</h4>
+              <p className="text-sm text-foreground/70 mb-4">Configuração do que é oferecido pelo Studio e exibido no site para agendamento.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Tempo de duração estimado.</li>
+                <li>Preço base (pode ser editado na comanda).</li>
+                <li>Ativação/Inativação de serviços.</li>
+              </ul>
+            </div>
+            
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all duration-300">
+              <FileText className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Relatórios</h4>
+              <p className="text-sm text-foreground/70 mb-4">Visão estratégica para tomadas de decisão baseadas em dados.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Faturamento mensal/semanal.</li>
+                <li>Profissional de maior destaque.</li>
+                <li>Serviço mais lucrativo.</li>
+              </ul>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">Como Aprovar um Agendamento?</h3>
-          <ul className="list-decimal list-inside space-y-3 text-foreground/80 text-sm bg-card/50 p-6 rounded-xl border border-white/5">
-            <li>O cliente preenche o formulário no site e solicita um horário.</li>
-            <li>Você recebe a notificação na tela de <strong className="text-white">Agenda</strong>.</li>
-            <li>Clique no card do agendamento (que estará laranja/pendente).</li>
-            <li>Revise os dados, horário e profissional.</li>
-            <li>Clique no botão <strong className="text-white">Confirmar Agendamento</strong>. O status mudará para verde.</li>
-            <li><strong className="text-primary">Dica:</strong> Chame o cliente no WhatsApp para confirmar!</li>
-          </ul>
+        {/* PASSO A PASSO */}
+        <div className="space-y-6">
+          <h3 className="text-2xl font-bold border-b border-white/10 pb-3 flex items-center gap-3">
+            <CheckCircle2 className="text-primary" size={24} /> 
+            Procedimentos Padrão
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-card/30 border border-white/10 p-6 rounded-2xl">
+              <h4 className="font-bold text-lg mb-4 text-gold">1. Fluxo de Agendamento Online</h4>
+              <ol className="list-decimal list-inside space-y-4 text-sm text-foreground/80">
+                <li className="pl-2">O cliente agenda pelo site. O status entra como <span className="text-orange-400 font-bold">Pendente</span>.</li>
+                <li className="pl-2">A secretária vê na aba <strong className="text-white">Agenda</strong> e entra em contato via WhatsApp para confirmar.</li>
+                <li className="pl-2">Após confirmação, clique no agendamento e mude para <span className="text-green-400 font-bold">Confirmado</span>.</li>
+                <li className="pl-2">Se o cliente cancelar, mude para <span className="text-red-400 font-bold">Cancelado</span> para liberar a vaga.</li>
+              </ol>
+            </div>
+
+            <div className="bg-card/30 border border-white/10 p-6 rounded-2xl">
+              <h4 className="font-bold text-lg mb-4 text-gold">2. Atendimento e Pagamento (Comandas)</h4>
+              <ol className="list-decimal list-inside space-y-4 text-sm text-foreground/80">
+                <li className="pl-2">Quando o cliente chega, o agendamento pode ser marcado como <span className="text-blue-400 font-bold">Em Atendimento</span>.</li>
+                <li className="pl-2">Ao finalizar, vá em <strong className="text-white">Comandas</strong> e gere uma nova vinculada ao cliente.</li>
+                <li className="pl-2">Adicione os serviços e produtos extras consumidos. O sistema calcula a comissão.</li>
+                <li className="pl-2">Registre a forma de pagamento (Pix, Cartão, Dinheiro) e <strong className="text-white">Finalize a Comanda</strong>.</li>
+              </ol>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -66,53 +141,135 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
 
   if (module === 'admin-academy') {
     return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-20 mt-6">
-        <div className="bg-primary/10 border border-primary/20 p-8 rounded-2xl">
-          <div className="flex items-center gap-4 mb-4">
-            <GraduationCap className="text-primary" size={32} />
-            <h2 className="text-2xl font-bold">Guia de Uso: Gestão da Academy</h2>
+      <div className="flex flex-col gap-10 max-w-5xl mx-auto pb-20 mt-6">
+        <div className="bg-gradient-to-r from-primary/20 to-transparent border border-primary/20 p-8 rounded-3xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <GraduationCap size={120} />
           </div>
-          <p className="text-foreground/80 leading-relaxed text-base">
-            Bem-vindo ao painel do Produtor/Educador. Aqui você controla todos os seus cursos (online e presenciais), gerencia seus alunos e acompanha suas vendas.
-          </p>
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-primary/20 p-3 rounded-2xl">
+                <GraduationCap className="text-primary" size={32} />
+              </div>
+              <h2 className="text-3xl font-bold">Manual do Produtor: Gestão Academy</h2>
+            </div>
+            <p className="text-foreground/80 leading-relaxed text-lg max-w-2xl">
+              Este é o painel de controle da sua instituição de ensino. Aqui você gerencia seus cursos presenciais e online, controla o acesso dos alunos, emite certificados e administra seu faturamento digital.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">O que você encontra aqui?</h3>
+          <h3 className="text-2xl font-bold border-b border-white/10 pb-3 flex items-center gap-3">
+            <Settings className="text-primary" size={24} /> 
+            Gestão Pedagógica e Vendas
+          </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <PlaySquare className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Cursos & Módulos</h4>
-              <p className="text-sm text-foreground/70">Crie novos cursos, defina os preços, cadastre os módulos e faça o upload das vídeo-aulas via link.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <PlaySquare className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Estrutura de Cursos</h4>
+              <p className="text-sm text-foreground/70 mb-4">Seus cursos são organizados em uma hierarquia simples e lógica.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li><strong className="text-white">Curso:</strong> O produto principal (ex: Especialização em Mechas).</li>
+                <li><strong className="text-white">Módulos:</strong> As divisões do curso (ex: Módulo 1 - Teoria das Cores).</li>
+                <li><strong className="text-white">Aulas:</strong> Onde ficam os vídeos e PDFs.</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <Users className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Alunos</h4>
-              <p className="text-sm text-foreground/70">Acompanhe quem comprou seus cursos, visualize o progresso das aulas e libere ou bloqueie acessos.</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <Users className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Base de Alunos</h4>
+              <p className="text-sm text-foreground/70 mb-4">Gestão individualizada do progresso e acesso de cada estudante.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Liberação manual de acessos.</li>
+                <li>Reset de senhas perdidas.</li>
+                <li>Acompanhamento de progresso (%).</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <CreditCard className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Faturamento</h4>
-              <p className="text-sm text-foreground/70">Visão financeira das matrículas. Controle de pagamentos pendentes e confirmados.</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <CreditCard className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Faturamento e Matrículas</h4>
+              <p className="text-sm text-foreground/70 mb-4">Controle de receitas geradas pelas vendas online.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Relatório de vendas por curso.</li>
+                <li>Status de pagamentos.</li>
+                <li>Cupons de desconto e ofertas.</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <MessagesSquare className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Comunidade VIP</h4>
-              <p className="text-sm text-foreground/70">Fórum exclusivo para os alunos. Responda dúvidas, compartilhe dicas e engaje a sua turma.</p>
+
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <Award className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Certificações</h4>
+              <p className="text-sm text-foreground/70 mb-4">Sistema de recompensa acadêmica com validade e autenticidade.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Gerados automaticamente nos 100%.</li>
+                <li>QR Code de verificação único.</li>
+                <li>Carga horária parametrizável.</li>
+              </ul>
+            </div>
+            
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <MessagesSquare className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Comunidade VIP</h4>
+              <p className="text-sm text-foreground/70 mb-4">Mantenha os alunos engajados através de um fórum interativo.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li>Avisos da equipe docente.</li>
+                <li>Resolução de dúvidas (tira-dúvidas).</li>
+                <li>Networking entre turmas.</li>
+              </ul>
+            </div>
+            
+            <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+              <AlertTriangle className="text-primary mb-4" size={28} />
+              <h4 className="font-bold text-lg mb-2">Cursos Presenciais vs Online</h4>
+              <p className="text-sm text-foreground/70 mb-4">O sistema lida com as duas modalidades de forma distinta.</p>
+              <ul className="text-xs text-foreground/60 space-y-2 list-disc list-inside">
+                <li><strong className="text-white">Online:</strong> Acesso imediato à área de membros.</li>
+                <li><strong className="text-white">Presencial:</strong> Apenas agenda e confirmação de pagamento, sem vídeos.</li>
+              </ul>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">Como cadastrar um Novo Curso?</h3>
-          <ul className="list-decimal list-inside space-y-3 text-foreground/80 text-sm bg-card/50 p-6 rounded-xl border border-white/5">
-            <li>Acesse a aba <strong className="text-white">Cursos</strong> e clique em &quot;Novo Curso&quot;.</li>
-            <li>Preencha Título, Descrição, Formato (Online/Presencial) e Valor.</li>
-            <li>Adicione uma imagem de capa atrativa.</li>
-            <li>Após criar o curso, entre nele e clique em <strong className="text-white">Novo Módulo</strong>.</li>
-            <li>Dentro do módulo, clique em <strong className="text-white">Adicionar Aula</strong> e cole o link do vídeo (YouTube/Vimeo).</li>
-          </ul>
+        <div className="space-y-6">
+          <h3 className="text-2xl font-bold border-b border-white/10 pb-3 flex items-center gap-3">
+            <CheckCircle2 className="text-primary" size={24} /> 
+            Procedimentos Operacionais
+          </h3>
+          
+          <div className="bg-card/30 border border-white/10 p-6 rounded-2xl">
+            <h4 className="font-bold text-lg mb-4 text-gold">Como criar um Novo Curso Online do Zero?</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <h5 className="font-bold text-white mb-2">Fase 1: Configuração Base</h5>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-foreground/80">
+                  <li>Vá em <strong>Cursos</strong> &gt; Novo Curso.</li>
+                  <li>Defina o Tipo como "Online".</li>
+                  <li>Insira Título, Descrição longa (para a página de vendas) e o Valor.</li>
+                  <li>Faça upload da Imagem de Capa (Thumb).</li>
+                </ol>
+              </div>
+              <div>
+                <h5 className="font-bold text-white mb-2">Fase 2: Estrutura Curricular</h5>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-foreground/80">
+                  <li>Entre no curso criado.</li>
+                  <li>Clique em <strong>Novo Módulo</strong>. (ex: "Boas Vindas").</li>
+                  <li>Dentro do módulo, adicione as <strong>Aulas</strong>.</li>
+                  <li>Cole o link do vídeo (YouTube Não Listado ou Vimeo são recomendados).</li>
+                </ol>
+              </div>
+              <div>
+                <h5 className="font-bold text-white mb-2">Fase 3: Publicação e Venda</h5>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-foreground/80">
+                  <li>Garanta que o curso não está marcado como "Rascunho".</li>
+                  <li>Ao salvar, ele aparecerá automaticamente na página de Vendas (Catálogo).</li>
+                  <li>O aluno compra, paga e o acesso é liberado instantaneamente.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -120,53 +277,88 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
 
   if (module === 'aluno') {
     return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-20 mt-6">
-        <div className="bg-primary/10 border border-primary/20 p-8 rounded-2xl">
-          <div className="flex items-center gap-4 mb-4">
-            <MonitorPlay className="text-primary" size={32} />
-            <h2 className="text-2xl font-bold">Guia de Uso: Sala de Aula Virtual</h2>
+      <div className="flex flex-col gap-10 max-w-5xl mx-auto pb-20 mt-6">
+        <div className="bg-gradient-to-r from-primary/20 to-transparent border border-primary/20 p-8 rounded-3xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <MonitorPlay size={120} />
           </div>
-          <p className="text-foreground/80 leading-relaxed text-base">
-            Bem-vindo à sua Área do Aluno! Este é o seu espaço de evolução e aprendizado com o mestre Agnaldo Gomes.
-          </p>
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-primary/20 p-3 rounded-2xl">
+                <MonitorPlay className="text-primary" size={32} />
+              </div>
+              <h2 className="text-3xl font-bold">Guia do Aluno: Ambiente Virtual</h2>
+            </div>
+            <p className="text-foreground/80 leading-relaxed text-lg max-w-2xl">
+              Sua jornada para se tornar um profissional de elite começa aqui. Entenda como navegar na plataforma, consumir os conteúdos em alta qualidade e obter seu diploma oficial.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">O que você encontra aqui?</h3>
+          <h3 className="text-2xl font-bold border-b border-white/10 pb-3 flex items-center gap-3">
+            <BookOpen className="text-primary" size={24} /> 
+            Explorando sua Sala de Aula
+          </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <PlaySquare className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Meus Cursos</h4>
-              <p className="text-sm text-foreground/70">Acesso direto a todas as formações que você adquiriu. O progresso é salvo automaticamente.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-card/40 p-6 rounded-2xl border border-white/5 hover:bg-card/60 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <PlaySquare className="text-gold" size={24} />
+                <h4 className="font-bold text-xl">1. Assistindo às Aulas</h4>
+              </div>
+              <ul className="text-sm text-foreground/80 space-y-3">
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Seu progresso é salvo na nuvem. Você pode parar no celular e continuar no computador.</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Os vídeos possuem ajuste de velocidade na engrenagem do reprodutor (até 2x).</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Abaixo do vídeo, verifique a aba de <strong>Materiais Complementares</strong> para baixar PDFs e apostilas.</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> <strong>IMPORTANTE:</strong> Ao fim de cada vídeo, clique no botão <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs">Marcar como Concluída</span> para avançar a barra de progresso.</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <Award className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Certificados</h4>
-              <p className="text-sm text-foreground/70">Ao concluir 100% de um curso, seu certificado de conclusão em PDF será liberado aqui para impressão.</p>
+
+            <div className="bg-card/40 p-6 rounded-2xl border border-white/5 hover:bg-card/60 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <Award className="text-gold" size={24} />
+                <h4 className="font-bold text-xl">2. Emissão de Certificados</h4>
+              </div>
+              <ul className="text-sm text-foreground/80 space-y-3">
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> O certificado possui validação digital contra fraudes (QR Code).</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Ele só é desbloqueado automaticamente quando o curso atinge <strong>100% de conclusão</strong>.</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Se você terminou tudo e ele não liberou, verifique se não esqueceu de "Marcar como concluída" alguma aula teórica curta.</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Fica disponível para download em PDF a qualquer momento na aba Certificados.</li>
+              </ul>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <ShieldCheck className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Catálogo de Cursos</h4>
-              <p className="text-sm text-foreground/70">Descubra novas formações para continuar sua trilha de crescimento profissional.</p>
+
+            <div className="bg-card/40 p-6 rounded-2xl border border-white/5 hover:bg-card/60 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <HelpCircle className="text-gold" size={24} />
+                <h4 className="font-bold text-xl">3. Dúvidas Frequentes</h4>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <h5 className="text-sm font-bold text-white">O vídeo está travando, o que fazer?</h5>
+                  <p className="text-xs text-foreground/70 mt-1">Verifique sua conexão. Os vídeos adaptam a qualidade (1080p, 720p) dependendo da sua internet. Tente limpar o cache do navegador.</p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-bold text-white">Esqueci minha senha. Como acessar?</h5>
+                  <p className="text-xs text-foreground/70 mt-1">Na tela de login da Academy, clique em "Esqueci minha senha" para receber um link de redefinição no email cadastrado no ato da compra.</p>
+                </div>
+              </div>
             </div>
-            <div className="glass p-5 rounded-xl border border-white/5">
-              <MessagesSquare className="text-primary mb-3" size={24} />
-              <h4 className="font-bold mb-2">Comunidade</h4>
-              <p className="text-sm text-foreground/70">Interaja com outros alunos, tire dúvidas direto com a equipe técnica e faça networking.</p>
+
+            <div className="bg-card/40 p-6 rounded-2xl border border-white/5 hover:bg-card/60 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <MessagesSquare className="text-gold" size={24} />
+                <h4 className="font-bold text-xl">4. Interação e Fórum</h4>
+              </div>
+              <p className="text-sm text-foreground/80 mb-3">
+                Não estude sozinho. O aprendizado é muito mais rico quando compartilhado.
+              </p>
+              <ul className="text-sm text-foreground/80 space-y-3">
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Use a <strong>Comunidade VIP</strong> para postar fotos dos seus trabalhos.</li>
+                <li className="flex gap-2"><span className="text-primary font-bold">•</span> Embaixo de cada aula existe uma seção de comentários específicos daquela aula para dúvidas diretas com a equipe técnica do Agnaldo.</li>
+              </ul>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold border-b border-white/10 pb-2">Como assistir às aulas?</h3>
-          <ul className="list-decimal list-inside space-y-3 text-foreground/80 text-sm bg-card/50 p-6 rounded-xl border border-white/5">
-            <li>No seu <strong className="text-white">Dashboard</strong>, clique no curso que deseja estudar.</li>
-            <li>Você verá a lista de Módulos. Clique em um módulo para expandir a lista de aulas.</li>
-            <li>Clique na aula desejada para abrir o reprodutor de vídeo.</li>
-            <li>Abaixo do vídeo, pode haver materiais em PDF para baixar.</li>
-            <li>Sempre que terminar uma aula, clique em <strong className="text-white">Marcar como Concluída</strong> para que seu progresso avance e o certificado seja liberado no final.</li>
-          </ul>
         </div>
       </div>
     );
