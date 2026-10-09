@@ -908,9 +908,9 @@ function AgendaContent() {
           )}
 
           {/* Agenda Kanban (Colunas por Profissional) */}
-          <div className="overflow-x-auto w-full pb-4">
+          <div className="overflow-auto w-full pb-2 max-h-[calc(100vh-200px)] border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] shadow-sm custom-scrollbar">
             {profissionaisVisiveisNaAgenda.length === 0 ? (
-              <div className="p-12 text-center border border-dashed border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] text-foreground/60">
+              <div className="p-12 text-center text-foreground/60">
                 <p className="text-base font-semibold">Nenhum profissional encontrado na categoria "{categoriaFiltro}".</p>
                 <p className="text-xs text-foreground/40 mt-1">Selecione "Todos os Atendimentos" ou cadastre um novo profissional na aba Profissionais.</p>
                 <button
@@ -921,7 +921,7 @@ function AgendaContent() {
                 </button>
               </div>
             ) : (
-            <div className="flex border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] overflow-hidden shadow-sm min-h-[600px] w-max min-w-full">
+            <div className="flex min-h-[600px] w-max min-w-full">
               {profissionaisVisiveisNaAgenda.map(prof => {
                 const isAgnaldo = (prof.nome || '').toLowerCase().includes('agnaldo') || prof.id === 'agnaldo';
                 const interval = isAgnaldo ? 20 : 30;
