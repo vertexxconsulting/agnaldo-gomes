@@ -1435,10 +1435,6 @@ export async function criarComissao(params: {
 
   let numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
   
-  // Regra especial solicitada: serviços com 100% de comissão são pagos ao profissional em 3x
-  if (pct === 100) {
-    numParcelas = 3;
-  }
 
   // 1. Busca regras de taxas e configuração se não foram passadas
   let taxas = params.taxasCustom;
