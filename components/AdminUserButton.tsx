@@ -129,9 +129,13 @@ export function AdminUserButton({
             <div className="p-4 border-b border-[var(--border-subtle)] flex items-center gap-3 relative">
               <motion.div 
                 layoutId="user-avatar"
-                className="w-12 h-12 rounded-full bg-gold/20 text-gold flex items-center justify-center font-bold"
+                className="w-12 h-12 rounded-full bg-gold/20 text-gold flex items-center justify-center font-bold overflow-hidden"
               >
-                {userInitials}
+                {userAvatar ? (
+                  <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  userInitials
+                )}
               </motion.div>
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-foreground">{userName}</span>
