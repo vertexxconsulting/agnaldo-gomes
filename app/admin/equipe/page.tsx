@@ -193,7 +193,6 @@ export default function TeamManagementPage() {
               <th className="px-6 py-4">Usuário</th>
               <th className="px-6 py-4">Nickname</th>
               <th className="px-6 py-4">E-mail</th>
-              <th className="px-6 py-4">Papel Atual</th>
               <th className="px-6 py-4 text-center">Permissões</th>
               <th className="px-6 py-4 text-right">Alterar Acesso</th>
             </tr>
@@ -203,9 +202,13 @@ export default function TeamManagementPage() {
               <tr key={profile.id} className="hover:bg-foreground/5 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-black text-xs font-bold">
-                      {profile.full_name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.full_name || 'Usuário'} className="w-8 h-8 rounded-full object-cover border border-gold/30" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-black text-xs font-bold">
+                        {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
                     <span className="text-foreground font-semibold text-sm">{profile.full_name}</span>
                   </div>
                 </td>
@@ -215,11 +218,6 @@ export default function TeamManagementPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
-                <td className="px-6 py-4">
-                  <span className="inline-block whitespace-nowrap px-3 py-1 rounded-full bg-foreground/10 text-foreground text-xs font-bold border border-foreground/20">
-                    {ROLE_LABELS[profile.role as Role] || profile.role}
-                  </span>
-                </td>
                 <td className="px-6 py-4 text-center">
                   <Button 
                     variant="outline" 
