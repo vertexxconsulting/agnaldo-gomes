@@ -227,7 +227,7 @@ export default function TeamManagementPage() {
                       setEditingNickname(getNicknameDisplay(profile));
                       setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
                     }}
-                    disabled={updatingId === profile.id || profile.role === ROLES.ADMIN}
+                    disabled={updatingId === profile.id}
                   >
                     Editar
                   </Button>

@@ -1,0 +1,454 @@
+/**
+ * Typography System – Sistema de Gestão do Studio
+ *
+ * Fontes aplicadas:
+ *  - UI-UX Pro Max: typography pairing (Montserrat + Inter)
+ *  - Impeccable: refined typography for dark premium UI
+ *  - Huashu-Design: HTML/CSS layout patterns
+ */
+
+:root {
+  /* ── Font Face Declarations ── */
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Thin.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 100;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Thin.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Light.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Regular.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Medium.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-SemiBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Bold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-ExtraBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Montserrat";
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url("/fonts/montserrat/Montserrat-Black.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-100.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Regular.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Medium.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-SemiBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Bold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-ExtraBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url("/fonts/inter/Inter-Black.woff2") format("woff2");
+  }
+}
+
+/* ── Typography Tokens ── */
+:root {
+  --font-headings: "Montserrat", "Plus Jakarta Sans", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* Line Heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
+  --tracking-widest: 0.08em;
+}
+
+/* ── Typography Components ── */
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-normal);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headings);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text);
+  margin: 0;
+}
+
+h1, .display {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-extrabold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h2, .heading-lg {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-extrabold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h3, .heading-md {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-extrabold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h4, .heading-sm {
+  font-size: var(--text-xl);
+  font-weight: var(--font-extrabold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h5, .heading-base {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+h6, .heading-sm {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Body Text */
+p {
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text-muted);
+  margin: 0 0 var(--spacing-md);
+}
+
+p.lead {
+  font-size: var(--text-lg);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text);
+}
+
+/* Text Utilities */
+.text-xs {
+  font-size: var(--text-xs);
+}
+
+.text-sm {
+  font-size: var(--text-sm);
+}
+
+.text-lg {
+  font-size: var(--text-lg);
+}
+
+.text-xl {
+  font-size: var(--text-xl);
+}
+
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+
+.text-3xl {
+  font-size: var(--text-3xl);
+}
+
+.text-4xl {
+  font-size: var(--text-4xl);
+}
+
+.text-5xl {
+  font-size: var(--text-5xl);
+}
+
+.font-normal { font-weight: var(--font-normal); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+.font-extrabold { font-weight: var(--font-extrabold); }
+
+.uppercase {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.tracking-tight {
+  letter-spacing: var(--tracking-tight);
+}
+
+.tracking-wide {
+  letter-spacing: var(--tracking-wide);
+}
+
+.tracking-wider {
+  letter-spacing: var(--tracking-wider);
+}
+
+.tracking-widest {
+  letter-spacing: var(--tracking-widest);
+}
+
+/* Mono */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* Lists */
+ul, ol {
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text-muted);
+  margin: 0 0 var(--spacing-md);
+  padding-left: var(--spacing-lg);
+}
+
+li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Links */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* Blockquote */
+blockquote {
+  font-family: var(--font-headings);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-relaxed);
+  color: var(--text);
+  border-left: 3px solid var(--primary);
+  padding-left: var(--spacing-lg);
+  margin: 0 0 var(--spacing-lg);
+  quote {
+    color: var(--primary);
+    font-style: normal;
+  }
+}
+
+/* Code */
+code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--background-contrast);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-weight: var(--font-medium);
+}
+
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--background-contrast);
+  color: var(--text);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  overflow-x: auto;
+  code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+th {
+  font-family: var(--font-headings);
+  font-weight: var(--font-semibold);
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Forms */
+label {
+  font-family: var(--font-headings);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-sm);
+  display: block;
+}
+
+input, textarea, select {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+  outline: none;
+}
+
+/* Buttons */
+button {
+  font-family: var(--font-headings);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+button:focus {
+  box-shadow: var(--shadow-glow);
+  outline: none;
+}

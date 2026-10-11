@@ -1,0 +1,129 @@
+/**
+ * Global CSS – Sistema de Gestão do Studio (SaaS)
+ * Design system aplicado: Impeccable + UI-UX Pro Max + Huashu-Design
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Background ── */
+    --color-background: #0a0a0a;
+    --color-background-raised: #0f0f0f;
+    --color-background-contrast: #141411;
+    --color-surface: #1a1a1a;
+    --color-surface-hover: #222222;
+    --color-surface-active: #2a2a2a;
+
+    /* ── Foreground ── */
+    --color-foreground: #f0f0f0;
+    --color-text-muted: #b0b0b0;
+    --color-text-faint: #808080;
+
+    /* ── Borders ── */
+    --color-border: #2a2a2a;
+    --color-border-strong: #3a3a3a;
+
+    /* ── Accents (primary copper + secondary verdigris) ── */
+    --color-primary: #c9a84c;
+    --color-primary-hover: #d4b45c;
+    --color-primary-active: #a88a3c;
+    --color-secondary: #5a9e8a;
+    --color-secondary-hover: #6aae9a;
+
+    /* ── States ── */
+    --color-success: #4a9e6a;
+    --color-warning: #c9a84c;
+    --color-error: #c0392b;
+    --color-info: #3a7ab5;
+
+    /* ── Opacity variants ── */
+    --color-primary-10: rgba(201,168,76,0.10);
+    --color-primary-20: rgba(201,168,76,0.20);
+    --color-primary-50: rgba(201,168,76,0.50);
+  }
+
+  [data-theme="dark"],
+  .dark {
+    --color-background: #0a0a0a;
+    --color-background-raised: #0f0f0f;
+    --color-background-contrast: #141411;
+    --color-surface: #1a1a1a;
+    --color-surface-hover: #222222;
+    --color-surface-active: #2a2a2a;
+
+    --color-foreground: #f0f0f0;
+    --color-text-muted: #b0b0b0;
+    --color-text-faint: #808080;
+
+    --color-border: #2a2a2a;
+    --color-border-strong: #3a3a3a;
+
+    --color-primary: #c9a84c;
+    --color-primary-hover: #d4b45c;
+    --color-primary-active: #a88a3c;
+    --color-secondary: #5a9e8a;
+    --color-secondary-hover: #6aae9a;
+
+    --color-success: #4a9e6a;
+    --color-warning: #c9a84c;
+    --color-error: #c0392b;
+    --color-info: #3a7ab5;
+
+    --color-primary-10: rgba(201,168,76,0.10);
+    --color-primary-20: rgba(201,168,76,0.20);
+    --color-primary-50: rgba(201,168,76,0.50);
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body, "Inter", "Segoe UI", system-ui, sans-serif);
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+  }
+
+  .surface {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+
+  .surface-hover:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-strong);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background-color: var(--color-primary);
+    color: #111827;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-hover);
+  }
+}

@@ -37,7 +37,6 @@ export const ADMIN_MODULES = [...STUDIO_MODULES, ...LOJA_MODULES, ...ACADEMY_MOD
 export type StudioModuleId = typeof STUDIO_MODULES[number]['id'];
 export type LojaModuleId = typeof LOJA_MODULES[number]['id'];
 export type AcademyModuleId = typeof ACADEMY_MODULES[number]['id'];
-
 export type AdminModuleId = StudioModuleId | LojaModuleId | AcademyModuleId;
 
 export type UserPermissions = Partial<Record<AdminModuleId, PermissionLevel>>;

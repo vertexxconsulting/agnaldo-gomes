@@ -1,0 +1,74 @@
+/**
+ * Colors System – Sistema de Gestão do Studio
+ *
+ * Fontes aplicadas:
+ *  - Impeccable: dark premium palette (kinpaku gold + verdigris patina)
+ *  - UI-UX Pro Max: token-based color architecture
+ *  - Huashu-Design: functional color layers
+ */
+
+:root {
+  /* ── Background ── */
+  --color-background: #0a0a0a;
+  --color-background-raised: #0f0f0f;
+  --color-background-contrast: #141414;
+  --color-surface: #1a1a1a;
+  --color-surface-hover: #222222;
+  --color-surface-active: #2a2a2a;
+
+  /* ── Foreground ── */
+  --color-foreground: #f0f0f0;
+  --color-foreground-muted: #b0b0b0;
+  --color-foreground-faint: #808080;
+
+  /* ── Primary (kinpaku gold) ── */
+  --color-primary: #c9a84c;
+  --color-primary-hover: #d4b45c;
+  --color-primary-active: #a88a3c;
+  --color-primary-foreground: #0a0a0a;
+
+  /* ── Secondary (verdigris patina) ── */
+  --color-secondary: #5a9e8a;
+  --color-secondary-hover: #6aae9a;
+  --color-secondary-foreground: #0a0a0a;
+
+  /* ── Accent (copper) ── */
+  --color-accent: #c9a84c;
+  --color-accent-hover: #d4b45c;
+
+  /* ── Neutrals ── */
+  --color-neutral-0: #0a0a0a;
+  --color-neutral-10: #141414;
+  --color-neutral-20: #1a1a1a;
+  --color-neutral-30: #222222;
+  --color-neutral-40: #2a2a2a;
+  --color-neutral-50: #333333;
+  --color-neutral-60: #404040;
+  --color-neutral-70: #4a4a4a;
+  --color-neutral-80: #555555;
+  --color-neutral-90: #606060;
+  --color-neutral-100: #6a6a6a;
+
+  /* ── Cards ── */
+  --color-card: #1a1a1a;
+  --color-card-hover: #222222;
+  --color-card-active: #2a2a2a;
+
+  /* ── Borders ── */
+  --color-border: #2a2a2a;
+  --color-border-strong: #3a3a3a;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* ── States ── */
+  --color-success: #4a9e6a;
+  --color-warning: #c9a84c;
+  --color-danger: #c0392b;
+  --color-info: #3a7ab5;
+  --color-muted: #606060;
+
+  /* ── Text ── */
+  --color-text: #f0f0f0;
+  --color-text-muted: #b0b0b0;
+  --color-text-faint: #808080;
+  --color-text-inverse: #0a0a0a;
+}

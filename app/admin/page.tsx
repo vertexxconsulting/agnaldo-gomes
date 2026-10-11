@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Wallet, CheckCircle2, AlertTriangle, Clock, Scissors, 
@@ -117,20 +117,20 @@ export default function ReceptionDashboard() {
 
       {/* Atalhos Rápidos no Topo */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-gold hover:text-gold transition-colors text-foreground">
-          <Clock size={20} className="text-gold" />
+        <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary hover:text-primary transition-colors text-foreground">
+          <Clock size={20} className="text-primary" />
           Novo Agendamento
         </Link>
-        <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-blue-400 hover:text-blue-400 transition-colors text-foreground">
-          <UserPlus size={20} className="text-blue-400" />
+        <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-secondary hover:text-secondary transition-colors text-foreground">
+          <UserPlus size={20} className="text-secondary" />
           Novo Cliente
         </Link>
-        <Link href="/admin/loja" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-green-400 hover:text-green-400 transition-colors text-foreground">
-          <ShoppingCart size={20} className="text-green-400" />
+        <Link href="/admin/estoque" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-accent hover:text-accent transition-colors text-foreground">
+          <ShoppingCart size={20} className="text-accent" />
           Venda Balcão
         </Link>
-        <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-purple-400 hover:text-purple-400 transition-colors text-foreground">
-          <Wallet size={20} className="text-purple-400" />
+        <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-info hover:text-info transition-colors text-foreground">
+          <Wallet size={20} className="text-info" />
           Despesas / Resumo
         </Link>
       </div>
@@ -141,7 +141,7 @@ export default function ReceptionDashboard() {
         {/* 2. Na Cadeira / Aguardando Checkout */}
         <div className="xl:col-span-2 space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+            <span className="w-3 h-3 rounded-full bg-success animate-pulse" />
             Na Cadeira Agora (Para Receber)
           </h2>
           
@@ -154,15 +154,15 @@ export default function ReceptionDashboard() {
               {naCadeira.map(ag => {
                 const srv = getServico(ag.servico_id);
                 return (
-                  <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-green-500/20 bg-green-500/5">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
+                  <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-success/20 bg-success/5">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-success" />
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
                         <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs bg-[var(--background)] px-2 py-1 rounded-md text-foreground/60 border border-[var(--border-subtle)]">
+                        <span className="text-xs bg-[var(--color-background)] px-2 py-1 rounded-md text-foreground/60 border border-[var(--color-border)]">
                           Iniciou {ag.hora_inicio}
                         </span>
                       </div>
@@ -174,7 +174,7 @@ export default function ReceptionDashboard() {
                     
                     <div className="mt-auto">
                       <Link href={`/admin/agenda?date=${hoje}`}>
-                        <Button variant="primary" className="w-full bg-green-600 hover:bg-green-700 text-white border-none shadow-lg shadow-green-500/20">
+                        <Button variant="primary" className="w-full bg-success hover:bg-success/90 text-white border-none shadow-lg shadow-success/20">
                           <Banknote size={16} className="mr-2" />
                           Ir para Recebimento
                         </Button>
@@ -196,12 +196,12 @@ export default function ReceptionDashboard() {
           
           <div className="space-y-3">
             {proximos.length === 0 ? (
-              <p className="text-sm text-foreground/50 p-4 text-center border border-[var(--border-subtle)] rounded-xl border-dashed">
+              <p className="text-sm text-foreground/50 p-4 text-center border border-[var(--color-border)] rounded-xl border-dashed">
                 Nenhum agendamento pendente para hoje.
               </p>
             ) : (
               proximos.map(ag => (
-                <div key={ag.id} className="flex items-center justify-between p-3 border border-[var(--border-subtle)] bg-[var(--background)] rounded-xl hover:border-foreground/20 transition-colors">
+                <div key={ag.id} className="flex items-center justify-between p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl hover:border-foreground/20 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="text-center">
                       <span className="block font-mono text-sm font-bold text-foreground">{ag.hora_inicio}</span>

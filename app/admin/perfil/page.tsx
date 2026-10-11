@@ -7,6 +7,7 @@ import { User, Mail, Lock, Shield, Camera } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { ROLE_LABELS, Role } from '@/lib/auth';
 
 export default function AdminPerfilPage() {
   const [userEmail, setUserEmail] = useState('');
@@ -16,6 +17,7 @@ export default function AdminPerfilPage() {
   const [userInitials, setUserInitials] = useState('AG');
   const [loading, setLoading] = useState(true);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<Role | string>('Administrador do Sistema');
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -34,10 +36,28 @@ export default function AdminPerfilPage() {
           }
           
           
-          // Buscar dados adicionais do profile (nickname)
-          const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', user.id).single();
-          if (profile && profile.nickname) {
-            setUserNickname(profile.nickname);
+          // Buscar dados adicionais do profile (nickname, role)
+          const { data: profile } = await supabase.from('profiles').select('nickname, role').eq('id', user.id).single();
+          if (profile) {
+            if (profile.nickname) setUserNickname(profile.nickname);
+            if (profile.role) setUserRole(profile.role);
+          }
+
+          // Fallback: Buscar nickname global para garantir consistência
+          try {
+            const nickRes = await fetch('/api/admin/nicknames');
+            if (nickRes.ok) {
+              const { nicknames } = await nickRes.json();
+              // A API retorna objeto onde chave é o nickname e valor é o email
+              for (const [nick, mail] of Object.entries(nicknames)) {
+                if (typeof mail === 'string' && mail.toLowerCase() === email.toLowerCase()) {
+                  setUserNickname(nick);
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Falha ao buscar nicknames globais no perfil:', e);
           }
 
           if (name && name !== 'Administrador') {
@@ -124,12 +144,24 @@ export default function AdminPerfilPage() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('profiles').upsert({
+        const { error: profileError } = await supabase.from('profiles').upsert({
           id: user.id,
           full_name: newName,
           phone: newPhone,
           nickname: newNickname,
         });
+        
+        if (profileError) {
+          console.warn('Não foi possível atualizar a tabela profiles (RLS provável):', profileError);
+        }
+
+        if (newNickname.trim()) {
+          await fetch('/api/admin/nicknames', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail || user.email, nickname: newNickname.trim() }),
+          }).catch(err => console.warn('Aviso ao sincronizar nickname global:', err));
+        }
       }
 
       setUserName(newName);
@@ -165,7 +197,7 @@ export default function AdminPerfilPage() {
 
   return (
     <div className="py-4">
-      <SectionTitle title="Meu Perfil" subtitle="Configurações da sua conta de administrador" align="left" size="sm" />
+      <SectionTitle title="Meu Perfil" subtitle="Configurações da sua conta" align="left" size="sm" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="col-span-1 flex flex-col gap-6">
@@ -186,12 +218,12 @@ export default function AdminPerfilPage() {
             </label>
             
             <h3 className="text-xl font-bold text-foreground">{userName}</h3>
-            <p className="text-sm text-foreground/50 mb-4">Administrador do Sistema</p>
+            <p className="text-sm text-foreground/50 mb-4 capitalize">{ROLE_LABELS[userRole as Role] || userRole.replace('_', ' ')}</p>
 
             <div className="w-full border-t border-[var(--border-subtle)] pt-4 flex flex-col gap-3">
               <div className="flex items-center gap-3 text-sm text-foreground/70">
                 <Shield size={16} className="text-emerald-500" />
-                Acesso Total (Admin)
+                Acesso: {ROLE_LABELS[userRole as Role] || userRole}
               </div>
               <div className="flex items-center gap-3 text-sm text-foreground/70">
                 <Mail size={16} className="text-foreground/40" />

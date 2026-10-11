@@ -79,7 +79,7 @@ O banco de dados PostgreSQL no Supabase (`salon_customers`) é o **SISTEMA MÃE*
 - **Identificadores Base**:
   - **Agnaldo Gomes**: `e47b1a20-8d3f-4e92-91bc-3a817452d901`
   - **Equipe Studio**: `f82c4d31-9a5e-4b73-82cd-4b928563e012`
-- **Script de Migração**: [`seed_atualizar_para_uuids_reais.sql`](./seed_atualizar_para_uuids_reais.sql).
+- **Script de Migração**: [`sql_scripts/05_seeds/seed_atualizar_para_uuids_reais.sql`](./sql_scripts/05_seeds/seed_atualizar_para_uuids_reais.sql).
 
 ---
 
@@ -286,10 +286,54 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
       4. Tabela `salon_professionals` (equipe do salão).
     - O identificador é resolvido para o e-mail real e autenticado no Supabase Auth via `supabase.auth.signInWithPassword()`.
     - **Preservação Total**: Nenhuma senha foi alterada e os papéis/permissões (`Role`) continuam 100% preservados.
-  - **Gestão no Painel (`/admin/equipe`)**:
-    - A tabela de membros exibe uma coluna dedicada mostrando o `@nickname` do usuário.
+  - **Gestão no Painel (`/admin/equipe` e `/admin/perfil`)**:
+    - A tabela de membros em `/admin/equipe` exibe uma coluna dedicada mostrando o `@nickname` do usuário.
     - O modal de "Novo Membro" permite definir um apelido opcional na criação.
-    - O modal de "Editar" permite alterar ou cadastrar o `@nickname` de qualquer membro da equipe através de `/api/admin/nicknames`.
+    - O modal de "Editar" permite alterar ou cadastrar o `@nickname` de qualquer membro da equipe através de `/api/admin/nicknames` sem travar a auto-edição de administradores.
+    - A página de Perfil (`/admin/perfil`) carrega o apelido do usuário e sincroniza alterações em segundo plano via `POST /api/admin/nicknames` e na tabela `profiles`.
+    - O Perfil exibe dinamicamente o Cargo/Role real do usuário formatado através de `ROLE_LABELS` (ex: Administrador do Sistema, Secretária, etc.), eliminando rotulações estáticas.
+
+---
+
+## 8.7 Design System, Tokens Semânticos & Estilização Dark Premium
+
+- **Paleta de Cores e Tokens CSS**:
+  - `background`: `#0a0a0a` (lacquer-black / preto profundo acolhedor).
+  - `surface`: `#1a1a1a` com bordas sutis em `#2a2a2a` (`var(--color-border)`).
+  - `primary`: `#c9a84c` (kinpaku gold / ouro refinado para ações e destaques).
+  - `secondary`: `#5a9e8a` (verdigris patina / verde suave para elementos secundários).
+  - `text`: `#f0f0f0` (champagne / contraste harmonioso sem cansaço visual).
+  - Estados semânticos: `success` (`#4a9e6a`), `info` (`#3a7ab5`), `error` (`#c0392b`).
+- **Aplicação no Painel Administrativo (`/admin`)**:
+  - Atalhos rápidos, painéis de Kanban e cards da recepção convertidos para utilizar as variáveis de tokens semânticos (`var(--color-background)`, `var(--color-surface)`, `var(--color-border)`, `text-primary`, `bg-success`).
+  - Banimento de cores neon ou gradientes genéricos em favor de estética visual limpa, contrastante e alinhada à sofisticação do Studio.
+
+---
+
+## 8.8 Otimizações na Agenda, Pagamentos e Gestão de Profissionais
+
+- **Atualização Otimista & Cache Global na Agenda (`/admin/agenda`)**:
+  - Cache de serviços em array global para carregamento instantâneo.
+  - Atualização otimista (optimistic UI update) para subserviços e alteração de status, proporcionando fluidez sem travamentos na recepção.
+- **Auditoria e Filtro de Pagamentos por `created_at` (`/admin/pagamentos`)**:
+  - Unificação de filtros de período e consultas financeiras com base no timestamp real `created_at`.
+  - Elimina discrepâncias de timezone e ordenação imprecisa entre o Supabase e o navegador.
+- **Feedback Moderno e Resiliência em Profissionais (`/admin/profissionais`)**:
+  - Substituição de `alert()` do navegador por notificações interativas via `sonner` (`toast.success`, `toast.error`, `toast.warning`).
+  - Validação defensiva com optional chaining em arrays de especialidades (`prof.especialidades?.some(...)`), prevenindo quebras em cadastros parciais.
+
+---
+
+## 8.9 Consolidação de Migrações e Scripts SQL
+
+- **Local Oficial: `sql_scripts/`**:
+  - Toda a arquitetura de banco de dados do Supabase é mantida exclusivamente sob o diretório `sql_scripts/`:
+    - `01_core/`: Esquema base, profiles, RLS, storage, notificações, logs de auditoria e configurações.
+    - `02_studio/`: Regras de agenda, clientes fixos, comandas, comissões, serviços e Dia da Noiva.
+    - `03_academy/`: Cursos, aulas, certificados e comunidade.
+    - `04_loja/`: Estoque, carrinho, cupons, frete e fidelidade.
+    - `05_seeds/`: UUIDs v4 criptográficos e carga inicial de serviços.
+  - Diretórios legados duplicados fora da estrutura oficial foram saneados para evitar conflitos de versão.
 
 ---
 

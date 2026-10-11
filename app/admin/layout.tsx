@@ -80,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="flex h-screen bg-[var(--background)] overflow-hidden">
+    <div className="flex h-screen bg-[var(--color-background)] overflow-hidden font-body antialiased">
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
         {/* Removido ThemeToggle conforme solicitação */}

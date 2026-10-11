@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, DollarSign } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -104,7 +105,7 @@ export default function ProfissionaisPage() {
     if (resultado.ok) {
       setProfissionais(prev => prev.map(p => p.id === id ? { ...p, ativo: novoAtivo } : p));
     } else {
-      alert(`Erro ao atualizar: ${resultado.error}`);
+      toast.error(`Erro ao atualizar: ${resultado.error}`);
     }
   };
 
@@ -115,7 +116,7 @@ export default function ProfissionaisPage() {
       setProfissionais(prev => prev.filter(p => p.id !== id));
       setProfServCache(prev => prev.filter(ps => ps.profissional_id !== id));
     } else {
-      alert(`Erro ao excluir: ${resultado.error}`);
+      toast.error(`Erro ao excluir: ${resultado.error}`);
     }
   };
 
@@ -162,7 +163,7 @@ export default function ProfissionaisPage() {
           .getPublicUrl(filePath);
         finalFotoUrl = publicUrl;
       } else {
-        alert(`Erro ao salvar foto: ${uploadError.message}`);
+        toast.error(`Erro ao salvar foto: ${uploadError.message}`);
       }
     }
 
@@ -196,7 +197,7 @@ export default function ProfissionaisPage() {
         if (!resAcesso.ok) throw new Error(dataAcesso.error || 'Erro ao criar acesso');
         profileId = dataAcesso.user?.id || null;
       } catch (err: any) {
-        alert(`Erro ao criar acesso ao sistema: ${err.message}`);
+        toast.error(`Erro ao criar acesso ao sistema: ${err.message}`);
         return;
       }
     }
@@ -204,7 +205,7 @@ export default function ProfissionaisPage() {
     if (editando) {
       const resultado = await atualizarProfissional(editando.id, profissionalData);
       if (!resultado.ok) {
-        alert(`Erro ao salvar: ${resultado.error}`);
+        toast.error(`Erro ao salvar: ${resultado.error}`);
         return;
       }
       profissionalId = editando.id;
@@ -213,7 +214,7 @@ export default function ProfissionaisPage() {
       const payloadCriacao = { ...profissionalData, profile_id: profileId };
       const resultado = await criarProfissional(payloadCriacao);
       if (resultado.error || !resultado.id) {
-        alert(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
+        toast.error(`Erro ao salvar: ${resultado.error ?? 'resposta vazia do banco'}`);
         return;
       }
       profissionalId = resultado.id;
@@ -228,7 +229,7 @@ export default function ProfissionaisPage() {
     // Vincular serviços
     const vinculo = await vincularProfissionalServicos(profissionalId, servicosSelecionados);
     if (!vinculo.ok) {
-      alert(`Profissional salvo, mas houve erro ao vincular serviços: ${vinculo.error}`);
+      toast.warning(`Profissional salvo, mas houve erro ao vincular serviços: ${vinculo.error}`);
     }
     if (vinculo.ok) {
       setProfServCache(prev => {
@@ -269,7 +270,7 @@ export default function ProfissionaisPage() {
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
-      setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo'));
+      setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e?.toLowerCase()?.includes('unha')) ? 'Unhas' : 'Cabelo'));
     } else {
       setEditando(null);
       setFotoLocal(null);
