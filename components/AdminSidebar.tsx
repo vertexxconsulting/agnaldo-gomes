@@ -36,13 +36,15 @@ export function AdminSidebar({
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('ag-user-role');
-    return null;
-  });
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Confirmar role via Supabase e manter localStorage sincronizado
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedRole = localStorage.getItem('ag-user-role');
+      if (savedRole) setUserRole(savedRole);
+    }
+
     supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
       const role = getUserRole(data?.user);
       if (role) {

@@ -48,13 +48,17 @@ const nextConfig: NextConfig = {
         ],
       },
 
-      // ── Assets Next.js imutáveis (hash no nome) — cache longo ────
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
+      // ── Assets Next.js imutáveis (apenas em produção) ─────────────
+      ...(process.env.NODE_ENV === 'production'
+        ? [
+            {
+              source: '/_next/static/:path*',
+              headers: [
+                { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+              ],
+            },
+          ]
+        : []),
 
       // ── Imagens públicas — cache de 1 semana ──────────────────────
       {
