@@ -96,10 +96,15 @@ export default function HubCentralPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: { data: { user: any } | null }) => {
-      const meta = data?.user?.user_metadata;
+      const user = data?.user;
+      if (!user) {
+        router.replace('/login?next=/hub');
+        return;
+      }
+      const meta = user.user_metadata;
       
       if (meta) {
-        const name = meta.full_name || meta.name || meta.nome || data.user.email?.split('@')[0] || '';
+        const name = meta.full_name || meta.name || meta.nome || data?.user?.email?.split('@')[0] || '';
         if (name) {
           const firstName = name.split(' ')[0];
           setUserName(firstName);
@@ -113,7 +118,7 @@ export default function HubCentralPage() {
         setRole(null);
       }
     });
-  }, []);
+  }, [router]);
 
   const modulosVisiveis = useMemo(() => {
     if (!role) return []; // Aguarda carregar o papel antes de exibir qualquer módulo

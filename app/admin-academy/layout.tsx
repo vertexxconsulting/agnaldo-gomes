@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Command, LayoutDashboard, GraduationCap, PlayCircle, Users, BookOpen, Award, Settings, CreditCard, Video, Calendar, Star } from 'lucide-react';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
@@ -25,21 +25,39 @@ const links = [
 
 export default function AdminAcademyLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [userPermissions, setUserPermissions] = useState<UserPermissions | undefined>(undefined);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: { data: { user: any } | { user: null } }) => {
       const user = data?.user;
+      if (!user && pathname !== '/admin-academy/login') {
+        router.replace('/admin-academy/login');
+        return;
+      }
       if (user) {
         setUserRole(getUserRole(user));
         setUserPermissions(user.user_metadata?.permissions);
       }
+      setLoading(false);
     });
-  }, []);
+  }, [pathname, router]);
 
   if (pathname === '/admin-academy/login') {
     return <>{children}</>;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--background)]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-foreground/50 font-medium">Verificando acesso...</p>
+        </div>
+      </div>
+    );
   }
 
   const filteredLinks = links.filter(link => {

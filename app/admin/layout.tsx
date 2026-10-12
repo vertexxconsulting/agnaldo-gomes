@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign, Wallet } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
@@ -8,7 +8,7 @@ import { AdminUserButton } from '@/components/AdminUserButton';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { canAccess, UserPermissions } from '@/lib/permissions';
-import { getUserRole } from '@/lib/auth';
+import { getUserRole, ROLES } from '@/lib/auth';
 import { Toaster } from 'sonner';
 import { FloatingAssistant } from '@/components/FloatingAssistant';
 
@@ -41,23 +41,80 @@ const links = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [userPermissions, setUserPermissions] = useState<UserPermissions | undefined>(undefined);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }: { data: { user: any } | { user: null } }) => {
-      const user = data?.user;
-      if (user) {
-        setUserRole(getUserRole(user));
+    let mounted = true;
+
+    async function checkAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
+
+        if (!user) {
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+          return;
+        }
+
+        const role = getUserRole(user);
+        if (role === ROLES.ALUNO) {
+          router.replace('/aluno');
+          return;
+        }
+        if (role === ROLES.CUSTOMER) {
+          router.replace('/');
+          return;
+        }
+
+        setUserRole(role);
         setUserPermissions(user.user_metadata?.permissions);
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.error('Erro ao verificar autenticação no painel administrativo:', err);
+        if (mounted) {
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
+    }
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        if (mounted) {
+          setIsAuthenticated(false);
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        }
+      }
     });
-  }, []);
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
+  }, [pathname, router]);
 
   if (pathname.startsWith('/admin/login') || pathname === '/admin-secretaria/login') {
     return <>{children}</>;
+  }
+
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--color-background)]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-foreground/50 font-medium tracking-wide">Verificando acesso administrativo...</p>
+        </div>
+      </div>
+    );
   }
 
   const filteredLinks = links.filter(link => {

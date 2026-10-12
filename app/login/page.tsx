@@ -21,7 +21,7 @@ export default async function LoginPage({
   const params = await searchParams;
   const next = params?.next ?? '';
 
-  const adminRoutes = ['/hub', '/admin-academy', '/admin-loja', '/admin-secretaria', '/studio'];
+  const adminRoutes = ['/admin', '/hub', '/admin-academy', '/admin-loja', '/admin-secretaria', '/studio'];
   const alunoRoutes = ['/aluno', '/academy/curso'];
   
   const headersList = await headers();
@@ -41,8 +41,8 @@ export default async function LoginPage({
         formTitle="Gestão AG"
         formSubtitle="Acesse o painel administrativo e de gestão do Studio."
         cta="Acessar Gestão"
-        redirectTo={next || '/hub'}
-        allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA]}
+        redirectTo={next || '/admin'}
+        allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
       />
     );
   }
@@ -64,7 +64,7 @@ export default async function LoginPage({
     );
   }
 
-  // Sem next: padrão Gestão AG (admin + secretaria)
+  // Sem next: padrão Gestão AG (admin + equipe)
   return (
     <SplitLogin
       logoSrc="/logo-branca.png"
@@ -75,8 +75,8 @@ export default async function LoginPage({
       formTitle="Gestão AG"
       formSubtitle="Acesse o painel administrativo e de gestão do Studio."
       cta="Acessar Gestão"
-      redirectTo={next || '/hub'}
-      allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA]}
+      redirectTo={next || '/admin'}
+      allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
     />
   );
 }
