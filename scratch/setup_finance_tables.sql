@@ -1,3 +1,7 @@
+-- ========================================================
+-- Schema do Caixa Diário e Controle Financeiro do Salão
+-- ========================================================
+
 CREATE TABLE IF NOT EXISTS caixa_diario (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   opened_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -20,3 +24,24 @@ CREATE TABLE IF NOT EXISTS financial_transactions (
   payment_method VARCHAR(50), -- 'PIX', 'DINHEIRO', 'CARTAO', 'TRANSFERENCIA'
   status VARCHAR(20) DEFAULT 'PAID' -- 'PAID', 'PENDING'
 );
+
+-- Permissões e RLS
+ALTER TABLE caixa_diario ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir acesso completo a usuarios autenticados em caixa_diario" ON caixa_diario;
+CREATE POLICY "Permitir acesso completo a usuarios autenticados em caixa_diario"
+  ON caixa_diario FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir acesso completo a usuarios autenticados em financial_transactions" ON financial_transactions;
+CREATE POLICY "Permitir acesso completo a usuarios autenticados em financial_transactions"
+  ON financial_transactions FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+GRANT ALL ON caixa_diario TO authenticated, anon, service_role;
+GRANT ALL ON financial_transactions TO authenticated, anon, service_role;

@@ -46,8 +46,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     let mounted = true;
 
     async function checkAuth() {
@@ -106,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  if (loading || !isAuthenticated) {
+  if (!isClient || loading || !isAuthenticated) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[var(--color-background)]">
         <div className="flex flex-col items-center gap-3">

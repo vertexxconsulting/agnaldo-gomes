@@ -33,6 +33,9 @@ export default function AdminFinanceiro() {
   // Caixa form
   const [abrirCaixaValor, setAbrirCaixaValor] = useState('');
 
+  // Action loading state
+  const [actionLoading, setActionLoading] = useState(false);
+
   useEffect(() => {
     loadFinanceiro();
   }, []);
@@ -40,30 +43,23 @@ export default function AdminFinanceiro() {
   const loadFinanceiro = async () => {
     setLoading(true);
     try {
-      // 1. Tenta buscar o caixa aberto de hoje
-      const { data: caixas } = await supabase
-        .from('caixa_diario')
-        .select('*')
-        .eq('status', 'OPEN')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (caixas && caixas.length > 0) {
-        setCaixaAberto(caixas[0]);
-        // Busca transacoes deste caixa
-        const { data: txs } = await supabase
-          .from('financial_transactions')
-          .select('*')
-          .eq('caixa_id', caixas[0].id)
-          .order('created_at', { ascending: false });
-        
-        setTransacoes(txs || []);
-      } else {
-        setCaixaAberto(null);
-        setTransacoes([]);
+      const resCaixa = await fetch('/api/admin/caixa');
+      if (resCaixa.ok) {
+        const dataCaixa = await resCaixa.json();
+        if (dataCaixa.caixa) {
+          setCaixaAberto(dataCaixa.caixa);
+          const resTx = await fetch(`/api/admin/caixa/transacoes?caixa_id=${dataCaixa.caixa.id}`);
+          if (resTx.ok) {
+            const dataTx = await resTx.json();
+            setTransacoes(dataTx.transacoes || []);
+          }
+        } else {
+          setCaixaAberto(null);
+          setTransacoes([]);
+        }
       }
     } catch (e) {
-      console.error('Tabelas de financeiro podem não estar criadas ainda.', e);
+      console.error('Erro ao carregar dados do financeiro:', e);
     } finally {
       setLoading(false);
     }
@@ -71,26 +67,35 @@ export default function AdminFinanceiro() {
 
   const handleAbrirCaixa = async () => {
     const valorNum = parseFloat(abrirCaixaValor.replace(',', '.'));
-    if (isNaN(valorNum)) return alert('Digite um valor inicial válido.');
+    if (isNaN(valorNum) || valorNum < 0) return alert('Digite um valor inicial válido.');
 
-    const { data, error } = await supabase.from('caixa_diario').insert([
-      { opening_balance: valorNum, status: 'OPEN' }
-    ]).select().single();
-
-    if (error) {
-      alert('Erro ao abrir caixa. Verifique se as tabelas foram criadas no banco.');
-      return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/caixa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opening_balance: valorNum })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Erro ao abrir caixa.');
+        return;
+      }
+      setCaixaAberto(data.caixa);
+      setAbrirCaixaValor('');
+      setTransacoes([]);
+    } catch (err) {
+      alert('Erro ao conectar ao servidor para abrir o caixa.');
+    } finally {
+      setActionLoading(false);
     }
-    
-    setCaixaAberto(data);
-    setAbrirCaixaValor('');
   };
 
   const handleFecharCaixa = async () => {
     if (!caixaAberto) return;
     if (!confirm('Deseja realmente fechar o caixa de hoje?')) return;
 
-    // Calcula saldo final = inicial + receitas - despesas (apenas DINHEIRO, se formos rigorosos, ou geral)
+    // Calcula saldo final = inicial + receitas - despesas (apenas DINHEIRO)
     let saldoDinheiro = Number(caixaAberto.opening_balance);
     transacoes.forEach(t => {
       if (t.payment_method === 'DINHEIRO') {
@@ -99,16 +104,28 @@ export default function AdminFinanceiro() {
       }
     });
 
-    const { error } = await supabase.from('caixa_diario').update({
-      status: 'CLOSED',
-      closed_at: new Date().toISOString(),
-      closing_balance: saldoDinheiro
-    }).eq('id', caixaAberto.id);
-
-    if (!error) {
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/caixa', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: caixaAberto.id,
+          closing_balance: saldoDinheiro
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Erro ao fechar caixa.');
+        return;
+      }
       setCaixaAberto(null);
       setTransacoes([]);
       alert(`Caixa fechado com sucesso!\nSaldo final em Dinheiro Físico estimado: R$ ${saldoDinheiro.toFixed(2)}`);
+    } catch (err) {
+      alert('Erro ao fechar caixa.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -129,15 +146,26 @@ export default function AdminFinanceiro() {
       status: 'PAID'
     };
 
-    const { error } = await supabase.from('financial_transactions').insert([newTx]);
-    
-    if (error) {
-      alert('Erro ao lançar. Certifique-se de ter criado as tabelas no Supabase.');
-    } else {
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/caixa/transacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTx)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Erro ao lançar despesa.');
+        return;
+      }
       setShowForm(false);
       setFormDesc('');
       setFormAmount('');
       loadFinanceiro(); // recarrega
+    } catch (err) {
+      alert('Erro ao lançar movimentação.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -174,8 +202,8 @@ export default function AdminFinanceiro() {
               placeholder="0.00" 
               className="bg-background border border-border-subtle rounded-md px-3 py-2 w-32 focus:border-gold outline-none"
             />
-            <Button onClick={handleAbrirCaixa} variant="primary">
-              Abrir Caixa
+            <Button onClick={handleAbrirCaixa} variant="primary" disabled={actionLoading}>
+              {actionLoading ? 'Abrindo...' : 'Abrir Caixa'}
             </Button>
           </div>
         </CardGlass>
