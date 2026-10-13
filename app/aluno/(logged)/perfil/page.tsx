@@ -47,18 +47,19 @@ export default function PerfilAlunoPage() {
 
         const { data: perfilData, error: perfisError } = await supabase
           .from('profiles')
-          .select('id, email, full_name, avatar_url, role')
+          .select('id, email, full_name, avatar_url, role, phone')
           .eq('id', user.id)
           .single();
 
         if (perfilData) {
           const nomeDb = perfilData.full_name || 'Aluno(a)';
           const emailDb = perfilData.email || user.email || '';
+          const telefoneDb = perfilData.phone || '';
           
           setProfile({
             nome: nomeDb,
             email: emailDb,
-            telefone: '',
+            telefone: telefoneDb,
             pontos: 0,
             nivel: 'Iniciante',
             streak: 0,
@@ -66,6 +67,7 @@ export default function PerfilAlunoPage() {
           });
           setNome(nomeDb);
           setEmail(emailDb);
+          setTelefone(telefoneDb);
         }
       } catch (err) {
         console.error('Erro ao carregar perfil');
@@ -80,10 +82,10 @@ export default function PerfilAlunoPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // profiles só tem full_name/email — telefone fica apenas no estado local
+        // Salva nome e telefone na tabela profiles
         const { error } = await supabase
           .from('profiles')
-          .update({ full_name: nome })
+          .update({ full_name: nome, phone: telefone })
           .eq('id', user.id);
         if (error) throw error;
       }
