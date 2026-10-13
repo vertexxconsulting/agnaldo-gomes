@@ -14,7 +14,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus } from 'lucide-react';
+import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 function formatPhone(val: string) {
@@ -27,6 +27,33 @@ function formatPhone(val: string) {
     return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
   }
   return val;
+}
+
+export function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.slice(0, 5).split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+export function minutesToTime(totalMins: number): string {
+  const h = Math.floor(totalMins / 60) % 24;
+  const m = totalMins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function getAgendamentoHoraFim(a: Agendamento, servicosList: Servico[]): string {
+  if (a.hora_fim && timeToMinutes(a.hora_fim) > timeToMinutes(a.hora_inicio)) {
+    return a.hora_fim.slice(0, 5);
+  }
+  const mainServ = servicosList.find(s => s.id === a.servico_id);
+  const durPrincipal = mainServ?.duracao_min ?? 30;
+  const durSub = (a.sub_servicos || []).reduce((acc, sub) => {
+    const sId = typeof sub === 'string' ? sub : sub?.id;
+    const sObj = servicosList.find(s => s.id === sId);
+    return acc + (sObj?.duracao_min ?? 0);
+  }, 0);
+  const totalMins = timeToMinutes(a.hora_inicio) + durPrincipal + durSub;
+  return minutesToTime(totalMins);
 }
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -69,6 +96,18 @@ function AgendaContent() {
   const [viewMode, setViewMode] = useState<string>('dia');
   const [showForm, setShowForm] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
+  const [editingApptId, setEditingApptId] = useState<string | null>(null);
+
+  const calcularDuracaoTotal = (servicoId: string, subServicos: any[]): number => {
+    const mainServ = servicos.find(s => s.id === servicoId);
+    const durPrincipal = mainServ?.duracao_min ?? 60;
+    const durSub = (subServicos || []).reduce((acc, sub) => {
+      const sId = typeof sub === 'string' ? sub : sub?.id;
+      const sObj = servicos.find(s => s.id === sId);
+      return acc + (sObj?.duracao_min ?? 0);
+    }, 0);
+    return durPrincipal + durSub;
+  };
   
   // Checkout / Recebimento
   const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
@@ -413,10 +452,13 @@ function AgendaContent() {
     const totalMinutosIni = hIni * 60 + mIni;
     const totalMinutosFim = hFim * 60 + mFim;
 
-    // Agendamentos já marcados para o profissional nesta data
-    const ocupados = agendamentos
-      .filter(a => a.data === formData.data && a.profissional_id === formData.profissional_id && a.status !== 'cancelado')
-      .map(a => a.hora_inicio.slice(0, 5));
+    // Agendamentos já marcados para o profissional nesta data considerando a duração total do procedimento
+    const agendamentosAtivos = agendamentos.filter(a =>
+      a.data === formData.data &&
+      a.profissional_id === formData.profissional_id &&
+      a.status !== 'cancelado' &&
+      (!editingApptId || a.id !== editingApptId)
+    );
 
     const isAgnaldo = (profSel?.nome || '').toLowerCase().includes('agnaldo') || profSel?.id === 'agnaldo';
     const interval = isAgnaldo ? 20 : 30;
@@ -426,9 +468,20 @@ function AgendaContent() {
       const hStr = String(Math.floor(m / 60)).padStart(2, '0');
       const minStr = String(m % 60).padStart(2, '0');
       const horaFormatada = `${hStr}:${minStr}`;
+
+      const slotInicioMin = m;
+      const slotFimMin = m + interval;
+
+      const estaOcupado = agendamentosAtivos.some(a => {
+        const aInicioMin = timeToMinutes(a.hora_inicio);
+        const aFimStr = getAgendamentoHoraFim(a, servicos);
+        const aFimMin = timeToMinutes(aFimStr);
+        return aInicioMin < slotFimMin && aFimMin > slotInicioMin;
+      });
+
       slots.push({
         hora: horaFormatada,
-        ocupado: ocupados.includes(horaFormatada),
+        ocupado: estaOcupado,
       });
     }
 
@@ -439,7 +492,7 @@ function AgendaContent() {
         texto: `Horário do profissional: ${profInicio} às ${profFim}`
       }
     };
-  }, [formData.data, formData.profissional_id, profissionais, agendamentos]);
+  }, [formData.data, formData.profissional_id, profissionais, agendamentos, servicos, editingApptId]);
 
   async function mudarStatus(id: string, status: StatusAgendamento) {
     try {
@@ -623,6 +676,7 @@ function AgendaContent() {
   };
 
   const abrirFormNovo = (hora: string, profId: string) => {
+    setEditingApptId(null);
     setFormData({
       cliente_id: '',
       profissional_id: profId,
@@ -642,6 +696,41 @@ function AgendaContent() {
     setShowForm(true);
   };
 
+  const abrirEdicao = (appt: Agendamento) => {
+    setEditingApptId(appt.id);
+    const subList = Array.isArray(appt.sub_servicos) ? appt.sub_servicos : [];
+    const durTotal = calcularDuracaoTotal(appt.servico_id, subList);
+    let duracaoMinFinal = durTotal;
+    if (appt.hora_inicio && appt.hora_fim) {
+      const iniM = timeToMinutes(appt.hora_inicio);
+      const fimM = timeToMinutes(appt.hora_fim);
+      if (fimM > iniM) {
+        duracaoMinFinal = fimM - iniM;
+      }
+    }
+
+    setFormData({
+      cliente_id: appt.cliente_id,
+      profissional_id: appt.profissional_id,
+      servico_id: appt.servico_id,
+      sub_servicos: subList,
+      data: appt.data,
+      hora_inicio: appt.hora_inicio.slice(0, 5),
+      duracao_min: String(duracaoMinFinal),
+      is_fixed: false,
+      recurrence_type: 'WEEKLY',
+      recurrence_custom_day: '',
+      allow_overlap: false,
+    });
+
+    const cli = clientes.find(c => c.id === appt.cliente_id);
+    setBuscaCliente(cli?.nome || '');
+    setClienteDropdownAberto(false);
+    setCadastrandoNovoCliente(false);
+    setSelectedAppt(null);
+    setShowForm(true);
+  };
+
   const handleSalvarAgendamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cliente_id) {
@@ -652,12 +741,65 @@ function AgendaContent() {
       alert('Preencha todos os campos obrigatórios (Profissional, Serviço, Data e Horário).');
       return;
     }
-    const servicoSel = servicos.find(s => s.id === formData.servico_id);
-    const duracaoMin = formData.duracao_min ? parseInt(formData.duracao_min) : (servicoSel?.duracao_min ?? 60);
+
+    const duracaoTotalCalc = calcularDuracaoTotal(formData.servico_id, formData.sub_servicos);
+    const duracaoMin = formData.duracao_min ? parseInt(formData.duracao_min) : duracaoTotalCalc;
     const [h, m] = formData.hora_inicio.split(':').map(Number);
     const fim = new Date(2000, 0, 1, h, m + duracaoMin);
     const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
     
+    if (editingApptId) {
+      try {
+        const res = await fetch('/api/agendamentos/admin', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingApptId,
+            cliente_id: formData.cliente_id,
+            profissional_id: formData.profissional_id,
+            servico_id: formData.servico_id,
+            sub_servicos: formData.sub_servicos,
+            data: formData.data,
+            hora_inicio: formData.hora_inicio,
+            hora_fim: horaFim,
+            allow_overlap: formData.allow_overlap
+          })
+        });
+        const resData = await res.json();
+        if (!res.ok) throw new Error(resData.error || 'Erro ao atualizar agendamento');
+
+        setAgendamentos(prev => prev.map(a => {
+          if (a.id === editingApptId) {
+            return {
+              ...a,
+              cliente_id: formData.cliente_id,
+              profissional_id: formData.profissional_id,
+              servico_id: formData.servico_id,
+              sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''),
+              data: formData.data,
+              hora_inicio: formData.hora_inicio,
+              hora_fim: horaFim,
+            };
+          }
+          return a;
+        }));
+
+        setDataSelecionada(formData.data);
+        setShowForm(false);
+        setEditingApptId(null);
+        setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+        setBuscaCliente('');
+        setClienteDropdownAberto(false);
+        setCadastrandoNovoCliente(false);
+        alert('Agendamento atualizado com sucesso!');
+        return;
+      } catch (err: any) {
+        console.error('Erro ao atualizar agendamento:', err);
+        alert(`Erro ao atualizar no banco: ${err.message}`);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/agendamentos/admin', {
         method: 'POST',
@@ -697,6 +839,7 @@ function AgendaContent() {
       setAgendamentos(prev => [...prev, novoAgendamento]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
+      setEditingApptId(null);
       setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
       setBuscaCliente('');
       setClienteDropdownAberto(false);
@@ -1025,7 +1168,22 @@ function AgendaContent() {
                       )}
                       
                       {profAtende && slots.map(time => {
-                        const appts = agendamentosFiltrados.filter(a => a.profissional_id === prof.id && a.hora_inicio === time && a.status !== 'cancelado');
+                        const slotMin = timeToMinutes(time);
+
+                        // Agendamentos que INICIAM exatamente neste slot
+                        const startingAppts = agendamentosFiltrados.filter(
+                          a => a.profissional_id === prof.id && a.hora_inicio === time && a.status !== 'cancelado'
+                        );
+
+                        // Agendamentos em ANDAMENTO (iniciaram antes e terminam depois deste slot)
+                        const ongoingAppts = agendamentosFiltrados.filter(a => {
+                          if (a.profissional_id !== prof.id || a.status === 'cancelado') return false;
+                          const aInicioMin = timeToMinutes(a.hora_inicio);
+                          const aFimMin = timeToMinutes(getAgendamentoHoraFim(a, servicos));
+                          return aInicioMin < slotMin && aFimMin > slotMin;
+                        });
+
+                        const temAgendamento = startingAppts.length > 0 || ongoingAppts.length > 0;
                         
                         return (
                           <div key={time} className="flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm min-h-[65px] group relative overflow-hidden transition-colors hover:border-gold/30">
@@ -1035,36 +1193,71 @@ function AgendaContent() {
                             </div>
                             
                             {/* Appts or Add */}
-                            <div className="flex-1 p-1.5 flex flex-col justify-center relative">
-                              {appts.length === 0 ? (
+                            <div className="flex-1 p-1.5 flex flex-col justify-center relative gap-1.5">
+                              {!temAgendamento ? (
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
                                   <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
                                     + Agendar
                                   </span>
                                 </div>
                               ) : (
-                                appts.map(a => {
-                                  const cliente = getClienteNome(a.cliente_id, clientes);
-                                  let servico = getServicoNome(a.servico_id, servicos);
-                                  if (a.sub_servicos && a.sub_servicos.length > 0) {
-                                    const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
-                                    servico += ' + ' + subNomes.join(' + ');
-                                  }
-                                  return (
-                                    <div 
-                                      key={a.id} 
-                                      onClick={() => setSelectedAppt(a)}
-                                      className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center"
-                                    >
-                                      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
-                                      <div className="pl-2">
-                                        <div className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</div>
-                                        <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
-                                        <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
+                                <>
+                                  {startingAppts.map(a => {
+                                    const cliente = getClienteNome(a.cliente_id, clientes);
+                                    let servico = getServicoNome(a.servico_id, servicos);
+                                    if (a.sub_servicos && a.sub_servicos.length > 0) {
+                                      const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
+                                      servico += ' + ' + subNomes.join(' + ');
+                                    }
+                                    const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                    return (
+                                      <div 
+                                        key={a.id} 
+                                        onClick={() => setSelectedAppt(a)}
+                                        className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center"
+                                      >
+                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                        <div className="pl-2">
+                                          <div className="flex items-center justify-between gap-1">
+                                            <span className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</span>
+                                            <span className="text-[9px] font-mono font-semibold text-foreground/50 shrink-0">{a.hora_inicio} - {horaFimDisplay}</span>
+                                          </div>
+                                          <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
+                                          <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })
+                                    );
+                                  })}
+
+                                  {startingAppts.length === 0 && ongoingAppts.map(a => {
+                                    const cliente = getClienteNome(a.cliente_id, clientes);
+                                    let servico = getServicoNome(a.servico_id, servicos);
+                                    if (a.sub_servicos && a.sub_servicos.length > 0) {
+                                      const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
+                                      servico += ' + ' + subNomes.join(' + ');
+                                    }
+                                    const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                    return (
+                                      <div 
+                                        key={`ongoing-${a.id}-${time}`}
+                                        onClick={() => setSelectedAppt(a)}
+                                        className="text-xs bg-gold/[0.05] border border-dashed border-gold/30 rounded p-1.5 cursor-pointer hover:bg-gold/10 hover:border-gold transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center"
+                                        title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
+                                      >
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 opacity-70" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                        <div className="pl-1.5">
+                                          <div className="flex items-center justify-between gap-1">
+                                            <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
+                                              <span className="text-gold text-[10px]">↳</span> {cliente}
+                                            </span>
+                                            <span className="text-[9px] font-mono text-foreground/50 shrink-0">{a.hora_inicio} às {horaFimDisplay}</span>
+                                          </div>
+                                          <div className="text-foreground/50 truncate text-[9px] font-medium mt-0.5">{servico}</div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </>
                               )}
                             </div>
                           </div>
@@ -1103,7 +1296,7 @@ function AgendaContent() {
             
             <div className="space-y-2 mb-6 text-sm text-foreground/80">
               <p><strong>Data:</strong> {new Date(`${selectedAppt.data}T12:00:00`).toLocaleDateString('pt-BR')}</p>
-              <p><strong>Horário:</strong> {selectedAppt.hora_inicio}</p>
+              <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
               <p><strong>Profissional:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
               <p><strong>Status Atual:</strong> {STATUS_LABELS[selectedAppt.status]}</p>
             </div>
@@ -1125,8 +1318,16 @@ function AgendaContent() {
                 </Button>
               )}
 
+              <Button 
+                variant="outline" 
+                className="border-gold/40 text-gold hover:bg-gold/10 flex items-center justify-center gap-2"
+                onClick={() => abrirEdicao(selectedAppt)}
+              >
+                <Pencil size={15} /> Editar Agendamento
+              </Button>
+
               {selectedAppt.status !== 'concluido' && selectedAppt.status !== 'cancelado' && selectedAppt.status !== 'no_show' && (
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid grid-cols-2 gap-2 mt-1">
                   <Button variant="outline" className="text-red-400 border-red-500/20 hover:bg-red-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'cancelado'); setSelectedAppt(null); }}>
                     Cancelar
                   </Button>
@@ -1800,10 +2001,14 @@ function AgendaContent() {
           <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-xl font-bold font-serif text-foreground">Novo Agendamento</h3>
-                <p className="text-xs text-foreground/50">Selecione o profissional para filtrar os serviços e horários disponíveis</p>
+                <h3 className="text-xl font-bold font-serif text-foreground">
+                  {editingApptId ? 'Editar Agendamento' : 'Novo Agendamento'}
+                </h3>
+                <p className="text-xs text-foreground/50">
+                  {editingApptId ? 'Ajuste os procedimentos, profissionais, horários ou adicione extras' : 'Selecione o profissional para filtrar os serviços e horários disponíveis'}
+                </p>
               </div>
-              <button onClick={() => setShowForm(false)} className="text-foreground/50 hover:text-foreground">
+              <button onClick={() => { setShowForm(false); setEditingApptId(null); }} className="text-foreground/50 hover:text-foreground">
                 <X size={24} />
               </button>
             </div>
@@ -2114,8 +2319,9 @@ function AgendaContent() {
                   className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold disabled:opacity-50"
                   value={formData.servico_id}
                   onChange={e => {
-                    const serv = servicos.find(s => s.id === e.target.value);
-                    setFormData(f => ({ ...f, servico_id: e.target.value, duracao_min: serv ? String(serv.duracao_min) : '' }));
+                    const servId = e.target.value;
+                    const novaDur = calcularDuracaoTotal(servId, formData.sub_servicos);
+                    setFormData(f => ({ ...f, servico_id: servId, duracao_min: String(novaDur) }));
                   }}
                   disabled={!formData.profissional_id}
                   required
@@ -2139,13 +2345,12 @@ function AgendaContent() {
               {formData.servico_id && (
                 <div>
                   <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center justify-between">
-                    <span>Adicionais / Subserviços (Opcional)</span>
+                    <span>Adicionais / Subserviços (Soma tempo e valor)</span>
                   </label>
                   <div className="flex flex-col gap-2">
                     {formData.sub_servicos.map((subItem, index) => {
                       const subId = typeof subItem === 'string' ? subItem : subItem.id;
                       const isFree = typeof subItem === 'object' ? subItem.is_free : false;
-                      const s = servicos.find(srv => srv.id === subId);
                       return (
                         <div key={index} className="flex flex-col gap-2 p-3 bg-foreground/5 border border-[var(--border-subtle)] rounded-lg">
                           <div className="flex items-center gap-2">
@@ -2154,27 +2359,22 @@ function AgendaContent() {
                               onChange={e => {
                                 const novasubs = [...formData.sub_servicos];
                                 novasubs[index] = { id: e.target.value, is_free: isFree };
-                                
-                                // Recalcula duracao total (agora NAO soma a duracao do subservico, mantem so a do principal)
-                                const main = servicos.find(srv => srv.id === formData.servico_id);
-                                let dur = main?.duracao_min ?? 60;
-                                
-                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                                const novaDur = calcularDuracaoTotal(formData.servico_id, novasubs);
+                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(novaDur) }));
                               }}
                               className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
                             >
                               <option value="">Selecione...</option>
-                              {servicos.filter(srv => (srv.is_addon || srv.id === subId) && srv.id !== formData.servico_id && (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)).map(srv => (
-                                <option key={srv.id} value={srv.id}>{srv.nome}</option>
+                              {servicos.filter(srv => srv.id !== formData.servico_id && (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)).map(srv => (
+                                <option key={srv.id} value={srv.id}>{srv.nome} — R$ {srv.preco} (+{srv.duracao_min} min)</option>
                               ))}
                             </select>
                             <button
                               type="button"
                               onClick={() => {
                                 const novasubs = formData.sub_servicos.filter((_, i) => i !== index);
-                                const main = servicos.find(srv => srv.id === formData.servico_id);
-                                let dur = main?.duracao_min ?? 60;
-                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(dur) }));
+                                const novaDur = calcularDuracaoTotal(formData.servico_id, novasubs);
+                                setFormData(f => ({ ...f, sub_servicos: novasubs, duracao_min: String(novaDur) }));
                               }}
                               className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                             >
@@ -2229,46 +2429,48 @@ function AgendaContent() {
                 </div>
               )}
 
-              {/* Cliente Fixo */}
-              <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={formData.is_fixed}
-                    onChange={e => setFormData(f => ({ ...f, is_fixed: e.target.checked }))}
-                    className="w-4 h-4 rounded border-[var(--border-subtle)] bg-[var(--background)] text-gold focus:ring-gold accent-gold"
-                  />
-                  <span className="text-sm font-bold text-foreground">Este é um horário fixo/recorrente do cliente?</span>
-                </label>
-                
-                {formData.is_fixed && (
-                  <div className="pl-6 animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">Frequência</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'WEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'WEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Semanal</button>
-                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'BIWEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'BIWEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Quinzenal</button>
-                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'MONTHLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'MONTHLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Mensal</button>
-                      <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'CUSTOM' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'CUSTOM' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Todo Dia...</button>
-                    </div>
-                    {formData.recurrence_type === 'CUSTOM' && (
-                      <div className="mt-3">
-                        <label className="block text-[11px] font-bold text-foreground/70 mb-1">Qual o dia fixo do mês? (1 a 31)</label>
-                        <input 
-                          type="number"
-                          min="1"
-                          max="31"
-                          required={formData.is_fixed && formData.recurrence_type === 'CUSTOM'}
-                          placeholder="Ex: 5"
-                          value={formData.recurrence_custom_day}
-                          onChange={e => setFormData(f => ({ ...f, recurrence_custom_day: e.target.value }))}
-                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
-                        />
+              {/* Cliente Fixo (Apenas para novos agendamentos) */}
+              {!editingApptId && (
+                <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={formData.is_fixed}
+                      onChange={e => setFormData(f => ({ ...f, is_fixed: e.target.checked }))}
+                      className="w-4 h-4 rounded border-[var(--border-subtle)] bg-[var(--background)] text-gold focus:ring-gold accent-gold"
+                    />
+                    <span className="text-sm font-bold text-foreground">Este é um horário fixo/recorrente do cliente?</span>
+                  </label>
+                  
+                  {formData.is_fixed && (
+                    <div className="pl-6 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-foreground/70 mb-1.5">Frequência</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'WEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'WEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Semanal</button>
+                        <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'BIWEEKLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'BIWEEKLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Quinzenal</button>
+                        <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'MONTHLY' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'MONTHLY' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Mensal</button>
+                        <button type="button" onClick={() => setFormData(f => ({ ...f, recurrence_type: 'CUSTOM' }))} className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg border transition-colors ${formData.recurrence_type === 'CUSTOM' ? 'border-gold bg-gold/10 text-gold' : 'border-[var(--border-subtle)] text-foreground/60'}`}>Todo Dia...</button>
                       </div>
-                    )}
-                    <p className="text-[11px] text-foreground/50 mt-2">O sistema irá marcar este agendamento como fixo para o cliente.</p>
-                  </div>
-                )}
-              </div>
+                      {formData.recurrence_type === 'CUSTOM' && (
+                        <div className="mt-3">
+                          <label className="block text-[11px] font-bold text-foreground/70 mb-1">Qual o dia fixo do mês? (1 a 31)</label>
+                          <input 
+                            type="number"
+                            min="1"
+                            max="31"
+                            required={formData.is_fixed && formData.recurrence_type === 'CUSTOM'}
+                            placeholder="Ex: 5"
+                            value={formData.recurrence_custom_day}
+                            onChange={e => setFormData(f => ({ ...f, recurrence_custom_day: e.target.value }))}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
+                          />
+                        </div>
+                      )}
+                      <p className="text-[11px] text-foreground/50 mt-2">O sistema irá marcar este agendamento como fixo para o cliente.</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Permitir sobreposição (Encaixe) */}
               <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
@@ -2352,11 +2554,11 @@ function AgendaContent() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingApptId(null); }}>
                   Cancelar
                 </Button>
                 <Button type="submit" variant="primary" className="font-bold">
-                  Salvar Agendamento
+                  {editingApptId ? 'Salvar Alterações' : 'Salvar Agendamento'}
                 </Button>
               </div>
             </form>

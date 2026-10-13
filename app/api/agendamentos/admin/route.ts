@@ -78,6 +78,33 @@ export async function POST(req: Request) {
       sub_services?: any[];
     }
 
+    let calculatedHoraFim = hora_fim;
+    if (!calculatedHoraFim || calculatedHoraFim <= hora_inicio) {
+      try {
+        const { data: srvData } = await auth.supabase!
+          .from('salon_services')
+          .select('duration_minutes')
+          .eq('id', servico_id)
+          .maybeSingle();
+        let totalMins = Number(srvData?.duration_minutes) || 60;
+        if (subServicesFiltered.length > 0) {
+          const subIds = subServicesFiltered.map((s: any) => typeof s === 'string' ? s : s.id);
+          const { data: subsData } = await auth.supabase!
+            .from('salon_services')
+            .select('duration_minutes')
+            .in('id', subIds);
+          if (subsData && subsData.length > 0) {
+            totalMins += subsData.reduce((acc: number, cur: any) => acc + (Number(cur.duration_minutes) || 0), 0);
+          }
+        }
+        const [h, m] = hora_inicio.split(':').map(Number);
+        const endD = new Date(2000, 0, 1, h, m + totalMins);
+        calculatedHoraFim = `${String(endD.getHours()).padStart(2, '0')}:${String(endD.getMinutes()).padStart(2, '0')}`;
+      } catch {
+        calculatedHoraFim = hora_fim || hora_inicio;
+      }
+    }
+
     const payloads: AppointmentPayload[] = [];
     const firstPayload: AppointmentPayload = {
       customer_id: cliente_id,
@@ -85,7 +112,7 @@ export async function POST(req: Request) {
       service_id: servico_id,
       date: data,
       start_time: hora_inicio,
-      end_time: hora_fim || hora_inicio,
+      end_time: calculatedHoraFim || hora_inicio,
       status: statusDb,
       channel: canalDb,
       is_fixed: is_fixed || false,
@@ -164,19 +191,177 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'O horário selecionado (e suas recorrências projetadas) já estão ocupados.' }, { status: 409 });
     }
 
+    let agendamentosResult: any = null;
     const { data: agendamentos, error } = await auth.supabase!
       .from('salon_appointments')
       .insert(validPayloads)
       .select('*');
 
     if (error) {
-      console.error('[api/agendamentos/admin] Erro ao salvar agendamento:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error.message?.includes('sub_services')) {
+        const cleanPayloads = validPayloads.map(p => {
+          const cp: any = { ...p };
+          delete cp.sub_services;
+          return cp;
+        });
+        const retry = await auth.supabase!
+          .from('salon_appointments')
+          .insert(cleanPayloads)
+          .select('*');
+        if (retry.error) {
+          console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry):', retry.error);
+          return NextResponse.json({ error: retry.error.message }, { status: 500 });
+        }
+        agendamentosResult = retry.data;
+      } else {
+        console.error('[api/agendamentos/admin] Erro ao salvar agendamento:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    } else {
+      agendamentosResult = agendamentos;
     }
 
-    return NextResponse.json({ success: true, agendamento: agendamentos[0], projecoes: validPayloads.length });
+    return NextResponse.json({ success: true, agendamento: agendamentosResult?.[0], projecoes: validPayloads.length });
   } catch (err) {
     console.error('[api/agendamentos/admin] Erro inesperado:', err);
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const body = await req.json();
+    const { 
+      id, 
+      cliente_id, 
+      profissional_id, 
+      servico_id, 
+      sub_servicos, 
+      data, 
+      hora_inicio, 
+      hora_fim, 
+      status, 
+      allow_overlap 
+    } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do agendamento é obrigatório.' }, { status: 400 });
+    }
+
+    let calculatedHoraFim = hora_fim;
+    if (hora_inicio && (!calculatedHoraFim || calculatedHoraFim <= hora_inicio) && servico_id) {
+      try {
+        const { data: srvData } = await auth.supabase!
+          .from('salon_services')
+          .select('duration_minutes')
+          .eq('id', servico_id)
+          .maybeSingle();
+        let totalMins = Number(srvData?.duration_minutes) || 60;
+        if (Array.isArray(sub_servicos) && sub_servicos.length > 0) {
+          const subIds = sub_servicos.map((s: any) => typeof s === 'string' ? s : s.id);
+          const { data: subsData } = await auth.supabase!
+            .from('salon_services')
+            .select('duration_minutes')
+            .in('id', subIds);
+          if (subsData && subsData.length > 0) {
+            totalMins += subsData.reduce((acc: number, cur: any) => acc + (Number(cur.duration_minutes) || 0), 0);
+          }
+        }
+        const [h, m] = hora_inicio.split(':').map(Number);
+        const endD = new Date(2000, 0, 1, h, m + totalMins);
+        calculatedHoraFim = `${String(endD.getHours()).padStart(2, '0')}:${String(endD.getMinutes()).padStart(2, '0')}`;
+      } catch {
+        calculatedHoraFim = hora_fim || hora_inicio;
+      }
+    }
+
+    // Validação de conflito de horário (a menos que seja permitido encaixe)
+    if (data && hora_inicio && calculatedHoraFim && profissional_id && !allow_overlap) {
+      const { data: allConflicts } = await auth.supabase!
+        .from('salon_appointments')
+        .select('id, date, start_time, end_time')
+        .eq('professional_id', profissional_id)
+        .eq('date', data)
+        .neq('id', id)
+        .neq('status', 'CANCELLED');
+
+      const hasOverlap = (allConflicts || []).some((app: any) => {
+        const startA = hora_inicio;
+        const endA = calculatedHoraFim;
+        const startB = app.start_time;
+        const endB = app.end_time;
+        return startA < endB && endA > startB;
+      });
+
+      if (hasOverlap) {
+        return NextResponse.json({ error: 'O novo horário selecionado conflita com outro agendamento existente deste profissional.' }, { status: 409 });
+      }
+    }
+
+    const patch: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    };
+    if (cliente_id) patch.customer_id = cliente_id;
+    if (profissional_id) patch.professional_id = profissional_id;
+    if (servico_id) patch.service_id = servico_id;
+    if (data) patch.date = data;
+    if (hora_inicio) patch.start_time = hora_inicio;
+    if (calculatedHoraFim) patch.end_time = calculatedHoraFim;
+    if (status) {
+      let statusDb = 'CONFIRMED';
+      const statusClean = String(status || '').toLowerCase();
+      if (statusClean === 'pendente' || statusClean === 'pending') statusDb = 'PENDING';
+      else if (statusClean === 'em_atendimento' || statusClean === 'in_progress') statusDb = 'IN_PROGRESS';
+      else if (statusClean === 'concluido' || statusClean === 'completed') statusDb = 'COMPLETED';
+      else if (statusClean === 'cancelado' || statusClean === 'cancelled') statusDb = 'CANCELLED';
+      else if (statusClean === 'no_show') statusDb = 'NO_SHOW';
+      patch.status = statusDb;
+    }
+
+    if (Array.isArray(sub_servicos)) {
+      const subServicesFiltered = sub_servicos.filter((sub: any) =>
+        typeof sub === 'string' ? sub.trim() !== '' : sub?.id?.trim() !== ''
+      );
+      patch.sub_services = subServicesFiltered;
+    }
+
+    let updatedResult: any = null;
+    const { data: updated, error } = await auth.supabase!
+      .from('salon_appointments')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      if (error.message?.includes('sub_services')) {
+        delete patch.sub_services;
+        const retry = await auth.supabase!
+          .from('salon_appointments')
+          .update(patch)
+          .eq('id', id)
+          .select('*')
+          .single();
+        if (retry.error) {
+          console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry):', retry.error);
+          return NextResponse.json({ error: retry.error.message }, { status: 500 });
+        }
+        updatedResult = retry.data;
+      } else {
+        console.error('[api/agendamentos/admin] Erro ao atualizar agendamento:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    } else {
+      updatedResult = updated;
+    }
+
+    return NextResponse.json({ success: true, agendamento: updatedResult });
+  } catch (err) {
+    console.error('[api/agendamentos/admin] Erro no PUT:', err);
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
   }
