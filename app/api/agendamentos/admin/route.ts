@@ -63,8 +63,23 @@ export async function POST(req: Request) {
           )
         : [];
 
-    const payloads: Record<string, unknown>[] = [];
-    const firstPayload: Record<string, unknown> = {
+    interface AppointmentPayload {
+      customer_id: string;
+      professional_id: string;
+      service_id: string;
+      date: string;
+      start_time: string;
+      end_time: string;
+      status: string;
+      channel: string;
+      is_fixed: boolean;
+      recurrence_type: string | null;
+      recurrence_custom_day: number | null;
+      sub_services?: any[];
+    }
+
+    const payloads: AppointmentPayload[] = [];
+    const firstPayload: AppointmentPayload = {
       customer_id: cliente_id,
       professional_id: profissional_id,
       service_id: servico_id,
