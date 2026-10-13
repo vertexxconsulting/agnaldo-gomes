@@ -56,12 +56,18 @@ export async function POST(req: Request) {
     else if (statusClean === 'cancelado' || statusClean === 'cancelled') statusDb = 'CANCELLED';
     else if (statusClean === 'no_show') statusDb = 'NO_SHOW';
 
-    const payloads = [];
-    const firstPayload = {
+    const subServicesFiltered =
+      Array.isArray(sub_servicos) && sub_servicos.length > 0
+        ? sub_servicos.filter((sub: any) =>
+            typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''
+          )
+        : [];
+
+    const payloads: Record<string, unknown>[] = [];
+    const firstPayload: Record<string, unknown> = {
       customer_id: cliente_id,
       professional_id: profissional_id,
       service_id: servico_id,
-      sub_services: Array.isArray(sub_servicos) && sub_servicos.length > 0 ? sub_servicos.filter((sub: any) => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== '') : null,
       date: data,
       start_time: hora_inicio,
       end_time: hora_fim || hora_inicio,
@@ -71,6 +77,12 @@ export async function POST(req: Request) {
       recurrence_type: recurrence_type || null,
       recurrence_custom_day: recurrence_custom_day ? parseInt(recurrence_custom_day) : null,
     };
+
+    // sub_services: só inclui se houver valores (coluna precisa existir no banco)
+    if (subServicesFiltered.length > 0) {
+      firstPayload.sub_services = subServicesFiltered;
+    }
+
     payloads.push(firstPayload);
 
     // Geração das recorrências
