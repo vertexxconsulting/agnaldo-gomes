@@ -675,7 +675,7 @@ function AgendaContent() {
     setCheckoutNovoProdDescValor('');
   };
 
-  const abrirFormNovo = (hora: string, profId: string) => {
+  const abrirFormNovo = (hora: string, profId: string, isEncaixe = false) => {
     setEditingApptId(null);
     setFormData({
       cliente_id: '',
@@ -688,7 +688,7 @@ function AgendaContent() {
       is_fixed: false,
       recurrence_type: 'WEEKLY',
       recurrence_custom_day: '',
-      allow_overlap: false,
+      allow_overlap: isEncaixe,
     });
     setBuscaCliente(buscaClienteAgenda || '');
     setClienteDropdownAberto(Boolean(buscaClienteAgenda));
@@ -720,7 +720,7 @@ function AgendaContent() {
       is_fixed: false,
       recurrence_type: 'WEEKLY',
       recurrence_custom_day: '',
-      allow_overlap: false,
+      allow_overlap: Boolean(appt.allow_overlap),
     });
 
     const cli = clientes.find(c => c.id === appt.cliente_id);
@@ -779,6 +779,7 @@ function AgendaContent() {
               data: formData.data,
               hora_inicio: formData.hora_inicio,
               hora_fim: horaFim,
+              allow_overlap: formData.allow_overlap,
             };
           }
           return a;
@@ -834,6 +835,7 @@ function AgendaContent() {
         hora_fim: horaFim,
         status: 'confirmado',
         canal: 'recepcao',
+        allow_overlap: formData.allow_overlap,
         criado_em: data.agendamento?.created_at ?? new Date().toISOString()
       };
       setAgendamentos(prev => [...prev, novoAgendamento]);
@@ -1220,16 +1222,39 @@ function AgendaContent() {
                                         <div className="pl-2">
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</span>
-                                            <span className="text-[9px] font-mono font-semibold text-foreground/50 shrink-0">{a.hora_inicio} - {horaFimDisplay}</span>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                              {a.allow_overlap && (
+                                                <button
+                                                  type="button"
+                                                  title="Encaixar cliente neste horário (Pausa/Encaixe)"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    abrirFormNovo(time, prof.id, true);
+                                                  }}
+                                                  className="px-1.5 py-0.5 rounded bg-gold/20 hover:bg-gold text-gold hover:text-background font-bold text-[10px] flex items-center gap-0.5 transition-all border border-gold/40 shadow-xs cursor-pointer"
+                                                >
+                                                  <Plus size={11} className="stroke-[2.5]" />
+                                                  <span>Encaixe</span>
+                                                </button>
+                                              )}
+                                              <span className="text-[9px] font-mono font-semibold text-foreground/50">{a.hora_inicio} - {horaFimDisplay}</span>
+                                            </div>
                                           </div>
                                           <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
-                                          <div className="text-[9px] mt-1 text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</div>
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className="text-[9px] text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</span>
+                                            {a.allow_overlap && (
+                                              <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
+                                                Pausa liberada
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                     );
                                   })}
 
-                                  {startingAppts.length === 0 && ongoingAppts.map(a => {
+                                  {ongoingAppts.map(a => {
                                     const cliente = getClienteNome(a.cliente_id, clientes);
                                     let servico = getServicoNome(a.servico_id, servicos);
                                     if (a.sub_servicos && a.sub_servicos.length > 0) {
@@ -1250,7 +1275,23 @@ function AgendaContent() {
                                             <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
                                               <span className="text-gold text-[10px]">↳</span> {cliente}
                                             </span>
-                                            <span className="text-[9px] font-mono text-foreground/50 shrink-0">{a.hora_inicio} às {horaFimDisplay}</span>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                              {a.allow_overlap && (
+                                                <button
+                                                  type="button"
+                                                  title="Encaixar cliente neste horário (Pausa/Encaixe)"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    abrirFormNovo(time, prof.id, true);
+                                                  }}
+                                                  className="px-1.5 py-0.5 rounded bg-gold/20 hover:bg-gold text-gold hover:text-background font-bold text-[10px] flex items-center gap-0.5 transition-all border border-gold/40 shadow-xs cursor-pointer"
+                                                >
+                                                  <Plus size={11} className="stroke-[2.5]" />
+                                                  <span>Encaixe</span>
+                                                </button>
+                                              )}
+                                              <span className="text-[9px] font-mono text-foreground/50">{a.hora_inicio} às {horaFimDisplay}</span>
+                                            </div>
                                           </div>
                                           <div className="text-foreground/50 truncate text-[9px] font-medium mt-0.5">{servico}</div>
                                         </div>
@@ -1299,6 +1340,12 @@ function AgendaContent() {
               <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
               <p><strong>Profissional:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
               <p><strong>Status Atual:</strong> {STATUS_LABELS[selectedAppt.status]}</p>
+              {selectedAppt.allow_overlap && (
+                <div className="text-gold font-medium flex items-center gap-1.5 text-xs bg-gold/10 p-2 rounded-lg border border-gold/20">
+                  <Sparkles size={14} className="shrink-0" />
+                  <span>Permite sobreposição / encaixe durante pausas</span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -2523,8 +2570,12 @@ function AgendaContent() {
                         required
                       >
                         {horariosDisponiveis.map(slot => (
-                          <option key={slot.hora} value={slot.hora} disabled={slot.ocupado}>
-                            {slot.hora} {slot.ocupado ? '(Ocupado)' : '— Livre'}
+                          <option 
+                            key={slot.hora} 
+                            value={slot.hora} 
+                            disabled={!formData.allow_overlap && slot.ocupado}
+                          >
+                            {slot.hora} {slot.ocupado ? (formData.allow_overlap ? '— Encaixe' : '(Ocupado)') : '— Livre'}
                           </option>
                         ))}
                       </select>

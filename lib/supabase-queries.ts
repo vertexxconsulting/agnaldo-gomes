@@ -138,6 +138,7 @@ function mapAgendamento(r: Row): Agendamento {
     profissional_id: r.professional_id,
     servico_id: r.service_id,
     sub_servicos: r.sub_services || [],
+    allow_overlap: Boolean(r.allow_overlap),
     data: r.date ?? '',
     hora_inicio: horaCurta(r.start_time),
     hora_fim: horaCurta(r.end_time),

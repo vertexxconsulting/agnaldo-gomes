@@ -81,6 +81,7 @@ export interface Agendamento {
   hora_fim: string;
   status: StatusAgendamento;
   canal: CanalAgendamento;
+  allow_overlap?: boolean;
   observacoes?: string | null;
   criado_em: string;
   atualizado_em?: string;

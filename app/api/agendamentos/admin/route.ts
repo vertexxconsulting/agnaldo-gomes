@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       recurrence_type: string | null;
       recurrence_custom_day: number | null;
       sub_services?: any[];
+      allow_overlap?: boolean;
     }
 
     let calculatedHoraFim = hora_fim;
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
       is_fixed: is_fixed || false,
       recurrence_type: recurrence_type || null,
       recurrence_custom_day: recurrence_custom_day ? parseInt(recurrence_custom_day) : null,
+      allow_overlap: Boolean(allow_overlap),
     };
 
     // sub_services: só inclui se houver valores (coluna precisa existir no banco)
@@ -198,10 +200,11 @@ export async function POST(req: Request) {
       .select('*');
 
     if (error) {
-      if (error.message?.includes('sub_services')) {
+      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap')) {
         const cleanPayloads = validPayloads.map(p => {
           const cp: any = { ...p };
-          delete cp.sub_services;
+          if (error.message?.includes('sub_services')) delete cp.sub_services;
+          if (error.message?.includes('allow_overlap')) delete cp.allow_overlap;
           return cp;
         });
         const retry = await auth.supabase!
@@ -209,10 +212,29 @@ export async function POST(req: Request) {
           .insert(cleanPayloads)
           .select('*');
         if (retry.error) {
-          console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry):', retry.error);
-          return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          if (retry.error.message?.includes('sub_services') || retry.error.message?.includes('allow_overlap')) {
+            const cleanAll = cleanPayloads.map(p => {
+              const cp: any = { ...p };
+              delete cp.sub_services;
+              delete cp.allow_overlap;
+              return cp;
+            });
+            const retry2 = await auth.supabase!
+              .from('salon_appointments')
+              .insert(cleanAll)
+              .select('*');
+            if (retry2.error) {
+              console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry2):', retry2.error);
+              return NextResponse.json({ error: retry2.error.message }, { status: 500 });
+            }
+            agendamentosResult = retry2.data;
+          } else {
+            console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry):', retry.error);
+            return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          }
+        } else {
+          agendamentosResult = retry.data;
         }
-        agendamentosResult = retry.data;
       } else {
         console.error('[api/agendamentos/admin] Erro ao salvar agendamento:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -329,6 +351,10 @@ export async function PUT(req: Request) {
       patch.sub_services = subServicesFiltered;
     }
 
+    if (allow_overlap !== undefined) {
+      patch.allow_overlap = Boolean(allow_overlap);
+    }
+
     let updatedResult: any = null;
     const { data: updated, error } = await auth.supabase!
       .from('salon_appointments')
@@ -338,8 +364,9 @@ export async function PUT(req: Request) {
       .single();
 
     if (error) {
-      if (error.message?.includes('sub_services')) {
-        delete patch.sub_services;
+      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap')) {
+        if (error.message?.includes('sub_services')) delete patch.sub_services;
+        if (error.message?.includes('allow_overlap')) delete patch.allow_overlap;
         const retry = await auth.supabase!
           .from('salon_appointments')
           .update(patch)
@@ -347,10 +374,27 @@ export async function PUT(req: Request) {
           .select('*')
           .single();
         if (retry.error) {
-          console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry):', retry.error);
-          return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          if (retry.error.message?.includes('sub_services') || retry.error.message?.includes('allow_overlap')) {
+            delete patch.sub_services;
+            delete patch.allow_overlap;
+            const retry2 = await auth.supabase!
+              .from('salon_appointments')
+              .update(patch)
+              .eq('id', id)
+              .select('*')
+              .single();
+            if (retry2.error) {
+              console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry2):', retry2.error);
+              return NextResponse.json({ error: retry2.error.message }, { status: 500 });
+            }
+            updatedResult = retry2.data;
+          } else {
+            console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry):', retry.error);
+            return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          }
+        } else {
+          updatedResult = retry.data;
         }
-        updatedResult = retry.data;
       } else {
         console.error('[api/agendamentos/admin] Erro ao atualizar agendamento:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
