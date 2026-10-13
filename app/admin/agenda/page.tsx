@@ -2323,7 +2323,7 @@ function AgendaContent() {
                   value={formData.profissional_id}
                   onChange={e => {
                     const profId = e.target.value;
-                    setFormData(f => ({ ...f, profissional_id: profId, servico_id: '' }));
+                    setFormData(f => ({ ...f, profissional_id: profId, servico_id: '', sub_servicos: [] }));
                   }}
                   required
                 >
@@ -2367,8 +2367,9 @@ function AgendaContent() {
                   value={formData.servico_id}
                   onChange={e => {
                     const servId = e.target.value;
-                    const novaDur = calcularDuracaoTotal(servId, formData.sub_servicos);
-                    setFormData(f => ({ ...f, servico_id: servId, duracao_min: String(novaDur) }));
+                    const subsLimpas = formData.sub_servicos.filter(s => (typeof s === 'string' ? s : s.id) !== servId);
+                    const novaDur = calcularDuracaoTotal(servId, subsLimpas);
+                    setFormData(f => ({ ...f, servico_id: servId, sub_servicos: subsLimpas, duracao_min: String(novaDur) }));
                   }}
                   disabled={!formData.profissional_id}
                   required
@@ -2388,16 +2389,24 @@ function AgendaContent() {
                 </select>
               </div>
 
-              {/* Sub-serviços (Adicionais) */}
+              {/* Sub-serviços (Adicionais) filtrados pelo profissional selecionado */}
               {formData.servico_id && (
                 <div>
                   <label className="block text-xs font-bold text-foreground/70 mb-1.5 flex items-center justify-between">
                     <span>Adicionais / Subserviços (Soma tempo e valor)</span>
+                    <span className="text-[10px] text-foreground/50">
+                      Apenas procedimentos de {profissionais.find(p => p.id === formData.profissional_id)?.nome || 'este profissional'}
+                    </span>
                   </label>
                   <div className="flex flex-col gap-2">
                     {formData.sub_servicos.map((subItem, index) => {
                       const subId = typeof subItem === 'string' ? subItem : subItem.id;
                       const isFree = typeof subItem === 'object' ? subItem.is_free : false;
+                      const opcoesSub = servicosDoProfissional.filter(srv => 
+                        srv.id !== formData.servico_id && 
+                        (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)
+                      );
+
                       return (
                         <div key={index} className="flex flex-col gap-2 p-3 bg-foreground/5 border border-[var(--border-subtle)] rounded-lg">
                           <div className="flex items-center gap-2">
@@ -2411,8 +2420,8 @@ function AgendaContent() {
                               }}
                               className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm text-foreground focus:outline-none focus:border-gold"
                             >
-                              <option value="">Selecione...</option>
-                              {servicos.filter(srv => srv.id !== formData.servico_id && (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)).map(srv => (
+                              <option value="">Selecione o subserviço...</option>
+                              {opcoesSub.map(srv => (
                                 <option key={srv.id} value={srv.id}>{srv.nome} — R$ {srv.preco} (+{srv.duracao_min} min)</option>
                               ))}
                             </select>
@@ -2446,13 +2455,20 @@ function AgendaContent() {
                         </div>
                       );
                     })}
-                    <button
-                      type="button"
-                      onClick={() => setFormData(f => ({ ...f, sub_servicos: [...f.sub_servicos, { id: '', is_free: false }] }))}
-                      className="text-xs font-bold text-gold hover:text-gold-dim self-start flex items-center gap-1 mt-1"
-                    >
-                      <Plus size={14} /> Adicionar subserviço (ex: Escova)
-                    </button>
+
+                    {servicosDoProfissional.filter(s => s.id !== formData.servico_id).length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(f => ({ ...f, sub_servicos: [...f.sub_servicos, { id: '', is_free: false }] }))}
+                        className="text-xs font-bold text-gold hover:text-gold-dim self-start flex items-center gap-1 mt-1"
+                      >
+                        <Plus size={14} /> Adicionar subserviço (ex: Escova)
+                      </button>
+                    ) : (
+                      <p className="text-[11px] text-foreground/40 italic mt-1">
+                        Este profissional não possui outros procedimentos cadastrados para adicionar como subserviço.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
