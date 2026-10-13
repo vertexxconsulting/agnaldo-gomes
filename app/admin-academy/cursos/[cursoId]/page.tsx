@@ -67,7 +67,7 @@ export default function AdminEdicaoCursoPage() {
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; paymentLink?: string; error?: string } | null>(null);
-  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', certificate_bg_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null });
+  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', certificate_bg_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null, level: 'Iniciante' });
 
   const isCreatingPayment = paymentLoading;
 
@@ -114,6 +114,7 @@ export default function AdminEdicaoCursoPage() {
           price: c.price || 0,
           current_price: c.current_price || null,
           original_price: c.original_price || null,
+          level: c.level || 'Iniciante',
         });
       }
 
@@ -392,6 +393,18 @@ export default function AdminEdicaoCursoPage() {
                       rows={4}
                       className="w-full bg-background border border-gold/20 rounded-lg p-3 text-sm text-foreground focus:border-gold outline-none transition-colors resize-none"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground/70 mb-1">Nível do Curso</label>
+                    <select
+                      value={cursoForm.level}
+                      onChange={e => setCursoForm(prev => ({ ...prev, level: e.target.value }))}
+                      className="w-full bg-background border border-gold/20 rounded-lg p-3 text-sm text-foreground focus:border-gold outline-none transition-colors"
+                    >
+                      <option value="Iniciante">Iniciante</option>
+                      <option value="Intermediário">Intermediário</option>
+                      <option value="Avançado">Avançado</option>
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
