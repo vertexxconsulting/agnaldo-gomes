@@ -20,12 +20,14 @@ export default function CatalogPage() {
         const data = await res.json();
         setCursos(data || []);
 
-        const { data: { user } } = await import('@/lib/supabase/client').then(m => m.supabase.auth.getUser().then((r: { data?: { user?: { id?: string; email?: string } | null }; error?: unknown } | null) => r?.data));
+        const supabaseModule = await import('@/lib/supabase/client');
+        const { data: authData } = await supabaseModule.supabase.auth.getUser();
+        const user = authData?.user;
         if (user) {
-          const { data: enrollments } = await import('@/lib/supabase/client').then(m => m.supabase
+          const { data: enrollments } = await supabaseModule.supabase
             .from('course_enrollments')
             .select('course_id')
-            .eq('user_id', user.id));
+            .eq('user_id', user.id);
           const ids = new Set<string>((enrollments || []).map((e: { course_id: string }) => e.course_id));
           setEnrolledIds(ids);
         }
