@@ -5,14 +5,14 @@ import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, Histo
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
-import { getClientes, getAgendamentos, getServicoPreco, STATUS_LABELS } from '@/lib/mock-data';
-import type { Cliente } from '@/lib/gestao-types';
-import type { Agendamento } from '@/lib/gestao-types';
-import type { Servico } from '@/lib/gestao-types';
+import { getClientes, getAgendamentos, getServicos, getProfissionais, getServicoNome, getServicoPreco, getProfissionalNome, STATUS_LABELS } from '@/lib/mock-data';
+import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
 
 export default function ClienteModule() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
@@ -43,12 +43,16 @@ export default function ClienteModule() {
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      const [clientesData, agendamentosData] = await Promise.all([
+      const [clientesData, agendamentosData, servicosData, profissionaisData] = await Promise.all([
         getClientes(),
         getAgendamentos(),
+        getServicos(),
+        getProfissionais(),
       ]);
       setClientes(clientesData);
       setAgendamentos(agendamentosData);
+      setServicos(servicosData);
+      setProfissionais(profissionaisData);
       setLoading(false);
     };
     carregarDados();
@@ -62,7 +66,12 @@ export default function ClienteModule() {
     // Sort desc por data
     todosAgs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
     
-    const totalGasto = ags.reduce((sum, a) => sum + getServicoPreco(a.servico_id), 0);
+    const totalGasto = ags.reduce((sum, a) => {
+      const valor = (a.total_amount != null && Number(a.total_amount) > 0)
+        ? Number(a.total_amount)
+        : getServicoPreco(a.servico_id, servicos);
+      return sum + valor;
+    }, 0);
     const visitas = ags.length;
     const ticketMedio = visitas > 0 ? Math.round(totalGasto / visitas) : 0;
     
@@ -360,25 +369,56 @@ export default function ClienteModule() {
                         <div className="text-sm text-foreground/40 p-4 border border-[var(--border-subtle)] rounded-md text-center">Nenhum agendamento no histórico.</div>
                       ) : (
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                          {stats.historico.map(ag => (
-                            <div key={ag.id} className="flex justify-between items-center p-3 rounded-md border border-[var(--border-subtle)] bg-foreground/[0.02]">
-                              <div>
-                                <div className="text-sm font-bold flex items-center gap-2">
-                                  {new Date(ag.data).toLocaleDateString('pt-BR')} às {ag.hora_inicio}
-                                  <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-medium border
-                                    ${ag.status === 'concluido' ? 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10' : 
-                                      ag.status === 'cancelado' || ag.status === 'no_show' ? 'text-red-400 border-red-400/20 bg-red-400/10' : 
-                                      'text-blue-400 border-blue-400/20 bg-blue-400/10'}`}
-                                  >
-                                    {STATUS_LABELS[ag.status]}
-                                  </span>
+                          {stats.historico.map(ag => {
+                            const nomeServico = getServicoNome(ag.servico_id, servicos);
+                            const nomeProf = getProfissionalNome(ag.profissional_id, profissionais);
+                            const valor = (ag.total_amount != null && Number(ag.total_amount) > 0)
+                              ? Number(ag.total_amount)
+                              : getServicoPreco(ag.servico_id, servicos);
+
+                            const partesData = ag.data ? ag.data.split('T')[0].split('-') : [];
+                            const dataFormatada = partesData.length === 3 ? `${partesData[2]}/${partesData[1]}/${partesData[0]}` : ag.data;
+
+                            return (
+                              <div key={ag.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 rounded-md border border-[var(--border-subtle)] bg-foreground/[0.02] gap-2">
+                                <div>
+                                  <div className="text-sm font-bold flex flex-wrap items-center gap-2">
+                                    <span>{nomeServico}</span>
+                                    <span className="text-xs text-foreground/60 font-normal">com {nomeProf}</span>
+                                    <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-medium border
+                                      ${ag.status === 'concluido' ? 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10' : 
+                                        ag.status === 'cancelado' || ag.status === 'no_show' ? 'text-red-400 border-red-400/20 bg-red-400/10' : 
+                                        'text-blue-400 border-blue-400/20 bg-blue-400/10'}`}
+                                    >
+                                      {STATUS_LABELS[ag.status]}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-foreground/60 mt-1 flex flex-wrap items-center gap-3">
+                                    <span>📅 {dataFormatada} às {ag.hora_inicio}</span>
+                                    {ag.payment_method && (
+                                      <span className="px-1.5 py-0.5 rounded bg-foreground/10 text-[10px] font-medium">
+                                        💳 {ag.payment_method}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-foreground/60 mt-0.5">
-                                  R$ {getServicoPreco(ag.servico_id)}
+                                <div className="flex items-center gap-3 self-end sm:self-center">
+                                  <span className="text-sm font-bold text-emerald-500">
+                                    R$ {valor.toFixed(2)}
+                                  </span>
+                                  {c.cpf && (
+                                    <a 
+                                      href={`/admin/notas-fiscais?cpf=${c.cpf}&agendamentoId=${ag.id}`}
+                                      className="text-xs px-2.5 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold hover:text-black transition-colors font-medium flex items-center gap-1"
+                                      title="Emitir Nota Fiscal para este serviço"
+                                    >
+                                      Emitir NF
+                                    </a>
+                                  )}
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

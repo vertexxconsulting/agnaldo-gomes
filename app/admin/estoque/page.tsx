@@ -5,7 +5,8 @@ import {
   Package, Plus, Edit, Trash2, Search, AlertTriangle,
   TrendingDown, TrendingUp, ArrowUpDown, X, ChevronDown, ChevronUp,
   BarChart3, RefreshCw, ShoppingBag, Beaker, CheckCircle2,
-  Percent, Tag, DollarSign, User2
+  Percent, Tag, DollarSign, User2, Lock, Eye, EyeOff, KeyRound,
+  ShieldCheck, UserCheck, Filter
 } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
@@ -14,7 +15,7 @@ import { ViewToggle } from '@/components/ViewToggle';
 import {
   fetchEstoque, salvarProdutoEstoque, registrarMovimentacao,
   fetchMovimentacoes, fetchClientes, fetchProfissionais, criarComissao,
-  fetchTaxasPagamento, calcularTaxaMaquininha
+  fetchTaxasPagamento, calcularTaxaMaquininha, validarSenhaProfissional
 } from '@/lib/supabase-queries';
 import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque, Cliente, Profissional, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
 
@@ -72,19 +73,32 @@ export default function EstoquePage() {
   const [catFiltro, setCatFiltro] = useState('todas');
   const [tipFiltro, setTipFiltro] = useState<'todos' | 'insumo' | 'venda'>('todos');
 
-  // Form / Modal
+  // Form / Modal Produto
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<ProdutoEstoque | null>(null);
   const [form, setForm] = useState({ ...FORM_VAZIO });
   const [salvando, setSalvando] = useState(false);
 
-  // Entrada rápida
+  // Entrada rápida de Estoque (com Senha do Profissional)
   const [showEntrada, setShowEntrada] = useState<ProdutoEstoque | null>(null);
   const [entradaQty, setEntradaQty] = useState('');
   const [entradaNota, setEntradaNota] = useState('');
+  const [entradaProfId, setEntradaProfId] = useState('');
+  const [entradaSenha, setEntradaSenha] = useState('');
+  const [mostrarSenhaEntrada, setMostrarSenhaEntrada] = useState(false);
   const [entradaSalvando, setEntradaSalvando] = useState(false);
 
-  // Venda de Produtos no Salão (Carrinho com Múltiplos Produtos + Desconto Sincronizado)
+  // Baixa manual de Estoque (com Senha do Profissional)
+  const [showBaixa, setShowBaixa] = useState<ProdutoEstoque | null>(null);
+  const [baixaTipo, setBaixaTipo] = useState<MovTipo>('OUT_PROCEDURE');
+  const [baixaQty, setBaixaQty] = useState('');
+  const [baixaMotivo, setBaixaMotivo] = useState('');
+  const [baixaProfId, setBaixaProfId] = useState('');
+  const [baixaSenha, setBaixaSenha] = useState('');
+  const [mostrarSenhaBaixa, setMostrarSenhaBaixa] = useState(false);
+  const [baixaSalvando, setBaixaSalvando] = useState(false);
+
+  // Venda de Produtos no Salão (Carrinho com Múltiplos Produtos + Desconto Sincronizado + Senha)
   const [showVenda, setShowVenda] = useState(false);
   const [vendaItens, setVendaItens] = useState<ItemVendaSalao[]>([]);
   const [addProdSelectId, setAddProdSelectId] = useState<string>('');
@@ -95,10 +109,17 @@ export default function EstoquePage() {
   const [vendaClienteId, setVendaClienteId] = useState<string>('');
   const [vendaClienteNome, setVendaClienteNome] = useState<string>('');
   const [vendaProfissionalId, setVendaProfissionalId] = useState<string>('');
+  const [vendaSenha, setVendaSenha] = useState<string>('');
+  const [mostrarSenhaVenda, setMostrarSenhaVenda] = useState(false);
   const [vendaPagamento, setVendaPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [vendaParcelas, setVendaParcelas] = useState<number>(1);
   const [vendaObs, setVendaObs] = useState<string>('');
   const [vendaSalvando, setVendaSalvando] = useState<boolean>(false);
+
+  // Filtros da Aba de Movimentações (Logs de Entrada e Baixa)
+  const [filtroMovTipo, setFiltroMovTipo] = useState<string>('todos');
+  const [filtroMovProf, setFiltroMovProf] = useState<string>('todos');
+  const [buscaMov, setBuscaMov] = useState<string>('');
 
   useEffect(() => {
     carregarDados();
@@ -131,6 +152,8 @@ export default function EstoquePage() {
     setVendaClienteId('');
     setVendaClienteNome('');
     setVendaProfissionalId('');
+    setVendaSenha('');
+    setMostrarSenhaVenda(false);
     setVendaPagamento('DINHEIRO');
     setVendaParcelas(1);
     setVendaObs('');
@@ -291,6 +314,15 @@ export default function EstoquePage() {
       return alert('Adicione pelo menos um produto ao carrinho de venda.');
     }
 
+    if (!vendaProfissionalId) {
+      return alert('Selecione o profissional vendedor responsável pela venda para registrar a baixa no estoque.');
+    }
+
+    const profVendedor = profissionais.find(p => p.id === vendaProfissionalId);
+    if (!validarSenhaProfissional(profVendedor, vendaSenha)) {
+      return alert('Senha incorreta para o profissional vendedor selecionado. (Padrão inicial: 1234)');
+    }
+
     const semEstoque = vendaItens.filter(it => it.stock_qty < it.qty);
     if (semEstoque.length > 0) {
       const nomes = semEstoque.map(it => `• ${it.name} (Qtd a vender: ${it.qty}, Estoque atual: ${it.stock_qty})`).join('\n');
@@ -304,9 +336,7 @@ export default function EstoquePage() {
       const cliNome = vendaClienteId
         ? (clientes.find(c => c.id === vendaClienteId)?.nome || 'Cliente')
         : (vendaClienteNome || 'Cliente Balcão');
-      const profNome = vendaProfissionalId
-        ? (profissionais.find(p => p.id === vendaProfissionalId)?.nome || '')
-        : '';
+      const profNome = profVendedor?.nome || '';
       
       const descTxt = valorDescVenda > 0
         ? ` | Desconto Geral: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)`
@@ -315,11 +345,12 @@ export default function EstoquePage() {
       const resumoItens = vendaItens.map(it => `${it.qty}x ${it.name}`).join(', ');
       const obsTxt = `Venda Salão (${vendaItens.length} itens): ${resumoItens} | Cliente: ${cliNome}${profNome ? ` (Vendedor: ${profNome})` : ''} | Pag: ${vendaPagamento}${descTxt}${vendaObs ? ` | Obs: ${vendaObs}` : ''}`;
 
-      // 1. Registrar saída por venda no estoque (OUT_SALE) para cada produto
+      // 1. Registrar saída por venda no estoque (OUT_SALE) para cada produto com log do profissional
       for (const item of vendaItens) {
         await registrarMovimentacao(item.inventory_id, 'OUT_SALE', item.qty, {
           notes: obsTxt,
           unitCost: item.cost_price,
+          createdBy: profNome || 'Profissional',
         });
       }
 
@@ -340,15 +371,17 @@ export default function EstoquePage() {
 
       await carregarDados();
       setShowVenda(false);
+      setVendaSenha('');
       alert(
         `Venda no Salão registrada com sucesso!\n\n` +
+        `Responsável: ${profNome}\n` +
         `Produtos vendidos (${totalItensVenda} un):\n` +
         vendaItens.map(it => `• ${it.name} (${it.qty}x ${fmt(it.precoUnit)}) = ${fmt(it.precoUnit * it.qty)}`).join('\n') +
         `\n\nSubtotal: ${fmt(subtotalVenda)}` +
         (valorDescVenda > 0 ? `\nDesconto: -${fmt(valorDescVenda)} (${vendaDescPct || '0'}%)` : '') +
         `\nTotal Cobrado do Cliente: ${fmt(totalFinalVenda)}` +
         (taxaMaqVenda.valorTaxa > 0 ? `\nTaxa Maquininha (${taxaMaqVenda.regraNome || vendaPagamento}): -${fmt(taxaMaqVenda.valorTaxa)} (${taxaMaqVenda.feePercentage}%)\nRecebimento Líquido Salão: ${fmt(taxaMaqVenda.valorLiquido)} (Previsão: ${taxaMaqVenda.daysToReceive === 0 ? 'D+0' : `D+${taxaMaqVenda.daysToReceive}`})` : '') +
-        `\n\nEstoque atualizado e comissão registrada com deduções de taxa.`
+        `\n\nEstoque atualizado e auditado no log.`
       );
     } catch (err: any) {
       console.error('Erro ao registrar venda:', err);
@@ -357,6 +390,143 @@ export default function EstoquePage() {
       setVendaSalvando(false);
     }
   };
+
+  const abrirEntrada = (p: ProdutoEstoque) => {
+    setShowEntrada(p);
+    setEntradaQty('');
+    setEntradaNota('');
+    setEntradaProfId('');
+    setEntradaSenha('');
+    setMostrarSenhaEntrada(false);
+  };
+
+  const registrarEntrada = async () => {
+    if (!showEntrada || !entradaQty || Number(entradaQty) <= 0) {
+      return alert('Informe uma quantidade válida para entrada no estoque.');
+    }
+    if (!entradaProfId) {
+      return alert('Selecione o profissional responsável pela entrada de estoque.');
+    }
+    const prof = profissionais.find(p => p.id === entradaProfId);
+    if (!validarSenhaProfissional(prof, entradaSenha)) {
+      return alert('Senha incorreta para o profissional selecionado. (Padrão inicial: 1234)');
+    }
+
+    setEntradaSalvando(true);
+    try {
+      const respNome = prof?.nome || 'Profissional';
+      const obs = entradaNota.trim() ? entradaNota.trim() : 'Entrada manual de estoque';
+      const res = await registrarMovimentacao(showEntrada.id, 'IN', Number(entradaQty), {
+        notes: obs,
+        createdBy: respNome,
+      });
+
+      if (!res.ok) {
+        alert(`Erro ao registrar entrada: ${res.error}`);
+        return;
+      }
+
+      await carregarDados();
+      setShowEntrada(null);
+      setEntradaQty('');
+      setEntradaNota('');
+      setEntradaProfId('');
+      setEntradaSenha('');
+      alert(`Entrada de ${fmtQty(Number(entradaQty), showEntrada.unit)} de "${showEntrada.name}" confirmada com sucesso por ${respNome}!`);
+    } catch (err: any) {
+      console.error('Erro ao registrar entrada:', err);
+      alert(`Erro ao registrar entrada: ${err?.message || 'Erro desconhecido'}`);
+    } finally {
+      setEntradaSalvando(false);
+    }
+  };
+
+  const abrirBaixa = (p: ProdutoEstoque) => {
+    setShowBaixa(p);
+    setBaixaTipo('OUT_PROCEDURE');
+    setBaixaQty('');
+    setBaixaMotivo('');
+    setBaixaProfId('');
+    setBaixaSenha('');
+    setMostrarSenhaBaixa(false);
+  };
+
+  const registrarBaixa = async () => {
+    if (!showBaixa || !baixaQty || Number(baixaQty) <= 0) {
+      return alert('Informe uma quantidade válida para baixa de estoque.');
+    }
+    if (!baixaProfId) {
+      return alert('Selecione o profissional responsável por dar baixa no produto.');
+    }
+    const prof = profissionais.find(p => p.id === baixaProfId);
+    if (!validarSenhaProfissional(prof, baixaSenha)) {
+      return alert('Senha incorreta para o profissional selecionado. (Padrão inicial: 1234)');
+    }
+
+    const qtd = Number(baixaQty);
+    if (qtd > showBaixa.stock_qty) {
+      if (!confirm(`Atenção: A quantidade informada (${fmtQty(qtd, showBaixa.unit)}) é maior que o estoque atual (${fmtQty(showBaixa.stock_qty, showBaixa.unit)}).\n\nDeseja prosseguir com a baixa mesmo assim?`)) {
+        return;
+      }
+    }
+
+    setBaixaSalvando(true);
+    try {
+      const respNome = prof?.nome || 'Profissional';
+      const tipoLabel = baixaTipo === 'OUT_PROCEDURE' ? 'Uso em Procedimento' : baixaTipo === 'ADJUSTMENT' ? 'Ajuste / Perda' : 'Saída de Venda';
+      const obs = baixaMotivo.trim() ? baixaMotivo.trim() : `Baixa de estoque (${tipoLabel})`;
+
+      const res = await registrarMovimentacao(showBaixa.id, baixaTipo, qtd, {
+        notes: obs,
+        createdBy: respNome,
+      });
+
+      if (!res.ok) {
+        alert(`Erro ao registrar baixa: ${res.error}`);
+        return;
+      }
+
+      await carregarDados();
+      setShowBaixa(null);
+      setBaixaQty('');
+      setBaixaMotivo('');
+      setBaixaProfId('');
+      setBaixaSenha('');
+      alert(`Baixa de ${fmtQty(qtd, showBaixa.unit)} de "${showBaixa.name}" confirmada com sucesso por ${respNome}!`);
+    } catch (err: any) {
+      console.error('Erro ao registrar baixa:', err);
+      alert(`Erro ao registrar baixa: ${err?.message || 'Erro desconhecido'}`);
+    } finally {
+      setBaixaSalvando(false);
+    }
+  };
+
+  const extrairResponsavel = (m: MovimentacaoEstoque): string => {
+    if (m.created_by && m.created_by.trim()) return m.created_by;
+    const match = m.notes?.match(/\[Resp:\s*([^\]]+)\]/);
+    if (match) return match[1];
+    const matchVendedor = m.notes?.match(/Vendedor:\s*([^)]+)/);
+    if (matchVendedor) return matchVendedor[1];
+    return '—';
+  };
+
+  const movsFiltradas = useMemo(() => {
+    return movs.filter(m => {
+      const prod = produtos.find(p => p.id === m.inventory_id);
+      const prodNome = prod?.name || m.inventory_id || '';
+      const resp = extrairResponsavel(m);
+      const notes = m.notes || '';
+
+      const matchTipo = filtroMovTipo === 'todos' || m.type === filtroMovTipo;
+      const matchProf = filtroMovProf === 'todos' || resp.toLowerCase().includes(filtroMovProf.toLowerCase());
+      const matchBusca = !buscaMov.trim() ||
+        prodNome.toLowerCase().includes(buscaMov.toLowerCase()) ||
+        resp.toLowerCase().includes(buscaMov.toLowerCase()) ||
+        notes.toLowerCase().includes(buscaMov.toLowerCase());
+
+      return matchTipo && matchProf && matchBusca;
+    });
+  }, [movs, produtos, filtroMovTipo, filtroMovProf, buscaMov]);
 
   const categoriasExistentes = [...new Set(produtos.map(p => p.category))].sort();
   const allCategories = [...new Set([...CATEGORIAS_SUGERIDAS, ...categoriasExistentes])].sort();
@@ -428,17 +598,6 @@ export default function EstoquePage() {
       alert(`Erro: ${res.error}`);
     }
     setSalvando(false);
-  };
-
-  const registrarEntrada = async () => {
-    if (!showEntrada || !entradaQty || Number(entradaQty) <= 0) return;
-    setEntradaSalvando(true);
-    await registrarMovimentacao(showEntrada.id, 'IN', Number(entradaQty), { notes: entradaNota || 'Entrada manual' });
-    await carregarDados();
-    setShowEntrada(null);
-    setEntradaQty('');
-    setEntradaNota('');
-    setEntradaSalvando(false);
   };
 
   // KPIs
@@ -586,14 +745,19 @@ export default function EstoquePage() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button onClick={() => { setShowEntrada(p); setEntradaQty(''); setEntradaNota(''); }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors"
-                          title="Registrar entrada de estoque">
+                        <button onClick={() => abrirEntrada(p)}
+                          className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors"
+                          title="Registrar entrada de estoque com senha">
                           <TrendingUp size={13} /> Entrada
+                        </button>
+                        <button onClick={() => abrirBaixa(p)}
+                          className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-amber-500/30 text-amber-400 text-xs hover:bg-amber-500/10 transition-colors"
+                          title="Dar baixa no estoque com senha (procedimento, perda ou avaria)">
+                          <TrendingDown size={13} /> Baixa
                         </button>
                         {p.allow_sale && (
                           <button onClick={() => abrirVenda(p)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-blue-500/30 text-blue-400 text-xs hover:bg-blue-500/10 transition-colors"
+                            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-blue-500/30 text-blue-400 text-xs hover:bg-blue-500/10 transition-colors"
                             title="Vender produto no salão">
                             <ShoppingBag size={13} /> Vender
                           </button>
@@ -618,46 +782,129 @@ export default function EstoquePage() {
           </>
         )}
 
-        {/* ABA: MOVIMENTAÇÕES */}
+        {/* ABA: MOVIMENTAÇÕES (LOGS AUDITADOS DE ENTRADAS E BAIXAS) */}
         {aba === 'movimentacoes' && (
-          <CardGlass className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-foreground/40 text-xs uppercase tracking-wider border-b border-[var(--border-subtle)]">
-                  <th className="py-3 pr-4">Data</th>
-                  <th className="py-3 pr-4">Produto</th>
-                  <th className="py-3 pr-4">Tipo</th>
-                  <th className="py-3 pr-4">Quantidade</th>
-                  <th className="py-3 pr-4">Obs.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movs.slice(0, 100).map(m => {
-                  const prod = produtos.find(p => p.id === m.inventory_id);
-                  const mt = MOV_LABELS[m.type as MovTipo] ?? { label: m.type, cor: 'text-foreground/60 bg-foreground/10' };
-                  const sinal = m.type === 'IN' ? '+' : '-';
-                  return (
-                    <tr key={m.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5">
-                      <td className="py-3 pr-4 text-foreground/60 whitespace-nowrap">
-                        {new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          <div className="space-y-4">
+            {/* Barra de Filtros e Busca */}
+            <CardGlass className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                <div className="sm:col-span-5 relative">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por produto, responsável ou observação..."
+                    value={buscaMov}
+                    onChange={(e) => setBuscaMov(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-gold"
+                  />
+                  {buscaMov && (
+                    <button onClick={() => setBuscaMov('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="sm:col-span-3">
+                  <select
+                    value={filtroMovTipo}
+                    onChange={(e) => setFiltroMovTipo(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="todos">Todos os Tipos de Movimento</option>
+                    <option value="IN">Entrada (+)</option>
+                    <option value="OUT_PROCEDURE">Insumo / Procedimento (-)</option>
+                    <option value="OUT_SALE">Venda Balcão (-)</option>
+                    <option value="ADJUSTMENT">Ajuste / Perda (-)</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-3">
+                  <select
+                    value={filtroMovProf}
+                    onChange={(e) => setFiltroMovProf(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="todos">Todos os Responsáveis</option>
+                    {profissionais.map(p => (
+                      <option key={p.id} value={p.nome}>{p.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-1 text-right">
+                  <span className="text-[11px] text-foreground/50 font-mono">
+                    {movsFiltradas.length}/{movs.length}
+                  </span>
+                </div>
+              </div>
+            </CardGlass>
+
+            {/* Tabela de Logs de Movimentações */}
+            <CardGlass className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-foreground/40 text-xs uppercase tracking-wider border-b border-[var(--border-subtle)]">
+                    <th className="py-3 px-4">Data/Hora</th>
+                    <th className="py-3 pr-4">Produto</th>
+                    <th className="py-3 pr-4">Tipo</th>
+                    <th className="py-3 pr-4">Quantidade</th>
+                    <th className="py-3 pr-4">Responsável (Profissional)</th>
+                    <th className="py-3 pr-4">Detalhes / Obs.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movsFiltradas.slice(0, 150).map(m => {
+                    const prod = produtos.find(p => p.id === m.inventory_id);
+                    const mt = MOV_LABELS[m.type as MovTipo] ?? { label: m.type, cor: 'text-foreground/60 bg-foreground/10' };
+                    const sinal = m.type === 'IN' ? '+' : '-';
+                    const resp = extrairResponsavel(m);
+                    return (
+                      <tr key={m.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5 transition-colors">
+                        <td className="py-3 px-4 text-foreground/60 whitespace-nowrap text-xs font-mono">
+                          {new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="py-3 pr-4 font-medium text-foreground">
+                          {prod?.name ?? m.inventory_id.slice(0, 8)}
+                          {prod?.brand && <span className="block text-[11px] text-foreground/40">{prod.brand}</span>}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${mt.cor}`}>
+                            {mt.label}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-bold font-mono">
+                          <span className={m.type === 'IN' ? 'text-emerald-400' : 'text-red-400'}>
+                            {sinal}{fmtQty(m.qty, prod?.unit ?? 'g')}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          {resp && resp !== '—' ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-gold/10 text-gold font-medium border border-gold/20">
+                              <UserCheck size={12} className="text-gold" />
+                              {resp}
+                            </span>
+                          ) : (
+                            <span className="text-foreground/30 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/60 text-xs max-w-xs truncate" title={m.notes || ''}>
+                          {m.notes || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {movsFiltradas.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-foreground/40">
+                        <ArrowUpDown size={32} className="mx-auto mb-2 opacity-30" />
+                        Nenhuma movimentação encontrada para os filtros selecionados.
                       </td>
-                      <td className="py-3 pr-4 font-medium">{prod?.name ?? m.inventory_id.slice(0, 8)}</td>
-                      <td className="py-3 pr-4"><span className={`text-xs px-2 py-0.5 rounded-full ${mt.cor}`}>{mt.label}</span></td>
-                      <td className="py-3 pr-4 font-bold font-mono">
-                        <span className={m.type === 'IN' ? 'text-emerald-400' : 'text-red-400'}>
-                          {sinal}{fmtQty(m.qty, prod?.unit ?? 'g')}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4 text-foreground/50 text-xs">{m.notes || m.created_by || '—'}</td>
                     </tr>
-                  );
-                })}
-                {movs.length === 0 && (
-                  <tr><td colSpan={5} className="py-8 text-center text-foreground/40">Nenhuma movimentação registrada.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </CardGlass>
+                  )}
+                </tbody>
+              </table>
+            </CardGlass>
+          </div>
         )}
 
         {/* ABA: ALERTAS */}
@@ -840,34 +1087,261 @@ export default function EstoquePage() {
         </div>
       )}
 
-      {/* MODAL: Entrada de Estoque */}
+      {/* MODAL: Entrada de Estoque com Senha do Profissional */}
       {showEntrada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-sm p-6 animate-in fade-in zoom-in-95">
+          <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold font-serif">Entrada de Estoque</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                  <TrendingUp size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-serif text-foreground">Entrada de Estoque</h3>
+                  <p className="text-xs text-foreground/50">Autenticação obrigatória com senha do profissional</p>
+                </div>
+              </div>
               <button onClick={() => setShowEntrada(null)} className="text-foreground/50 hover:text-foreground"><X size={18} /></button>
             </div>
-            <div className="mb-3 p-3 bg-foreground/5 rounded-lg">
-              <p className="font-semibold">{showEntrada.name}</p>
-              <p className="text-sm text-foreground/50">Estoque atual: {fmtQty(showEntrada.stock_qty, showEntrada.unit)}</p>
-            </div>
-            <div className="space-y-3">
+
+            <div className="mb-4 p-3 bg-foreground/5 border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
               <div>
-                <label className="block text-xs text-foreground/60 mb-1">Quantidade ({showEntrada.unit})</label>
-                <input type="number" min={0.1} step={0.1} value={entradaQty} onChange={e => setEntradaQty(e.target.value)}
-                  autoFocus className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder={`Qtd em ${showEntrada.unit}`} />
+                <p className="font-semibold text-foreground text-sm">{showEntrada.name}</p>
+                <p className="text-xs text-foreground/50">{showEntrada.brand ? `${showEntrada.brand} · ` : ''}{showEntrada.category}</p>
               </div>
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1">Observação</label>
-                <input value={entradaNota} onChange={e => setEntradaNota(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: Compra NF 123" />
+              <div className="text-right">
+                <span className="text-[11px] text-foreground/40 block">Estoque Atual</span>
+                <span className="font-bold font-mono text-emerald-400 text-sm">{fmtQty(showEntrada.stock_qty, showEntrada.unit)}</span>
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1">
+                  Quantidade a Adicionar ({showEntrada.unit}) *
+                </label>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={entradaQty}
+                  onChange={e => setEntradaQty(e.target.value)}
+                  autoFocus
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-gold"
+                  placeholder={`Ex: 500 (${showEntrada.unit})`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1 flex items-center gap-1.5">
+                  <UserCheck size={13} className="text-emerald-400" />
+                  Profissional Responsável pela Entrada *
+                </label>
+                <select
+                  value={entradaProfId}
+                  onChange={e => setEntradaProfId(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs focus:outline-none focus:border-gold"
+                >
+                  <option value="">Selecione o profissional...</option>
+                  {profissionais.filter(p => p.ativo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1 flex items-center gap-1.5">
+                  <Lock size={13} className="text-gold" />
+                  Senha / PIN do Profissional *
+                </label>
+                <div className="relative">
+                  <input
+                    type={mostrarSenhaEntrada ? 'text' : 'password'}
+                    value={entradaSenha}
+                    onChange={e => setEntradaSenha(e.target.value)}
+                    placeholder="Digite o PIN do profissional (padrão: 1234)"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-9 text-xs font-mono focus:outline-none focus:border-gold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenhaEntrada(!mostrarSenhaEntrada)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                  >
+                    {mostrarSenhaEntrada ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-foreground/40 mt-1">
+                  Seu PIN individual garante que a entrada fique registrada em seu nome nos relatórios e auditorias.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1">
+                  Observação / Nota Fiscal (opcional)
+                </label>
+                <input
+                  value={entradaNota}
+                  onChange={e => setEntradaNota(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs focus:outline-none focus:border-gold"
+                  placeholder="Ex: Compra Distribuidora NF 4589"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
               <Button variant="ghost" className="flex-1" onClick={() => setShowEntrada(null)}>Cancelar</Button>
-              <Button variant="primary" className="flex-1" onClick={registrarEntrada} disabled={entradaSalvando || !entradaQty}>
-                <TrendingUp size={15} className="mr-1.5" /> {entradaSalvando ? 'Salvando...' : 'Registrar'}
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={registrarEntrada}
+                disabled={entradaSalvando || !entradaQty || !entradaProfId || !entradaSenha}
+              >
+                <TrendingUp size={15} className="mr-1.5" />
+                {entradaSalvando ? 'Salvando...' : 'Confirmar Entrada'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* MODAL: Baixa de Estoque com Senha do Profissional */}
+      {showBaixa && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                  <TrendingDown size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-serif text-foreground">Dar Baixa no Estoque</h3>
+                  <p className="text-xs text-foreground/50">Procedimento, Ajuste, Quebra ou Vencimento</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBaixa(null)} className="text-foreground/50 hover:text-foreground"><X size={18} /></button>
+            </div>
+
+            <div className="mb-4 p-3 bg-foreground/5 border border-[var(--border-subtle)] rounded-xl flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-foreground text-sm">{showBaixa.name}</p>
+                <p className="text-xs text-foreground/50">{showBaixa.brand ? `${showBaixa.brand} · ` : ''}{showBaixa.category}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-foreground/40 block">Estoque Atual</span>
+                <span className="font-bold font-mono text-amber-400 text-sm">{fmtQty(showBaixa.stock_qty, showBaixa.unit)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1">
+                  Motivo da Baixa *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { tipo: 'OUT_PROCEDURE', label: 'Procedimento', desc: 'Uso em cliente' },
+                    { tipo: 'ADJUSTMENT', label: 'Ajuste / Perda', desc: 'Quebra ou validade' },
+                    { tipo: 'OUT_SALE', label: 'Saída Venda', desc: 'Venda avulsa' },
+                  ].map(t => (
+                    <button
+                      key={t.tipo}
+                      type="button"
+                      onClick={() => setBaixaTipo(t.tipo as MovTipo)}
+                      className={`p-2 rounded-lg border text-left transition-all ${
+                        baixaTipo === t.tipo
+                          ? 'border-amber-400 bg-amber-500/10 text-amber-400 font-semibold'
+                          : 'border-[var(--border-subtle)] text-foreground/60 hover:border-foreground/20'
+                      }`}
+                    >
+                      <p className="text-xs font-bold leading-tight">{t.label}</p>
+                      <p className="text-[10px] text-foreground/40">{t.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1">
+                  Quantidade a Retirar ({showBaixa.unit}) *
+                </label>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={baixaQty}
+                  onChange={e => setBaixaQty(e.target.value)}
+                  autoFocus
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-amber-400"
+                  placeholder={`Ex: 50 (${showBaixa.unit})`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1 flex items-center gap-1.5">
+                  <UserCheck size={13} className="text-amber-400" />
+                  Profissional Responsável pela Baixa *
+                </label>
+                <select
+                  value={baixaProfId}
+                  onChange={e => setBaixaProfId(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs focus:outline-none focus:border-gold"
+                >
+                  <option value="">Selecione o profissional...</option>
+                  {profissionais.filter(p => p.ativo).map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1 flex items-center gap-1.5">
+                  <Lock size={13} className="text-gold" />
+                  Senha / PIN do Profissional *
+                </label>
+                <div className="relative">
+                  <input
+                    type={mostrarSenhaBaixa ? 'text' : 'password'}
+                    value={baixaSenha}
+                    onChange={e => setBaixaSenha(e.target.value)}
+                    placeholder="Digite o PIN do profissional (padrão: 1234)"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-9 text-xs font-mono focus:outline-none focus:border-gold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenhaBaixa(!mostrarSenhaBaixa)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                  >
+                    {mostrarSenhaBaixa ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-foreground/40 mt-1">
+                  O PIN garante a autoria e fica registrado no histórico auditável de saídas.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-1">
+                  Motivo / Observação detalhada (opcional)
+                </label>
+                <input
+                  value={baixaMotivo}
+                  onChange={e => setBaixaMotivo(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs focus:outline-none focus:border-gold"
+                  placeholder="Ex: Aplicação em Mechas / Embalagem rompida"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button variant="ghost" className="flex-1" onClick={() => setShowBaixa(null)}>Cancelar</Button>
+              <Button
+                variant="primary"
+                className="flex-1 !bg-amber-500 hover:!bg-amber-600 text-black font-semibold"
+                onClick={registrarBaixa}
+                disabled={baixaSalvando || !baixaQty || !baixaProfId || !baixaSenha}
+              >
+                <TrendingDown size={15} className="mr-1.5" />
+                {baixaSalvando ? 'Salvando...' : 'Confirmar Baixa'}
               </Button>
             </div>
           </CardGlass>
@@ -1159,19 +1633,52 @@ export default function EstoquePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-foreground/60 mb-1">Profissional Vendedor (Comissão)</label>
+                  <label className="block text-xs text-foreground/60 mb-1">
+                    Profissional Vendedor (Responsável) *
+                  </label>
                   <select
                     value={vendaProfissionalId}
-                    onChange={(e) => setVendaProfissionalId(e.target.value)}
+                    onChange={(e) => {
+                      setVendaProfissionalId(e.target.value);
+                      setVendaSenha('');
+                    }}
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
                   >
-                    <option value="">Sem profissional (Venda direta salão)</option>
+                    <option value="">Selecione o profissional vendedor...</option>
                     {profissionais.filter(p => p.ativo).map(p => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
                     ))}
                   </select>
-                  {vendaProfissionalId && (
-                    <p className="text-[10px] text-gold mt-1">Gera comissão sobre o valor líquido pós-desconto</p>
+                  {vendaProfissionalId ? (
+                    <div className="mt-2 p-2.5 bg-foreground/5 rounded-lg border border-[var(--border-subtle)] space-y-1">
+                      <label className="block text-[11px] font-semibold text-foreground flex items-center gap-1">
+                        <Lock size={12} className="text-gold" />
+                        Senha / PIN do Vendedor *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={mostrarSenhaVenda ? 'text' : 'password'}
+                          placeholder="Digite o PIN do vendedor (padrão: 1234)"
+                          value={vendaSenha}
+                          onChange={(e) => setVendaSenha(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-2.5 pr-8 text-xs font-mono focus:outline-none focus:border-gold"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarSenhaVenda(!mostrarSenhaVenda)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                        >
+                          {mostrarSenhaVenda ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-foreground/40">
+                        O PIN autentica a saída do estoque e credita a comissão do vendedor.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-foreground/40 mt-1">
+                      Selecione o profissional para validar com o PIN individual e gerar log de saída.
+                    </p>
                   )}
                 </div>
               </div>
@@ -1290,7 +1797,7 @@ export default function EstoquePage() {
                 variant="primary"
                 className="flex-1"
                 onClick={registrarVenda}
-                disabled={vendaSalvando || vendaItens.length === 0}
+                disabled={vendaSalvando || vendaItens.length === 0 || !vendaProfissionalId || !vendaSenha}
               >
                 <ShoppingBag size={15} className="mr-1.5" />
                 {vendaSalvando ? 'Gravando...' : `Confirmar Venda (${totalItensVenda} un)`}

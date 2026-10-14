@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Wallet, CheckCircle2, AlertTriangle, Clock, Scissors, 
-  Users, Banknote, UserPlus, ShoppingCart, TrendingDown
+  Users, Banknote, UserPlus, ShoppingCart, TrendingDown, Sparkles
 } from 'lucide-react';
 import { SectionHeader, Panel, StatCard } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
+import { CheckoutModal } from '@/components/CheckoutModal';
 import { fetchClientes, fetchAgendamentos, fetchServicos, fetchProfissionais, atualizarStatusAgendamento } from '@/lib/supabase-queries';
 import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
 
@@ -17,6 +18,7 @@ export default function ReceptionDashboard() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
 
   const carregarDados = async () => {
     setLoading(true);
@@ -35,12 +37,9 @@ export default function ReceptionDashboard() {
 
   useEffect(() => {
     carregarDados();
-    // Poderia configurar realtime do Supabase aqui
   }, []);
 
   const hoje = new Date().toISOString().split('T')[0];
-  const agora = new Date();
-  const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
 
   const getClienteNome = (id: string) => clientes.find(c => c.id === id)?.nome || 'Desconhecido';
   const getServico = (id: string) => servicos.find(s => s.id === id);
@@ -49,32 +48,40 @@ export default function ReceptionDashboard() {
   // Métricas do Topo
   const agendamentosHoje = agendamentos.filter(a => a.data === hoje);
   const faturamentoHoje = agendamentosHoje
-    .filter(a => a.status === 'concluido')
-    .reduce((acc, a) => acc + (getServico(a.servico_id)?.preco || 0), 0);
+    .filter(a => a.status === 'concluido' && a.payment_method)
+    .reduce((acc, a) => acc + (a.total_amount != null ? a.total_amount : (getServico(a.servico_id)?.preco || 0)), 0);
   
   const projetadoHoje = agendamentosHoje
-    .filter(a => a.status === 'pendente' || a.status === 'confirmado' || a.status === 'em_atendimento')
+    .filter(a => a.status === 'pendente' || a.status === 'confirmado' || a.status === 'em_atendimento' || (a.status === 'concluido' && !a.payment_method))
     .reduce((acc, a) => acc + (getServico(a.servico_id)?.preco || 0), 0);
 
   const concluidos = agendamentosHoje.filter(a => a.status === 'concluido').length;
   const cancelados = agendamentosHoje.filter(a => a.status === 'cancelado' || a.status === 'no_show').length;
-  const taxaOcupacao = agendamentosHoje.length > 0 
-    ? Math.round((concluidos / (agendamentosHoje.length - cancelados)) * 100) 
-    : 0;
 
   // Filas
+  // 1. Na Cadeira (Em Atendimento)
   const naCadeira = agendamentosHoje.filter(a => a.status === 'em_atendimento');
+
+  // 2. Aguardando Pagamento (Serviço concluído na cadeira, aguardando passar no caixa)
+  const aguardandoRecebimento = agendamentosHoje.filter(a => a.status === 'concluido' && !a.payment_method);
   
-  // Próximos a chegar (pendentes ou confirmados cujo horário de início é daqui a pouco ou já passou e estão atrasados)
+  // 3. Próximos a chegar (pendentes ou confirmados)
   const proximos = agendamentosHoje
     .filter(a => a.status === 'pendente' || a.status === 'confirmado')
     .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
-    .slice(0, 5);
+    .slice(0, 6);
 
   const handleCheckin = async (id: string) => {
     const success = await atualizarStatusAgendamento(id, 'em_atendimento');
     if (success) {
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status: 'em_atendimento' } : a));
+    }
+  };
+
+  const handleConcluirAtendimento = async (id: string) => {
+    const success = await atualizarStatusAgendamento(id, 'concluido');
+    if (success) {
+      setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status: 'concluido' } : a));
     }
   };
 
@@ -135,59 +142,130 @@ export default function ReceptionDashboard() {
         </Link>
       </div>
 
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* 2. Na Cadeira / Aguardando Checkout */}
+        {/* Coluna Esquerda / Central: Fila de Atendimento e Caixa */}
         <div className="xl:col-span-2 space-y-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-success animate-pulse" />
-            Na Cadeira Agora (Para Receber)
-          </h2>
           
-          {naCadeira.length === 0 ? (
-            <Panel className="p-8 text-center text-foreground/50 border-dashed">
-              Nenhuma cliente em atendimento no momento.
-            </Panel>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {naCadeira.map(ag => {
-                const srv = getServico(ag.servico_id);
-                return (
-                  <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-success/20 bg-success/5">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-success" />
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
-                        <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
+          {/* Fila 1: Aguardando Pagamento (Serviço Concluído, pronto para Receber no Caixa) */}
+          {aguardandoRecebimento.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-emerald-500">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+                Aguardando Pagamento / Caixa ({aguardandoRecebimento.length})
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aguardandoRecebimento.map(ag => {
+                  const srv = getServico(ag.servico_id);
+                  return (
+                    <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-emerald-500/30 bg-emerald-500/5 shadow-md">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full mb-1 inline-block">
+                            ● Serviço Concluído
+                          </span>
+                          <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
+                          <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-gold font-mono block">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(srv?.preco || 0)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs bg-[var(--color-background)] px-2 py-1 rounded-md text-foreground/60 border border-[var(--color-border)]">
-                          Iniciou {ag.hora_inicio}
-                        </span>
+
+                      <div className="flex items-center gap-2 mb-5">
+                        <Scissors size={14} className="text-foreground/40" />
+                        <span className="text-xs text-foreground/60">Atendido por {getProfissionalNome(ag.profissional_id)}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <Scissors size={14} className="text-foreground/40" />
-                      <span className="text-sm text-foreground/60">{getProfissionalNome(ag.profissional_id)}</span>
-                    </div>
-                    
-                    <div className="mt-auto">
-                      <Link href={`/admin/agenda?date=${hoje}`}>
-                        <Button variant="primary" className="w-full bg-success hover:bg-success/90 text-white border-none shadow-lg shadow-success/20">
-                          <Banknote size={16} className="mr-2" />
-                          Ir para Recebimento
+                      
+                      <div className="mt-auto">
+                        <Button 
+                          variant="primary" 
+                          onClick={() => setCheckoutAppt(ag)}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-none shadow-lg shadow-emerald-600/30 py-2.5 text-sm"
+                        >
+                          <Banknote size={18} className="mr-2" />
+                          Ir para Fechamento Prévio
                         </Button>
-                      </Link>
-                    </div>
-                  </Panel>
-                );
-              })}
+                      </div>
+                    </Panel>
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          {/* Fila 2: Na Cadeira (Em Atendimento) */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+              Na Cadeira Agora (Em Atendimento)
+            </h2>
+            
+            {naCadeira.length === 0 ? (
+              <Panel className="p-8 text-center text-foreground/50 border-dashed">
+                Nenhuma cliente em atendimento na cadeira no momento.
+              </Panel>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {naCadeira.map(ag => {
+                  const srv = getServico(ag.servico_id);
+                  return (
+                    <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-primary/20 bg-primary/5">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="text-[11px] font-semibold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full mb-1 inline-block">
+                            Em Atendimento
+                          </span>
+                          <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
+                          <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs bg-[var(--color-background)] px-2 py-1 rounded-md text-foreground/60 border border-[var(--color-border)]">
+                            Iniciou {ag.hora_inicio}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mb-5">
+                        <Scissors size={14} className="text-foreground/40" />
+                        <span className="text-xs text-foreground/60">{getProfissionalNome(ag.profissional_id)}</span>
+                      </div>
+                      
+                      <div className="mt-auto space-y-2">
+                        {/* Botão de Concluir Atendimento */}
+                        <Button 
+                          variant="primary" 
+                          onClick={() => handleConcluirAtendimento(ag.id)}
+                          className="w-full font-bold shadow-md"
+                        >
+                          <CheckCircle2 size={16} className="mr-2" />
+                          Concluir Atendimento
+                        </Button>
+
+                        {/* Atalho de Fechamento Prévio Direto */}
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutAppt(ag)}
+                          className="w-full text-xs text-emerald-500 hover:text-emerald-400 font-medium py-1 flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Banknote size={14} />
+                          Ou ir direto para Fechamento Prévio
+                        </button>
+                      </div>
+                    </Panel>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 3. Próximos e Atalhos */}
+        {/* Coluna Direita: Próximos a Chegar */}
         <div className="space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Clock className="text-foreground/50" />
@@ -216,10 +294,24 @@ export default function ReceptionDashboard() {
               ))
             )}
           </div>
-
-
         </div>
       </div>
+
+      {/* Modal de Recebimento / Checkout Integrado no Dashboard */}
+      {checkoutAppt && (
+        <CheckoutModal
+          appt={checkoutAppt}
+          servicos={servicos}
+          profissionais={profissionais}
+          clientes={clientes}
+          onClose={() => setCheckoutAppt(null)}
+          onSuccess={() => {
+            setCheckoutAppt(null);
+            carregarDados();
+          }}
+        />
+      )}
     </div>
   );
 }
+

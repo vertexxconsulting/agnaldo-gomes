@@ -28,27 +28,64 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Cliente não encontrado com este CPF', cliente: null });
     }
 
-    // 2. Buscar agendamentos recentes do cliente (status: concluido ou pendente com pagamento já feito, mas vamos puxar todos ordenados por data)
+    // 2. Buscar agendamentos recentes do cliente
     const { data: agendamentos, error: agError } = await supabase
       .from('salon_appointments')
-      .select('id, date, start_time, service_id, professional_id, status')
+      .select('id, date, start_time, service_id, professional_id, status, total_amount, payment_method, sub_services')
       .eq('customer_id', cliente.id)
       .order('date', { ascending: false })
-      .limit(5);
+      .limit(10);
 
-    // Mapear detalhes dos serviços
+    if (agError) {
+      console.error('[api/admin/notas/buscar] Erro ao buscar agendamentos:', agError);
+    }
+
+    // Buscar dados reais das tabelas salon_services e salon_professionals
+    const serviceIds = Array.from(new Set((agendamentos || []).map((ag: any) => ag.service_id).filter(Boolean)));
+    const professionalIds = Array.from(new Set((agendamentos || []).map((ag: any) => ag.professional_id).filter(Boolean)));
+
+    let dbServices: any[] = [];
+    if (serviceIds.length > 0) {
+      const { data: srvs } = await supabase
+        .from('salon_services')
+        .select('id, name, price')
+        .in('id', serviceIds);
+      if (srvs) dbServices = srvs;
+    }
+
+    let dbProfessionals: any[] = [];
+    if (professionalIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('salon_professionals')
+        .select('id, name')
+        .in('id', professionalIds);
+      if (profs) dbProfessionals = profs;
+    }
+
+    // Mapear detalhes dos serviços priorizando dados reais
     const servicosFormatados = (agendamentos || []).map((ag: any) => {
-      // Mock lookup para simplificar no MVP (ideal seria um JOIN com salon_services)
+      const dbServico = dbServices.find(s => s.id === ag.service_id);
       const mockServico = MOCK_SERVICOS.find(s => s.id === ag.service_id);
-      const mockProfissional = MOCK_PROFISSIONAIS.find(p => p.id === ag.professional_id);
+      const dbProf = dbProfessionals.find(p => p.id === ag.professional_id);
+      const mockProf = MOCK_PROFISSIONAIS.find(p => p.id === ag.professional_id);
+
+      const nomeServico = dbServico?.name || mockServico?.nome || 'Serviço Personalizado';
+      const nomeProf = dbProf?.name || mockProf?.nome || 'Profissional';
+      
+      const valor = (ag.total_amount != null && Number(ag.total_amount) > 0)
+        ? Number(ag.total_amount)
+        : (dbServico?.price != null && Number(dbServico.price) > 0)
+          ? Number(dbServico.price)
+          : (mockServico?.preco || 0);
 
       return {
         id: ag.id,
         data: ag.date,
-        hora: ag.start_time,
-        servico: mockServico?.nome || 'Serviço Personalizado',
-        profissional: mockProfissional?.nome || 'Profissional',
-        valor: mockServico?.preco || 0,
+        hora: ag.start_time ? ag.start_time.slice(0, 5) : '',
+        servico: nomeServico,
+        profissional: nomeProf,
+        valor: valor,
+        payment_method: ag.payment_method || null,
         status: ag.status
       };
     });

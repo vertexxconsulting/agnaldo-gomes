@@ -510,8 +510,8 @@ export default function ComissoesPage() {
         .flatMap(c => c.parcelas ?? [])
         .filter(p => p.status === 'PAID' && (p.paid_at ?? '').slice(0, 7) === mesAtual)
         .reduce((s, p) => s + p.amount, 0);
-      const regra = regras.find(r => r.professional_id === prof.id && !r.service_id);
-      return { prof, totalPendente, pagaMes, pct: regra?.commission_pct ?? null, qtdComs: coms.length };
+      const regrasDoProf = regras.filter(r => r.professional_id === prof.id && !!r.service_id);
+      return { prof, totalPendente, pagaMes, qtdRegras: regrasDoProf.length, qtdComs: coms.length };
     });
   }, [profissionais, comissoes, regras]);
 
@@ -594,6 +594,10 @@ export default function ComissoesPage() {
       setErroModal('Selecione um profissional.');
       return;
     }
+    if (!formRegra.service_id) {
+      setErroModal('Selecione o serviço para definir a regra de comissão.');
+      return;
+    }
     if (formRegra.commission_pct <= 0 || formRegra.commission_pct > 100) {
       setErroModal('Percentual inválido. Digite um valor entre 1% e 100%.');
       return;
@@ -601,7 +605,7 @@ export default function ComissoesPage() {
     setSalvandoRegra(true);
     const payload: Omit<RegraComissao, 'id' | 'created_at'> = {
       professional_id: formRegra.professional_id,
-      service_id: formRegra.service_id || null,
+      service_id: formRegra.service_id,
       commission_pct: Number(formRegra.commission_pct),
       active: true,
       notes: formRegra.notes || null,
@@ -1247,7 +1251,7 @@ export default function ComissoesPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {resumoPorProfissional.map(({ prof, totalPendente, pagaMes, pct }) => {
+              {resumoPorProfissional.map(({ prof, totalPendente, pagaMes, qtdRegras }) => {
                 const cat = getProfCategoria(prof.id);
                 return (
                   <CardGlass key={prof.id} className="p-5 flex flex-col justify-between">
@@ -1269,24 +1273,24 @@ export default function ComissoesPage() {
                           </div>
                         </div>
 
-                        {/* Percentual badge */}
-                        {pct != null ? (
+                        {/* Percentual / Quantidade de regras badge */}
+                        {qtdRegras > 0 ? (
                           <button
                             onClick={() => {
-                              const r = regras.find(reg => reg.professional_id === prof.id && !reg.service_id);
-                              abrirRegra(r);
+                              setProfFiltro(prof.id);
+                              setAba('regras');
                             }}
-                            title="Clique para editar a comissão"
+                            title="Clique para ver as regras de serviço deste profissional"
                             className="px-2.5 py-1 rounded-lg bg-gold/10 text-foreground border border-gold/30 hover:bg-gold/20 text-xs font-bold transition-colors flex items-center gap-1"
                           >
-                            {pct}% <Edit size={11} />
+                            {qtdRegras} {qtdRegras === 1 ? 'regra de serviço' : 'regras de serviço'} <Edit size={11} />
                           </button>
                         ) : (
                           <button
                             onClick={() => abrirRegra(undefined, prof.id)}
                             className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-foreground border border-amber-500/20 hover:bg-amber-500/20 text-xs font-medium transition-colors"
                           >
-                            + Definir %
+                            + Definir Regra
                           </button>
                         )}
                       </div>
@@ -1516,76 +1520,27 @@ export default function ComissoesPage() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            ABA 6: REGRAS DE COMISSÃO
+            ABA 6: REGRAS DE COMISSÃO POR SERVIÇO
            ══════════════════════════════════════════════════════════════ */}
         {!loading && aba === 'regras' && (
           <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h3 className="text-lg font-bold">Regras e Percentuais de Repasse</h3>
+                <h3 className="text-lg font-bold">Regras e Percentuais de Repasse por Serviço</h3>
                 <p className="text-xs text-foreground/50">
-                  Configure o percentual padrão de cada profissional ou regras específicas por serviço.
+                  Configure o percentual de comissão de cada profissional específico por procedimento/serviço.
                 </p>
               </div>
               <Button variant="primary" onClick={() => abrirRegra()}>
-                <Plus size={16} className="mr-1.5" /> Nova Regra
+                <Plus size={16} className="mr-1.5" /> Nova Regra por Serviço
               </Button>
-            </div>
-
-            {/* Regras gerais */}
-            <div className="mb-8">
-              <h4 className="text-xs font-semibold text-foreground/50 mb-3 uppercase tracking-wider">
-                Regras Gerais por Profissional (Válidas para todos os serviços)
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {regras.filter(r => !r.service_id).map(r => (
-                  <CardGlass key={r.id} className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center border border-gold/20">
-                        <User2 size={16} className="text-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">{getProfNome(r.professional_id)}</p>
-                        <p className="text-xs text-foreground/50">Regra geral (todos os serviços)</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-foreground">{r.commission_pct}%</span>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => abrirRegra(r)}
-                          title="Editar regra"
-                          className="p-1 rounded text-foreground/50 hover:text-foreground transition-colors"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => excluirRegra(r.id)}
-                          title="Excluir regra"
-                          className="p-1 rounded text-foreground/50 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </CardGlass>
-                ))}
-
-                {regras.filter(r => !r.service_id).length === 0 && (
-                  <div className="col-span-3 text-center py-8 text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
-                    <SlidersHorizontal size={28} className="mx-auto mb-2 opacity-30 text-foreground" />
-                    <p className="text-sm">Nenhuma regra geral configurada ainda.</p>
-                    <p className="text-xs text-foreground/40 mt-0.5">Clique em "Nova Regra" acima para definir a comissão dos profissionais.</p>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Regras específicas por serviço */}
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
                 <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
-                  Regras Específicas por Serviço (Prioridade sobre a regra geral)
+                  Tabela de Comissões por Procedimento
                 </h4>
                 
                 <div className="flex items-center gap-3">
@@ -1644,8 +1599,10 @@ export default function ComissoesPage() {
                   </table>
                 </CardGlass>
               ) : (
-                <div className="text-center py-6 text-foreground/40 text-xs border border-dashed border-[var(--border-subtle)] rounded-xl">
-                  Nenhuma regra específica por serviço cadastrada. Quando cadastrada, ela prevalece sobre a regra geral.
+                <div className="text-center py-10 text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
+                  <SlidersHorizontal size={28} className="mx-auto mb-2 opacity-30 text-foreground" />
+                  <p className="text-sm font-medium">Nenhuma regra por serviço cadastrada.</p>
+                  <p className="text-xs text-foreground/40 mt-1">Clique em "Nova Regra por Serviço" acima para definir a comissão dos profissionais em cada procedimento.</p>
                 </div>
               )}
             </div>
@@ -2198,7 +2155,7 @@ export default function ComissoesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95 border border-gold/30 shadow-2xl">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-xl font-bold font-serif">{editRegra ? 'Editar Regra' : 'Nova Regra de Comissão'}</h3>
+              <h3 className="text-xl font-bold font-serif">{editRegra ? 'Editar Regra por Serviço' : 'Nova Regra por Serviço'}</h3>
               <button onClick={() => setShowRegra(false)} className="text-foreground/50 hover:text-foreground">
                 <X size={20} />
               </button>
@@ -2212,11 +2169,12 @@ export default function ComissoesPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-foreground/60 mb-1">Profissional *</label>
+                <label className="block text-xs text-foreground/60 mb-1 font-semibold">Profissional *</label>
                 <select
                   value={formRegra.professional_id}
                   onChange={e => setFormRegra(f => ({ ...f, professional_id: e.target.value }))}
                   className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                  required
                 >
                   <option value="">Selecione o profissional...</option>
                   {profissionais.map(p => (
@@ -2228,16 +2186,17 @@ export default function ComissoesPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-foreground/60 mb-1">
-                  Serviço <span className="text-foreground/40">(Em branco = regra geral para todos os serviços)</span>
+                <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                  Serviço / Procedimento *
                 </label>
                 <select
                   value={formRegra.service_id}
                   onChange={e => setFormRegra(f => ({ ...f, service_id: e.target.value }))}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold font-medium"
+                  required
                 >
-                  <option value="">— Todos os serviços (Regra Geral) —</option>
-                  {servicos.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                  <option value="">Selecione o serviço...</option>
+                  {servicos.map(s => <option key={s.id} value={s.id}>{s.nome} ({fmt(s.preco)})</option>)}
                 </select>
               </div>
 

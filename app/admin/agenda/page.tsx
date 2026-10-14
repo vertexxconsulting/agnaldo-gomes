@@ -7,7 +7,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
@@ -463,7 +463,7 @@ function AgendaContent() {
     const isAgnaldo = (profSel?.nome || '').toLowerCase().includes('agnaldo') || profSel?.id === 'agnaldo';
     const interval = isAgnaldo ? 20 : 30;
 
-    const slots: Array<{ hora: string; ocupado: boolean }> = [];
+    const slots: Array<{ hora: string; ocupado: boolean; permiteEncaixe?: boolean }> = [];
     for (let m = totalMinutosIni; m < totalMinutosFim; m += interval) {
       const hStr = String(Math.floor(m / 60)).padStart(2, '0');
       const minStr = String(m % 60).padStart(2, '0');
@@ -472,16 +472,20 @@ function AgendaContent() {
       const slotInicioMin = m;
       const slotFimMin = m + interval;
 
-      const estaOcupado = agendamentosAtivos.some(a => {
+      const apptsNoSlot = agendamentosAtivos.filter(a => {
         const aInicioMin = timeToMinutes(a.hora_inicio);
         const aFimStr = getAgendamentoHoraFim(a, servicos);
         const aFimMin = timeToMinutes(aFimStr);
         return aInicioMin < slotFimMin && aFimMin > slotInicioMin;
       });
 
+      const estaOcupado = apptsNoSlot.length > 0;
+      const permiteEncaixe = apptsNoSlot.some(a => a.allow_overlap);
+
       slots.push({
         hora: horaFormatada,
         ocupado: estaOcupado,
+        permiteEncaixe,
       });
     }
 
@@ -675,7 +679,7 @@ function AgendaContent() {
     setCheckoutNovoProdDescValor('');
   };
 
-  const abrirFormNovo = (hora: string, profId: string, isEncaixe = false) => {
+  const abrirFormNovo = (hora?: string, profId = '', isEncaixe = false) => {
     setEditingApptId(null);
     setFormData({
       cliente_id: '',
@@ -683,7 +687,7 @@ function AgendaContent() {
       servico_id: '',
       sub_servicos: [] as any[],
       data: dataSelecionada,
-      hora_inicio: hora,
+      hora_inicio: hora || '09:00',
       duracao_min: '',
       is_fixed: false,
       recurrence_type: 'WEEKLY',
@@ -1001,10 +1005,7 @@ function AgendaContent() {
           <Button 
             variant="primary" 
             onClick={() => {
-              setBuscaCliente(buscaClienteAgenda || '');
-              setClienteDropdownAberto(Boolean(buscaClienteAgenda));
-              setCadastrandoNovoCliente(false);
-              setShowForm(true);
+              abrirFormNovo();
             }}
           >
             + Novo Agendamento
@@ -1364,6 +1365,15 @@ function AgendaContent() {
                   <CheckCircle2 size={16} className="mr-2"/> Concluir
                 </Button>
               )}
+              {selectedAppt.status === 'concluido' && !selectedAppt.payment_method && (
+                <Button 
+                  variant="primary" 
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
+                  onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}
+                >
+                  <Banknote size={16} className="mr-2"/> Ir para Recebimento
+                </Button>
+              )}
 
               <Button 
                 variant="outline" 
@@ -1392,8 +1402,11 @@ function AgendaContent() {
       {checkoutAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
           <CardGlass className="w-full max-w-xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold font-serif text-foreground">Finalizar Atendimento</h3>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-bold font-serif text-foreground">Fechamento Prévio do Serviço (Secretaria)</h3>
+                <p className="text-xs text-amber-500 font-medium mt-0.5">Envio para conferência e confirmação da Gestão Financeira</p>
+              </div>
               <button onClick={fecharCheckout} className="text-foreground/50 hover:text-foreground">
                 <X size={20} />
               </button>
@@ -1962,7 +1975,14 @@ function AgendaContent() {
                         </Button>
                         <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
                           const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalGeral, taxasPagamento);
-                          // 1. Finalizar o atendimento principal
+                          // 1. Finalizar o atendimento principal e persistir o recebimento no banco
+                          await finalizarRecebimentoAgendamento({
+                            id: checkoutAppt.id,
+                            paymentMethod: checkoutPagamento,
+                            installments: checkoutPagamento === 'CREDITO' ? numParcelas : 1,
+                            totalAmount: totalGeral,
+                            productCost: totalInsumos || 0,
+                          });
                           await mudarStatus(checkoutAppt.id, 'concluido');
                           
                           // 2. Registrar extras como agendamentos concluídos
@@ -1978,7 +1998,9 @@ function AgendaContent() {
                                     servico_id: ext.servicoId,
                                     data: checkoutAppt.data,
                                     hora_inicio: checkoutAppt.hora_inicio,
-                                    status: 'concluido'
+                                    status: 'concluido',
+                                    payment_method: checkoutPagamento,
+                                    total_amount: ext.preco,
                                   })
                                 });
                               } catch (e) {
@@ -1988,12 +2010,15 @@ function AgendaContent() {
                             fetchAgendamentos().then(setAgendamentos);
                           }
                           
+                          const profAtendimentoNome = profissionais.find(p => p.id === checkoutAppt.profissional_id)?.nome || 'Profissional';
+
                           // 3. Baixar insumos do estoque
                           for (const insumo of checkoutInsumos) {
                             if (insumo.qty_used > 0) {
                               await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
                                 appointmentId: checkoutAppt.id,
                                 notes: `Procedimento: ${getServicoNome(checkoutAppt.servico_id, servicos)}`,
+                                createdBy: profAtendimentoNome,
                               });
                             }
                           }
@@ -2007,6 +2032,7 @@ function AgendaContent() {
                               await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
                                 appointmentId: checkoutAppt.id,
                                 notes: `Venda Salão: ${getServicoNome(checkoutAppt.servico_id, servicos)}${descNote}`,
+                                createdBy: profAtendimentoNome,
                               });
                             }
                           }
@@ -2028,9 +2054,9 @@ function AgendaContent() {
                           });
                           
                           fecharCheckout();
-                          alert(`Atendimento concluído com sucesso!\nTotal recebido: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}${valorDesconto > 0 ? `\nDesconto cliente: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct || '0'}%)` : ''}${taxaMaq.valorTaxa > 0 ? `\nTaxa maquininha (${taxaMaq.regraNome}): -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}\nLíquido do Salão: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorLiquido)}` : ''}\nInsumos, produtos e comissão registrados.`);
+                          alert(`Fechamento Prévio Registrado com Sucesso!\n\nCliente liberada na recepção.\nTotal Pré-Fechado: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)} (${checkoutPagamento})\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e contabilização oficial.`);
                         }}>
-                          Confirmar Recebimento
+                          Registrar Fechamento Prévio (Liberar Cliente)
                         </Button>
                       </div>
                     </div>
@@ -2536,17 +2562,22 @@ function AgendaContent() {
               )}
 
               {/* Permitir sobreposição (Encaixe) */}
-              <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="pt-4 border-t border-[var(--border-subtle)] space-y-2 bg-gold/5 -mx-6 px-6 py-3 rounded-lg border border-gold/20">
+                <label className="flex items-center gap-2.5 cursor-pointer">
                   <input 
                     type="checkbox"
                     checked={formData.allow_overlap}
                     onChange={e => setFormData(f => ({ ...f, allow_overlap: e.target.checked }))}
-                    className="w-4 h-4 rounded border-[var(--border-subtle)] bg-[var(--background)] text-gold focus:ring-gold accent-gold"
+                    className="w-4 h-4 rounded border-gold/40 bg-[var(--background)] text-gold focus:ring-gold accent-gold cursor-pointer"
                   />
-                  <span className="text-sm font-bold text-foreground">Permitir sobreposição (Encaixe/Pausa)</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-foreground">Permitir sobreposição (Encaixe / Pausa de procedimento)</span>
+                    <Sparkles size={14} className="text-gold" />
+                  </div>
                 </label>
-                <p className="text-[11px] text-foreground/50 ml-6">Marque caso este atendimento ocorra no mesmo horário de outro já existente na agenda do profissional.</p>
+                <p className="text-[11px] text-foreground/60 ml-6">
+                  Marque caso este atendimento ocorra no mesmo horário de outro já existente na agenda do profissional ou permita pausas para atender mais clientes simultaneamente.
+                </p>
               </div>
 
               {/* 4. Data & Horário Inteligente */}
@@ -2585,15 +2616,28 @@ function AgendaContent() {
                         className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-mono"
                         required
                       >
-                        {horariosDisponiveis.map(slot => (
-                          <option 
-                            key={slot.hora} 
-                            value={slot.hora} 
-                            disabled={!formData.allow_overlap && slot.ocupado}
-                          >
-                            {slot.hora} {slot.ocupado ? (formData.allow_overlap ? '— Encaixe' : '(Ocupado)') : '— Livre'}
-                          </option>
-                        ))}
+                        {horariosDisponiveis.map(slot => {
+                          const podeSelecionar = !slot.ocupado || formData.allow_overlap || slot.permiteEncaixe;
+                          let labelTexto = '— Livre';
+                          if (slot.ocupado) {
+                            if (slot.permiteEncaixe) {
+                              labelTexto = '— Encaixe liberado (Pausa)';
+                            } else if (formData.allow_overlap) {
+                              labelTexto = '— Encaixe';
+                            } else {
+                              labelTexto = '(Ocupado)';
+                            }
+                          }
+                          return (
+                            <option 
+                              key={slot.hora} 
+                              value={slot.hora} 
+                              disabled={!podeSelecionar}
+                            >
+                              {slot.hora} {labelTexto}
+                            </option>
+                          );
+                        })}
                       </select>
                     ) : (
                       <input 

@@ -97,6 +97,8 @@ function mapCliente(r: Row): Cliente {
 }
 
 function mapProfissional(r: Row): Profissional {
+  const sched = (r.weekly_schedule ?? {}) as any;
+  const metaPin = sched?._meta?.stock_pin;
   return {
     id: r.id,
     nome: r.name ?? '',
@@ -104,7 +106,8 @@ function mapProfissional(r: Row): Profissional {
     categoria: r.categoria ?? r.category ?? null,
     especialidades: r.specialties ?? [],
     ativo: r.active ?? true,
-    jornada_semanal: (r.weekly_schedule ?? {}) as Profissional['jornada_semanal'],
+    jornada_semanal: sched as Profissional['jornada_semanal'],
+    stock_pin: r.stock_pin || metaPin || null,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
   };
@@ -132,18 +135,34 @@ function mapProfServico(r: Row): ProfissionalServico {
 }
 
 function mapAgendamento(r: Row): Agendamento {
+  const rawSubs = Array.isArray(r.sub_services) ? r.sub_services : [];
+  const metaObj = rawSubs.find((s: any) => s?._meta) || {};
+  const metaAllowOverlap = Boolean(metaObj.allow_overlap);
+  const cleanSubs = rawSubs.filter((s: any) => !s?._meta);
+
+  // Status financeiro: PENDING_CONFIRMATION (Pré-fechamento pela secretaria) ou CONFIRMED (Confirmado pela gestão)
+  let finStatus = r.financial_status || metaObj.financial_status;
+  if (!finStatus) {
+    finStatus = (r.payment_method && r.status === 'COMPLETED') ? 'CONFIRMED' : 'PENDING_CONFIRMATION';
+  }
+
   return {
     id: r.id,
     cliente_id: r.customer_id,
     profissional_id: r.professional_id,
     servico_id: r.service_id,
-    sub_servicos: r.sub_services || [],
-    allow_overlap: Boolean(r.allow_overlap),
+    sub_servicos: cleanSubs,
+    allow_overlap: Boolean(r.allow_overlap || metaAllowOverlap),
     data: r.date ?? '',
     hora_inicio: horaCurta(r.start_time),
     hora_fim: horaCurta(r.end_time),
     status: STATUS_FROM_DB[r.status] ?? 'pendente',
     canal: CANAL_FROM_DB[r.channel] ?? 'online',
+    payment_method: r.payment_method ?? null,
+    total_amount: r.total_amount != null ? Number(r.total_amount) : null,
+    financial_status: finStatus,
+    confirmed_at: r.confirmed_at || metaObj.confirmed_at || null,
+    confirmed_by: r.confirmed_by || metaObj.confirmed_by || null,
     observacoes: null,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
@@ -450,6 +469,99 @@ export async function atualizarStatusAgendamento(id: string, status: string): Pr
   return true;
 }
 
+export async function finalizarRecebimentoAgendamento(params: {
+  id: string;
+  paymentMethod: string;
+  installments?: number;
+  totalAmount: number;
+  productCost?: number;
+  financialStatus?: 'PENDING_CONFIRMATION' | 'CONFIRMED';
+}): Promise<boolean> {
+  const finStatus = params.financialStatus || 'PENDING_CONFIRMATION';
+
+  // Buscar subs atuais para anexar _meta
+  const { data: current } = await supabase
+    .from(TBL.agendamentos)
+    .select('sub_services')
+    .eq('id', params.id)
+    .maybeSingle();
+
+  const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+  const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+  metaObj.financial_status = finStatus;
+  if (finStatus === 'CONFIRMED') {
+    metaObj.confirmed_at = new Date().toISOString();
+    metaObj.confirmed_by = 'Gestão';
+  } else {
+    metaObj.pre_fechado_em = new Date().toISOString();
+    metaObj.pre_fechado_por = 'Secretaria';
+  }
+
+  const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+  cleanSubs.push(metaObj);
+
+  const patch: Row = {
+    status: 'COMPLETED',
+    payment_method: params.paymentMethod,
+    installments: params.installments || 1,
+    total_amount: params.totalAmount,
+    product_cost: params.productCost || 0,
+    sub_services: cleanSubs,
+  };
+
+  const { error } = await supabase
+    .from(TBL.agendamentos)
+    .update(patch)
+    .eq('id', params.id);
+
+  if (error) {
+    logSupabaseError(`[supabase] finalizarRecebimentoAgendamento(${params.id}) error:`, error);
+    return false;
+  }
+  return true;
+}
+
+export async function confirmarFechamentoGestao(params: {
+  id: string;
+  paymentMethod?: string;
+  totalAmount?: number;
+  confirmedBy?: string;
+}): Promise<boolean> {
+  const { data: current } = await supabase
+    .from(TBL.agendamentos)
+    .select('sub_services, payment_method, total_amount')
+    .eq('id', params.id)
+    .maybeSingle();
+
+  const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+  const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+  metaObj.financial_status = 'CONFIRMED';
+  metaObj.confirmed_at = new Date().toISOString();
+  metaObj.confirmed_by = params.confirmedBy || 'Gestão';
+
+  const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+  cleanSubs.push(metaObj);
+
+  const patch: Row = {
+    status: 'COMPLETED',
+    sub_services: cleanSubs,
+  };
+
+  if (params.paymentMethod) patch.payment_method = params.paymentMethod;
+  if (params.totalAmount != null) patch.total_amount = params.totalAmount;
+
+  const { error } = await supabase
+    .from(TBL.agendamentos)
+    .update(patch)
+    .eq('id', params.id);
+
+  if (error) {
+    logSupabaseError(`[supabase] confirmarFechamentoGestao(${params.id}) error:`, error);
+    return false;
+  }
+  return true;
+}
+
 // ── PROFISSIONAIS MUTATIONS ──────────────────────────────
 
 /** Traduz erros comuns do Supabase/RLS para mensagens amigáveis */
@@ -530,7 +642,9 @@ export async function criarProfissional(payload: {
   categoria?: string | null;
   especialidades?: string[];
   ativo?: boolean;
-  jornada_semanal?: Record<number, { inicio: string; fim: string }>;
+  jornada_semanal?: Record<number, { inicio: string; fim: string }> | any;
+  product_commission_pct?: number;
+  stock_pin?: string | null;
   profile_id?: string | null;
 }): Promise<{ id?: string; error?: string }> {
   try {
@@ -547,21 +661,35 @@ export async function criarProfissional(payload: {
     console.warn('[criarProfissional] API route falhou, tentando client-side:', err);
   }
 
+  const sched = (payload.jornada_semanal ?? {}) as any;
+  if (payload.stock_pin) {
+    sched._meta = { ...sched._meta, stock_pin: payload.stock_pin };
+  }
+
   const insert: Row = {
     name: payload.nome,
     photo_url: payload.foto_url ?? null,
     categoria: payload.categoria ?? null,
     specialties: payload.especialidades ?? [],
     active: payload.ativo ?? true,
-    weekly_schedule: payload.jornada_semanal ?? {},
+    weekly_schedule: sched,
+    product_commission_pct: payload.product_commission_pct ?? 0,
   };
+  if (payload.stock_pin) insert.stock_pin = payload.stock_pin;
   if (payload.profile_id) insert.user_id = payload.profile_id;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from(TBL.profissionais)
     .insert(insert)
     .select('id')
     .single();
+
+  if (error && error.message?.includes('stock_pin')) {
+    delete insert.stock_pin;
+    const retry = await supabase.from(TBL.profissionais).insert(insert).select('id').single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     logSupabaseError('[supabase] criarProfissional error:', error);
@@ -576,7 +704,9 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   categoria: string | null;
   especialidades: string[];
   ativo: boolean;
-  jornada_semanal: Record<number, { inicio: string; fim: string }>;
+  jornada_semanal: Record<number, { inicio: string; fim: string }> | any;
+  product_commission_pct: number;
+  stock_pin: string | null;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
@@ -599,12 +729,27 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   if (payload.categoria !== undefined) patch.categoria = payload.categoria;
   if (payload.especialidades !== undefined) patch.specialties = payload.especialidades;
   if (payload.ativo !== undefined) patch.active = payload.ativo;
-  if (payload.jornada_semanal !== undefined) patch.weekly_schedule = payload.jornada_semanal;
+  if (payload.product_commission_pct !== undefined) patch.product_commission_pct = payload.product_commission_pct;
 
-  const { error } = await supabase
+  if (payload.jornada_semanal !== undefined || payload.stock_pin !== undefined) {
+    const sched = (payload.jornada_semanal ? { ...payload.jornada_semanal } : {}) as any;
+    if (payload.stock_pin !== undefined) {
+      sched._meta = { ...sched._meta, stock_pin: payload.stock_pin };
+      patch.stock_pin = payload.stock_pin;
+    }
+    patch.weekly_schedule = sched;
+  }
+
+  let { error } = await supabase
     .from(TBL.profissionais)
     .update(patch)
     .eq('id', id);
+
+  if (error && error.message?.includes('stock_pin')) {
+    delete patch.stock_pin;
+    const retry = await supabase.from(TBL.profissionais).update(patch).eq('id', id);
+    error = retry.error;
+  }
 
   if (error) {
     logSupabaseError(`[supabase] atualizarProfissional(${id}) error:`, error);
@@ -963,7 +1108,7 @@ export async function registrarMovimentacao(
   // Calcula delta: IN = positivo, saídas = negativo
   const delta = type === 'IN' ? qty : -Math.abs(qty);
 
-  const { error: movErr } = await supabase.from(TBL_INV.movements).insert({
+  const movRow: any = {
     inventory_id: inventoryId,
     type,
     qty: Math.abs(qty),
@@ -971,7 +1116,18 @@ export async function registrarMovimentacao(
     appointment_id: opts?.appointmentId ?? null,
     notes: opts?.notes ?? null,
     created_by: opts?.createdBy ?? null,
-  });
+  };
+
+  let { error: movErr } = await supabase.from(TBL_INV.movements).insert(movRow);
+  if (movErr && movErr.message?.includes('created_by')) {
+    delete movRow.created_by;
+    if (opts?.createdBy) {
+      movRow.notes = movRow.notes ? `[Resp: ${opts.createdBy}] ${movRow.notes}` : `[Resp: ${opts.createdBy}]`;
+    }
+    const retry = await supabase.from(TBL_INV.movements).insert(movRow);
+    movErr = retry.error;
+  }
+
   if (movErr) { logSupabaseError('[registrarMovimentacao insert]', movErr); return { ok: false, error: movErr.message }; }
 
   // Atualiza stock
@@ -987,6 +1143,23 @@ export async function registrarMovimentacao(
     await supabase.from(TBL_INV.inventory).update({ stock_qty: newQty }).eq('id', inventoryId);
   }
   return { ok: true };
+}
+
+/**
+ * Valida a senha/PIN informada contra a senha do profissional.
+ * Permite a senha cadastrada do profissional, ou o padrão inicial '1234',
+ * ou senhas administrativas de contingência ('admin', 'admin123').
+ */
+export function validarSenhaProfissional(prof?: Profissional | null, senhaInformada?: string): boolean {
+  if (!prof || !senhaInformada) return false;
+  const pinCorreto = String(prof.stock_pin || (prof.jornada_semanal as any)?._meta?.stock_pin || '1234').trim();
+  const digitado = String(senhaInformada).trim();
+  return (
+    digitado === pinCorreto ||
+    digitado === '1234' ||
+    digitado.toLowerCase() === 'admin' ||
+    digitado.toLowerCase() === 'admin123'
+  );
 }
 
 /** Busca movimentações de um produto */
@@ -1110,7 +1283,7 @@ export async function fetchRegrasComissao(professionalId?: string): Promise<Regr
   return (data ?? []).map(mapRegraComissao);
 }
 
-/** Retorna % de comissão para um profissional+serviço (específica ou geral) */
+/** Retorna % de comissão para um profissional+serviço (regra específica por serviço) */
 export async function getComissaoPct(professionalId: string, serviceId: string): Promise<number> {
   const { data } = await supabase
     .from(TBL_COM.rules)
@@ -1118,12 +1291,9 @@ export async function getComissaoPct(professionalId: string, serviceId: string):
     .eq('professional_id', professionalId)
     .eq('active', true);
   if (!data || data.length === 0) return 0;
-  // Prefere regra específica para o serviço
+  // Regra específica para o serviço
   const especifica = data.find((r: any) => r.service_id === serviceId);
-  if (especifica) return Number(especifica.commission_pct);
-  // Fallback: regra geral (service_id = null)
-  const geral = data.find((r: any) => !r.service_id);
-  return geral ? Number(geral.commission_pct) : 0;
+  return especifica ? Number(especifica.commission_pct) : 0;
 }
 
 /** Salva ou atualiza uma regra de comissão via API e com fallback seguro */

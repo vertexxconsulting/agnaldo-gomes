@@ -42,6 +42,7 @@ export interface Profissional {
   criado_em: string;
   atualizado_em?: string;
   product_commission_pct?: number; // Comissão padrão sobre venda de produtos
+  stock_pin?: string | null; // Senha/PIN própria do profissional para movimentações de estoque
 }
 
 export interface JornadaSemanal {
@@ -82,6 +83,11 @@ export interface Agendamento {
   status: StatusAgendamento;
   canal: CanalAgendamento;
   allow_overlap?: boolean;
+  payment_method?: string | null;
+  total_amount?: number | null;
+  financial_status?: 'PENDING_CONFIRMATION' | 'CONFIRMED' | string;
+  confirmed_at?: string | null;
+  confirmed_by?: string | null;
   observacoes?: string | null;
   criado_em: string;
   atualizado_em?: string;
@@ -234,7 +240,7 @@ export interface ConfigTaxas {
 
 export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO' | 'BOLETO';
 
-/** Regra de comissão: geral (service_id null) ou por serviço */
+/** Regra de comissão por serviço */
 export interface RegraComissao {
   id: UUID;
   professional_id: UUID;

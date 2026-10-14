@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Receipt, CheckCircle, AlertTriangle, FileText, Calendar, DollarSign, User } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -22,10 +23,26 @@ interface ServicoInfo {
   servico: string;
   profissional: string;
   valor: number;
+  payment_method?: string | null;
   status: string;
 }
 
-export default function NotasFiscaisPage() {
+// Formata data ISO (YYYY-MM-DD) sem sofrer com desvio de fuso horário UTC
+function formatarDataSegura(dataStr: string) {
+  if (!dataStr) return '';
+  const clean = dataStr.split('T')[0];
+  const partes = clean.split('-');
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+  return dataStr;
+}
+
+function NotasFiscaisContent() {
+  const searchParams = useSearchParams();
+  const cpfParam = searchParams.get('cpf');
+  const agendamentoIdParam = searchParams.get('agendamentoId');
+
   const [cpfBusca, setCpfBusca] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -33,27 +50,31 @@ export default function NotasFiscaisPage() {
   const [cliente, setCliente] = useState<ClienteInfo | null>(null);
   const [servicosRecentes, setServicosRecentes] = useState<ServicoInfo[]>([]);
   const [servicoSelecionado, setServicoSelecionado] = useState<string | null>(null);
+  const [valorFinal, setValorFinal] = useState<string>('');
   const [emitindo, setEmitindo] = useState(false);
   const [notaEmitida, setNotaEmitida] = useState<boolean>(false);
 
-  // Formata CPF enquato digita
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
-    
-    // Aplica máscara (000.000.000-00)
-    if (value.length > 9) {
-      value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    } else if (value.length > 6) {
-      value = value.replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
-    } else if (value.length > 3) {
-      value = value.replace(/(\d{3})(\d{3})/, "$1.$2");
+  // Formata CPF enquanto digita
+  const aplicarMascaraCpf = (valor: string) => {
+    let clean = valor.replace(/\D/g, '');
+    if (clean.length > 11) clean = clean.slice(0, 11);
+    if (clean.length > 9) {
+      return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    } else if (clean.length > 6) {
+      return clean.replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+    } else if (clean.length > 3) {
+      return clean.replace(/(\d{3})(\d{3})/, "$1.$2");
     }
-    setCpfBusca(value);
+    return clean;
   };
 
-  const buscarCliente = async () => {
-    const cpfLimpo = cpfBusca.replace(/\D/g, '');
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCpfBusca(aplicarMascaraCpf(e.target.value));
+  };
+
+  const buscarCliente = async (cpfCustom?: string, targetAgendamentoId?: string) => {
+    const alvo = cpfCustom || cpfBusca;
+    const cpfLimpo = alvo.replace(/\D/g, '');
     if (cpfLimpo.length !== 11) {
       setErro("Digite um CPF válido com 11 dígitos.");
       return;
@@ -76,9 +97,17 @@ export default function NotasFiscaisPage() {
 
       if (data.cliente) {
         setCliente(data.cliente);
-        setServicosRecentes(data.servicos || []);
-        if (data.servicos && data.servicos.length > 0) {
-          setServicoSelecionado(data.servicos[0].id);
+        const servicos: ServicoInfo[] = data.servicos || [];
+        setServicosRecentes(servicos);
+
+        const idPreselecionado = targetAgendamentoId || agendamentoIdParam;
+        if (idPreselecionado && servicos.some(s => s.id === idPreselecionado)) {
+          setServicoSelecionado(idPreselecionado);
+          const sel = servicos.find(s => s.id === idPreselecionado);
+          if (sel) setValorFinal(Number(sel.valor).toFixed(2));
+        } else if (servicos.length > 0) {
+          setServicoSelecionado(servicos[0].id);
+          setValorFinal(Number(servicos[0].valor).toFixed(2));
         }
       } else {
         setErro("Cliente não encontrado com este CPF.");
@@ -90,20 +119,43 @@ export default function NotasFiscaisPage() {
     }
   };
 
+  // Se veio parâmetro de CPF pela URL, auto-executa busca
+  useEffect(() => {
+    if (cpfParam) {
+      const formatado = aplicarMascaraCpf(cpfParam);
+      setCpfBusca(formatado);
+      buscarCliente(cpfParam, agendamentoIdParam || undefined);
+    }
+  }, [cpfParam]);
+
+  // Atualiza o valor editável quando o serviço selecionado muda
+  const handleSelecionarServico = (id: string) => {
+    setServicoSelecionado(id);
+    const s = servicosRecentes.find(item => item.id === id);
+    if (s) {
+      setValorFinal(Number(s.valor).toFixed(2));
+    }
+  };
+
+  const selectedService = servicosRecentes.find(s => s.id === servicoSelecionado);
+  const valorEfetivo = valorFinal !== '' ? parseFloat(valorFinal.replace(',', '.')) : (selectedService?.valor || 0);
+
   const emitirNota = async () => {
     if (!cliente || !servicoSelecionado) return;
+    if (isNaN(valorEfetivo) || valorEfetivo <= 0) {
+      alert('O valor da nota deve ser maior que zero.');
+      return;
+    }
     
     setEmitindo(true);
     try {
-      const servico = servicosRecentes.find(s => s.id === servicoSelecionado);
-      
       const res = await fetch('/api/admin/notas/emitir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clienteId: cliente.id,
-          agendamentoId: servico?.id,
-          valor: servico?.valor
+          agendamentoId: selectedService?.id,
+          valor: valorEfetivo
         })
       });
 
@@ -118,8 +170,6 @@ export default function NotasFiscaisPage() {
       setEmitindo(false);
     }
   };
-
-  const selectedService = servicosRecentes.find(s => s.id === servicoSelecionado);
 
   const imprimirCupom = () => {
     if (!cliente || !selectedService) return;
@@ -169,7 +219,7 @@ export default function NotasFiscaisPage() {
           <div>${selectedService.servico}</div>
           <div class="mt">Profissional: ${selectedService.profissional}</div>
           <div class="divider"></div>
-          <div class="bold" style="font-size: 16px; text-align: right;">TOTAL: R$ ${selectedService.valor.toFixed(2)}</div>
+          <div class="bold" style="font-size: 16px; text-align: right;">TOTAL: R$ ${valorEfetivo.toFixed(2)}</div>
           <div class="divider"></div>
           <div class="center" style="font-size: 10px; margin-top: 15px;">
             Documento emitido por ME ou EPP optante pelo Simples Nacional.<br/>
@@ -217,7 +267,7 @@ export default function NotasFiscaisPage() {
               className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold"
             />
           </div>
-          <Button onClick={buscarCliente} disabled={loading} variant="primary" className="w-full md:w-auto h-[46px] px-8">
+          <Button onClick={() => buscarCliente()} disabled={loading} variant="primary" className="w-full md:w-auto h-[46px] px-8">
             {loading ? 'Buscando...' : 'Buscar'}
           </Button>
         </div>
@@ -278,16 +328,19 @@ export default function NotasFiscaisPage() {
                         name="servico" 
                         className="mt-1"
                         checked={servicoSelecionado === servico.id}
-                        onChange={() => setServicoSelecionado(servico.id)}
+                        onChange={() => handleSelecionarServico(servico.id)}
                       />
                       <div className="flex-1">
                         <div className="flex justify-between font-bold text-sm">
                           <span>{servico.servico}</span>
-                          <span className="text-emerald-500">R$ {servico.valor.toFixed(2)}</span>
+                          <span className="text-emerald-500">R$ {Number(servico.valor).toFixed(2)}</span>
                         </div>
-                        <div className="text-xs text-foreground/60 mt-1 flex gap-3">
-                          <span className="flex items-center gap-1"><Calendar size={12}/> {new Date(servico.data).toLocaleDateString('pt-BR')} às {servico.hora}</span>
+                        <div className="text-xs text-foreground/60 mt-1 flex flex-wrap gap-3">
+                          <span className="flex items-center gap-1"><Calendar size={12}/> {formatarDataSegura(servico.data)} às {servico.hora}</span>
                           <span className="flex items-center gap-1"><User size={12}/> {servico.profissional}</span>
+                          {servico.payment_method && (
+                            <span className="px-1.5 py-0.5 rounded bg-foreground/10 text-[10px] font-medium">💳 {servico.payment_method}</span>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -315,9 +368,22 @@ export default function NotasFiscaisPage() {
                     <p><span className="text-foreground/50">CPF/CNPJ:</span> {cliente.cpf || 'PENDENTE'}</p>
                     <p><span className="text-foreground/50">ENDEREÇO:</span> {cliente.endereco || 'PENDENTE'}</p>
                   </div>
-                  <div className="border-t border-dashed border-foreground/20 pt-3 space-y-1">
+                  <div className="border-t border-dashed border-foreground/20 pt-3 space-y-2">
                     <p><span className="text-foreground/50">DESCRIÇÃO:</span> Referente ao serviço de {selectedService.servico}</p>
-                    <p><span className="text-foreground/50">VALOR TOTAL:</span> R$ {selectedService.valor.toFixed(2)}</p>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-foreground/50">VALOR TOTAL:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={valorFinal}
+                          onChange={(e) => setValorFinal(e.target.value)}
+                          className="w-28 text-right bg-background border border-gold/50 rounded px-2 py-1 font-bold text-foreground focus:outline-none focus:border-gold"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -346,11 +412,11 @@ export default function NotasFiscaisPage() {
               ) : (
                 <Button 
                   onClick={emitirNota} 
-                  disabled={!selectedService || !cliente.cpf || emitindo} 
+                  disabled={!selectedService || !cliente.cpf || emitindo || isNaN(valorEfetivo) || valorEfetivo <= 0} 
                   variant="primary" 
                   className="w-full h-[54px] text-lg font-bold"
                 >
-                  {emitindo ? 'Emitindo Nota...' : 'Emitir Nota Fiscal (Asaas)'}
+                  {emitindo ? 'Emitindo Nota...' : `Emitir Nota Fiscal (R$ ${valorEfetivo.toFixed(2)})`}
                 </Button>
               )}
             </div>
@@ -358,5 +424,13 @@ export default function NotasFiscaisPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NotasFiscaisPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-foreground/60">Carregando Emissão de Notas Fiscais...</div>}>
+      <NotasFiscaisContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, DollarSign, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -167,6 +167,8 @@ export default function ProfissionaisPage() {
       }
     }
 
+    const pinDigitado = (form.get('stock_pin') as string)?.trim() || '1234';
+
     const profissionalData = {
       nome: form.get('nome') as string,
       foto_url: finalFotoUrl,
@@ -175,6 +177,7 @@ export default function ProfissionaisPage() {
       ativo: true,
       jornada_semanal: jornada,
       product_commission_pct: Number(form.get('product_commission_pct')) || 0,
+      stock_pin: pinDigitado,
     };
 
     let profissionalId: string;
@@ -350,7 +353,7 @@ export default function ProfissionaisPage() {
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <div className="sm:col-span-8">
+                <div className="sm:col-span-5">
                   <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
@@ -398,12 +401,28 @@ export default function ProfissionaisPage() {
                     )}
                   </div>
                 </div>
-                <div className="sm:col-span-4">
+                <div className="sm:col-span-3">
                   <label className="block text-xs text-foreground/60 mb-1">Comissão Prod. (%)</label>
                   <div className="relative">
                     <input name="product_commission_pct" type="number" min="0" max="100" step="0.5" defaultValue={editando?.product_commission_pct ?? 0} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold text-xs">%</span>
                   </div>
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="block text-xs text-foreground/60 mb-1 flex items-center gap-1">
+                    <Lock size={12} className="text-gold" /> Senha / PIN Estoque *
+                  </label>
+                  <div className="relative">
+                    <input 
+                      name="stock_pin" 
+                      type="text" 
+                      defaultValue={editando?.stock_pin ?? '1234'} 
+                      required
+                      placeholder="Ex: 1234" 
+                      className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm font-mono focus:outline-none focus:border-gold" 
+                    />
+                  </div>
+                  <p className="text-[10px] text-foreground/40 mt-1">Senha pessoal para dar entrada/baixa no estoque.</p>
                 </div>
                 <div className="sm:col-span-7">
                   <label className="block text-xs text-foreground/60 mb-2">Especialidades</label>
@@ -738,6 +757,9 @@ export default function ProfissionaisPage() {
                       {prof.product_commission_pct !== undefined && prof.product_commission_pct > 0 && (
                         <span className="flex items-center gap-1"><DollarSign size={12} className="text-amber-400" /> {prof.product_commission_pct}% em produtos</span>
                       )}
+                      <span className="flex items-center gap-1 text-gold/90 font-medium" title="PIN individual para autorizar entradas e baixas de estoque">
+                        <Lock size={12} className="text-gold" /> PIN Estoque: <span className="font-mono bg-gold/10 px-1.5 py-0.5 rounded text-gold">{prof.stock_pin || '1234'}</span>
+                      </span>
                     </div>
 
                     {/* Expandido */}

@@ -26,6 +26,7 @@ export async function GET(req: Request) {
       .from('salon_commission_rules')
       .select('*')
       .eq('active', true)
+      .not('service_id', 'is', null)
       .order('created_at', { ascending: true });
 
     if (profId) {
@@ -53,6 +54,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Profissional é obrigatório.' }, { status: 400 });
     }
 
+    if (!service_id) {
+      return NextResponse.json({ error: 'Serviço é obrigatório. O sistema utiliza apenas regras de comissão por serviço.' }, { status: 400 });
+    }
+
     const pct = Number(commission_pct);
     if (isNaN(pct) || pct <= 0 || pct > 100) {
       return NextResponse.json({ error: 'Percentual de comissão deve estar entre 1 e 100.' }, { status: 400 });
@@ -60,7 +65,7 @@ export async function POST(req: Request) {
 
     const rowData = {
       professional_id,
-      service_id: service_id || null,
+      service_id,
       commission_pct: pct,
       active: active ?? true,
       notes: notes || null,
@@ -82,16 +87,11 @@ export async function POST(req: Request) {
     }
 
     // 2. Se não veio ID, verifica se já existe regra para este par (profissional, serviço)
-    let checkQuery = supabaseAdmin
+    const checkQuery = supabaseAdmin
       .from('salon_commission_rules')
       .select('id')
-      .eq('professional_id', professional_id);
-
-    if (rowData.service_id) {
-      checkQuery = checkQuery.eq('service_id', rowData.service_id);
-    } else {
-      checkQuery = checkQuery.is('service_id', null);
-    }
+      .eq('professional_id', professional_id)
+      .eq('service_id', service_id);
 
     const { data: existing, error: checkError } = await checkQuery.maybeSingle();
 

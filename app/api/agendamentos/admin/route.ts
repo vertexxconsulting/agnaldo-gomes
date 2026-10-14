@@ -32,6 +32,12 @@ export async function GET(req: Request) {
   }
 }
 
+function appointmentAllowsOverlap(app: any): boolean {
+  if (app?.allow_overlap === true) return true;
+  if (Array.isArray(app?.sub_services) && app.sub_services.some((s: any) => s?._meta && s?.allow_overlap)) return true;
+  return false;
+}
+
 export async function POST(req: Request) {
   const auth = await requireStudioAuth();
   if (auth.error) return auth.error;
@@ -56,12 +62,16 @@ export async function POST(req: Request) {
     else if (statusClean === 'cancelado' || statusClean === 'cancelled') statusDb = 'CANCELLED';
     else if (statusClean === 'no_show') statusDb = 'NO_SHOW';
 
-    const subServicesFiltered =
+    let subServicesFiltered =
       Array.isArray(sub_servicos) && sub_servicos.length > 0
         ? sub_servicos.filter((sub: any) =>
             typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''
           )
         : [];
+
+    if (allow_overlap) {
+      subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), { _meta: true, allow_overlap: true }];
+    }
 
     interface AppointmentPayload {
       customer_id: string;
@@ -89,7 +99,7 @@ export async function POST(req: Request) {
           .maybeSingle();
         let totalMins = Number(srvData?.duration_minutes) || 60;
         if (subServicesFiltered.length > 0) {
-          const subIds = subServicesFiltered.map((s: any) => typeof s === 'string' ? s : s.id);
+          const subIds = subServicesFiltered.filter((s: any) => !s?._meta).map((s: any) => typeof s === 'string' ? s : s.id);
           const { data: subsData } = await auth.supabase!
             .from('salon_services')
             .select('duration_minutes')
@@ -122,7 +132,7 @@ export async function POST(req: Request) {
       allow_overlap: Boolean(allow_overlap),
     };
 
-    // sub_services: só inclui se houver valores (coluna precisa existir no banco)
+    // sub_services: só inclui se houver valores
     if (subServicesFiltered.length > 0) {
       firstPayload.sub_services = subServicesFiltered;
     }
@@ -170,16 +180,18 @@ export async function POST(req: Request) {
     const datesToCheck = payloads.map(p => p.date);
     const { data: allConflicts } = await auth.supabase!
       .from('salon_appointments')
-      .select('date, start_time, end_time')
+      .select('*')
       .eq('professional_id', profissional_id)
       .in('date', datesToCheck)
       .neq('status', 'CANCELLED');
 
-
-    // Filtra apenas os payloads que NÃO conflitam com horários existentes (a menos que seja encaixe)
+    // Filtra apenas os payloads que NÃO conflitam com horários existentes (a menos que seja encaixe ou que o agendamento conflitante permita sobreposição/pausa)
     const validPayloads = allow_overlap ? payloads : payloads.filter(p => {
       const conflictsForDate = allConflicts?.filter((c: any) => c.date === p.date) || [];
       const hasOverlap = conflictsForDate.some((app: any) => {
+        // Se o agendamento já existente no horário permite sobreposição/encaixe, não bloqueia este atendimento
+        if (appointmentAllowsOverlap(app)) return false;
+
         const startA = p.start_time;
         const endA = p.end_time;
         const startB = app.start_time;
@@ -301,17 +313,18 @@ export async function PUT(req: Request) {
       }
     }
 
-    // Validação de conflito de horário (a menos que seja permitido encaixe)
+    // Validação de conflito de horário (a menos que seja permitido encaixe ou que o agendamento conflitante permita sobreposição/pausa)
     if (data && hora_inicio && calculatedHoraFim && profissional_id && !allow_overlap) {
       const { data: allConflicts } = await auth.supabase!
         .from('salon_appointments')
-        .select('id, date, start_time, end_time')
+        .select('*')
         .eq('professional_id', profissional_id)
         .eq('date', data)
         .neq('id', id)
         .neq('status', 'CANCELLED');
 
       const hasOverlap = (allConflicts || []).some((app: any) => {
+        if (appointmentAllowsOverlap(app)) return false;
         const startA = hora_inicio;
         const endA = calculatedHoraFim;
         const startB = app.start_time;
@@ -344,10 +357,17 @@ export async function PUT(req: Request) {
       patch.status = statusDb;
     }
 
-    if (Array.isArray(sub_servicos)) {
-      const subServicesFiltered = sub_servicos.filter((sub: any) =>
-        typeof sub === 'string' ? sub.trim() !== '' : sub?.id?.trim() !== ''
-      );
+    if (Array.isArray(sub_servicos) || allow_overlap !== undefined) {
+      let subServicesFiltered = Array.isArray(sub_servicos)
+        ? sub_servicos.filter((sub: any) =>
+            typeof sub === 'string' ? sub.trim() !== '' : sub?.id?.trim() !== ''
+          )
+        : [];
+      if (allow_overlap) {
+        subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), { _meta: true, allow_overlap: true }];
+      } else if (allow_overlap === false) {
+        subServicesFiltered = subServicesFiltered.filter((s: any) => !s?._meta);
+      }
       patch.sub_services = subServicesFiltered;
     }
 

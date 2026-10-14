@@ -56,10 +56,15 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal } = body;
+    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal, stock_pin, product_commission_pct } = body;
 
     if (!nome) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
+    }
+
+    const sched = (jornada_semanal ? { ...jornada_semanal } : {}) as any;
+    if (stock_pin !== undefined) {
+      sched._meta = { ...sched._meta, stock_pin: stock_pin ? String(stock_pin).trim() : null };
     }
 
     const payload: Record<string, any> = {
@@ -68,19 +73,38 @@ export async function POST(req: Request) {
       categoria: categoria || null,
       specialties: Array.isArray(especialidades) ? especialidades : [],
       active: ativo ?? true,
-      weekly_schedule: jornada_semanal || {},
+      weekly_schedule: sched,
     };
+
+    if (product_commission_pct !== undefined) {
+      payload.product_commission_pct = Number(product_commission_pct) || 0;
+    }
+    if (stock_pin !== undefined) {
+      payload.stock_pin = stock_pin ? String(stock_pin).trim() : null;
+    }
 
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isUUID) {
       // Usando supabaseAdmin pois a role de Secretaria não tem update no RLS
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('salon_professionals')
         .update(payload)
         .eq('id', id)
         .select('*')
         .single();
+
+      if (error && error.message?.includes('stock_pin')) {
+        delete payload.stock_pin;
+        const retry = await supabaseAdmin
+          .from('salon_professionals')
+          .update(payload)
+          .eq('id', id)
+          .select('*')
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error('[api/profissionais] Erro ao atualizar profissional:', error);
@@ -89,11 +113,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, profissional: data });
     } else {
       // Usando supabaseAdmin pois a role de Secretaria não tem insert no RLS
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('salon_professionals')
         .insert(payload)
         .select('*')
         .single();
+
+      if (error && error.message?.includes('stock_pin')) {
+        delete payload.stock_pin;
+        const retry = await supabaseAdmin
+          .from('salon_professionals')
+          .insert(payload)
+          .select('*')
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error('[api/profissionais] Erro ao criar profissional:', error);
