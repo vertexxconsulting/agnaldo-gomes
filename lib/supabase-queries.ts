@@ -146,12 +146,26 @@ function mapAgendamento(r: Row): Agendamento {
     finStatus = (r.payment_method && r.status === 'COMPLETED') ? 'CONFIRMED' : 'PENDING_CONFIRMATION';
   }
 
+  // Auxiliares (assistant_ids na coluna dedicada ou em _meta.auxiliares_ids)
+  const auxiliares: string[] = Array.isArray(r.assistant_ids) && r.assistant_ids.length > 0
+    ? r.assistant_ids
+    : (Array.isArray(metaObj.auxiliares_ids) ? metaObj.auxiliares_ids : []);
+
+  const prodCost = r.product_cost != null 
+    ? Number(r.product_cost) 
+    : (metaObj.product_cost != null ? Number(metaObj.product_cost) : 0);
+
+  const insumosDet = Array.isArray(metaObj.insumos_procedimento) 
+    ? metaObj.insumos_procedimento 
+    : [];
+
   return {
     id: r.id,
     cliente_id: r.customer_id,
     profissional_id: r.professional_id,
     servico_id: r.service_id,
     sub_servicos: cleanSubs,
+    auxiliares_ids: auxiliares,
     allow_overlap: Boolean(r.allow_overlap || metaAllowOverlap),
     data: r.date ?? '',
     hora_inicio: horaCurta(r.start_time),
@@ -160,6 +174,9 @@ function mapAgendamento(r: Row): Agendamento {
     canal: CANAL_FROM_DB[r.channel] ?? 'online',
     payment_method: r.payment_method ?? null,
     total_amount: r.total_amount != null ? Number(r.total_amount) : null,
+    product_cost: prodCost,
+    insumos_detalhes: insumosDet,
+    split_comissao: metaObj.split_comissao || undefined,
     financial_status: finStatus,
     confirmed_at: r.confirmed_at || metaObj.confirmed_at || null,
     confirmed_by: r.confirmed_by || metaObj.confirmed_by || null,
@@ -475,6 +492,9 @@ export async function finalizarRecebimentoAgendamento(params: {
   installments?: number;
   totalAmount: number;
   productCost?: number;
+  insumosDetalhes?: InsumoAtendimento[] | any[];
+  splitComissao?: Record<string, number>;
+  auxiliaresIds?: string[];
   financialStatus?: 'PENDING_CONFIRMATION' | 'CONFIRMED';
 }): Promise<boolean> {
   const finStatus = params.financialStatus || 'PENDING_CONFIRMATION';
@@ -489,6 +509,17 @@ export async function finalizarRecebimentoAgendamento(params: {
   const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
   const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
   metaObj.financial_status = finStatus;
+  metaObj.product_cost = params.productCost || 0;
+  if (params.insumosDetalhes && params.insumosDetalhes.length > 0) {
+    metaObj.insumos_procedimento = params.insumosDetalhes;
+  }
+  if (params.splitComissao) {
+    metaObj.split_comissao = params.splitComissao;
+  }
+  if (params.auxiliaresIds && params.auxiliaresIds.length > 0) {
+    metaObj.auxiliares_ids = params.auxiliaresIds;
+  }
+
   if (finStatus === 'CONFIRMED') {
     metaObj.confirmed_at = new Date().toISOString();
     metaObj.confirmed_by = 'Gestão';
@@ -509,12 +540,30 @@ export async function finalizarRecebimentoAgendamento(params: {
     sub_services: cleanSubs,
   };
 
+  if (params.auxiliaresIds && params.auxiliaresIds.length > 0) {
+    patch.assistant_ids = params.auxiliaresIds;
+  }
+
   const { error } = await supabase
     .from(TBL.agendamentos)
     .update(patch)
     .eq('id', params.id);
 
   if (error) {
+    if (error.message?.includes('assistant_ids') || error.message?.includes('product_cost')) {
+      const fallbackPatch = { ...patch };
+      delete fallbackPatch.assistant_ids;
+      delete fallbackPatch.product_cost;
+      const { error: errRetry } = await supabase
+        .from(TBL.agendamentos)
+        .update(fallbackPatch)
+        .eq('id', params.id);
+      if (errRetry) {
+        logSupabaseError(`[supabase] finalizarRecebimentoAgendamento retry(${params.id}) error:`, errRetry);
+        return false;
+      }
+      return true;
+    }
     logSupabaseError(`[supabase] finalizarRecebimentoAgendamento(${params.id}) error:`, error);
     return false;
   }
@@ -1606,12 +1655,17 @@ export async function criarComissao(params: {
   appointmentDate: string; // YYYY-MM-DD
   taxasCustom?: PaymentFee[];
   descontarTaxaMaquininha?: boolean;
+  customCommissionAmount?: number;
+  customPct?: number;
+  notes?: string;
 }): Promise<{ ok: boolean; commissionId?: string; error?: string }> {
-  const pct = await getComissaoPct(params.professionalId, params.serviceId);
-  if (pct === 0) return { ok: true }; // sem regra de comissão configurada
+  const pct = params.customPct != null 
+    ? params.customPct 
+    : await getComissaoPct(params.professionalId, params.serviceId);
+
+  if (pct === 0 && params.customCommissionAmount == null) return { ok: true }; // sem regra de comissão configurada
 
   let numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
-  
 
   // 1. Busca regras de taxas e configuração se não foram passadas
   let taxas = params.taxasCustom;
@@ -1631,8 +1685,10 @@ export async function criarComissao(params: {
   const taxaCalc = calcularTaxaMaquininha(params.paymentMethod, numParcelas, params.totalAmount, taxas);
   const valorBaseSplit = descontar ? taxaCalc.valorLiquido : params.totalAmount;
 
-  // 3. Calcula a comissão sobre a base (líquida após taxa da maquininha se ativo)
-  const totalComissao = Number((valorBaseSplit * pct / 100).toFixed(2));
+  // 3. Calcula a comissão sobre a base (líquida após taxa da maquininha se ativo) ou usa valor explícito
+  const totalComissao = params.customCommissionAmount != null
+    ? params.customCommissionAmount
+    : Number((valorBaseSplit * pct / 100).toFixed(2));
   const valorParcela = Number((totalComissao / numParcelas).toFixed(2));
 
   // 4. Insere comissão
@@ -1670,9 +1726,10 @@ export async function criarComissao(params: {
       if (i > 0) due.setMonth(due.getMonth() + i);
     }
 
-    const noteDesc = taxaCalc.valorTaxa > 0
+    const noteTaxa = taxaCalc.valorTaxa > 0
       ? `Taxa ${taxaCalc.regraNome} (${taxaCalc.feePercentage}% = -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaCalc.valorTaxa)})${descontar ? ' descontada da base' : ' (salão absorveu)'}`
       : null;
+    const finalNote = [params.notes, noteTaxa].filter(Boolean).join(' | ') || null;
 
     return {
       commission_id: com.id,
@@ -1682,7 +1739,7 @@ export async function criarComissao(params: {
         : valorParcela,
       due_date: due.toISOString().split('T')[0],
       status: 'PENDING',
-      notes: noteDesc,
+      notes: finalNote,
     };
   });
 
@@ -1690,6 +1747,114 @@ export async function criarComissao(params: {
   if (parcErr) { logSupabaseError('[criarComissao parcelas]', parcErr); }
 
   return { ok: true, commissionId: com.id };
+}
+
+/** 
+ * Cria comissões rateadas para procedimentos compartilhados (Profissional Titular + Auxiliares).
+ * Aplica a regra:
+ * 1. Produto (Fundo Reserva por gramas) é reservado
+ * 2. Comissão calculada pela porcentagem da regra do serviço
+ * 3. Se houver mais de um profissional, reparte a comissão entre todos que fizeram o atendimento
+ * 4. O saldo restante constitui o faturamento líquido do Salão
+ */
+export async function criarComissoesAtendimentoCompartilhado(params: {
+  appointmentId: string;
+  primaryProfessionalId: string;
+  assistantIds?: string[];
+  serviceId: string;
+  totalAmount: number; // Valor cobrado da cliente (ex: R$ 200)
+  productCost?: number; // Custo de produtos por grama (ex: R$ 20)
+  paymentMethod: FormaPagamento;
+  installments: number;
+  appointmentDate: string;
+  taxasCustom?: PaymentFee[];
+  descontarTaxaMaquininha?: boolean;
+  splitPercentages?: Record<string, number>; // Divisão customizada % (opcional)
+}): Promise<{ ok: boolean; error?: string }> {
+  const assistants = (params.assistantIds || []).filter(id => id && id !== params.primaryProfessionalId);
+  const allProfs = [params.primaryProfessionalId, ...assistants];
+  const count = allProfs.length;
+
+  // Se só houver o profissional titular e sem auxiliares, fluxo padrão direto
+  if (count <= 1) {
+    return criarComissao({
+      appointmentId: params.appointmentId,
+      professionalId: params.primaryProfessionalId,
+      serviceId: params.serviceId,
+      totalAmount: params.totalAmount,
+      paymentMethod: params.paymentMethod,
+      installments: params.installments,
+      appointmentDate: params.appointmentDate,
+      taxasCustom: params.taxasCustom,
+      descontarTaxaMaquininha: params.descontarTaxaMaquininha,
+    });
+  }
+
+  // 1. Obter a % de comissão base do serviço para o titular
+  const pctBase = await getComissaoPct(params.primaryProfessionalId, params.serviceId);
+  if (pctBase === 0) return { ok: true };
+
+  // 2. Base de cálculo do procedimento descontando o Fundo Reserva de Produtos
+  const productCost = params.productCost || 0;
+  const baseLiquidaProdutos = Math.max(0, params.totalAmount - productCost);
+
+  let numParcelas = params.paymentMethod === 'CREDITO' ? Math.max(1, params.installments) : 1;
+  let taxas = params.taxasCustom;
+  let descontar = params.descontarTaxaMaquininha;
+
+  if (!taxas || descontar === undefined) {
+    try {
+      const configData = await fetchTaxasPagamento();
+      if (!taxas) taxas = configData.taxas;
+      if (descontar === undefined) descontar = configData.config.descontarTaxaComissao;
+    } catch {
+      descontar = true;
+    }
+  }
+
+  const taxaCalc = calcularTaxaMaquininha(params.paymentMethod, numParcelas, params.totalAmount, taxas);
+  const baseCalculoComissao = descontar 
+    ? Math.max(0, taxaCalc.valorLiquido - productCost) 
+    : baseLiquidaProdutos;
+
+  // Comissão total a ser repartida entre a equipe do procedimento
+  const comissaoTotalEquipe = Number((baseCalculoComissao * pctBase / 100).toFixed(2));
+  if (comissaoTotalEquipe <= 0) return { ok: true };
+
+  // 3. Gerar comissão individual para cada participante
+  for (let i = 0; i < allProfs.length; i++) {
+    const profId = allProfs[i];
+    const isTitular = profId === params.primaryProfessionalId;
+
+    // Percentual de divisão da comissão (default: partes iguais)
+    let sharePct = 100 / count;
+    if (params.splitPercentages && params.splitPercentages[profId] != null) {
+      sharePct = params.splitPercentages[profId];
+    }
+
+    const valorComissao = Number((comissaoTotalEquipe * (sharePct / 100)).toFixed(2));
+    if (valorComissao <= 0) continue;
+
+    const papel = isTitular ? 'Titular do Procedimento' : 'Auxiliar Co-participante';
+    const splitLabel = `${papel} (${sharePct.toFixed(0)}% da comissão dividida)`;
+
+    await criarComissao({
+      appointmentId: params.appointmentId,
+      professionalId: profId,
+      serviceId: params.serviceId,
+      totalAmount: params.totalAmount,
+      paymentMethod: params.paymentMethod,
+      installments: numParcelas,
+      appointmentDate: params.appointmentDate,
+      taxasCustom: taxas,
+      descontarTaxaMaquininha: descontar,
+      customCommissionAmount: valorComissao,
+      customPct: Number((pctBase * (sharePct / 100)).toFixed(2)),
+      notes: splitLabel,
+    });
+  }
+
+  return { ok: true };
 }
 
 /** Mock de comissões com regra de Cartão de Crédito (D+30) e pagamentos imediatos para testes e fallback */
@@ -2078,6 +2243,210 @@ export async function salvarItemComanda(
     return { ok: false, error: error.message };
   }
   return { ok: true };
+}
+
+/**
+ * Salva um insumo aplicado em TEMPO REAL durante o procedimento (direto pelo profissional ou auxiliar).
+ * Atualiza o _meta.insumos_procedimento do agendamento, dá baixa no estoque e sincroniza a comanda.
+ */
+export async function salvarInsumoTempoRealProcedimento(params: {
+  appointmentId: string;
+  insumo: InsumoAtendimento;
+  nomeProfissional?: string;
+  nomeCliente?: string;
+}): Promise<{ ok: boolean; insumosAtualizados: InsumoAtendimento[]; productCost: number; error?: string }> {
+  try {
+    const { data: current } = await supabase
+      .from(TBL.agendamentos)
+      .select('sub_services, product_cost')
+      .eq('id', params.appointmentId)
+      .maybeSingle();
+
+    const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+    const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+    const curList: InsumoAtendimento[] = Array.isArray(metaObj.insumos_procedimento) 
+      ? metaObj.insumos_procedimento 
+      : [];
+
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const itemToAdd: InsumoAtendimento = {
+      ...params.insumo,
+      horario: params.insumo.horario || nowTime,
+    };
+
+    const updatedList = [...curList, itemToAdd];
+    const totalCost = Number(
+      updatedList.reduce((acc, it) => acc + (Number(it.custo_total) || 0), 0).toFixed(2)
+    );
+
+    metaObj.insumos_procedimento = updatedList;
+    metaObj.product_cost = totalCost;
+
+    const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+    cleanSubs.push(metaObj);
+
+    const patch: any = {
+      sub_services: cleanSubs,
+      product_cost: totalCost,
+    };
+
+    const { error: updErr } = await supabase
+      .from(TBL.agendamentos)
+      .update(patch)
+      .eq('id', params.appointmentId);
+
+    if (updErr) {
+      if (updErr.message?.includes('product_cost')) {
+        delete patch.product_cost;
+        await supabase.from(TBL.agendamentos).update(patch).eq('id', params.appointmentId);
+      } else {
+        logSupabaseError('[salvarInsumoTempoRealProcedimento agendamento update]', updErr);
+        return { ok: false, insumosAtualizados: curList, productCost: 0, error: updErr.message };
+      }
+    }
+
+    // 1. Dar baixa no estoque em tempo real
+    try {
+      await registrarMovimentacao(
+        params.insumo.inventory_id,
+        'OUT_PROCEDURE',
+        params.insumo.qty_used,
+        {
+          appointmentId: params.appointmentId,
+          notes: `Aplicação em tempo real (${params.insumo.etapa || 'Procedimento'}) por ${params.nomeProfissional || 'Equipe'} no cliente ${params.nomeCliente || ''}`.trim(),
+          createdBy: params.nomeProfissional,
+        }
+      );
+    } catch (movErr) {
+      console.warn('[salvarInsumoTempoRealProcedimento] Falha ao decrementar estoque:', movErr);
+    }
+
+    // 2. Sincronizar com a comanda de itens
+    try {
+      const totalQty = updatedList
+        .filter(i => i.inventory_id === params.insumo.inventory_id)
+        .reduce((sum, i) => sum + i.qty_used, 0);
+
+      await salvarItemComanda(params.appointmentId, {
+        inventory_id: params.insumo.inventory_id,
+        type: 'INSUMO',
+        qty: totalQty,
+        price: 0,
+      });
+    } catch (comandaErr) {
+      console.warn('[salvarInsumoTempoRealProcedimento] Falha ao sincronizar comanda:', comandaErr);
+    }
+
+    return { ok: true, insumosAtualizados: updatedList, productCost: totalCost };
+  } catch (err: any) {
+    logSupabaseError('[salvarInsumoTempoRealProcedimento]', err);
+    return { ok: false, insumosAtualizados: [], productCost: 0, error: err?.message || 'Erro inesperado' };
+  }
+}
+
+/**
+ * Remove um insumo lançado por engano em tempo real e estorna o estoque correspondente.
+ */
+export async function removerInsumoTempoRealProcedimento(params: {
+  appointmentId: string;
+  index: number;
+  nomeProfissional?: string;
+}): Promise<{ ok: boolean; insumosAtualizados: InsumoAtendimento[]; productCost: number; error?: string }> {
+  try {
+    const { data: current } = await supabase
+      .from(TBL.agendamentos)
+      .select('sub_services, product_cost')
+      .eq('id', params.appointmentId)
+      .maybeSingle();
+
+    const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+    const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+    const curList: InsumoAtendimento[] = Array.isArray(metaObj.insumos_procedimento) 
+      ? metaObj.insumos_procedimento 
+      : [];
+
+    if (params.index < 0 || params.index >= curList.length) {
+      return { ok: false, insumosAtualizados: curList, productCost: Number(metaObj.product_cost || 0), error: 'Índice de insumo inválido' };
+    }
+
+    const itemRemovido = curList[params.index];
+    const updatedList = curList.filter((_, idx) => idx !== params.index);
+    const totalCost = Number(
+      updatedList.reduce((acc, it) => acc + (Number(it.custo_total) || 0), 0).toFixed(2)
+    );
+
+    metaObj.insumos_procedimento = updatedList;
+    metaObj.product_cost = totalCost;
+
+    const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+    cleanSubs.push(metaObj);
+
+    const patch: any = {
+      sub_services: cleanSubs,
+      product_cost: totalCost,
+    };
+
+    const { error: updErr } = await supabase
+      .from(TBL.agendamentos)
+      .update(patch)
+      .eq('id', params.appointmentId);
+
+    if (updErr) {
+      if (updErr.message?.includes('product_cost')) {
+        delete patch.product_cost;
+        await supabase.from(TBL.agendamentos).update(patch).eq('id', params.appointmentId);
+      } else {
+        logSupabaseError('[removerInsumoTempoRealProcedimento]', updErr);
+        return { ok: false, insumosAtualizados: curList, productCost: totalCost, error: updErr.message };
+      }
+    }
+
+    // Estornar estoque
+    try {
+      await registrarMovimentacao(
+        itemRemovido.inventory_id,
+        'IN',
+        itemRemovido.qty_used,
+        {
+          appointmentId: params.appointmentId,
+          notes: `Estorno de insumo (${itemRemovido.name} - ${itemRemovido.qty_used}${itemRemovido.unit}) removido da aplicação em tempo real`,
+          createdBy: params.nomeProfissional,
+        }
+      );
+    } catch (movErr) {
+      console.warn('[removerInsumoTempoRealProcedimento] Falha ao estornar estoque:', movErr);
+    }
+
+    // Sincronizar comanda
+    try {
+      const remainingQty = updatedList
+        .filter(i => i.inventory_id === itemRemovido.inventory_id)
+        .reduce((sum, i) => sum + i.qty_used, 0);
+
+      if (remainingQty > 0) {
+        await salvarItemComanda(params.appointmentId, {
+          inventory_id: itemRemovido.inventory_id,
+          type: 'INSUMO',
+          qty: remainingQty,
+          price: 0,
+        });
+      } else {
+        await supabase
+          .from(TBL.appointment_items)
+          .delete()
+          .eq('appointment_id', params.appointmentId)
+          .eq('inventory_id', itemRemovido.inventory_id)
+          .eq('type', 'INSUMO');
+      }
+    } catch (comandaErr) {
+      console.warn('[removerInsumoTempoRealProcedimento] Falha ao sincronizar comanda:', comandaErr);
+    }
+
+    return { ok: true, insumosAtualizados: updatedList, productCost: totalCost };
+  } catch (err: any) {
+    logSupabaseError('[removerInsumoTempoRealProcedimento]', err);
+    return { ok: false, insumosAtualizados: [], productCost: 0, error: err?.message || 'Erro inesperado' };
+  }
 }
 
 // --------------------------------------------------------------------------------

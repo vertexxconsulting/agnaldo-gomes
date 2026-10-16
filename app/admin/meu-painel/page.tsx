@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent
+  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -13,21 +13,23 @@ import {
   fetchAgendamentos, 
   fetchServicos, 
   fetchEstoque,
+  fetchProfissionais,
   salvarItemComanda,
   fetchItensComanda,
-  atualizarStatusAgendamento
+  atualizarStatusAgendamento,
+  salvarInsumoTempoRealProcedimento,
+  removerInsumoTempoRealProcedimento
 } from '@/lib/supabase-queries';
-import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda } from '@/lib/gestao-types';
+import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
-
-// Mock IDs for the professional (will be replaced by real auth logic)
-const PROFISSIONAL_ID = 'a0000001-0000-0000-0000-000000000001';
 
 export default function MeuPainelPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [selectedProfId, setSelectedProfId] = useState<string>('');
   const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,6 +43,9 @@ export default function MeuPainelPage() {
   const [comandaAtual, setComandaAtual] = useState<ItemComanda[]>([]);
   const [insumoSelecionado, setInsumoSelecionado] = useState('');
   const [insumoQty, setInsumoQty] = useState('');
+  const [insumoEtapa, setInsumoEtapa] = useState('Etapa 1 - Descoloração / Mechas');
+  const [insumoProfId, setInsumoProfId] = useState('');
+  const [insumoLoading, setInsumoLoading] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [produtoQty, setProdutoQty] = useState('1');
   const [produtoDescPct, setProdutoDescPct] = useState('');
@@ -49,11 +54,12 @@ export default function MeuPainelPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [ags, cls, srvs, est] = await Promise.all([
+      const [ags, cls, srvs, est, profs] = await Promise.all([
         fetchAgendamentos({ data: new Date().toISOString().split('T')[0] }),
         fetchClientes(),
         fetchServicos(),
         fetchEstoque(),
+        fetchProfissionais(),
       ]);
       const { data: prods } = await supabase.from('products').select('*').eq('active', true).order('name');
       
@@ -61,6 +67,10 @@ export default function MeuPainelPage() {
       setClientes(cls);
       setServicos(srvs);
       setEstoque(est);
+      setProfissionais(profs || []);
+      if (profs && profs.length > 0) {
+        setSelectedProfId(prev => prev || profs[0].id);
+      }
       setProdutosLoja(prods || []);
       setLoading(false);
     }
@@ -70,10 +80,11 @@ export default function MeuPainelPage() {
   const hoje = new Date().toISOString().split('T')[0];
 
   const meusAgendamentosHoje = useMemo(() => {
+    if (!selectedProfId) return [];
     return agendamentos
-      .filter(a => a.profissional_id === PROFISSIONAL_ID && a.data === hoje)
+      .filter(a => (a.profissional_id === selectedProfId || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(selectedProfId))) && a.data === hoje)
       .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
-  }, [agendamentos, hoje]);
+  }, [agendamentos, hoje, selectedProfId]);
 
   const emAtendimento = meusAgendamentosHoje.filter(a => a.status === 'em_atendimento');
   const proximos = meusAgendamentosHoje.filter(a => a.status === 'pendente' || a.status === 'confirmado');
@@ -99,6 +110,10 @@ export default function MeuPainelPage() {
 
   const abrirModalInsumos = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
+    setInsumoEtapa('Etapa 1 - Descoloração / Mechas');
+    setInsumoProfId(selectedProfId || ag.profissional_id);
+    setInsumoSelecionado('');
+    setInsumoQty('');
     const itens = await fetchItensComanda(ag.id);
     setComandaAtual(itens);
     setInsumosModalOpen(true);
@@ -117,17 +132,89 @@ export default function MeuPainelPage() {
     const qtyNum = parseFloat(insumoQty);
     if (isNaN(qtyNum) || qtyNum <= 0) return;
 
-    await salvarItemComanda(activeAgendamento.id, {
-      inventory_id: insumoSelecionado,
-      type: 'INSUMO',
-      qty: qtyNum,
-      price: 0
-    });
+    const prod = estoque.find(p => p.id === insumoSelecionado);
+    if (!prod) return;
 
-    const itens = await fetchItensComanda(activeAgendamento.id);
-    setComandaAtual(itens);
-    setInsumoSelecionado('');
-    setInsumoQty('');
+    const custoUn = (prod.price_per_gram && prod.price_per_gram > 0)
+      ? prod.price_per_gram
+      : ((prod.cost_price && prod.cost_price > 0) ? prod.cost_price / 500 : 0.10);
+
+    const profId = insumoProfId || selectedProfId || activeAgendamento.profissional_id;
+    const profNome = profissionais.find(p => p.id === profId)?.nome || 'Profissional';
+    const cliNome = getClienteNome(activeAgendamento.cliente_id);
+
+    const novoItem: InsumoAtendimento = {
+      inventory_id: prod.id,
+      name: prod.name,
+      unit: prod.unit || 'g',
+      price_per_gram: custoUn,
+      custo_unitario: custoUn,
+      qty_used: qtyNum,
+      custo_total: Number((custoUn * qtyNum).toFixed(2)),
+      etapa: insumoEtapa,
+      profissional_id: profId,
+      horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setInsumoLoading(true);
+    try {
+      const res = await salvarInsumoTempoRealProcedimento({
+        appointmentId: activeAgendamento.id,
+        insumo: novoItem,
+        nomeProfissional: profNome,
+        nomeCliente: cliNome,
+      });
+
+      if (res.ok) {
+        const updatedAg: Agendamento = {
+          ...activeAgendamento,
+          insumos_detalhes: res.insumosAtualizados,
+          product_cost: res.productCost,
+        };
+        setActiveAgendamento(updatedAg);
+        setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
+        const itens = await fetchItensComanda(activeAgendamento.id);
+        setComandaAtual(itens);
+        setInsumoSelecionado('');
+        setInsumoQty('');
+      } else {
+        alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+      }
+    } catch (err: any) {
+      alert('Erro ao registrar aplicação: ' + err?.message);
+    } finally {
+      setInsumoLoading(false);
+    }
+  };
+
+  const handleRemoverInsumo = async (index: number) => {
+    if (!activeAgendamento) return;
+    if (!confirm('Deseja estornar esta aplicação do produto?')) return;
+
+    setInsumoLoading(true);
+    try {
+      const res = await removerInsumoTempoRealProcedimento({
+        appointmentId: activeAgendamento.id,
+        index,
+        nomeProfissional: profissionais.find(p => p.id === selectedProfId)?.nome,
+      });
+
+      if (res.ok) {
+        const updatedAg: Agendamento = {
+          ...activeAgendamento,
+          insumos_detalhes: res.insumosAtualizados,
+          product_cost: res.productCost,
+        };
+        setActiveAgendamento(updatedAg);
+        setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
+        const itens = await fetchItensComanda(activeAgendamento.id);
+        setComandaAtual(itens);
+      }
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err?.message);
+    } finally {
+      setInsumoLoading(false);
+    }
   };
 
   const prodSelMeuPainel = produtosLoja.find(p => p.id === produtoSelecionado);
@@ -201,6 +288,33 @@ export default function MeuPainelPage() {
         description="Controle seus atendimentos em andamento, lance insumos e feche as comandas da sua cadeira."
       />
 
+      {/* Seletor do Profissional / Auxiliar Atuante */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-foreground/[0.03] border border-[var(--border-subtle)] p-4 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center text-gold shrink-0">
+            <User2 size={20} />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider block">Profissional / Cadeira Atuante:</label>
+            <select
+              className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+              value={selectedProfId}
+              onChange={e => setSelectedProfId(e.target.value)}
+            >
+              {profissionais.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="text-xs text-foreground/60 flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+          <span>Insumos lançados aqui dão baixa e sincronizam em tempo real</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* COLUNA ESQUERDA: Cadeira Atual & Multitarefas */}
@@ -212,29 +326,43 @@ export default function MeuPainelPage() {
 
           {emAtendimento.length === 0 ? (
             <CardGlass className="p-8 text-center text-foreground/50 border-dashed">
-              Nenhuma cliente na cadeira no momento.
+              Nenhuma cliente na cadeira no momento para este profissional.
             </CardGlass>
           ) : (
             <div className="space-y-4">
-              {emAtendimento.map(ag => (
-                <CardGlass key={ag.id} className="p-0 overflow-hidden relative">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
-                  
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-2xl font-bold text-foreground">
-                          {getClienteNome(ag.cliente_id)}
-                        </h3>
-                        <p className="text-foreground/70">{getServicoNome(ag.servico_id)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-foreground/50">Iniciado às</p>
-                        <p className="text-xl font-mono text-foreground">{ag.hora_inicio}</p>
-                      </div>
-                    </div>
+              {emAtendimento.map(ag => {
+                const isAuxiliar = ag.profissional_id !== selectedProfId && Array.isArray(ag.auxiliares_ids) && ag.auxiliares_ids.includes(selectedProfId);
+                const titularNome = profissionais.find(p => p.id === ag.profissional_id)?.nome || 'Titular';
 
-                    <div className="flex flex-wrap gap-3 mt-6">
+                return (
+                  <CardGlass key={ag.id} className="p-0 overflow-hidden relative border-purple-500/20">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
+                    
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          {isAuxiliar && (
+                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30 flex items-center gap-1 w-fit mb-1.5">
+                              <Users size={11} /> Auxiliar de {titularNome}
+                            </span>
+                          )}
+                          <h3 className="text-2xl font-bold text-foreground">
+                            {getClienteNome(ag.cliente_id)}
+                          </h3>
+                          <p className="text-foreground/70">{getServicoNome(ag.servico_id)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-foreground/50">Iniciado às</p>
+                          <p className="text-xl font-mono text-foreground">{ag.hora_inicio}</p>
+                          {ag.product_cost != null && Number(ag.product_cost) > 0 && (
+                            <p className="text-xs font-mono text-gold font-bold mt-1">
+                              Insumos: R$ {Number(ag.product_cost).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3 mt-6">
                       <Button 
                         variant="secondary" 
                         className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
@@ -261,7 +389,8 @@ export default function MeuPainelPage() {
                     </div>
                   </div>
                 </CardGlass>
-              ))}
+              );
+            })}
             </div>
           )}
 
@@ -347,49 +476,182 @@ export default function MeuPainelPage() {
         </div>
       </div>
 
-      {/* MODAL INSUMOS */}
+      {/* MODAL INSUMOS EM TEMPO REAL */}
       {insumosModalOpen && activeAgendamento && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <CardGlass className="w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Lançar Insumos</h3>
-              <button onClick={() => setInsumosModalOpen(false)}><X className="text-foreground/50 hover:text-foreground" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-xl p-6 max-h-[92vh] overflow-y-auto border-purple-500/35 shadow-2xl">
+            <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  <Beaker size={20} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold font-serif">Lançar Produtos da Etapa</h3>
+                  <p className="text-xs text-foreground/60">
+                    Aplicação em tempo real • Baixa no estoque imediata
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setInsumosModalOpen(false)}>
+                <X className="text-foreground/50 hover:text-foreground" />
+              </button>
             </div>
-            <p className="text-sm text-foreground/60 mb-4">
-              Cliente: <span className="font-bold text-foreground">{getClienteNome(activeAgendamento.cliente_id)}</span>
-            </p>
+
+            <div className="bg-purple-950/20 border border-purple-500/25 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
+              <div>
+                <span className="text-foreground/50 block">Cliente:</span>
+                <span className="font-bold text-foreground text-sm">{getClienteNome(activeAgendamento.cliente_id)}</span>
+                <span className="text-gold block">{getServicoNome(activeAgendamento.servico_id)}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-foreground/50 block">Custo Acumulado:</span>
+                <span className="font-mono font-bold text-gold text-base">
+                  R$ {Number(activeAgendamento.product_cost || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
             
-            <div className="space-y-4 mb-6">
-              <div className="flex gap-2">
-                <select 
-                  className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-sm"
-                  value={insumoSelecionado}
-                  onChange={e => setInsumoSelecionado(e.target.value)}
-                >
-                  <option value="">Selecione o Insumo...</option>
-                  {insumosDoEstoque.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>
-                  ))}
-                </select>
-                <input 
-                  type="number"
-                  placeholder="Qtd"
-                  className="w-20 bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-sm text-center"
-                  value={insumoQty}
-                  onChange={e => setInsumoQty(e.target.value)}
-                />
-                <Button variant="primary" onClick={handleSalvarInsumo}>Adicionar</Button>
+            <div className="space-y-3.5 mb-6 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. Etapa */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Etapa:</label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    value={insumoEtapa}
+                    onChange={e => setInsumoEtapa(e.target.value)}
+                  >
+                    <option value="Etapa 1 - Descoloração / Mechas">Etapa 1 - Descoloração / Mechas</option>
+                    <option value="Etapa 2 - Tonalização / Matização">Etapa 2 - Tonalização / Matização</option>
+                    <option value="Etapa 3 - Lavatório / Tratamento">Etapa 3 - Lavatório / Tratamento</option>
+                    <option value="Etapa 4 - Escova / Modelagem">Etapa 4 - Escova / Modelagem</option>
+                    <option value="Etapa 5 - Finalização / Óleos">Etapa 5 - Finalização / Óleos</option>
+                  </select>
+                </div>
+
+                {/* 2. Quem Aplicou */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Quem Aplicou:</label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    value={insumoProfId}
+                    onChange={e => setInsumoProfId(e.target.value)}
+                  >
+                    <option value={activeAgendamento.profissional_id}>
+                      ⭐ {profissionais.find(p => p.id === activeAgendamento.profissional_id)?.nome || 'Titular'} (Titular)
+                    </option>
+                    {Array.isArray(activeAgendamento.auxiliares_ids) && activeAgendamento.auxiliares_ids.map(aid => (
+                      <option key={aid} value={aid}>
+                        👥 {profissionais.find(p => p.id === aid)?.nome || 'Auxiliar'} (Auxiliar)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {comandaAtual.filter(i => i.type === 'INSUMO').length > 0 && (
-                <div className="border border-[var(--border-subtle)] rounded overflow-hidden">
-                  <div className="bg-foreground/5 p-2 text-xs font-bold uppercase text-foreground/60">Insumos já lançados</div>
-                  {comandaAtual.filter(i => i.type === 'INSUMO').map(item => {
-                    const prod = estoque.find(p => p.id === item.inventory_id);
+              {/* 3. Produto e Quantidade */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-8">
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Produto (Estoque):</label>
+                  <select 
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-purple-500"
+                    value={insumoSelecionado}
+                    onChange={e => setInsumoSelecionado(e.target.value)}
+                  >
+                    <option value="">Selecione o Insumo...</option>
+                    {insumosDoEstoque.map(p => {
+                      const custo = (p.price_per_gram && p.price_per_gram > 0)
+                        ? p.price_per_gram
+                        : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.stock_qty ?? 0}{p.unit}) — R$ {custo.toFixed(2)}/{p.unit}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="md:col-span-4">
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Qtd (g/ml):</label>
+                  <div className="flex gap-1.5">
+                    <input 
+                      type="number"
+                      step="any"
+                      min="0.1"
+                      placeholder="Qtd"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center font-mono focus:outline-none focus:border-purple-500"
+                      value={insumoQty}
+                      onChange={e => setInsumoQty(e.target.value)}
+                    />
+                    <Button 
+                      variant="primary" 
+                      className="bg-purple-600 hover:bg-purple-700 text-white shrink-0 px-3 text-xs font-bold"
+                      onClick={handleSalvarInsumo}
+                      disabled={insumoLoading || !insumoSelecionado || !insumoQty}
+                    >
+                      {insumoLoading ? '...' : '+ Lançar'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões rápidos */}
+              <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                <span className="text-[10px] text-foreground/50">Atalhos rápidos:</span>
+                {[10, 20, 30, 45, 60, 90].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setInsumoQty(String(v))}
+                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-500/20 hover:text-purple-300 text-[10px] text-foreground/70 border border-foreground/10 transition-colors"
+                  >
+                    +{v}g
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Insumos já aplicados */}
+            <div className="space-y-2 mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70">
+                Insumos Aplicados neste Procedimento:
+              </h4>
+
+              {(!activeAgendamento.insumos_detalhes || activeAgendamento.insumos_detalhes.length === 0) ? (
+                <p className="text-xs text-foreground/40 text-center py-3 border border-dashed border-[var(--border-subtle)] rounded-lg">
+                  Nenhum produto registrado ainda.
+                </p>
+              ) : (
+                <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden divide-y divide-[var(--border-subtle)] max-h-48 overflow-y-auto">
+                  {activeAgendamento.insumos_detalhes.map((item, idx) => {
+                    const pNome = profissionais.find(p => p.id === item.profissional_id)?.nome || 'Equipe';
                     return (
-                      <div key={item.id} className="p-2 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
-                        <span className="flex items-center gap-2"><Beaker size={14} className="text-foreground/50"/> {prod?.name}</span>
-                        <span className="font-mono text-foreground/70">{item.qty} {prod?.unit}</span>
+                      <div key={idx} className="p-2.5 text-xs flex justify-between items-center gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+                              {item.etapa || 'Procedimento'}
+                            </span>
+                            <span className="text-[10px] text-foreground/50">
+                              Por: {pNome}
+                            </span>
+                          </div>
+                          <span className="font-bold text-foreground">{item.name}</span>
+                          <span className="font-mono text-foreground/70 ml-2">({item.qty_used}{item.unit})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-gold">R$ {Number(item.custo_total || 0).toFixed(2)}</span>
+                          <button
+                            type="button"
+                            title="Remover e estornar ao estoque"
+                            onClick={() => handleRemoverInsumo(idx)}
+                            disabled={insumoLoading}
+                            className="p-1 text-foreground/40 hover:text-red-400 rounded transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -397,7 +659,9 @@ export default function MeuPainelPage() {
               )}
             </div>
 
-            <Button variant="outline" className="w-full" onClick={() => setInsumosModalOpen(false)}>Fechar</Button>
+            <Button variant="outline" className="w-full text-xs" onClick={() => setInsumosModalOpen(false)}>
+              Fechar e Continuar Atendimento
+            </Button>
           </CardGlass>
         </div>
       )}
@@ -599,7 +863,7 @@ export default function MeuPainelPage() {
                 </div>
               ) : (
                 produtosLoja.map(p => {
-                  const url = `${window.location.origin}/loja/produto/${p.id}?ref=${PROFISSIONAL_ID}`;
+                  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/loja/produto/${p.id}?ref=${selectedProfId}`;
                   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Oie! Dá uma olhada nesse produto maravilhoso que separei pra você: ${p.name} - R$ ${p.price}\n\nCompre por aqui: ${url}`)}`;
                   
                   return (

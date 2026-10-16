@@ -44,13 +44,26 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { cliente_id, profissional_id, servico_id, sub_servicos, data, hora_inicio, hora_fim, status, canal, is_fixed, recurrence_type, recurrence_custom_day, allow_overlap } = body;
+    const { 
+      cliente_id, 
+      profissional_id, 
+      servico_id, 
+      sub_servicos, 
+      auxiliares_ids,
+      data, 
+      hora_inicio, 
+      hora_fim, 
+      status, 
+      canal, 
+      is_fixed, 
+      recurrence_type, 
+      recurrence_custom_day, 
+      allow_overlap 
+    } = body;
 
     if (!cliente_id || !profissional_id || !servico_id || !data || !hora_inicio) {
       return NextResponse.json({ error: 'Todos os campos obrigatórios devem ser preenchidos.' }, { status: 400 });
     }
-
-    // A validação de conflito foi movida para abranger todas as datas geradas (recorrência)
 
     const canalDb = (canal === 'online' || canal === 'ONLINE') ? 'ONLINE' : 'RECEPTION';
     
@@ -69,8 +82,14 @@ export async function POST(req: Request) {
           )
         : [];
 
-    if (allow_overlap) {
-      subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), { _meta: true, allow_overlap: true }];
+    const metaObj: Record<string, any> = { _meta: true };
+    if (allow_overlap) metaObj.allow_overlap = true;
+    if (Array.isArray(auxiliares_ids) && auxiliares_ids.length > 0) {
+      metaObj.auxiliares_ids = auxiliares_ids;
+    }
+    
+    if (allow_overlap || (Array.isArray(auxiliares_ids) && auxiliares_ids.length > 0)) {
+      subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), metaObj];
     }
 
     interface AppointmentPayload {
@@ -87,6 +106,7 @@ export async function POST(req: Request) {
       recurrence_custom_day: number | null;
       sub_services?: any[];
       allow_overlap?: boolean;
+      assistant_ids?: string[];
     }
 
     let calculatedHoraFim = hora_fim;
@@ -132,6 +152,10 @@ export async function POST(req: Request) {
       allow_overlap: Boolean(allow_overlap),
     };
 
+    if (Array.isArray(auxiliares_ids) && auxiliares_ids.length > 0) {
+      firstPayload.assistant_ids = auxiliares_ids;
+    }
+
     // sub_services: só inclui se houver valores
     if (subServicesFiltered.length > 0) {
       firstPayload.sub_services = subServicesFiltered;
@@ -176,20 +200,27 @@ export async function POST(req: Request) {
       }
     }
 
-    // 1. VALIDAÇÃO DE CONFLITO PARA TODAS AS DATAS GERADAS
+    // 1. VALIDAÇÃO DE CONFLITO PARA TODAS AS DATAS GERADAS (TITULAR + AUXILIARES)
+    const profsToCheck = [profissional_id, ...(Array.isArray(auxiliares_ids) ? auxiliares_ids : [])];
     const datesToCheck = payloads.map(p => p.date);
     const { data: allConflicts } = await auth.supabase!
       .from('salon_appointments')
       .select('*')
-      .eq('professional_id', profissional_id)
       .in('date', datesToCheck)
       .neq('status', 'CANCELLED');
 
-    // Filtra apenas os payloads que NÃO conflitam com horários existentes (a menos que seja encaixe ou que o agendamento conflitante permita sobreposição/pausa)
+    // Filtra apenas os payloads que NÃO conflitam com horários existentes
     const validPayloads = allow_overlap ? payloads : payloads.filter(p => {
-      const conflictsForDate = allConflicts?.filter((c: any) => c.date === p.date) || [];
+      const conflictsForDate = allConflicts?.filter((c: any) => {
+        if (c.date !== p.date) return false;
+        const cAuxiliares = Array.isArray(c.assistant_ids) 
+          ? c.assistant_ids 
+          : (Array.isArray(c.sub_services) ? (c.sub_services.find((s: any) => s?._meta)?.auxiliares_ids || []) : []);
+        const cAllProfs = [c.professional_id, ...cAuxiliares];
+        return profsToCheck.some(pid => cAllProfs.includes(pid));
+      }) || [];
+
       const hasOverlap = conflictsForDate.some((app: any) => {
-        // Se o agendamento já existente no horário permite sobreposição/encaixe, não bloqueia este atendimento
         if (appointmentAllowsOverlap(app)) return false;
 
         const startA = p.start_time;
@@ -202,7 +233,7 @@ export async function POST(req: Request) {
     });
 
     if (validPayloads.length === 0) {
-      return NextResponse.json({ error: 'O horário selecionado (e suas recorrências projetadas) já estão ocupados.' }, { status: 409 });
+      return NextResponse.json({ error: 'O horário selecionado (ou a agenda de um dos auxiliares) já está ocupado.' }, { status: 409 });
     }
 
     let agendamentosResult: any = null;
@@ -212,11 +243,12 @@ export async function POST(req: Request) {
       .select('*');
 
     if (error) {
-      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap')) {
+      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap') || error.message?.includes('assistant_ids')) {
         const cleanPayloads = validPayloads.map(p => {
           const cp: any = { ...p };
           if (error.message?.includes('sub_services')) delete cp.sub_services;
           if (error.message?.includes('allow_overlap')) delete cp.allow_overlap;
+          if (error.message?.includes('assistant_ids')) delete cp.assistant_ids;
           return cp;
         });
         const retry = await auth.supabase!
@@ -224,26 +256,22 @@ export async function POST(req: Request) {
           .insert(cleanPayloads)
           .select('*');
         if (retry.error) {
-          if (retry.error.message?.includes('sub_services') || retry.error.message?.includes('allow_overlap')) {
-            const cleanAll = cleanPayloads.map(p => {
-              const cp: any = { ...p };
-              delete cp.sub_services;
-              delete cp.allow_overlap;
-              return cp;
-            });
-            const retry2 = await auth.supabase!
-              .from('salon_appointments')
-              .insert(cleanAll)
-              .select('*');
-            if (retry2.error) {
-              console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry2):', retry2.error);
-              return NextResponse.json({ error: retry2.error.message }, { status: 500 });
-            }
-            agendamentosResult = retry2.data;
-          } else {
-            console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry):', retry.error);
-            return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          const cleanAll = cleanPayloads.map(p => {
+            const cp: any = { ...p };
+            delete cp.sub_services;
+            delete cp.allow_overlap;
+            delete cp.assistant_ids;
+            return cp;
+          });
+          const retry2 = await auth.supabase!
+            .from('salon_appointments')
+            .insert(cleanAll)
+            .select('*');
+          if (retry2.error) {
+            console.error('[api/agendamentos/admin] Erro ao salvar agendamento (retry2):', retry2.error);
+            return NextResponse.json({ error: retry2.error.message }, { status: 500 });
           }
+          agendamentosResult = retry2.data;
         } else {
           agendamentosResult = retry.data;
         }
@@ -275,6 +303,7 @@ export async function PUT(req: Request) {
       profissional_id, 
       servico_id, 
       sub_servicos, 
+      auxiliares_ids,
       data, 
       hora_inicio, 
       hora_fim, 
@@ -313,18 +342,25 @@ export async function PUT(req: Request) {
       }
     }
 
-    // Validação de conflito de horário (a menos que seja permitido encaixe ou que o agendamento conflitante permita sobreposição/pausa)
+    // Validação de conflito de horário (considerando titular + auxiliares, se não for encaixe)
     if (data && hora_inicio && calculatedHoraFim && profissional_id && !allow_overlap) {
+      const profsToCheck = [profissional_id, ...(Array.isArray(auxiliares_ids) ? auxiliares_ids : [])];
       const { data: allConflicts } = await auth.supabase!
         .from('salon_appointments')
         .select('*')
-        .eq('professional_id', profissional_id)
         .eq('date', data)
         .neq('id', id)
         .neq('status', 'CANCELLED');
 
       const hasOverlap = (allConflicts || []).some((app: any) => {
         if (appointmentAllowsOverlap(app)) return false;
+        const cAuxiliares = Array.isArray(app.assistant_ids) 
+          ? app.assistant_ids 
+          : (Array.isArray(app.sub_services) ? (app.sub_services.find((s: any) => s?._meta)?.auxiliares_ids || []) : []);
+        const cAllProfs = [app.professional_id, ...cAuxiliares];
+        const temProfissionalComum = profsToCheck.some(pid => cAllProfs.includes(pid));
+        if (!temProfissionalComum) return false;
+
         const startA = hora_inicio;
         const endA = calculatedHoraFim;
         const startB = app.start_time;
@@ -333,7 +369,7 @@ export async function PUT(req: Request) {
       });
 
       if (hasOverlap) {
-        return NextResponse.json({ error: 'O novo horário selecionado conflita com outro agendamento existente deste profissional.' }, { status: 409 });
+        return NextResponse.json({ error: 'O novo horário selecionado conflita com outro agendamento existente deste profissional ou de um dos auxiliares.' }, { status: 409 });
       }
     }
 
@@ -346,6 +382,9 @@ export async function PUT(req: Request) {
     if (data) patch.date = data;
     if (hora_inicio) patch.start_time = hora_inicio;
     if (calculatedHoraFim) patch.end_time = calculatedHoraFim;
+    if (auxiliares_ids !== undefined) {
+      patch.assistant_ids = Array.isArray(auxiliares_ids) ? auxiliares_ids : [];
+    }
     if (status) {
       let statusDb = 'CONFIRMED';
       const statusClean = String(status || '').toLowerCase();
@@ -357,17 +396,19 @@ export async function PUT(req: Request) {
       patch.status = statusDb;
     }
 
-    if (Array.isArray(sub_servicos) || allow_overlap !== undefined) {
+    if (Array.isArray(sub_servicos) || allow_overlap !== undefined || auxiliares_ids !== undefined) {
       let subServicesFiltered = Array.isArray(sub_servicos)
         ? sub_servicos.filter((sub: any) =>
             typeof sub === 'string' ? sub.trim() !== '' : sub?.id?.trim() !== ''
           )
         : [];
-      if (allow_overlap) {
-        subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), { _meta: true, allow_overlap: true }];
-      } else if (allow_overlap === false) {
-        subServicesFiltered = subServicesFiltered.filter((s: any) => !s?._meta);
-      }
+
+      const existingMeta = Array.isArray(sub_servicos) ? sub_servicos.find((s: any) => s?._meta) : null;
+      const metaObj: Record<string, any> = existingMeta ? { ...existingMeta } : { _meta: true };
+      if (allow_overlap !== undefined) metaObj.allow_overlap = Boolean(allow_overlap);
+      if (auxiliares_ids !== undefined) metaObj.auxiliares_ids = Array.isArray(auxiliares_ids) ? auxiliares_ids : [];
+
+      subServicesFiltered = [...subServicesFiltered.filter((s: any) => !s?._meta), metaObj];
       patch.sub_services = subServicesFiltered;
     }
 
@@ -384,9 +425,11 @@ export async function PUT(req: Request) {
       .single();
 
     if (error) {
-      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap')) {
+      if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap') || error.message?.includes('assistant_ids')) {
         if (error.message?.includes('sub_services')) delete patch.sub_services;
         if (error.message?.includes('allow_overlap')) delete patch.allow_overlap;
+        if (error.message?.includes('assistant_ids')) delete patch.assistant_ids;
+
         const retry = await auth.supabase!
           .from('salon_appointments')
           .update(patch)
@@ -394,24 +437,20 @@ export async function PUT(req: Request) {
           .select('*')
           .single();
         if (retry.error) {
-          if (retry.error.message?.includes('sub_services') || retry.error.message?.includes('allow_overlap')) {
-            delete patch.sub_services;
-            delete patch.allow_overlap;
-            const retry2 = await auth.supabase!
-              .from('salon_appointments')
-              .update(patch)
-              .eq('id', id)
-              .select('*')
-              .single();
-            if (retry2.error) {
-              console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry2):', retry2.error);
-              return NextResponse.json({ error: retry2.error.message }, { status: 500 });
-            }
-            updatedResult = retry2.data;
-          } else {
-            console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry):', retry.error);
-            return NextResponse.json({ error: retry.error.message }, { status: 500 });
+          delete patch.sub_services;
+          delete patch.allow_overlap;
+          delete patch.assistant_ids;
+          const retry2 = await auth.supabase!
+            .from('salon_appointments')
+            .update(patch)
+            .eq('id', id)
+            .select('*')
+            .single();
+          if (retry2.error) {
+            console.error('[api/agendamentos/admin] Erro ao atualizar agendamento (retry2):', retry2.error);
+            return NextResponse.json({ error: retry2.error.message }, { status: 500 });
           }
+          updatedResult = retry2.data;
         } else {
           updatedResult = retry.data;
         }

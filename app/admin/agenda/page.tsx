@@ -7,14 +7,14 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
-import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
+import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil } from 'lucide-react';
+import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 
 function formatPhone(val: string) {
@@ -113,10 +113,28 @@ function AgendaContent() {
   const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
   const [checkoutExtras, setCheckoutExtras] = useState<Array<{ id: string; servicoId: string; preco: number }>>([]);
   const [extraServiceSelect, setExtraServiceSelect] = useState<string>('');
-  // Insumos (pesagem)
+  // Insumos (pesagem por grama / ml)
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
   const [servicoProdutos, setServicoProdutos] = useState<ServicoProduto[]>([]);
   const [checkoutInsumos, setCheckoutInsumos] = useState<InsumoAtendimento[]>([]);
+  const [insumoEtapa, setInsumoEtapa] = useState<string>('Mechas - Descoloração');
+  const [insumoProfissionalId, setInsumoProfissionalId] = useState<string>('');
+  const [insumoNovoProdutoId, setInsumoNovoProdutoId] = useState<string>('');
+  const [insumoNovoQtdG, setInsumoNovoQtdG] = useState<string>('');
+
+  // Lançamento de Insumos em Tempo Real (Durante o Atendimento por Titular ou Auxiliar)
+  const [liveInsumoAppt, setLiveInsumoAppt] = useState<Agendamento | null>(null);
+  const [liveInsumoEtapa, setLiveInsumoEtapa] = useState<string>('Etapa 1 - Descoloração / Mechas');
+  const [liveInsumoEtapaCustom, setLiveInsumoEtapaCustom] = useState<string>('');
+  const [liveInsumoProfId, setLiveInsumoProfId] = useState<string>('');
+  const [liveInsumoProdId, setLiveInsumoProdId] = useState<string>('');
+  const [liveInsumoQtd, setLiveInsumoQtd] = useState<string>('');
+  const [liveInsumoLoading, setLiveInsumoLoading] = useState<boolean>(false);
+
+  // Rateio / Split de comissões da equipe
+  const [splitComissaoCustom, setSplitComissaoCustom] = useState<Record<string, number>>({});
+  const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
+
   const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{ 
     id: string; 
     inventory_id: string; 
@@ -147,6 +165,7 @@ function AgendaContent() {
     profissional_id: '',
     servico_id: '',
     sub_servicos: [] as any[],
+    auxiliares_ids: [] as string[],
     data: hoje,
     hora_inicio: '09:00',
     duracao_min: '',
@@ -288,7 +307,8 @@ function AgendaContent() {
         profServData,
         estoqueData, 
         spData, 
-        taxasData
+        taxasData,
+        regrasData
       ] = await Promise.all([
         fetchAgendamentos(),
         fetchBloqueios(),
@@ -298,7 +318,8 @@ function AgendaContent() {
         fetchProfissionalServico(),
         fetchEstoque(true),
         fetchTodosServicoProdutos(),
-        fetchTaxasPagamento()
+        fetchTaxasPagamento(),
+        fetchRegrasComissao()
       ]);
       setAgendamentos(agendamentosData);
       setBloqueiosDia(bloqueiosData);
@@ -309,6 +330,7 @@ function AgendaContent() {
       setEstoque(estoqueData);
       setServicoProdutos(spData);
       setTaxasPagamento(taxasData.taxas);
+      setRegrasComissao(regrasData);
       setLoading(false);
     };
     carregarDados();
@@ -358,9 +380,12 @@ function AgendaContent() {
 
   const idsVisiveis = useMemo(() => new Set(profissionaisVisiveisNaAgenda.map(p => p.id)), [profissionaisVisiveisNaAgenda]);
 
-  // Filtro por data e profissional na visualização respeitando a categoria ativa
+  // Filtro por data e profissional na visualização respeitando a categoria ativa (Titular ou Auxiliar)
   const doDia = agendamentos.filter(a => a.data === dataSelecionada);
-  let agendamentosFiltrados = doDia.filter(a => idsVisiveis.has(a.profissional_id));
+  let agendamentosFiltrados = doDia.filter(a => 
+    idsVisiveis.has(a.profissional_id) || 
+    (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.some(id => idsVisiveis.has(id)))
+  );
 
   if (buscaClienteAgenda.trim()) {
     const termo = buscaClienteAgenda.toLowerCase().trim();
@@ -397,7 +422,7 @@ function AgendaContent() {
     return [];
   }, [formData.profissional_id, profServicos, servicos]);
 
-  // Horários disponíveis calculados cruzando Salão + Profissional + Agendamentos existentes
+  // Horários disponíveis calculados cruzando Salão + Profissional + Agendamentos existentes (Titular ou Auxiliar)
   const { horariosDisponiveis, statusDiaInfo } = useMemo(() => {
     if (!formData.data || !formData.profissional_id) {
       return { horariosDisponiveis: [], statusDiaInfo: null };
@@ -452,10 +477,10 @@ function AgendaContent() {
     const totalMinutosIni = hIni * 60 + mIni;
     const totalMinutosFim = hFim * 60 + mFim;
 
-    // Agendamentos já marcados para o profissional nesta data considerando a duração total do procedimento
+    // Agendamentos já marcados para o profissional nesta data considerando Titular OU Auxiliar
     const agendamentosAtivos = agendamentos.filter(a =>
       a.data === formData.data &&
-      a.profissional_id === formData.profissional_id &&
+      (a.profissional_id === formData.profissional_id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(formData.profissional_id))) &&
       a.status !== 'cancelado' &&
       (!editingApptId || a.id !== editingApptId)
     );
@@ -526,6 +551,142 @@ function AgendaContent() {
     }
   }
 
+  const abrirLancarInsumoTempoReal = async (appt: Agendamento) => {
+    setLiveInsumoAppt(appt);
+    setLiveInsumoEtapa('Etapa 1 - Descoloração / Mechas');
+    setLiveInsumoEtapaCustom('');
+    setLiveInsumoProfId(appt.profissional_id);
+    setLiveInsumoProdId('');
+    setLiveInsumoQtd('');
+
+    if (estoque.length === 0) {
+      try {
+        const estData = await fetchEstoque();
+        if (estData) setEstoque(estData);
+      } catch (e) {
+        console.warn('Erro ao carregar estoque para insumos:', e);
+      }
+    }
+  };
+
+  const handleRegistrarInsumoTempoReal = async () => {
+    if (!liveInsumoAppt || !liveInsumoProdId || !liveInsumoQtd) {
+      alert('Selecione o produto e informe a quantidade em gramas/ml.');
+      return;
+    }
+    const qtdNum = parseFloat(liveInsumoQtd);
+    if (isNaN(qtdNum) || qtdNum <= 0) {
+      alert('Informe uma quantidade válida maior que zero.');
+      return;
+    }
+
+    const prod = estoque.find(p => p.id === liveInsumoProdId);
+    if (!prod) return;
+
+    const custoUn = (prod.price_per_gram && prod.price_per_gram > 0)
+      ? prod.price_per_gram
+      : ((prod.cost_price && prod.cost_price > 0) ? prod.cost_price / 500 : 0.10);
+
+    const custoTot = Number((custoUn * qtdNum).toFixed(2));
+    const etapaFinal = liveInsumoEtapa === 'Outra' ? (liveInsumoEtapaCustom || 'Procedimento') : liveInsumoEtapa;
+    const profId = liveInsumoProfId || liveInsumoAppt.profissional_id;
+    const profNome = getProfissionalNome(profId, profissionais);
+    const cliNome = getClienteNome(liveInsumoAppt.cliente_id, clientes);
+
+    const novoItem: InsumoAtendimento = {
+      inventory_id: prod.id,
+      name: prod.name,
+      unit: prod.unit || 'g',
+      price_per_gram: custoUn,
+      custo_unitario: custoUn,
+      qty_used: qtdNum,
+      custo_total: custoTot,
+      etapa: etapaFinal,
+      profissional_id: profId,
+      horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setLiveInsumoLoading(true);
+    try {
+      const res = await salvarInsumoTempoRealProcedimento({
+        appointmentId: liveInsumoAppt.id,
+        insumo: novoItem,
+        nomeProfissional: profNome,
+        nomeCliente: cliNome,
+      });
+
+      if (res.ok) {
+        const updatedAppt: Agendamento = {
+          ...liveInsumoAppt,
+          insumos_detalhes: res.insumosAtualizados,
+          product_cost: res.productCost,
+        };
+        setLiveInsumoAppt(updatedAppt);
+        setAgendamentos(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
+
+        // Decrementa o saldo no estoque local para atualização imediata na tela
+        setEstoque(prev => prev.map(p => {
+          if (p.id === prod.id) {
+            return { ...p, stock_qty: Math.max(0, (p.stock_qty || 0) - qtdNum) };
+          }
+          return p;
+        }));
+
+        setLiveInsumoProdId('');
+        setLiveInsumoQtd('');
+      } else {
+        alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+      }
+    } catch (err: any) {
+      alert('Erro ao registrar aplicação: ' + (err?.message || 'Erro inesperado'));
+    } finally {
+      setLiveInsumoLoading(false);
+    }
+  };
+
+  const handleRemoverInsumoTempoReal = async (index: number) => {
+    if (!liveInsumoAppt) return;
+    const item = liveInsumoAppt.insumos_detalhes?.[index];
+    if (!item) return;
+
+    if (!confirm(`Deseja remover "${item.name} (${item.qty_used}${item.unit})" e estornar ao estoque?`)) {
+      return;
+    }
+
+    setLiveInsumoLoading(true);
+    try {
+      const res = await removerInsumoTempoRealProcedimento({
+        appointmentId: liveInsumoAppt.id,
+        index,
+        nomeProfissional: getProfissionalNome(liveInsumoProfId || liveInsumoAppt.profissional_id, profissionais),
+      });
+
+      if (res.ok) {
+        const updatedAppt: Agendamento = {
+          ...liveInsumoAppt,
+          insumos_detalhes: res.insumosAtualizados,
+          product_cost: res.productCost,
+        };
+        setLiveInsumoAppt(updatedAppt);
+        setAgendamentos(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
+
+        // Estorna o saldo no estoque local
+        setEstoque(prev => prev.map(p => {
+          if (p.id === item.inventory_id) {
+            return { ...p, stock_qty: (p.stock_qty || 0) + item.qty_used };
+          }
+          return p;
+        }));
+      } else {
+        alert('Erro ao estornar insumo: ' + (res.error || 'Tente novamente'));
+      }
+    } catch (err: any) {
+      alert('Erro ao estornar insumo: ' + (err?.message || 'Erro inesperado'));
+    } finally {
+      setLiveInsumoLoading(false);
+    }
+  };
+
   const abrirCheckout = async (appt: Agendamento) => {
     setCheckoutAppt(appt);
     setCheckoutExtras([]);
@@ -541,41 +702,76 @@ function AgendaContent() {
     setCheckoutNovoProdDescPct('');
     setCheckoutNovoProdDescValor('');
 
-    const itens = await fetchItensComanda(appt.id);
-    
-    // Insumos
-    const insumosDaComanda = itens.filter(i => i.type === 'INSUMO');
-    const mapInsumos: InsumoAtendimento[] = insumosDaComanda.map(i => {
-      const prod = estoque.find(p => p.id === i.inventory_id);
-      const custoUn = prod?.cost_price || 0;
-      return {
-        inventory_id: i.inventory_id,
-        name: prod?.name || 'Insumo',
-        unit: prod?.unit || 'g',
-        price_per_gram: prod?.cost_price || 0,
-        qty_used: i.qty,
-        custo_unitario: custoUn,
-        custo_total: custoUn * i.qty
-      };
-    });
-    setCheckoutInsumos(mapInsumos);
+    // Prepara profissional padrão e etapa para o lançamento do insumo
+    setInsumoProfissionalId(appt.profissional_id);
+    setInsumoEtapa('Etapa 1 - Descoloração / Mechas');
+    setInsumoNovoProdutoId('');
+    setInsumoNovoQtdG('');
 
-    // Produtos (Upsell)
-    const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
-    const mapProdutos = produtosDaComanda.map(i => {
-      const prod = estoque.find(p => p.id === i.inventory_id);
-      const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
-      return {
-        id: Date.now().toString() + i.id, // Random id for list
-        inventory_id: i.inventory_id,
-        qty: i.qty,
-        precoOriginal: precoBase,
-        preco: precoBase,
-        descontoPct: 0,
-        descontoValor: 0,
-      };
-    });
-    setCheckoutProdutos(mapProdutos);
+    // Inicializa divisão igualitária de comissão entre titular e auxiliares
+    const allProfs = [appt.profissional_id, ...(appt.auxiliares_ids || [])].filter(Boolean);
+    const count = allProfs.length;
+    const initialSplit: Record<string, number> = {};
+    if (count > 0) {
+      const share = Number((100 / count).toFixed(1));
+      allProfs.forEach((pid, idx) => {
+        if (idx === 0) {
+          initialSplit[pid] = Number((100 - share * (count - 1)).toFixed(1));
+        } else {
+          initialSplit[pid] = share;
+        }
+      });
+    }
+    if (appt.split_comissao && Object.keys(appt.split_comissao).length > 0) {
+      setSplitComissaoCustom(appt.split_comissao);
+    } else {
+      setSplitComissaoCustom(initialSplit);
+    }
+
+    // Carregar insumos existentes salvos no agendamento, se houver
+    if (Array.isArray(appt.insumos_detalhes) && appt.insumos_detalhes.length > 0) {
+      setCheckoutInsumos(appt.insumos_detalhes);
+    } else {
+      const itens = await fetchItensComanda(appt.id);
+      
+      // Insumos da comanda
+      const insumosDaComanda = itens.filter(i => i.type === 'INSUMO');
+      const mapInsumos: InsumoAtendimento[] = insumosDaComanda.map(i => {
+        const prod = estoque.find(p => p.id === i.inventory_id);
+        const custoUn = (prod?.price_per_gram && prod.price_per_gram > 0)
+          ? prod.price_per_gram
+          : ((prod?.cost_price && prod.cost_price > 0) ? prod.cost_price / 500 : 0.10);
+        return {
+          inventory_id: i.inventory_id,
+          name: prod?.name || 'Insumo',
+          unit: prod?.unit || 'g',
+          price_per_gram: custoUn,
+          qty_used: i.qty,
+          custo_unitario: custoUn,
+          custo_total: Number((custoUn * i.qty).toFixed(2)),
+          etapa: 'Procedimento',
+          profissional_id: appt.profissional_id,
+        };
+      });
+      setCheckoutInsumos(mapInsumos);
+
+      // Produtos (Upsell)
+      const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
+      const mapProdutos = produtosDaComanda.map(i => {
+        const prod = estoque.find(p => p.id === i.inventory_id);
+        const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
+        return {
+          id: Date.now().toString() + i.id, // Random id for list
+          inventory_id: i.inventory_id,
+          qty: i.qty,
+          precoOriginal: precoBase,
+          preco: precoBase,
+          descontoPct: 0,
+          descontoValor: 0,
+        };
+      });
+      setCheckoutProdutos(mapProdutos);
+    }
   };
 
   const fecharCheckout = () => {
@@ -586,6 +782,9 @@ function AgendaContent() {
     setCheckoutProdutos([]);
     setCheckoutPagamento('DINHEIRO');
     setCheckoutParcelas(1);
+    setInsumoNovoProdutoId('');
+    setInsumoNovoQtdG('');
+    setSplitComissaoCustom({});
     setCheckoutDescontoPct('');
     setCheckoutDescontoValor('');
     setCheckoutDescontoMotivo('');
@@ -593,6 +792,49 @@ function AgendaContent() {
     setCheckoutNovoProdQty('1');
     setCheckoutNovoProdDescPct('');
     setCheckoutNovoProdDescValor('');
+  };
+
+  const adicionarInsumoPorGrama = () => {
+    if (!insumoNovoProdutoId) {
+      alert('Selecione um produto do estoque para lançar na etapa.');
+      return;
+    }
+    const qty = parseFloat(insumoNovoQtdG);
+    if (isNaN(qty) || qty <= 0) {
+      alert('Informe uma quantidade válida em gramas (g) ou ml.');
+      return;
+    }
+    const prod = estoque.find(p => p.id === insumoNovoProdutoId);
+    if (!prod) return;
+
+    const ppg = (prod.price_per_gram && prod.price_per_gram > 0)
+      ? prod.price_per_gram
+      : ((prod.cost_price && prod.cost_price > 0) ? prod.cost_price / 500 : 0.10);
+
+    const custoTotal = Number((ppg * qty).toFixed(2));
+    const profId = insumoProfissionalId || (checkoutAppt?.profissional_id ?? '');
+
+    setCheckoutInsumos(prev => [
+      ...prev,
+      {
+        inventory_id: prod.id,
+        name: prod.name,
+        unit: prod.unit || 'g',
+        price_per_gram: ppg,
+        qty_used: qty,
+        custo_unitario: ppg,
+        custo_total: custoTotal,
+        etapa: insumoEtapa.trim() || 'Etapa Geral',
+        profissional_id: profId,
+      }
+    ]);
+
+    setInsumoNovoQtdG('');
+    setInsumoNovoProdutoId('');
+  };
+
+  const removerInsumoPorGrama = (index: number) => {
+    setCheckoutInsumos(prev => prev.filter((_, i) => i !== index));
   };
 
   // Funções de Desconto no Atendimento (com auto-ajuste sincronizado % <-> R$)
@@ -686,6 +928,7 @@ function AgendaContent() {
       profissional_id: profId,
       servico_id: '',
       sub_servicos: [] as any[],
+      auxiliares_ids: [] as string[],
       data: dataSelecionada,
       hora_inicio: hora || '09:00',
       duracao_min: '',
@@ -718,6 +961,7 @@ function AgendaContent() {
       profissional_id: appt.profissional_id,
       servico_id: appt.servico_id,
       sub_servicos: subList,
+      auxiliares_ids: Array.isArray(appt.auxiliares_ids) ? [...appt.auxiliares_ids] : [],
       data: appt.data,
       hora_inicio: appt.hora_inicio.slice(0, 5),
       duracao_min: String(duracaoMinFinal),
@@ -763,6 +1007,7 @@ function AgendaContent() {
             profissional_id: formData.profissional_id,
             servico_id: formData.servico_id,
             sub_servicos: formData.sub_servicos,
+            auxiliares_ids: formData.auxiliares_ids,
             data: formData.data,
             hora_inicio: formData.hora_inicio,
             hora_fim: horaFim,
@@ -780,6 +1025,7 @@ function AgendaContent() {
               profissional_id: formData.profissional_id,
               servico_id: formData.servico_id,
               sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''),
+              auxiliares_ids: formData.auxiliares_ids,
               data: formData.data,
               hora_inicio: formData.hora_inicio,
               hora_fim: horaFim,
@@ -792,7 +1038,7 @@ function AgendaContent() {
         setDataSelecionada(formData.data);
         setShowForm(false);
         setEditingApptId(null);
-        setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+        setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
         setBuscaCliente('');
         setClienteDropdownAberto(false);
         setCadastrandoNovoCliente(false);
@@ -814,6 +1060,7 @@ function AgendaContent() {
           profissional_id: formData.profissional_id,
           servico_id: formData.servico_id,
           sub_servicos: formData.sub_servicos,
+          auxiliares_ids: formData.auxiliares_ids,
           data: formData.data,
           hora_inicio: formData.hora_inicio,
           hora_fim: horaFim,
@@ -834,6 +1081,7 @@ function AgendaContent() {
         profissional_id: formData.profissional_id,
         servico_id: formData.servico_id,
         sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id.trim() !== ''),
+        auxiliares_ids: formData.auxiliares_ids,
         data: formData.data,
         hora_inicio: formData.hora_inicio,
         hora_fim: horaFim,
@@ -846,7 +1094,7 @@ function AgendaContent() {
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
       setEditingApptId(null);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
       setBuscaCliente('');
       setClienteDropdownAberto(false);
       setCadastrandoNovoCliente(false);
@@ -1173,14 +1421,15 @@ function AgendaContent() {
                       {profAtende && slots.map(time => {
                         const slotMin = timeToMinutes(time);
 
-                        // Agendamentos que INICIAM exatamente neste slot
+                        // Agendamentos que INICIAM exatamente neste slot (Titular ou Auxiliar)
                         const startingAppts = agendamentosFiltrados.filter(
-                          a => a.profissional_id === prof.id && a.hora_inicio === time && a.status !== 'cancelado'
+                          a => (a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id))) && a.hora_inicio === time && a.status !== 'cancelado'
                         );
 
                         // Agendamentos em ANDAMENTO (iniciaram antes e terminam depois deste slot)
                         const ongoingAppts = agendamentosFiltrados.filter(a => {
-                          if (a.profissional_id !== prof.id || a.status === 'cancelado') return false;
+                          const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
+                          if (!isEnvolvido || a.status === 'cancelado') return false;
                           const aInicioMin = timeToMinutes(a.hora_inicio);
                           const aFimMin = timeToMinutes(getAgendamentoHoraFim(a, servicos));
                           return aInicioMin < slotMin && aFimMin > slotMin;
@@ -1213,14 +1462,24 @@ function AgendaContent() {
                                       servico += ' + ' + subNomes.join(' + ');
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                    const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+
                                     return (
                                       <div 
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className="text-xs bg-[var(--color-card)] border border-[var(--border-subtle)] rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center"
+                                        className={`text-xs border rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
+                                          isAuxiliarNeste ? 'bg-purple-950/20 border-purple-500/30' : 'bg-[var(--color-card)] border-[var(--border-subtle)]'
+                                        }`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : STATUS_COLORS[a.status] }}></div>
                                         <div className="pl-2">
+                                          {isAuxiliarNeste && (
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30 mb-1 w-fit">
+                                              <Users size={10} />
+                                              <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
+                                            </div>
+                                          )}
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</span>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -1242,12 +1501,33 @@ function AgendaContent() {
                                             </div>
                                           </div>
                                           <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
-                                          <div className="flex items-center justify-between mt-1">
-                                            <span className="text-[9px] text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</span>
-                                            {a.allow_overlap && (
-                                              <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
-                                                Pausa liberada
-                                              </span>
+                                          <div className="flex items-center justify-between mt-1 gap-1">
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-[9px] text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</span>
+                                              {a.allow_overlap && (
+                                                <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
+                                                  Pausa liberada
+                                                </span>
+                                              )}
+                                            </div>
+                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
+                                              <button
+                                                type="button"
+                                                title="Lançar produtos aplicados nesta etapa em tempo real"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  abrirLancarInsumoTempoReal(a);
+                                                }}
+                                                className="px-1.5 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white font-bold text-[9px] flex items-center gap-1 transition-all border border-purple-500/40 shadow-xs cursor-pointer"
+                                              >
+                                                <Beaker size={10} />
+                                                <span>+ Insumo</span>
+                                                {a.insumos_detalhes && a.insumos_detalhes.length > 0 && (
+                                                  <span className="bg-purple-900/80 text-purple-200 px-1 rounded-full text-[8px] font-mono">
+                                                    {a.insumos_detalhes.length}
+                                                  </span>
+                                                )}
+                                              </button>
                                             )}
                                           </div>
                                         </div>
@@ -1263,18 +1543,27 @@ function AgendaContent() {
                                       servico += ' + ' + subNomes.join(' + ');
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                    const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+
                                     return (
                                       <div 
-                                        key={`ongoing-${a.id}-${time}`}
+                                        key={`ongoing-${a.id}-${time}`} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className="text-xs bg-gold/[0.05] border border-dashed border-gold/30 rounded p-1.5 cursor-pointer hover:bg-gold/10 hover:border-gold transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center"
+                                        className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center ${
+                                          isAuxiliarNeste 
+                                            ? 'bg-purple-950/20 border-purple-500/40 hover:bg-purple-900/30' 
+                                            : 'bg-gold/[0.05] border-gold/30 hover:bg-gold/10 hover:border-gold'
+                                        }`}
                                         title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1 opacity-70" style={{ backgroundColor: STATUS_COLORS[a.status] }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : STATUS_COLORS[a.status] }}></div>
                                         <div className="pl-1.5">
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
                                               <span className="text-gold text-[10px]">↳</span> {cliente}
+                                              {isAuxiliarNeste && (
+                                                <span className="text-[9px] text-purple-400 font-bold bg-purple-500/20 px-1 rounded">Auxiliar</span>
+                                              )}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
                                               {a.allow_overlap && (
@@ -1294,7 +1583,23 @@ function AgendaContent() {
                                               <span className="text-[9px] font-mono text-foreground/50">{a.hora_inicio} às {horaFimDisplay}</span>
                                             </div>
                                           </div>
-                                          <div className="text-foreground/50 truncate text-[9px] font-medium mt-0.5">{servico}</div>
+                                          <div className="flex items-center justify-between gap-1 mt-0.5">
+                                            <div className="text-foreground/50 truncate text-[9px] font-medium">{servico}</div>
+                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
+                                              <button
+                                                type="button"
+                                                title="Lançar produtos aplicados nesta etapa em tempo real"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  abrirLancarInsumoTempoReal(a);
+                                                }}
+                                                className="px-1.5 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white font-bold text-[8px] flex items-center gap-1 transition-all border border-purple-500/40 shadow-xs cursor-pointer shrink-0"
+                                              >
+                                                <Beaker size={9} />
+                                                <span>+ Insumo</span>
+                                              </button>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -1339,7 +1644,22 @@ function AgendaContent() {
             <div className="space-y-2 mb-6 text-sm text-foreground/80">
               <p><strong>Data:</strong> {new Date(`${selectedAppt.data}T12:00:00`).toLocaleDateString('pt-BR')}</p>
               <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
-              <p><strong>Profissional:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
+              <p><strong>Profissional Titular:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
+              {selectedAppt.auxiliares_ids && selectedAppt.auxiliares_ids.length > 0 && (
+                <div className="text-xs bg-purple-500/10 border border-purple-500/25 p-2 rounded-lg text-purple-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <Users size={13} className="text-purple-400" />
+                    <span>Auxiliares Co-participantes:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedAppt.auxiliares_ids.map(id => (
+                      <span key={id} className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 text-[11px] font-semibold">
+                        {getProfissionalNome(id, profissionais)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p><strong>Status Atual:</strong> {STATUS_LABELS[selectedAppt.status]}</p>
               {selectedAppt.allow_overlap && (
                 <div className="text-gold font-medium flex items-center gap-1.5 text-xs bg-gold/10 p-2 rounded-lg border border-gold/20">
@@ -1347,9 +1667,51 @@ function AgendaContent() {
                   <span>Permite sobreposição / encaixe durante pausas</span>
                 </div>
               )}
+
+              {/* Resumo de Insumos já aplicados neste agendamento */}
+              {selectedAppt.insumos_detalhes && selectedAppt.insumos_detalhes.length > 0 && (
+                <div className="text-xs bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-lg text-purple-200 space-y-1.5 mt-2">
+                  <div className="font-bold flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-purple-300">
+                      <Beaker size={13} /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
+                    </span>
+                    <span className="font-mono text-gold font-bold">
+                      R$ {Number(selectedAppt.product_cost || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {selectedAppt.insumos_detalhes.slice(0, 3).map((ins, i) => (
+                      <div key={i} className="flex justify-between items-center text-[11px] text-foreground/80">
+                        <span className="truncate">• {ins.name} ({ins.qty_used}{ins.unit})</span>
+                        <span className="font-mono text-foreground/50">{ins.etapa?.split('-')[0]?.trim() || 'Etapa'}</span>
+                      </div>
+                    ))}
+                    {selectedAppt.insumos_detalhes.length > 3 && (
+                      <p className="text-[10px] text-purple-300/70 italic text-right">
+                        +{selectedAppt.insumos_detalhes.length - 3} outro(s) produto(s)...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
+              {/* Botão de Lançar Insumos em Tempo Real (disponível quando em atendimento ou confirmado) */}
+              {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && (
+                <Button 
+                  variant="secondary" 
+                  className="bg-purple-600/25 hover:bg-purple-600/35 text-purple-200 border-purple-500/50 font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
+                  onClick={() => {
+                    abrirLancarInsumoTempoReal(selectedAppt);
+                    setSelectedAppt(null);
+                  }}
+                >
+                  <Beaker size={16} className="text-purple-400" />
+                  Lançar Produtos da Etapa (Tempo Real)
+                </Button>
+              )}
+
               {selectedAppt.status === 'pendente' && (
                 <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
                   <Check size={16} className="mr-2"/> Confirmar
@@ -1362,7 +1724,7 @@ function AgendaContent() {
               )}
               {selectedAppt.status === 'em_atendimento' && (
                 <Button variant="primary" onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}>
-                  <CheckCircle2 size={16} className="mr-2"/> Concluir
+                  <CheckCircle2 size={16} className="mr-2"/> Concluir e Ir para Caixa
                 </Button>
               )}
               {selectedAppt.status === 'concluido' && !selectedAppt.payment_method && (
@@ -1394,6 +1756,285 @@ function AgendaContent() {
                 </div>
               )}
             </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* Modal de Lançamento de Insumos em Tempo Real (Durante o Procedimento por Titular ou Auxiliar) */}
+      {liveInsumoAppt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border-purple-500/35 shadow-2xl">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <Beaker size={22} />
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-bold font-serif text-foreground">
+                      Lançamento de Produtos em Tempo Real
+                    </h3>
+                    <p className="text-xs text-foreground/60">
+                      Registro de insumos aplicados etapa por etapa • Profissional Titular & Auxiliares
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setLiveInsumoAppt(null)} 
+                className="text-foreground/50 hover:text-foreground p-1 rounded-lg hover:bg-foreground/5 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Resumo do Atendimento */}
+            <div className="bg-purple-950/20 border border-purple-500/25 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div>
+                <span className="text-[11px] text-foreground/50 uppercase font-semibold block">Cliente & Procedimento</span>
+                <span className="font-bold text-foreground text-base">{getClienteNome(liveInsumoAppt.cliente_id, clientes)}</span>
+                <span className="text-gold text-xs block font-medium">
+                  {getServicoNome(liveInsumoAppt.servico_id, servicos)}
+                  {liveInsumoAppt.sub_servicos && liveInsumoAppt.sub_servicos.length > 0 &&
+                    ' + ' + liveInsumoAppt.sub_servicos.map(s => getServicoNome(typeof s === 'string' ? s : s.id, servicos)).join(' + ')
+                  }
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-foreground/50 uppercase font-semibold block">Fundo de Insumos Acumulado</span>
+                <span className="font-mono font-bold text-lg text-gold">
+                  R$ {Number(liveInsumoAppt.product_cost || 0).toFixed(2)}
+                </span>
+                <span className="text-[11px] text-foreground/60 block">
+                  {(liveInsumoAppt.insumos_detalhes || []).length} aplicação(ões) registrada(s)
+                </span>
+              </div>
+            </div>
+
+            {/* Formulário de Nova Aplicação */}
+            <div className="bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4 mb-5 space-y-4">
+              <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
+                <Plus size={14} /> Registrar Nova Aplicação no Procedimento
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. Etapa */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1.5 block">
+                    Etapa do Procedimento:
+                  </label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    value={liveInsumoEtapa}
+                    onChange={e => setLiveInsumoEtapa(e.target.value)}
+                  >
+                    <option value="Etapa 1 - Descoloração / Mechas">Etapa 1 - Descoloração / Mechas</option>
+                    <option value="Etapa 2 - Tonalização / Matização">Etapa 2 - Tonalização / Matização</option>
+                    <option value="Etapa 3 - Lavatório / Tratamento">Etapa 3 - Lavatório / Tratamento</option>
+                    <option value="Etapa 4 - Escova / Modelagem">Etapa 4 - Escova / Modelagem</option>
+                    <option value="Etapa 5 - Finalização / Óleos">Etapa 5 - Finalização / Óleos</option>
+                    <option value="Outra">Outra etapa personalizada...</option>
+                  </select>
+                  {liveInsumoEtapa === 'Outra' && (
+                    <input
+                      type="text"
+                      placeholder="Descreva a etapa (ex: Tonalizante extra)"
+                      className="mt-2 w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground"
+                      value={liveInsumoEtapaCustom}
+                      onChange={e => setLiveInsumoEtapaCustom(e.target.value)}
+                    />
+                  )}
+                </div>
+
+                {/* 2. Quem aplicou (Titular + Auxiliares) */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1.5 block">
+                    Profissional que Aplicou:
+                  </label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    value={liveInsumoProfId}
+                    onChange={e => setLiveInsumoProfId(e.target.value)}
+                  >
+                    <option value={liveInsumoAppt.profissional_id}>
+                      ⭐ {getProfissionalNome(liveInsumoAppt.profissional_id, profissionais)} (Profissional Titular)
+                    </option>
+                    {Array.isArray(liveInsumoAppt.auxiliares_ids) && liveInsumoAppt.auxiliares_ids.map(aid => (
+                      <option key={aid} value={aid}>
+                        👥 {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Seleção do Produto e Quantidade */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-7">
+                  <label className="text-xs font-semibold text-foreground/70 mb-1.5 block">
+                    Produto Utilizado (Estoque de Insumos):
+                  </label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    value={liveInsumoProdId}
+                    onChange={e => setLiveInsumoProdId(e.target.value)}
+                  >
+                    <option value="">Selecione o produto do estoque...</option>
+                    {estoque
+                      .filter(p => p.allow_procedure_use)
+                      .map(p => {
+                        const precoG = (p.price_per_gram && p.price_per_gram > 0)
+                          ? p.price_per_gram
+                          : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.stock_qty ?? 0}{p.unit || 'g'} em estoque) — R$ {precoG.toFixed(2)}/{p.unit || 'g'}
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+
+                <div className="md:col-span-5">
+                  <label className="text-xs font-semibold text-foreground/70 mb-1.5 flex justify-between">
+                    <span>Quantidade:</span>
+                    {liveInsumoProdId && liveInsumoQtd && (
+                      <span className="text-gold font-mono font-bold">
+                        Custo: R$ {(
+                          (estoque.find(p => p.id === liveInsumoProdId)?.price_per_gram || 0.10) * 
+                          (parseFloat(liveInsumoQtd) || 0)
+                        ).toFixed(2)}
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.1"
+                      placeholder="Qtd (g ou ml)"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground font-mono focus:outline-none focus:border-purple-500"
+                      value={liveInsumoQtd}
+                      onChange={e => setLiveInsumoQtd(e.target.value)}
+                    />
+                    <Button
+                      variant="primary"
+                      className="bg-purple-600 hover:bg-purple-700 text-white shrink-0 px-4 text-xs font-bold"
+                      onClick={handleRegistrarInsumoTempoReal}
+                      disabled={liveInsumoLoading || !liveInsumoProdId || !liveInsumoQtd}
+                    >
+                      {liveInsumoLoading ? 'Salvando...' : '+ Aplicar'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões Rápidos de Gramas */}
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <span className="text-[11px] text-foreground/50">Atalhos rápidos:</span>
+                {[10, 20, 30, 45, 60, 90, 120].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setLiveInsumoQtd(String(val))}
+                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-500/20 hover:text-purple-300 text-[11px] text-foreground/70 border border-foreground/10 transition-colors"
+                  >
+                    +{val}g
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Lista dos Produtos já Aplicados neste Atendimento */}
+            <div className="space-y-3 mb-5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center justify-between">
+                <span>Insumos já aplicados neste procedimento</span>
+                <span className="text-[11px] text-foreground/50 font-normal">
+                  Total de {liveInsumoAppt.insumos_detalhes?.length || 0} produto(s)
+                </span>
+              </h4>
+
+              {(!liveInsumoAppt.insumos_detalhes || liveInsumoAppt.insumos_detalhes.length === 0) ? (
+                <div className="p-6 text-center border border-dashed border-[var(--border-subtle)] rounded-xl text-foreground/50 text-xs">
+                  <Beaker size={24} className="mx-auto mb-2 opacity-40 text-purple-400" />
+                  Nenhum produto registrado ainda. Selecione a etapa e o produto acima para lançar no momento da aplicação.
+                </div>
+              ) : (
+                <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y divide-[var(--border-subtle)] max-h-64 overflow-y-auto">
+                  {liveInsumoAppt.insumos_detalhes.map((ins, idx) => {
+                    const profNome = getProfissionalNome(ins.profissional_id || liveInsumoAppt.profissional_id, profissionais);
+                    const isTitular = (ins.profissional_id || liveInsumoAppt.profissional_id) === liveInsumoAppt.profissional_id;
+
+                    return (
+                      <div key={idx} className="p-3 bg-foreground/[0.015] hover:bg-foreground/[0.03] transition-colors flex items-center justify-between gap-3 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30">
+                              {ins.etapa || 'Procedimento'}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${
+                              isTitular ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                            }`}>
+                              {isTitular ? <Sparkles size={10} /> : <Users size={10} />}
+                              {profNome}
+                            </span>
+                            {ins.horario && (
+                              <span className="text-[10px] text-foreground/40 font-mono flex items-center gap-1">
+                                <Clock size={10} /> {ins.horario}
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-bold text-foreground text-sm flex items-center gap-2">
+                            <span>{ins.name}</span>
+                            <span className="font-mono text-xs text-foreground/70 bg-foreground/5 px-1.5 py-0.5 rounded">
+                              {ins.qty_used} {ins.unit}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 flex items-center gap-3">
+                          <div>
+                            <div className="font-mono font-bold text-gold text-sm">
+                              R$ {Number(ins.custo_total || 0).toFixed(2)}
+                            </div>
+                            <div className="text-[10px] text-foreground/40">
+                              R$ {Number(ins.price_per_gram || ins.custo_unitario || 0).toFixed(2)}/{ins.unit}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            title="Remover e estornar ao estoque"
+                            onClick={() => handleRemoverInsumoTempoReal(idx)}
+                            disabled={liveInsumoLoading}
+                            className="p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Aviso informativo e botão fechar */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 flex items-center gap-2 mb-4">
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+              <span>
+                <strong>Tudo sincronizado:</strong> A baixa no estoque é imediata. O atendimento continua em andamento normalmente e todos estes produtos já estarão pré-carregados quando a secretária abrir o Fechamento no Caixa.
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full py-2.5 text-sm font-semibold"
+              onClick={() => setLiveInsumoAppt(null)}
+            >
+              Concluir Lançamento da Etapa e Voltar para a Agenda
+            </Button>
           </CardGlass>
         </div>
       )}
@@ -1498,79 +2139,190 @@ function AgendaContent() {
                 )}
               </div>
 
-              {/* INSUMOS (Pesagem) — aparece apenas se o serviço tiver produtos vinculados */}
-              {(() => {
-                const produtosDoServico = servicoProdutos
-                  .filter(sp => sp.service_id === checkoutAppt.servico_id)
-                  .map(sp => ({ sp, prod: estoque.find(e => e.id === sp.inventory_id) }))
-                  .filter(x => x.prod);
-                
-                if (produtosDoServico.length === 0) return null;
+              {/* INSUMOS DO PROCEDIMENTO (Lançamento por Gramas / ml por Etapa e Profissional) */}
+              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Scale size={16} className="text-amber-400" />
+                    Produtos Utilizados no Procedimento (Cobrança por Grama)
+                  </h4>
+                  {checkoutInsumos.length > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold font-mono">
+                      {checkoutInsumos.length} {checkoutInsumos.length === 1 ? 'lançamento' : 'lançamentos'}
+                    </span>
+                  )}
+                </div>
 
-                return (
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                      <Beaker size={15} className="text-amber-400" />
-                      Insumos Utilizados (Pesagem)
-                    </h4>
-                    <div className="space-y-2">
-                      {produtosDoServico.map(({ sp, prod }) => {
-                        const insumo = checkoutInsumos.find(i => i.inventory_id === sp.inventory_id);
-                        const qty = insumo?.qty_used ?? sp.default_qty_g;
-                        const ppg = prod!.price_per_gram ?? 0;
-                        const custo = qty * ppg;
-                        return (
-                          <div key={sp.id} className="p-3 bg-amber-500/5 border border-amber-500/15 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <div>
-                                <p className="text-sm font-medium">{prod!.name}</p>
-                                {ppg > 0 && <p className="text-xs text-foreground/50">R$ {ppg.toFixed(4)}/{prod!.unit}</p>}
-                              </div>
-                              {sp.is_required && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">Obrigatório</span>}
+                <p className="text-xs text-foreground/50">
+                  Lançamento de cada produto consumido por etapa (ex: descoloração, tonalização, tratamento) e quem realizou. O custo por grama é calculado automaticamente.
+                </p>
+
+                {/* Formulário de Adicionar Insumo da Etapa */}
+                <div className="p-3 bg-[var(--background)] border border-amber-500/20 rounded-lg space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Etapa do Serviço</label>
+                      <input
+                        type="text"
+                        value={insumoEtapa}
+                        onChange={e => setInsumoEtapa(e.target.value)}
+                        placeholder="Ex: Etapa 1 - Mechas / Descoloração"
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Profissional que Executou a Etapa</label>
+                      <select
+                        value={insumoProfissionalId}
+                        onChange={e => setInsumoProfissionalId(e.target.value)}
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400 font-medium"
+                      >
+                        <option value={checkoutAppt.profissional_id}>
+                          {getProfissionalNome(checkoutAppt.profissional_id, profissionais)} (Titular)
+                        </option>
+                        {(checkoutAppt.auxiliares_ids || []).map(aid => (
+                          <option key={aid} value={aid}>
+                            {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Atalhos de Etapas Frequentes */}
+                  <div className="flex flex-wrap gap-1">
+                    <span className="text-[10px] text-foreground/40 self-center mr-1">Atalhos:</span>
+                    {[
+                      '1. Descoloração',
+                      '2. Tonalização / Matização',
+                      '3. Lavatório / Tratamento',
+                      '4. Finalização / Escova'
+                    ].map(etp => (
+                      <button
+                        key={etp}
+                        type="button"
+                        onClick={() => setInsumoEtapa(etp)}
+                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                          insumoEtapa === etp 
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                            : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                        }`}
+                      >
+                        {etp}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-[var(--border-subtle)]">
+                    <div className="sm:col-span-7">
+                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Produto do Estoque</label>
+                      <select
+                        value={insumoNovoProdutoId}
+                        onChange={e => setInsumoNovoProdutoId(e.target.value)}
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400"
+                      >
+                        <option value="">Selecione o produto utilizado...</option>
+                        {estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale)).map(p => {
+                          const ppg = (p.price_per_gram && p.price_per_gram > 0)
+                            ? p.price_per_gram
+                            : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
+                          return (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.unit}) — R$ {ppg.toFixed(4)}/{p.unit} [{p.stock_qty} {p.unit} em estoque]
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">
+                        Qtd. Usada ({estoque.find(e => e.id === insumoNovoProdutoId)?.unit || 'g/ml'})
+                      </label>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.5"
+                        placeholder="Ex: 30"
+                        value={insumoNovoQtdG}
+                        onChange={e => setInsumoNovoQtdG(e.target.value)}
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-amber-400 font-mono"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 flex items-end">
+                      <button
+                        type="button"
+                        onClick={adicionarInsumoPorGrama}
+                        disabled={!insumoNovoProdutoId || !insumoNovoQtdG}
+                        className="w-full h-[34px] bg-amber-500 hover:bg-amber-400 text-background font-bold rounded-lg text-xs transition-colors disabled:opacity-40 flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <Plus size={14} /> Lançar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lista de Produtos Lançados por Grama */}
+                {checkoutInsumos.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {checkoutInsumos.map((ins, idx) => {
+                      const profNome = getProfissionalNome(ins.profissional_id || '', profissionais);
+                      const isTitular = ins.profissional_id === checkoutAppt.profissional_id;
+                      return (
+                        <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--background)] border border-amber-500/20 rounded-lg text-xs">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                              <span className="font-bold text-foreground truncate">{ins.name}</span>
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 font-mono text-[10px]">
+                                {ins.qty_used} {ins.unit}
+                              </span>
+                              <span className="text-[10px] text-foreground/40 font-mono">
+                                (R$ {ins.price_per_gram.toFixed(4)}/{ins.unit})
+                              </span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <label className="text-xs text-foreground/50">Qtd. usada ({prod!.unit})</label>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <input
-                                    type="number" min={0} step={0.1}
-                                    value={qty}
-                                    onChange={e => {
-                                      const newQty = parseFloat(e.target.value) || 0;
-                                      const custTotal = newQty * ppg;
-                                      setCheckoutInsumos(prev => {
-                                        const others = prev.filter(i => i.inventory_id !== sp.inventory_id);
-                                        return [...others, {
-                                          inventory_id: sp.inventory_id,
-                                          name: prod!.name,
-                                          unit: prod!.unit,
-                                          price_per_gram: ppg,
-                                          qty_used: newQty,
-                                          custo_total: custTotal,
-                                        }];
-                                      });
-                                    }}
-                                    className="w-28 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm focus:outline-none focus:border-gold"
-                                  />
-                                  <span className="text-xs text-foreground/50">{prod!.unit}</span>
-                                </div>
-                              </div>
-                              {ppg > 0 && (
-                                <div className="text-right">
-                                  <p className="text-xs text-foreground/50">Custo</p>
-                                  <p className="font-bold text-amber-400">
-                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo)}
-                                  </p>
-                                </div>
+                            <div className="text-[11px] text-foreground/50 flex flex-wrap items-center gap-2">
+                              {ins.etapa && <span className="text-amber-300 font-medium">📍 {ins.etapa}</span>}
+                              {profNome && (
+                                <span className={isTitular ? 'text-gold' : 'text-purple-300'}>
+                                  👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
+                                </span>
                               )}
                             </div>
                           </div>
-                        );
-                      })}
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="font-bold font-mono text-amber-400 text-sm">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ins.custo_total)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removerInsumoPorGrama(idx)}
+                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
+                              title="Remover este produto"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between text-xs font-semibold">
+                      <span className="text-foreground/80 flex items-center gap-1.5">
+                        <Beaker size={14} className="text-amber-400" />
+                        Total Custo de Produtos do Atendimento:
+                      </span>
+                      <span className="text-amber-400 font-bold font-mono text-sm">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0))}
+                      </span>
                     </div>
                   </div>
-                );
-              })()}
+                ) : (
+                  <div className="p-3 text-center border border-dashed border-[var(--border-subtle)] rounded-lg text-xs text-foreground/40">
+                    Nenhum produto lançado por grama ainda. Selecione o produto acima para registrar o custo da etapa.
+                  </div>
+                )}
+              </div>
 
               {/* PRODUTOS DO SALÃO (Venda / Upsell / Balcão) */}
               <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
@@ -1802,17 +2554,45 @@ function AgendaContent() {
                 )}
               </div>
 
-              {/* TOTAL + DESCONTO GERAL + COMISSÃO */}
+              {/* TOTAL + REPARTIÇÃO TRI-PARTITE (PRODUTO -> COMISSÃO -> SALÃO) */}
               {(() => {
                 const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos) + (checkoutAppt.sub_servicos || []).reduce((acc, sub) => acc + (typeof sub === 'object' && sub.is_free ? 0 : getServicoPreco(typeof sub === 'string' ? sub : sub.id, servicos)), 0);
                 const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
                 const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
-                const subtotalGeral = totalServico + totalExtras + totalInsumos + totalProdutos;
                 
-                const valorDesconto = Math.min(subtotalGeral, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
-                const totalGeral = Math.max(0, subtotalGeral - valorDesconto);
+                // O valor cobrado da cliente é o procedimento (+ extras e produtos de balcão). O custo do insumo é absorvido internamente.
+                const subtotalServicos = totalServico + totalExtras;
+                const subtotalCobradoCliente = subtotalServicos + totalProdutos;
+                
+                const valorDesconto = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
+                const totalCobradoClienteFinal = Math.max(0, subtotalCobradoCliente - valorDesconto);
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
+                const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalCobradoClienteFinal, taxasPagamento);
+                
+                // Procedimento líquido pós-desconto proporcional
+                const descServicoProp = subtotalCobradoCliente > 0 ? (valorDesconto * (subtotalServicos / subtotalCobradoCliente)) : 0;
+                const valorProcedimentoEfetivo = Math.max(0, subtotalServicos - descServicoProp);
+
+                // === AS 3 PARTES DA REGRA DO SALÃO ===
+                // 1. PRODUTO (Fundo Reserva de Recompra)
+                const fundoReservaProdutos = Number(totalInsumos.toFixed(2));
+
+                // 2. COMISSÃO DA EQUIPE (Titular + Auxiliares)
+                const regraTitular = regrasComissao.find(r => r.professional_id === checkoutAppt.profissional_id && r.service_id === checkoutAppt.servico_id && r.active);
+                const pctComissaoBase = regraTitular?.commission_pct ?? 50;
+
+                // Base de comissão = Procedimento deduzindo o custo do produto
+                const baseComissao = Math.max(0, valorProcedimentoEfetivo - fundoReservaProdutos);
+                const comissaoTotalEquipe = Number(((baseComissao * pctComissaoBase) / 100).toFixed(2));
+
+                // Participantes: Titular + Auxiliares
+                const allParticipantes = [checkoutAppt.profissional_id, ...(checkoutAppt.auxiliares_ids || [])].filter(Boolean);
+                const countParticipantes = allParticipantes.length;
+
+                // 3. SALÃO (Faturamento Líquido)
+                const margemProdutosVenda = totalProdutos > 0 ? (totalProdutos * 0.4) : 0;
+                const faturamentoLiquidoSalao = Number(Math.max(0, valorProcedimentoEfetivo - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0) + margemProdutosVenda).toFixed(2));
 
                 return (
                   <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
@@ -1841,7 +2621,7 @@ function AgendaContent() {
                               step="0.5"
                               placeholder="Ex: 10"
                               value={checkoutDescontoPct}
-                              onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalGeral)}
+                              onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalCobradoCliente)}
                               className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-emerald-500 font-mono"
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">%</span>
@@ -1858,7 +2638,7 @@ function AgendaContent() {
                               step="0.5"
                               placeholder="Ex: 25.00"
                               value={checkoutDescontoValor}
-                              onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalGeral)}
+                              onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalCobradoCliente)}
                               className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:border-emerald-500 font-mono"
                             />
                           </div>
@@ -1880,7 +2660,7 @@ function AgendaContent() {
                           <button
                             key={btn.pct}
                             type="button"
-                            onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalGeral)}
+                            onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalCobradoCliente)}
                             className={`text-xs px-2.5 py-1 rounded-md border transition-all ${
                               (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
                                 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
@@ -1903,7 +2683,131 @@ function AgendaContent() {
                       </div>
                     </div>
 
-                    {/* Breakdown Financeiro */}
+                    {/* CARD EXCLUSIVO DE REPARTIÇÃO FINANCEIRA DO SALÃO (SEQUÊNCIA TRIPLA) */}
+                    <div className="p-4 bg-gradient-to-br from-gold/10 via-purple-500/5 to-background border-2 border-gold/40 rounded-2xl space-y-3.5 shadow-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={18} className="text-gold" />
+                          <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
+                            Repartição Financeira (A Sequência do Salão)
+                          </h4>
+                        </div>
+                        <span className="text-[11px] text-gold font-bold px-2 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
+                          Divisão Tripla Automática
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* 1. PRODUTO */}
+                        <div className="p-3 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between text-amber-400">
+                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                              <Beaker size={13} /> 1. Produto
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold">Reserva</span>
+                          </div>
+                          <p className="text-xl font-bold font-mono text-amber-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
+                          </p>
+                          <p className="text-[10px] text-foreground/50 leading-tight">
+                            Fundo reservado para recompra de estoque por grama. Absorvido no serviço (não onera a cliente).
+                          </p>
+                        </div>
+
+                        {/* 2. COMISSÃO */}
+                        <div className="p-3 bg-[var(--background)]/80 border border-purple-500/30 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between text-purple-300">
+                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                              <Users size={13} /> 2. Comissão Equipe
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold">{pctComissaoBase}%</span>
+                          </div>
+                          <p className="text-xl font-bold font-mono text-purple-300">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
+                          </p>
+                          <p className="text-[10px] text-foreground/50 leading-tight">
+                            {countParticipantes > 1 
+                              ? `Dividida entre ${countParticipantes} profissionais (titular + auxiliares)` 
+                              : '100% para o profissional titular'}
+                          </p>
+                        </div>
+
+                        {/* 3. SALÃO */}
+                        <div className="p-3 bg-[var(--background)]/80 border border-emerald-500/30 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between text-emerald-400">
+                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                              <DollarSign size={13} /> 3. Salão Líquido
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold">Faturamento</span>
+                          </div>
+                          <p className="text-xl font-bold font-mono text-emerald-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
+                          </p>
+                          <p className="text-[10px] text-foreground/50 leading-tight">
+                            Receita líquida que fica com o salão após deduzir produtos, comissões e taxas.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* DETALHAMENTO DO RATEIO DA COMISSÃO ENTRE TITULAR E AUXILIARES */}
+                      {countParticipantes > 1 && (
+                        <div className="p-3 bg-purple-500/10 border border-purple-500/25 rounded-xl space-y-2 mt-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1">
+                            <span className="font-bold text-purple-300 flex items-center gap-1.5">
+                              <Users size={14} /> Divisão da Comissão entre os Profissionais ({countParticipantes} envolvidos):
+                            </span>
+                            <span className="text-[11px] text-purple-300/70">
+                              Ajuste os % de cada um conforme necessário
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {allParticipantes.map((pid) => {
+                              const pNome = getProfissionalNome(pid, profissionais);
+                              const isTit = pid === checkoutAppt.profissional_id;
+                              const currentShare = splitComissaoCustom[pid] ?? Number((100 / countParticipantes).toFixed(1));
+                              const valorIndividual = Number((comissaoTotalEquipe * (currentShare / 100)).toFixed(2));
+
+                              return (
+                                <div key={pid} className="p-2.5 bg-[var(--background)] border border-purple-500/20 rounded-lg flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-xs text-foreground truncate flex items-center gap-1">
+                                      <span>{pNome}</span>
+                                      <span className={`text-[10px] px-1 py-0.2 rounded font-normal ${isTit ? 'bg-gold/20 text-gold' : 'bg-purple-500/20 text-purple-300'}`}>
+                                        {isTit ? 'Titular' : 'Auxiliar'}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-purple-300">
+                                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorIndividual)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="1"
+                                      value={currentShare}
+                                      onChange={e => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setSplitComissaoCustom(prev => ({
+                                          ...prev,
+                                          [pid]: val
+                                        }));
+                                      }}
+                                      className="w-16 bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-purple-400 rounded p-1 text-xs text-center font-mono font-bold"
+                                    />
+                                    <span className="text-xs text-foreground/50 font-bold">%</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Breakdown Financeiro Final */}
                     <div className="space-y-1 text-sm bg-foreground/[0.02] p-3 rounded-lg border border-[var(--border-subtle)]">
                       <div className="flex justify-between text-foreground/60">
                         <span>Serviço Agendado</span>
@@ -1915,22 +2819,10 @@ function AgendaContent() {
                           <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalExtras)}</span>
                         </div>
                       )}
-                      {totalInsumos > 0 && (
-                        <div className="flex justify-between text-amber-400">
-                          <span>Insumos (Pesagem)</span>
-                          <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalInsumos)}</span>
-                        </div>
-                      )}
                       {totalProdutos > 0 && (
                         <div className="flex justify-between text-gold">
-                          <span>Produtos de Salão</span>
+                          <span>Produtos de Salão (Venda Balcão)</span>
                           <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
-                        </div>
-                      )}
-                      {valorDesconto > 0 && (
-                        <div className="flex justify-between text-foreground/50 pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Subtotal</span>
-                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalGeral)}</span>
                         </div>
                       )}
                       {valorDesconto > 0 && (
@@ -1939,33 +2831,29 @@ function AgendaContent() {
                           <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>
                         </div>
                       )}
-                      {(() => {
-                        const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalGeral, taxasPagamento);
-                        if (taxaMaq.valorTaxa <= 0) return null;
-                        return (
-                          <>
-                            <div className="flex justify-between text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
-                              <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
-                              <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
-                            </div>
-                            <div className="flex justify-between text-blue-400 text-xs font-bold">
-                              <span>Líquido Real da Venda (Salão)</span>
-                              <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorLiquido)}</span>
-                            </div>
-                          </>
-                        );
-                      })()}
+                      {taxaMaq.valorTaxa > 0 && (
+                        <div className="flex justify-between text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                          <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
+                          <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
+                        </div>
+                      )}
+                      {totalInsumos > 0 && (
+                        <div className="flex justify-between text-amber-400 text-xs pt-1 border-t border-[var(--border-subtle)]">
+                          <span>Reserva Interna de Produtos ({checkoutInsumos.length} itens)</span>
+                          <span className="font-mono font-bold">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
                       <div>
-                        <p className="text-sm text-foreground/60 mb-0.5">Total Líquido a Receber</p>
+                        <p className="text-xs text-foreground/60 mb-0.5 uppercase tracking-wider font-semibold">Valor Total a Pagar pela Cliente</p>
                         <p className="text-3xl font-bold font-serif text-gold">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}
                         </p>
                         {numParcelas > 1 && (
                           <p className="text-xs text-amber-400 mt-0.5">
-                            {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / numParcelas)}
+                            {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
                           </p>
                         )}
                       </div>
@@ -1974,14 +2862,16 @@ function AgendaContent() {
                           Cancelar
                         </Button>
                         <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
-                          const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalGeral, taxasPagamento);
                           // 1. Finalizar o atendimento principal e persistir o recebimento no banco
                           await finalizarRecebimentoAgendamento({
                             id: checkoutAppt.id,
                             paymentMethod: checkoutPagamento,
                             installments: checkoutPagamento === 'CREDITO' ? numParcelas : 1,
-                            totalAmount: totalGeral,
-                            productCost: totalInsumos || 0,
+                            totalAmount: totalCobradoClienteFinal,
+                            productCost: fundoReservaProdutos,
+                            insumosDetalhes: checkoutInsumos,
+                            auxiliaresIds: checkoutAppt.auxiliares_ids,
+                            splitComissao: splitComissaoCustom,
                           });
                           await mudarStatus(checkoutAppt.id, 'concluido');
                           
@@ -2007,23 +2897,22 @@ function AgendaContent() {
                                 console.error("Erro ao registrar serviço extra", e);
                               }
                             }
-                            fetchAgendamentos().then(setAgendamentos);
                           }
                           
-                          const profAtendimentoNome = profissionais.find(p => p.id === checkoutAppt.profissional_id)?.nome || 'Profissional';
-
-                          // 3. Baixar insumos do estoque
+                          // 3. Baixar insumos do estoque registrando a etapa e profissional
                           for (const insumo of checkoutInsumos) {
                             if (insumo.qty_used > 0) {
+                              const profInsumoNome = getProfissionalNome(insumo.profissional_id || '', profissionais);
                               await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
                                 appointmentId: checkoutAppt.id,
-                                notes: `Procedimento: ${getServicoNome(checkoutAppt.servico_id, servicos)}`,
-                                createdBy: profAtendimentoNome,
+                                notes: `Etapa: ${insumo.etapa || 'Procedimento'} (${insumo.qty_used}${insumo.unit} a R$${(insumo.price_per_gram || 0).toFixed(4)}/${insumo.unit}) - Executado por: ${profInsumoNome}`,
+                                createdBy: profInsumoNome,
                               });
                             }
                           }
                           
                           // 3.5. Baixar produtos vendidos (Upsell / Salão)
+                          const profAtendimentoNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
                           for (const prod of checkoutProdutos) {
                             if (prod.qty > 0) {
                               const descNote = prod.descontoValor && prod.descontoValor > 0 
@@ -2037,24 +2926,24 @@ function AgendaContent() {
                             }
                           }
 
-                          // 4. Gerar comissão para o profissional (com o valor líquido recebido pós-desconto e pós-taxa de cartão)
-                          const descDetalhes = valorDesconto > 0 
-                            ? ` [Desc Geral: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} (${checkoutDescontoPct}%)${checkoutDescontoMotivo ? ` - ${checkoutDescontoMotivo}` : ''}]` 
-                            : '';
-                          
-                          await criarComissao({
+                          // 4. Gerar comissões repartidas (Titular + Auxiliares) com dedução do Fundo de Produtos
+                          await criarComissoesAtendimentoCompartilhado({
                             appointmentId: checkoutAppt.id,
-                            professionalId: checkoutAppt.profissional_id,
+                            primaryProfessionalId: checkoutAppt.profissional_id,
+                            assistantIds: checkoutAppt.auxiliares_ids,
                             serviceId: checkoutAppt.servico_id,
-                            totalAmount: totalGeral,
+                            totalAmount: valorProcedimentoEfetivo,
+                            productCost: fundoReservaProdutos,
                             paymentMethod: checkoutPagamento,
-                            installments: checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1,
+                            installments: numParcelas,
                             appointmentDate: checkoutAppt.data,
                             taxasCustom: taxasPagamento,
+                            splitPercentages: splitComissaoCustom,
                           });
                           
                           fecharCheckout();
-                          alert(`Fechamento Prévio Registrado com Sucesso!\n\nCliente liberada na recepção.\nTotal Pré-Fechado: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)} (${checkoutPagamento})\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e contabilização oficial.`);
+                          fetchAgendamentos().then(setAgendamentos);
+                          alert(`Fechamento Prévio Registrado com Sucesso!\n\nCliente liberada na recepção.\nValor Cobrado da Cliente: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\n\nDivisão Interna do Salão:\n• Fundo Reserva de Produtos: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}\n• Comissões da Equipe: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}\n• Líquido Salão: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e confirmação final.`);
                         }}>
                           Registrar Fechamento Prévio (Liberar Cliente)
                         </Button>
@@ -2376,6 +3265,60 @@ function AgendaContent() {
                     </optgroup>
                   )}
                 </select>
+              </div>
+
+              {/* Auxiliares / Co-participantes do Procedimento */}
+              <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Users size={14} className="text-purple-400" />
+                    Auxiliares do Procedimento (Co-participantes)
+                  </label>
+                  <span className="text-[10px] text-purple-400 font-semibold px-2 py-0.5 bg-purple-500/10 rounded-full border border-purple-500/20">
+                    Opcional • {formData.auxiliares_ids.length} selecionado(s)
+                  </span>
+                </div>
+                <p className="text-[11px] text-foreground/50 leading-relaxed">
+                  Selecione os profissionais que farão parte das etapas deste atendimento (ex: mechas, lavatório, finalização). A agenda de cada auxiliar será ocupada automaticamente por este atendimento e a comissão poderá ser repartida no fechamento.
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {profissionais
+                    .filter(p => p.id !== formData.profissional_id && p.ativo)
+                    .map(p => {
+                      const isSelected = formData.auxiliares_ids.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData(f => ({
+                              ...f,
+                              auxiliares_ids: isSelected 
+                                ? f.auxiliares_ids.filter(id => id !== p.id)
+                                : [...f.auxiliares_ids, p.id]
+                            }));
+                          }}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${
+                            isSelected
+                              ? 'bg-purple-600/25 border-purple-500 text-purple-200 font-bold shadow-sm'
+                              : 'border-[var(--border-subtle)] text-foreground/70 hover:border-purple-500/40 hover:text-foreground bg-[var(--background)]'
+                          }`}
+                        >
+                          {isSelected ? <Check size={12} className="text-purple-300" /> : <Plus size={12} className="text-foreground/40" />}
+                          <span>{p.nome}</span>
+                          {isSelected && <span className="text-[10px] opacity-75 font-normal">(Auxiliar)</span>}
+                        </button>
+                      );
+                    })}
+                </div>
+                {formData.auxiliares_ids.length > 0 && (
+                  <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 flex items-center gap-2">
+                    <Sparkles size={14} className="shrink-0 text-purple-400" />
+                    <span>
+                      <strong>Equipe do Procedimento:</strong> {getProfissionalNome(formData.profissional_id, profissionais)} (Titular) + {formData.auxiliares_ids.map(id => getProfissionalNome(id, profissionais)).join(', ')} (Auxiliares).
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* 3. Serviço FILTRADO pelo Profissional */}

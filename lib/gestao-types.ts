@@ -77,6 +77,7 @@ export interface Agendamento {
   profissional_id: UUID;
   servico_id: UUID;
   sub_servicos?: any[];
+  auxiliares_ids?: UUID[];
   data: string; // date YYYY-MM-DD
   hora_inicio: string; // "09:00"
   hora_fim: string;
@@ -85,6 +86,9 @@ export interface Agendamento {
   allow_overlap?: boolean;
   payment_method?: string | null;
   total_amount?: number | null;
+  product_cost?: number | null;
+  insumos_detalhes?: InsumoAtendimento[];
+  split_comissao?: Record<UUID, number>;
   financial_status?: 'PENDING_CONFIRMATION' | 'CONFIRMED' | string;
   confirmed_at?: string | null;
   confirmed_by?: string | null;
@@ -215,6 +219,10 @@ export interface InsumoAtendimento {
   price_per_gram: number;
   qty_used: number;   // quantidade usada em gramas/ml
   custo_total: number; // qty_used × price_per_gram
+  custo_unitario?: number;
+  etapa?: string;
+  profissional_id?: string;
+  horario?: string;
 }
 
 // ── TAXAS DE PAGAMENTO E MAQUININHAS ──────────────────────

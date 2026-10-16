@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   Wallet, DollarSign, ArrowDownRight, Plus, AlertTriangle, Coffee, Wrench, Users, Receipt, Archive, LockOpen, Lock,
   Calendar, CheckCircle, FileText, ArrowUpRight, Search, CreditCard, Banknote, Smartphone, ExternalLink,
-  CheckCircle2, Clock, ShieldCheck, AlertCircle, Edit3, X, CheckCheck, RefreshCw, Filter
+  CheckCircle2, Clock, ShieldCheck, AlertCircle, Edit3, X, CheckCheck, RefreshCw, Filter, Sparkles, Scale, Beaker
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -840,7 +840,19 @@ export default function AdminFinanceiro() {
                         </td>
                         <td className="p-4">
                           <p className="text-sm font-medium text-foreground">{nomeServico}</p>
-                          <p className="text-xs text-foreground/50 mt-0.5">Prof.: {nomeProf}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-foreground/50">Prof.: {nomeProf}</span>
+                            {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
+                                <Users size={11} /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
+                              </span>
+                            )}
+                          </div>
+                          {ag.product_cost != null && Number(ag.product_cost) > 0 && (
+                            <p className="text-[11px] text-amber-400 font-mono mt-1 flex items-center gap-1">
+                              <Beaker size={11} /> Fundo Produtos: R$ {Number(ag.product_cost).toFixed(2)}
+                            </p>
+                          )}
                         </td>
                         <td className="p-4">
                           {(() => {
@@ -969,18 +981,48 @@ export default function AdminFinanceiro() {
             </div>
 
             <div className="space-y-3 text-sm">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <p className="text-xs text-foreground/50">Cliente</p>
-                <p className="font-bold text-foreground">
-                  {clientes.find(c => c.id === editingApptGestao.cliente_id)?.nome || 'Cliente'}
-                </p>
-                <p className="text-xs text-foreground/50 mt-2">Procedimento Principal</p>
-                <p className="font-medium text-foreground">
-                  {getServicoNome(editingApptGestao.servico_id, servicos)}
-                </p>
-                <p className="text-xs text-foreground/50 mt-1">
-                  Profissional: {getProfissionalNome(editingApptGestao.profissional_id, profissionais)}
-                </p>
+              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                <div>
+                  <p className="text-xs text-foreground/50">Cliente</p>
+                  <p className="font-bold text-foreground">
+                    {clientes.find(c => c.id === editingApptGestao.cliente_id)?.nome || 'Cliente'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground/50">Procedimento Realizado</p>
+                  <p className="font-medium text-foreground">
+                    {getServicoNome(editingApptGestao.servico_id, servicos)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground/50">Equipe de Profissionais</p>
+                  <p className="font-semibold text-gold text-xs">
+                    👑 Titular: {getProfissionalNome(editingApptGestao.profissional_id, profissionais)}
+                  </p>
+                  {editingApptGestao.auxiliares_ids && editingApptGestao.auxiliares_ids.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {editingApptGestao.auxiliares_ids.map(aid => (
+                        <span key={aid} className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
+                          <Users size={10} /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Resumo da Repartição do Salão (Fundo Produtos + Comissões + Líquido) */}
+                {editingApptGestao.product_cost != null && Number(editingApptGestao.product_cost) > 0 && (
+                  <div className="pt-2 border-t border-white/10 space-y-1">
+                    <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                      <Beaker size={12} /> Fundo de Reserva de Produtos: R$ {Number(editingApptGestao.product_cost).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-foreground/40">
+                      Custo total dos produtos por grama reservado para recompra de estoque.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">
