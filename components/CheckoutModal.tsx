@@ -332,16 +332,16 @@ export function CheckoutModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto border border-gold/30 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 overflow-y-auto">
+      <CardGlass className="w-full max-w-5xl xl:max-w-6xl p-5 sm:p-7 animate-in fade-in zoom-in-95 my-auto max-h-[94vh] overflow-y-auto overflow-x-hidden border border-gold/40 shadow-2xl">
         {/* Header */}
         <div className="flex justify-between items-start mb-5 pb-3 border-b border-[var(--color-border)]">
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <h3 className="text-xl font-bold font-serif text-foreground">Fechamento Prévio do Serviço (Secretaria)</h3>
+              <h3 className="text-xl sm:text-2xl font-bold font-serif text-foreground">Fechamento Prévio do Serviço (Secretaria)</h3>
             </div>
-            <p className="text-xs text-foreground/60 mt-1">
+            <p className="text-xs sm:text-sm text-foreground/60 mt-1">
               Cliente: <strong className="text-foreground">{getClienteNome(appt.cliente_id)}</strong> • Profissional: <strong>{getProfissionalNome(appt.profissional_id)}</strong> • <span className="text-amber-500 font-medium">Envio para a Gestão Financeira</span>
             </p>
           </div>
@@ -350,7 +350,7 @@ export function CheckoutModal({
             disabled={submitting}
             className="text-foreground/50 hover:text-foreground p-1.5 rounded-lg hover:bg-foreground/5 transition-colors"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
 
@@ -360,9 +360,11 @@ export function CheckoutModal({
             <p className="text-xs">Carregando itens da comanda e dados de pagamento...</p>
           </div>
         ) : (
-          <div className="space-y-5">
-            {/* 1. Serviço Agendado Principal */}
-            <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* COLUNA ESQUERDA: Procedimentos, Insumos e Produtos */}
+            <div className="lg:col-span-7 space-y-4 min-w-0">
+              {/* 1. Serviço Agendado Principal */}
+              <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 block mb-0.5">
@@ -625,167 +627,182 @@ export function CheckoutModal({
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* 5. Desconto ao Cliente */}
-            <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Percent size={14} className="text-emerald-400" />
-                  <span className="text-xs font-bold text-foreground uppercase tracking-wider">Desconto ao Cliente</span>
+          {/* COLUNA DIREITA: Desconto, Pagamento, Resumo e Ações */}
+          <div className="lg:col-span-5 space-y-4 min-w-0">
+              {/* 5. Desconto ao Cliente */}
+              <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Percent size={14} className="text-emerald-400" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">Desconto ao Cliente</span>
+                  </div>
+                  {valorDesconto > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold font-mono">
+                      -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} ({checkoutDescontoPct || '0'}%)
+                    </span>
+                  )}
                 </div>
-                {valorDesconto > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold font-mono">
-                    -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} ({checkoutDescontoPct || '0'}%)
-                  </span>
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    placeholder="Em Porcentagem %"
-                    value={checkoutDescontoPct}
-                    onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalGeral)}
-                    className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg py-1.5 pl-3 pr-7 text-xs font-mono"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">%</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      placeholder="Em Porcentagem %"
+                      value={checkoutDescontoPct}
+                      onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalGeral)}
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg py-1.5 pl-3 pr-7 text-xs font-mono"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">%</span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.50"
+                      placeholder="Em Reais R$"
+                      value={checkoutDescontoValor}
+                      onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalGeral)}
+                      className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg py-1.5 pl-8 pr-3 text-xs font-mono"
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">R$</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.50"
-                    placeholder="Em Reais R$"
-                    value={checkoutDescontoValor}
-                    onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalGeral)}
-                    className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg py-1.5 pl-8 pr-3 text-xs font-mono"
-                  />
-                </div>
-              </div>
 
-              {/* Atalhos Rápidos */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                {[
-                  { label: 'Sem desc.', pct: '0' },
-                  { label: '5%', pct: '5' },
-                  { label: '10%', pct: '10' },
-                  { label: '15%', pct: '15' },
-                  { label: '20%', pct: '20' },
-                  { label: '25%', pct: '25' },
-                  { label: '30%', pct: '30' },
-                ].map(btn => (
-                  <button
-                    key={btn.pct}
-                    type="button"
-                    onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalGeral)}
-                    className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
-                      (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
-                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
-                        : 'border-[var(--color-border)] text-foreground/60 hover:text-foreground'
-                    }`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 6. Forma de Pagamento */}
-            <div className="p-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground/70 block">
-                Forma de Pagamento
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'DINHEIRO', label: 'Dinheiro', icon: Coins },
-                  { id: 'PIX', label: 'Pix', icon: QrCode },
-                  { id: 'DEBITO', label: 'Débito', icon: CreditCard },
-                  { id: 'CREDITO', label: 'Crédito', icon: Banknote },
-                ].map(op => {
-                  const Icon = op.icon;
-                  const active = checkoutPagamento === op.id;
-                  return (
+                {/* Atalhos Rápidos */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {[
+                    { label: 'Sem desc.', pct: '0' },
+                    { label: '5%', pct: '5' },
+                    { label: '10%', pct: '10' },
+                    { label: '15%', pct: '15' },
+                    { label: '20%', pct: '20' },
+                    { label: '25%', pct: '25' },
+                    { label: '30%', pct: '30' },
+                  ].map(btn => (
                     <button
-                      key={op.id}
+                      key={btn.pct}
                       type="button"
-                      onClick={() => setCheckoutPagamento(op.id as FormaPagamento)}
-                      className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-all ${
-                        active 
-                          ? 'bg-gold/15 border-gold text-gold font-bold shadow-sm' 
-                          : 'border-[var(--color-border)] bg-[var(--color-background)] text-foreground/70 hover:border-foreground/30'
+                      onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalGeral)}
+                      className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
+                        (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                          : 'border-[var(--color-border)] text-foreground/60 hover:text-foreground'
                       }`}
                     >
-                      <Icon size={18} className="mb-1" />
-                      {op.label}
+                      {btn.label}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
-              {checkoutPagamento === 'CREDITO' && (
-                <div className="pt-2 flex items-center justify-between border-t border-[var(--color-border)]">
-                  <span className="text-xs text-foreground/70">Número de Parcelas:</span>
-                  <select
-                    value={checkoutParcelas}
-                    onChange={(e) => setCheckoutParcelas(parseInt(e.target.value) || 1)}
-                    className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-1.5 text-xs font-mono font-bold text-foreground"
-                  >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
-                      <option key={n} value={n}>
-                        {n}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / n)}
-                      </option>
-                    ))}
-                  </select>
+              {/* 6. Forma de Pagamento */}
+              <div className="p-3.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/70 block">
+                  Forma de Pagamento
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'DINHEIRO', label: 'Dinheiro', icon: Coins },
+                    { id: 'PIX', label: 'Pix', icon: QrCode },
+                    { id: 'DEBITO', label: 'Débito', icon: CreditCard },
+                    { id: 'CREDITO', label: 'Crédito', icon: Banknote },
+                  ].map(op => {
+                    const Icon = op.icon;
+                    const active = checkoutPagamento === op.id;
+                    return (
+                      <button
+                        key={op.id}
+                        type="button"
+                        onClick={() => setCheckoutPagamento(op.id as FormaPagamento)}
+                        className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                          active 
+                            ? 'bg-gold/15 border-gold text-gold font-bold shadow-sm' 
+                            : 'border-[var(--color-border)] bg-[var(--color-background)] text-foreground/70 hover:border-foreground/30'
+                        }`}
+                      >
+                        <Icon size={18} className="mb-1" />
+                        {op.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* Informação da taxa de maquininha */}
-              {taxaMaq.valorTaxa > 0 && (
-                <div className="flex justify-between items-center text-xs text-amber-500 pt-1 border-t border-[var(--color-border)]">
-                  <span>Taxa Cartão ({taxaMaq.regraNome} {taxaMaq.feePercentage}%):</span>
-                  <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
-                </div>
-              )}
-            </div>
+                {checkoutPagamento === 'CREDITO' && (
+                  <div className="pt-2 flex items-center justify-between border-t border-[var(--color-border)]">
+                    <span className="text-xs text-foreground/70">Número de Parcelas:</span>
+                    <select
+                      value={checkoutParcelas}
+                      onChange={(e) => setCheckoutParcelas(parseInt(e.target.value) || 1)}
+                      className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-1.5 text-xs font-mono font-bold text-foreground"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                        <option key={n} value={n}>
+                          {n}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / n)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            {/* 7. Total Final & Confirmação */}
-            <div className="pt-3 border-t border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-              <div>
-                <span className="text-xs text-foreground/60 block">Total Líquido a Receber</span>
-                <p className="text-3xl font-extrabold font-serif text-gold">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}
-                </p>
-                {checkoutPagamento === 'CREDITO' && numParcelas > 1 && (
-                  <p className="text-xs text-amber-400 font-mono mt-0.5">
-                    {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / numParcelas)}
-                  </p>
+                {/* Informação da taxa de maquininha */}
+                {taxaMaq.valorTaxa > 0 && (
+                  <div className="flex justify-between items-center text-xs text-amber-500 pt-1 border-t border-[var(--color-border)]">
+                    <span>Taxa Cartão ({taxaMaq.regraNome} {taxaMaq.feePercentage}%):</span>
+                    <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
+                  </div>
                 )}
               </div>
 
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="ghost" 
-                  disabled={submitting}
-                  onClick={onClose} 
-                  className="flex-1 sm:flex-none text-foreground/60 hover:text-foreground"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  variant="primary" 
-                  disabled={submitting}
-                  onClick={handleConfirmarRecebimento}
-                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-lg shadow-emerald-600/30 font-bold px-6 py-2.5"
-                >
-                  <CheckCircle2 size={18} className="mr-2" />
-                  {submitting ? 'Registrando...' : 'Registrar Fechamento Prévio (Liberar Cliente)'}
-                </Button>
+              {/* 7. Total Final & Confirmação */}
+              <div className="p-4 bg-gradient-to-b from-gold/15 to-gold/5 border border-gold/40 rounded-xl space-y-3 shadow-lg">
+                <div className="flex items-center justify-between border-b border-gold/20 pb-2">
+                  <span className="text-xs uppercase tracking-wider font-semibold text-foreground/70">
+                    Total Líquido a Receber
+                  </span>
+                  {checkoutPagamento === 'CREDITO' && numParcelas > 1 && (
+                    <span className="text-xs text-amber-300 font-mono font-bold">
+                      {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral / numParcelas)}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-3xl sm:text-4xl font-extrabold font-serif text-gold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral)}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground/60 mt-1">
+                    <span>Serviços: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico + checkoutExtras.reduce((a, b) => a + b.preco, 0))}</span>
+                    {valorDesconto > 0 && <span className="text-emerald-400 font-medium">Desc: -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>}
+                    {checkoutProdutos.length > 0 && <span className="text-teal-400 font-medium">Produtos: +{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutProdutos.reduce((a, b) => a + (b.preco * b.qty), 0))}</span>}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <Button 
+                    variant="ghost" 
+                    disabled={submitting}
+                    onClick={onClose} 
+                    className="w-full sm:w-auto text-foreground/60 hover:text-foreground"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    disabled={submitting}
+                    onClick={handleConfirmarRecebimento}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-lg shadow-emerald-600/30 font-bold py-3 text-sm flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={18} />
+                    {submitting ? 'Registrando...' : 'Registrar Fechamento Prévio (Liberar Cliente)'}
+                  </Button>
+                </div>
               </div>
+
             </div>
           </div>
         )}

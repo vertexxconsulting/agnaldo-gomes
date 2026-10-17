@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { 
   Wallet, DollarSign, ArrowDownRight, Plus, AlertTriangle, Coffee, Wrench, Users, Receipt, Archive, LockOpen, Lock,
   Calendar, CheckCircle, FileText, ArrowUpRight, Search, CreditCard, Banknote, Smartphone, ExternalLink,
-  CheckCircle2, Clock, ShieldCheck, AlertCircle, Edit3, X, CheckCheck, RefreshCw, Filter, Sparkles, Scale, Beaker
+  CheckCircle2, Clock, ShieldCheck, AlertCircle, Edit3, X, CheckCheck, RefreshCw, Filter, Sparkles, Scale, Beaker,
+  Scissors, Percent, ShoppingBag, Eye, Printer, Layers
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -39,6 +40,7 @@ export default function AdminFinanceiro() {
   // Estados do Fechamento e Contabilização da Gestão
   const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'PENDING_CONFIRMATION' | 'CONFIRMED'>('TODOS');
   const [editingApptGestao, setEditingApptGestao] = useState<Agendamento | null>(null);
+  const [extratoComandaAppt, setExtratoComandaAppt] = useState<Agendamento | null>(null);
   const [modalMetodo, setModalMetodo] = useState<string>('DINHEIRO');
   const [modalValor, setModalValor] = useState<string>('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -212,6 +214,14 @@ export default function AdminFinanceiro() {
     }
   };
 
+  // Helper para obter valor líquido/efetivo de um agendamento, desconsiderando duplicidades de comandas unificadas
+  const getValorEfetivo = (a: Agendamento): number => {
+    // Se o agendamento foi unificado em outra comanda principal, seu valor a pagar individual é zero (cobrado no pai)
+    if (a.unificado_em_id) return 0;
+    if (a.total_amount != null) return Number(a.total_amount);
+    return getServicoPreco(a.servico_id, servicos);
+  };
+
   // Confirmação e Contabilização pela Gestão
   const handleConfirmarGestao = async (ag: Agendamento, metodoCustom?: string, valorCustom?: number) => {
     setActionLoadingId(ag.id);
@@ -219,13 +229,16 @@ export default function AdminFinanceiro() {
       const finalMetodo = metodoCustom || ag.payment_method || 'DINHEIRO';
       const finalValor = valorCustom !== undefined 
         ? valorCustom 
-        : (ag.total_amount != null && Number(ag.total_amount) > 0 ? Number(ag.total_amount) : getServicoPreco(ag.servico_id, servicos));
+        : getValorEfetivo(ag);
+
+      const unificadosIds = ag.comanda_unificada?.agendamentos_unificados_ids || [];
 
       const ok = await confirmarFechamentoGestao({
         id: ag.id,
         paymentMethod: finalMetodo,
         totalAmount: finalValor,
         confirmedBy: 'Gestão do Salão',
+        agendamentosUnificadosIds: unificadosIds,
       });
 
       if (!ok) {
@@ -234,10 +247,12 @@ export default function AdminFinanceiro() {
       }
 
       // Se foi em DINHEIRO e o caixa físico estiver aberto, sincroniza no caixa
-      if (finalMetodo.toUpperCase() === 'DINHEIRO' && caixaAberto) {
+      if (finalMetodo.toUpperCase() === 'DINHEIRO' && caixaAberto && finalValor > 0) {
         try {
           const cli = clientes.find(c => c.id === ag.cliente_id);
-          const srvNome = getServicoNome(ag.servico_id, servicos);
+          const srvNome = ag.comanda_unificada
+            ? `Comanda Unificada (${ag.comanda_unificada.procedimentos.length} procedimentos)`
+            : getServicoNome(ag.servico_id, servicos);
           await fetch('/api/admin/caixa/transacoes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -259,6 +274,7 @@ export default function AdminFinanceiro() {
 
       await carregarAtendimentosDia(dataFiltro);
       setEditingApptGestao(null);
+      setExtratoComandaAppt(null);
     } catch (err: any) {
       alert('Erro ao processar confirmação: ' + (err?.message || 'Erro de comunicação'));
     } finally {
@@ -275,22 +291,24 @@ export default function AdminFinanceiro() {
     setBatchLoading(true);
     try {
       for (const ag of preFechadosPendentes) {
-        const val = (ag.total_amount != null && Number(ag.total_amount) > 0)
-          ? Number(ag.total_amount)
-          : getServicoPreco(ag.servico_id, servicos);
+        const val = getValorEfetivo(ag);
         const met = ag.payment_method || 'DINHEIRO';
+        const unificadosIds = ag.comanda_unificada?.agendamentos_unificados_ids || [];
 
         await confirmarFechamentoGestao({
           id: ag.id,
           paymentMethod: met,
           totalAmount: val,
           confirmedBy: 'Gestão do Salão',
+          agendamentosUnificadosIds: unificadosIds,
         });
 
-        if (met.toUpperCase() === 'DINHEIRO' && caixaAberto) {
+        if (met.toUpperCase() === 'DINHEIRO' && caixaAberto && val > 0) {
           try {
             const cli = clientes.find(c => c.id === ag.cliente_id);
-            const srvNome = getServicoNome(ag.servico_id, servicos);
+            const srvNome = ag.comanda_unificada
+              ? `Comanda Unificada (${ag.comanda_unificada.procedimentos.length} procedimentos)`
+              : getServicoNome(ag.servico_id, servicos);
             await fetch('/api/admin/caixa/transacoes', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -320,9 +338,7 @@ export default function AdminFinanceiro() {
   };
 
   const handleAbrirAjusteModal = (ag: Agendamento) => {
-    const val = (ag.total_amount != null && Number(ag.total_amount) > 0)
-      ? Number(ag.total_amount)
-      : getServicoPreco(ag.servico_id, servicos);
+    const val = getValorEfetivo(ag);
     setEditingApptGestao(ag);
     setModalMetodo(ag.payment_method || 'DINHEIRO');
     setModalValor(val.toFixed(2));
@@ -348,61 +364,41 @@ export default function AdminFinanceiro() {
   const atendimentosConcluidos = agendamentosDia.filter(a => a.status === 'concluido');
 
   // Pré-fechados pela Secretaria (Aguardando conferência da Gestão)
+  // Agendamentos secundários unificados não inflam a lista separadamente
   const preFechadosPendentes = atendimentosConcluidos.filter(
-    a => a.financial_status === 'PENDING_CONFIRMATION'
+    a => a.financial_status === 'PENDING_CONFIRMATION' && !a.unificado_em_id
   );
 
   // Confirmados e Contabilizados pela Gestão
   const contabilizadosGestao = atendimentosConcluidos.filter(
-    a => a.financial_status === 'CONFIRMED' || !a.financial_status
+    a => (a.financial_status === 'CONFIRMED' || !a.financial_status) && !a.unificado_em_id
   );
 
   // Faturamento Oficial Confirmado (Gestão)
   const totalConfirmadoGestao = contabilizadosGestao.reduce((acc, a) => {
-    const val = (a.total_amount != null && Number(a.total_amount) > 0)
-      ? Number(a.total_amount)
-      : getServicoPreco(a.servico_id, servicos);
-    return acc + val;
+    return acc + getValorEfetivo(a);
   }, 0);
 
   // Faturamento Pendente de Confirmação (Secretaria)
   const totalPendenteGestao = preFechadosPendentes.reduce((acc, a) => {
-    const val = (a.total_amount != null && Number(a.total_amount) > 0)
-      ? Number(a.total_amount)
-      : getServicoPreco(a.servico_id, servicos);
-    return acc + val;
+    return acc + getValorEfetivo(a);
   }, 0);
 
   // Totais por método dos lançamentos contabilizados
   const totalDinheiroConfirmado = contabilizadosGestao
     .filter(a => (a.payment_method || '').toUpperCase() === 'DINHEIRO')
-    .reduce((acc, a) => {
-      const val = (a.total_amount != null && Number(a.total_amount) > 0)
-        ? Number(a.total_amount)
-        : getServicoPreco(a.servico_id, servicos);
-      return acc + val;
-    }, 0);
+    .reduce((acc, a) => acc + getValorEfetivo(a), 0);
 
   const totalPixConfirmado = contabilizadosGestao
     .filter(a => (a.payment_method || '').toUpperCase() === 'PIX')
-    .reduce((acc, a) => {
-      const val = (a.total_amount != null && Number(a.total_amount) > 0)
-        ? Number(a.total_amount)
-        : getServicoPreco(a.servico_id, servicos);
-      return acc + val;
-    }, 0);
+    .reduce((acc, a) => acc + getValorEfetivo(a), 0);
 
   const totalCartoesConfirmado = contabilizadosGestao
     .filter(a => {
       const m = (a.payment_method || '').toUpperCase();
       return m.includes('CREDITO') || m.includes('CRÉDITO') || m.includes('DEBITO') || m.includes('DÉBITO') || m.includes('CARTAO') || m.includes('CARTÃO');
     })
-    .reduce((acc, a) => {
-      const val = (a.total_amount != null && Number(a.total_amount) > 0)
-        ? Number(a.total_amount)
-        : getServicoPreco(a.servico_id, servicos);
-      return acc + val;
-    }, 0);
+    .reduce((acc, a) => acc + getValorEfetivo(a), 0);
 
   // Lista filtrada
   const agendamentosFiltrados = agendamentosDia.filter(ag => {
@@ -815,12 +811,13 @@ export default function AdminFinanceiro() {
                     const cpfCliente = cli?.cpf;
                     const nomeServico = getServicoNome(ag.servico_id, servicos);
                     const nomeProf = getProfissionalNome(ag.profissional_id, profissionais);
-                    const valor = (ag.total_amount != null && Number(ag.total_amount) > 0)
-                      ? Number(ag.total_amount)
-                      : getServicoPreco(ag.servico_id, servicos);
+                    const valor = getValorEfetivo(ag);
                     
                     const isPendingConfirmation = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
                     const isConfirmed = ag.status === 'concluido' && (ag.financial_status === 'CONFIRMED' || !ag.financial_status);
+                    const isUnificado = Boolean(ag.unificado_em_id);
+                    const isMultiProf = Boolean(ag.comanda_unificada && ag.comanda_unificada.procedimentos && ag.comanda_unificada.procedimentos.length > 0);
+                    const agendamentoPai = isUnificado ? agendamentosDia.find(x => x.id === ag.unificado_em_id) : null;
 
                     return (
                       <tr 
@@ -839,23 +836,81 @@ export default function AdminFinanceiro() {
                           </p>
                         </td>
                         <td className="p-4">
-                          <p className="text-sm font-medium text-foreground">{nomeServico}</p>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="text-xs text-foreground/50">Prof.: {nomeProf}</span>
-                            {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
-                                <Users size={11} /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
-                              </span>
-                            )}
-                          </div>
-                          {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                            <p className="text-[11px] text-amber-400 font-mono mt-1 flex items-center gap-1">
-                              <Beaker size={11} /> Fundo Produtos: R$ {Number(ag.product_cost).toFixed(2)}
-                            </p>
+                          {isMultiProf ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-gold/15 text-gold font-bold border border-gold/30 inline-flex items-center gap-1 shadow-sm">
+                                  <Sparkles size={11} className="text-gold" /> Comanda Multi-Profissional ({ag.comanda_unificada!.procedimentos.length} procedimentos)
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                {ag.comanda_unificada!.procedimentos.map((p, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-xs bg-foreground/5 px-2.5 py-1 rounded-md border border-white/5">
+                                    <div className="flex items-center gap-1.5">
+                                      <Scissors size={11} className="text-gold" />
+                                      <span className="font-semibold text-foreground">{p.servico_nome}</span>
+                                      <span className="text-foreground/40">•</span>
+                                      <span className="text-foreground/70">{p.profissional_nome}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {p.desconto_valor > 0 && (
+                                        <span className="text-amber-400 font-medium text-[10px]">
+                                          Desc: -R$ {p.desconto_valor.toFixed(2)}
+                                        </span>
+                                      )}
+                                      <span className="font-mono text-foreground/80 font-bold">
+                                        R$ {(p.preco_tabela - p.desconto_valor).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {ag.comanda_unificada!.produtos_comprados && ag.comanda_unificada!.produtos_comprados.length > 0 && (
+                                <p className="text-[11px] text-teal-400 font-mono flex items-center gap-1 pt-0.5">
+                                  <ShoppingBag size={11} /> {ag.comanda_unificada!.produtos_comprados.length} produto(s) Home Care inclusos
+                                </p>
+                              )}
+                              {ag.product_cost != null && Number(ag.product_cost) > 0 && (
+                                <p className="text-[11px] text-amber-400/90 font-mono flex items-center gap-1">
+                                  <Beaker size={11} /> Insumos / Fundo de Produtos: R$ {Number(ag.product_cost).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                          ) : isUnificado ? (
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{nomeServico}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-foreground/60">Prof.: {nomeProf}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold border border-blue-500/30 flex items-center gap-1">
+                                  <Layers size={10} /> Integrado na Comanda Conjunta
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{nomeServico}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-foreground/50">Prof.: {nomeProf}</span>
+                                {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
+                                    <Users size={11} /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
+                                  </span>
+                                )}
+                              </div>
+                              {ag.product_cost != null && Number(ag.product_cost) > 0 && (
+                                <p className="text-[11px] text-amber-400 font-mono mt-1 flex items-center gap-1">
+                                  <Beaker size={11} /> Fundo Produtos: R$ {Number(ag.product_cost).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="p-4">
-                          {(() => {
+                          {isUnificado ? (
+                            <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-flex items-center gap-1">
+                              <Layers size={11} /> Comanda Única
+                            </span>
+                          ) : (() => {
                             const m = (ag.payment_method || '').toUpperCase();
                             if (m === 'DINHEIRO') {
                               return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 inline-flex items-center gap-1"><Banknote size={12}/> Dinheiro</span>;
@@ -876,9 +931,20 @@ export default function AdminFinanceiro() {
                           })()}
                         </td>
                         <td className="p-4 text-right">
-                          <span className={`font-bold text-sm ${isConfirmed ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            R$ {valor.toFixed(2)}
-                          </span>
+                          {isUnificado ? (
+                            <div className="flex flex-col items-end">
+                              <span className="font-mono text-xs text-foreground/40 line-through">
+                                R$ {getServicoPreco(ag.servico_id, servicos).toFixed(2)}
+                              </span>
+                              <span className="text-[11px] text-blue-400 font-semibold">
+                                Faturado em conjunto
+                              </span>
+                            </div>
+                          ) : (
+                            <span className={`font-bold text-sm ${isConfirmed ? 'text-emerald-500' : 'text-amber-500'}`}>
+                              R$ {valor.toFixed(2)}
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-center">
                           <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold border
@@ -891,7 +957,14 @@ export default function AdminFinanceiro() {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          {isPendingConfirmation ? (
+                          {isUnificado ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30 inline-flex items-center gap-1">
+                                <Layers size={11} /> Unificado
+                              </span>
+                              <span className="text-[10px] text-foreground/40">Comanda da Cliente</span>
+                            </div>
+                          ) : isPendingConfirmation ? (
                             <div className="flex flex-col items-center gap-0.5">
                               <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 inline-flex items-center gap-1">
                                 <Clock size={12} className="animate-spin" /> Pré-fechado (Secretaria)
@@ -910,47 +983,81 @@ export default function AdminFinanceiro() {
                           )}
                         </td>
                         <td className="p-4 text-center">
-                          {isPendingConfirmation ? (
-                            <div className="flex items-center justify-center gap-1.5">
+                          {isUnificado ? (
+                            <div className="flex items-center justify-center">
                               <button
-                                onClick={() => handleConfirmarGestao(ag)}
-                                disabled={actionLoadingId === ag.id}
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
-                                title="Confirmar conferência e contabilizar oficialmente no financeiro"
+                                onClick={() => {
+                                  if (agendamentoPai) {
+                                    setExtratoComandaAppt(agendamentoPai);
+                                  } else {
+                                    alert('A comanda principal está registrada em outro lote ou registro.');
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-foreground/10 hover:bg-foreground/20 text-foreground transition-colors border border-border-subtle"
+                                title="Ver a comanda unificada da cliente"
                               >
-                                <CheckCircle2 size={13} />
-                                {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar e Contabilizar'}
+                                <Eye size={13} /> Ver Comanda Conjunta
                               </button>
-                              <button
-                                onClick={() => handleAbrirAjusteModal(ag)}
-                                className="p-1.5 rounded-lg text-xs font-medium bg-foreground/10 hover:bg-foreground/20 text-foreground transition-colors border border-border-subtle"
-                                title="Ajustar valor ou forma de pagamento antes de confirmar"
-                              >
-                                <Edit3 size={13} />
-                              </button>
-                            </div>
-                          ) : isConfirmed ? (
-                            <div className="flex items-center justify-center gap-2">
-                              {cpfCliente ? (
-                                <Link
-                                  href={`/admin/notas-fiscais?cpf=${cpfCliente.replace(/\D/g, '')}&agendamentoId=${ag.id}`}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-gold/10 text-gold border border-gold/30 hover:bg-gold hover:text-black transition-colors"
-                                  title="Emitir Nota Fiscal para este atendimento contabilizado"
-                                >
-                                  <FileText size={14} /> Emitir NF
-                                </Link>
-                              ) : (
-                                <Link
-                                  href="/admin/clientes"
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
-                                  title="Cadastre o CPF do cliente na aba Clientes para emitir nota"
-                                >
-                                  <AlertTriangle size={12} /> Cadastrar CPF
-                                </Link>
-                              )}
                             </div>
                           ) : (
-                            <span className="text-xs text-foreground/40 italic">—</span>
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                              {/* Botão de Extrato Discriminado da Cliente / Gestão */}
+                              <button
+                                onClick={() => setExtratoComandaAppt(ag)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                  isMultiProf
+                                    ? 'bg-gold/15 text-gold border border-gold/40 hover:bg-gold hover:text-black'
+                                    : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-border-subtle'
+                                }`}
+                                title="Ver demonstrativo discriminado completo do atendimento com procedimentos, profissionais, descontos e insumos"
+                              >
+                                <Receipt size={13} />
+                                {isMultiProf ? 'Extrato Discriminado' : 'Extrato'}
+                              </button>
+
+                              {isPendingConfirmation ? (
+                                <>
+                                  <button
+                                    onClick={() => handleConfirmarGestao(ag)}
+                                    disabled={actionLoadingId === ag.id}
+                                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
+                                    title="Confirmar conferência e contabilizar oficialmente no financeiro"
+                                  >
+                                    <CheckCircle2 size={13} />
+                                    {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleAbrirAjusteModal(ag)}
+                                    className="p-1.5 rounded-lg text-xs font-medium bg-foreground/10 hover:bg-foreground/20 text-foreground transition-colors border border-border-subtle"
+                                    title="Ajustar valor ou forma de pagamento antes de confirmar"
+                                  >
+                                    <Edit3 size={13} />
+                                  </button>
+                                </>
+                              ) : isConfirmed ? (
+                                <>
+                                  {cpfCliente ? (
+                                    <Link
+                                      href={`/admin/notas-fiscais?cpf=${cpfCliente.replace(/\D/g, '')}&agendamentoId=${ag.id}`}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gold/10 text-gold border border-gold/30 hover:bg-gold hover:text-black transition-colors"
+                                      title="Emitir Nota Fiscal para este atendimento contabilizado"
+                                    >
+                                      <FileText size={13} /> Emitir NF
+                                    </Link>
+                                  ) : (
+                                    <Link
+                                      href="/admin/clientes"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                                      title="Cadastre o CPF do cliente na aba Clientes para emitir nota"
+                                    >
+                                      <AlertTriangle size={12} /> Cadastrar CPF
+                                    </Link>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-foreground/40 italic">—</span>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -962,6 +1069,337 @@ export default function AdminFinanceiro() {
           </div>
         </CardGlass>
       </div>
+
+      {/* MODAL DE EXTRATO DISCRIMINADO DO ATENDIMENTO (COMANDA MULTI-PROFISSIONAL) */}
+      {extratoComandaAppt && (() => {
+        const ag = extratoComandaAppt;
+        const cli = clientes.find(c => c.id === ag.cliente_id);
+        const comanda = ag.comanda_unificada;
+        const isMulti = Boolean(comanda && comanda.procedimentos && comanda.procedimentos.length > 0);
+
+        // Procedimentos a listar
+        const procedimentos = isMulti 
+          ? comanda!.procedimentos 
+          : [{
+              servico_id: ag.servico_id,
+              servico_nome: getServicoNome(ag.servico_id, servicos),
+              profissional_id: ag.profissional_id,
+              profissional_nome: getProfissionalNome(ag.profissional_id, profissionais),
+              preco_tabela: getServicoPreco(ag.servico_id, servicos),
+              desconto_pct: 0,
+              desconto_valor: 0,
+              desconto_motivo: '',
+              insumos_custo: Number(ag.product_cost) || 0
+            }];
+
+        const subtotalServicos = procedimentos.reduce((acc: number, p) => acc + p.preco_tabela, 0);
+        const totalDescontos = procedimentos.reduce((acc: number, p) => acc + p.desconto_valor, 0);
+        const produtosComprados = comanda?.produtos_comprados || [];
+        const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario || prod.preco || 0) * Number(prod.quantidade || prod.qty || 1)), 0);
+        const totalInsumos = procedimentos.reduce((acc: number, p: any) => acc + (Number(p.insumos_custo) || 0), 0) + (Number(ag.product_cost) || 0);
+        const valorFinalCliente = (ag.total_amount != null && Number(ag.total_amount) > 0)
+          ? Number(ag.total_amount)
+          : (subtotalServicos - totalDescontos + totalProdutos);
+
+        // Agrupamento por profissional para o demonstrativo da gestora
+        const profIds = Array.from(new Set(procedimentos.map(p => p.profissional_id)));
+        const discriminadoProfissionais = profIds.map(pid => {
+          const procsProf = procedimentos.filter(p => p.profissional_id === pid);
+          const profObj = profissionais.find(p => p.id === pid);
+          const somaTabela = procsProf.reduce((a: number, b) => a + b.preco_tabela, 0);
+          const somaDesconto = procsProf.reduce((a: number, b) => a + b.desconto_valor, 0);
+          const somaInsumos = procsProf.reduce((a: number, b: any) => a + (Number(b.insumos_custo) || 0), 0);
+          const liquidoBase = Math.max(0, somaTabela - somaDesconto - somaInsumos);
+          const pctComissao = Number(profObj?.comissao_padrao) || 40;
+          const valorComissao = (liquidoBase * pctComissao) / 100;
+
+          return {
+            profissional_id: pid,
+            profissional_nome: profObj?.nome || 'Profissional',
+            especialidade: profObj?.cargo || 'Especialista',
+            procedimentos: procsProf,
+            somaTabela,
+            somaDesconto,
+            somaInsumos,
+            liquidoBase,
+            pctComissao,
+            valorComissao,
+          };
+        });
+
+        const isPending = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[#121214] border border-gold/40 rounded-2xl w-full max-w-2xl my-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Header do Extrato */}
+              <div className="flex items-center justify-between p-5 border-b border-white/10 bg-gradient-to-r from-gold/10 via-transparent to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-sm">
+                    <Receipt size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+                      Extrato Discriminado do Atendimento
+                    </h3>
+                    <p className="text-xs text-foreground/60">
+                      {isMulti ? 'Comanda Multi-Profissional Consolidada' : 'Atendimento Individual do Salão'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setExtratoComandaAppt(null)}
+                  className="text-foreground/50 hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Conteúdo do Extrato */}
+              <div className="p-5 space-y-5 overflow-y-auto flex-1 text-sm custom-scrollbar">
+                
+                {/* Cartão de Identificação da Cliente e Atendimento */}
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-foreground/50 font-medium">Cliente</p>
+                    <p className="font-bold text-base text-foreground mt-0.5">{cli?.nome || 'Cliente'}</p>
+                    <p className="text-foreground/60 font-mono mt-0.5">
+                      {cli?.cpf ? `CPF: ${cli.cpf}` : 'Sem CPF informado'} {cli?.telefone ? `• ${cli.telefone}` : ''}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-foreground/50 font-medium">Data e Horário</p>
+                    <p className="font-bold text-foreground mt-0.5">
+                      {ag.data ? new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR') : 'Hoje'} às {ag.hora_inicio || '—'}
+                    </p>
+                    <div className="mt-1 flex items-center sm:justify-end gap-1.5">
+                      <span className="text-foreground/50">Forma:</span>
+                      <span className="font-semibold text-gold uppercase">{ag.payment_method || 'Não definida'}</span>
+                      <span className="text-foreground/30">•</span>
+                      <span className={`font-semibold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {ag.financial_status === 'CONFIRMED' ? 'Contabilizado' : 'Aguardando Gestão'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TABELA DE PROCEDIMENTOS DISCRIMINADOS E PROFISSIONAIS EXECUTORES */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Scissors size={14} className="text-gold" />
+                      Procedimentos Realizados ({procedimentos.length})
+                    </h4>
+                    <span className="text-[11px] text-foreground/50">
+                      Discriminado por profissional com descontos aplicados
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 overflow-hidden bg-black/20">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-white/5 border-b border-white/10 text-foreground/60 font-semibold">
+                          <th className="p-3">Procedimento</th>
+                          <th className="p-3">Profissional</th>
+                          <th className="p-3 text-right">Tabela</th>
+                          <th className="p-3 text-right">Desconto Prof.</th>
+                          <th className="p-3 text-right">Líquido Procedimento</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {procedimentos.map((p, idx) => {
+                          const liquido = p.preco_tabela - p.desconto_valor;
+                          return (
+                            <tr key={idx} className="hover:bg-white/[0.02]">
+                              <td className="p-3">
+                                <p className="font-bold text-foreground">{p.servico_nome}</p>
+                                {p.desconto_motivo && (
+                                  <p className="text-[10px] text-amber-400/90 italic mt-0.5">
+                                    Motivo desconto: "{p.desconto_motivo}"
+                                  </p>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-medium text-foreground/90">{p.profissional_nome}</span>
+                              </td>
+                              <td className="p-3 text-right font-mono text-foreground/70">
+                                R$ {p.preco_tabela.toFixed(2)}
+                              </td>
+                              <td className="p-3 text-right">
+                                {p.desconto_valor > 0 ? (
+                                  <span className="font-bold text-amber-400 font-mono">
+                                    -R$ {p.desconto_valor.toFixed(2)} ({p.desconto_pct}%)
+                                  </span>
+                                ) : (
+                                  <span className="text-foreground/30 font-mono">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-bold text-foreground font-mono">
+                                R$ {liquido.toFixed(2)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* PRODUTOS USADOS E PRODUTOS COMPRADOS PELA CLIENTE */}
+                {(produtosComprados.length > 0 || totalInsumos > 0) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Produtos Insumos Usados */}
+                    {totalInsumos > 0 && (
+                      <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                          <Beaker size={14} /> Fundo de Reserva de Insumos / Produtos
+                        </div>
+                        <p className="text-[11px] text-foreground/60 leading-relaxed">
+                          Produtos utilizados durante a execução dos serviços (coloração, oxigenada, pós, ampolas).
+                        </p>
+                        <p className="font-mono font-bold text-amber-300 text-sm pt-1">
+                          R$ {totalInsumos.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Produtos Home Care Comprados */}
+                    {produtosComprados.length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-teal-500/5 border border-teal-500/20 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-400">
+                          <ShoppingBag size={14} /> Produtos Comprados (Home Care)
+                        </div>
+                        <div className="space-y-1 pt-1">
+                          {produtosComprados.map((prod: any, pIdx: number) => (
+                            <div key={pIdx} className="flex items-center justify-between text-xs">
+                              <span className="text-foreground/80">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
+                              <span className="font-mono text-teal-300 font-bold">
+                                R$ {((Number(prod.preco_unitario || prod.preco || 0)) * (Number(prod.quantidade || prod.qty || 1))).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* DEMONSTRATIVO DISCRIMINADO PARA A GESTORA DO SALÃO */}
+                <div className="p-4 rounded-xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-gold/30 space-y-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-gold" />
+                      Demonstrativo Discriminado da Gestora do Salão
+                    </h4>
+                    <span className="text-[10px] text-foreground/40 font-mono">
+                      Auditoria de Comissões e Repartição
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {discriminadoProfissionais.map((dp, dIdx) => (
+                      <div key={dIdx} className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                            👑 {dp.profissional_nome}
+                            <span className="text-[11px] text-foreground/50 font-normal">({dp.especialidade})</span>
+                          </span>
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            Comissão Estimada: R$ {dp.valorComissao.toFixed(2)} ({dp.pctComissao}%)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-foreground/60 pt-0.5">
+                          <div>
+                            <span className="text-foreground/40 block">Tabela Bruta:</span>
+                            R$ {dp.somaTabela.toFixed(2)}
+                          </div>
+                          <div>
+                            <span className="text-foreground/40 block">Desconto Próprio:</span>
+                            {dp.somaDesconto > 0 ? `-R$ ${dp.somaDesconto.toFixed(2)}` : 'R$ 0,00'}
+                          </div>
+                          <div>
+                            <span className="text-foreground/40 block">Base Líquida:</span>
+                            R$ {dp.liquidoBase.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* RESUMO TOTALIZADOR DO FECHAMENTO */}
+                <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1 text-xs text-foreground/80 w-full sm:w-auto">
+                    <div className="flex justify-between sm:justify-start sm:gap-6">
+                      <span>Subtotal Procedimentos:</span>
+                      <span className="font-mono font-bold">R$ {subtotalServicos.toFixed(2)}</span>
+                    </div>
+                    {totalDescontos > 0 && (
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-400">
+                        <span>(-) Total Descontos dos Profissionais:</span>
+                        <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {totalProdutos > 0 && (
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-400">
+                        <span>(+) Produtos Adicionais:</span>
+                        <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-center sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-white/10 pt-2 sm:pt-0">
+                    <span className="text-xs text-foreground/60 font-semibold uppercase tracking-wider block">
+                      Valor Total a Pagar pela Cliente
+                    </span>
+                    <span className="text-2xl font-black text-gold font-mono tracking-tight">
+                      R$ {valorFinalCliente.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer com Ações */}
+              <div className="p-4 border-t border-white/10 bg-black/40 flex flex-wrap items-center justify-between gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="gap-1.5 text-xs text-foreground/70 hover:text-foreground"
+                >
+                  <Printer size={15} /> Imprimir Comprovante
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setExtratoComandaAppt(null)}
+                  >
+                    Fechar
+                  </Button>
+
+                  {isPending && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={actionLoadingId === ag.id}
+                      onClick={() => handleConfirmarGestao(ag)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30"
+                    >
+                      <CheckCircle2 size={16} />
+                      {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar & Contabilizar'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL DE AJUSTE E CONFERÊNCIA DA GESTÃO */}
       {editingApptGestao && (
@@ -989,12 +1427,26 @@ export default function AdminFinanceiro() {
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-xs text-foreground/50">Procedimento Realizado</p>
-                  <p className="font-medium text-foreground">
-                    {getServicoNome(editingApptGestao.servico_id, servicos)}
-                  </p>
-                </div>
+                {editingApptGestao.comanda_unificada ? (
+                  <div>
+                    <p className="text-xs text-foreground/50">Comanda Multi-Profissional</p>
+                    <div className="mt-1 space-y-1">
+                      {editingApptGestao.comanda_unificada.procedimentos.map((p, pIdx) => (
+                        <div key={pIdx} className="flex justify-between text-xs bg-white/5 p-1.5 rounded">
+                          <span>{p.servico_nome} ({p.profissional_nome})</span>
+                          <span className="font-bold font-mono">R$ {(p.preco_tabela - p.desconto_valor).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-foreground/50">Procedimento Realizado</p>
+                    <p className="font-medium text-foreground">
+                      {getServicoNome(editingApptGestao.servico_id, servicos)}
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <p className="text-xs text-foreground/50">Equipe de Profissionais</p>

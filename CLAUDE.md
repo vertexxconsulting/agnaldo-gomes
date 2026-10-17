@@ -337,6 +337,54 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.10 Comanda Unificada Multi-Profissional & Extrato Discriminado da Gestão
+
+- **Fluxo Integrado de Múltiplos Profissionais**:
+  - Resolução completa para o fluxo real do salão onde uma mesma cliente é atendida por 2 ou mais profissionais no mesmo dia (ex: mechas/raiz com colorista e escova/finalização com assistente/escovista).
+  - Agrupamento automático de agendamentos da mesma cliente no dia ao abrir o fechamento de comanda.
+  - Permite adicionar procedimentos extras vinculando cada um ao respectivo profissional executor.
+  - Registro de insumos e produtos utilizados por etapa/serviço.
+  - Desconto individualizado por procedimento (em % ou R$) concedido pelo próprio profissional executor.
+- **Extrato Discriminado e Auditoria da Gestora (`/admin/pagamentos`)**:
+  - Eliminação de duplicidade de valores e faturamento duplo nos relatórios financeiros (`getValorEfetivo`).
+  - Badges visuais indicando "Comanda Multi-Profissional" e "Integrado na Comanda".
+  - Modal de "Extrato Discriminado do Atendimento" para visualização completa de cada procedimento, executor, produtos consumidos, descontos concedidos e comprovante imprimível.
+  - Liquidação e sincronização automática de agendamentos secundários vinculados no Supabase via `confirmarFechamentoGestao`.
+
+---
+
+## 8.11 Layout Expandido dos Modais de Fechamento (2 Colunas & Zero Scroll Lateral)
+
+- **Redesenho do Modal de Fechamento (`CheckoutModal.tsx` e `/admin/agenda`)**:
+  - Ampliação da largura útil dos modais de checkout de `max-w-xl` / `max-w-2xl` para `max-w-5xl xl:max-w-6xl`.
+  - Distribuição em 2 colunas responsivas no desktop (`lg:grid-cols-12`):
+    - **Coluna Esquerda (`col-span-7`)**: Lista discriminada de procedimentos, seleção de executores, insumos aplicados e descontos individuais.
+    - **Coluna Direita (`col-span-5`)**: Formas de pagamento, cálculo de troco/divisões, gorjetas, acréscimos e botão de finalização destacado.
+  - Eliminação estrita de scroll lateral (`overflow-x-hidden`) com scroll vertical ergonômico (`max-h-[82vh] overflow-y-auto`), evitando cortes visuais em telas de recepção e notebooks.
+
+---
+
+## 8.12 Periodicidade Flexível de Comissões (Semanal, Quinzenal e Mensal)
+
+- **Ciclos de Repasse Personalizados**:
+  - Suporte à periodicidade de pagamento de comissões nos formatos **Semanal** (padrão), **Quinzenal** e **Mensal**.
+  - Configuração disponível tanto no gerenciamento administrativo de profissionais (`/admin/profissionais` e `/admin/comissoes`) quanto pelo próprio profissional em seu painel pessoal (`/admin/meu-painel`).
+  - Persistência e sincronização de metadados via endpoint `/api/profissionais`.
+
+---
+
+## 8.13 Endereço Estruturado no CRM e Melhorias de Usabilidade da Recepção
+
+- **Endereço Estruturado no CRM (`/admin/clientes`)**:
+  - Campos atômicos para **Rua**, **Número**, **Bairro** e **Cidade**, facilitando preenchimento, relatórios e futuras integrações logísticas.
+- **Sidebar Expansível por Hover (`AdminSidebar.tsx` e Layout)**:
+  - Quando a barra lateral estiver recolhida para economizar espaço de tela, passar o mouse (`onMouseEnter` / `onMouseLeave`) expande-a suavemente sem perder o estado base fixo.
+- **Diferenciação Visual na Agenda (`/admin/agenda`)**:
+  - Alternância de tonalidades nos cards de agendamento de clientes intercalados, permitindo à recepção diferenciar atendimentos consecutivos com rapidez.
+  - Fixação dos botões operacionais rápidos da secretária: *Iniciar Atendimento*, *Cancelar* e *Faltou*.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

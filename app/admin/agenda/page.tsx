@@ -12,10 +12,123 @@ import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
 } from '@/lib/mock-data';
-import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao } from '@/lib/gestao-types';
+import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao, ProcedimentoComanda, ComandaMultiProfissional } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
 import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
+
+/**
+ * Paleta de destaque por cliente na agenda. Propositalmente apenas 2 cores bem
+ * contrastantes (azul x laranja — também distinguíveis por daltônicos), alternadas
+ * por ordem de horário em cada coluna, para que clientes intercalados nunca
+ * fiquem com a mesma cor lado a lado.
+ */
+const CORES_CLIENTE_AGENDA = [
+  { bar: '#3b82f6', bg: 'rgba(59,130,246,0.10)', bgOngoing: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.40)' },
+  { bar: '#f97316', bg: 'rgba(249,115,22,0.10)', bgOngoing: 'rgba(249,115,22,0.06)', border: 'rgba(249,115,22,0.40)' },
+] as const;
+
+/**
+ * Container com rolagem horizontal por "clicar, segurar e arrastar".
+ * Usa `overflow-x: clip` + translateX (em vez de um container rolável) para que
+ * elementos `sticky` internos (cabeçalhos dos profissionais) grudem na rolagem
+ * vertical da página.
+ */
+function DragScrollX({ className = '', children }: { className?: string; children: React.ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const offset = useRef(0);
+  const state = useRef({ down: false, pointerId: -1, startX: 0, startOffset: 0, moved: false });
+  const [dragging, setDragging] = useState(false);
+
+  const applyOffset = (value: number) => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const max = Math.max(0, inner.scrollWidth - outer.clientWidth);
+    offset.current = Math.min(max, Math.max(0, value));
+    inner.style.transform = `translateX(${-offset.current}px)`;
+  };
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    // Reajusta o limite quando a tela/conteúdo muda de tamanho
+    const ro = new ResizeObserver(() => applyOffset(offset.current));
+    ro.observe(outer);
+    ro.observe(inner);
+
+    // Suporte a swipe horizontal no trackpad / Shift + roda do mouse
+    const onWheel = (e: WheelEvent) => {
+      const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX;
+      if (Math.abs(dx) <= Math.abs(e.shiftKey ? 0 : e.deltaY)) return;
+      const before = offset.current;
+      applyOffset(before + dx);
+      if (offset.current !== before) e.preventDefault();
+    };
+    outer.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      ro.disconnect();
+      outer.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return;
+    state.current = { down: true, pointerId: e.pointerId, startX: e.clientX, startOffset: offset.current, moved: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = state.current;
+    if (!s.down || e.pointerId !== s.pointerId) return;
+    const dx = e.clientX - s.startX;
+    if (!s.moved && Math.abs(dx) > 5) {
+      s.moved = true;
+      setDragging(true);
+      outerRef.current?.setPointerCapture(e.pointerId);
+    }
+    if (s.moved) applyOffset(s.startOffset - dx);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = state.current;
+    if (!s.down || e.pointerId !== s.pointerId) return;
+    s.down = false;
+    if (outerRef.current?.hasPointerCapture(e.pointerId)) outerRef.current.releasePointerCapture(e.pointerId);
+    setDragging(false);
+  };
+
+  // Evita que soltar o mouse após arrastar dispare o clique de um card/botão
+  const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (state.current.moved) {
+      e.stopPropagation();
+      e.preventDefault();
+      state.current.moved = false;
+    }
+  };
+
+  return (
+    <div
+      ref={outerRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onClickCapture={onClickCapture}
+      onDragStart={(e) => e.preventDefault()}
+      style={{ overflowX: 'clip', touchAction: 'pan-y' }}
+      className={`${dragging ? 'cursor-grabbing select-none' : 'cursor-grab'} ${className}`}
+    >
+      <div ref={innerRef} className="w-max min-w-full will-change-transform">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function formatPhone(val: string) {
   if (!val) return '';
@@ -113,6 +226,12 @@ function AgendaContent() {
   const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
   const [checkoutExtras, setCheckoutExtras] = useState<Array<{ id: string; servicoId: string; preco: number }>>([]);
   const [extraServiceSelect, setExtraServiceSelect] = useState<string>('');
+
+  // Comanda Multi-Profissional da Cliente (procedimentos individuais por profissional com seus descontos)
+  const [checkoutProcedimentos, setCheckoutProcedimentos] = useState<ProcedimentoComanda[]>([]);
+  const [agendamentosUnificadosIds, setAgendamentosUnificadosIds] = useState<string[]>([]);
+  const [novoProcServicoId, setNovoProcServicoId] = useState<string>('');
+  const [novoProcProfId, setNovoProcProfId] = useState<string>('');
   // Insumos (pesagem por grama / ml)
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
   const [servicoProdutos, setServicoProdutos] = useState<ServicoProduto[]>([]);
@@ -701,6 +820,87 @@ function AgendaContent() {
     setCheckoutNovoProdQty('1');
     setCheckoutNovoProdDescPct('');
     setCheckoutNovoProdDescValor('');
+    setNovoProcServicoId('');
+    setNovoProcProfId(appt.profissional_id);
+
+    // 1. Montar lista de procedimentos a partir do agendamento principal
+    const precoPrincipal = getServicoPreco(appt.servico_id, servicos);
+    const listaProcedimentos: ProcedimentoComanda[] = [
+      {
+        id: 'proc_principal_' + appt.id,
+        servico_id: appt.servico_id,
+        servico_nome: getServicoNome(appt.servico_id, servicos),
+        profissional_id: appt.profissional_id,
+        profissional_nome: getProfissionalNome(appt.profissional_id, profissionais),
+        preco_tabela: precoPrincipal,
+        desconto_valor: 0,
+        desconto_pct: 0,
+        desconto_motivo: '',
+        valor_final: precoPrincipal,
+        agendamento_id: appt.id,
+      }
+    ];
+
+    // Se houver sub_serviços no agendamento, adicionar como procedimentos
+    if (Array.isArray(appt.sub_servicos) && appt.sub_servicos.length > 0) {
+      appt.sub_servicos.forEach((sub, sIdx) => {
+        const subId = typeof sub === 'string' ? sub : sub?.id;
+        const subProfId = (typeof sub === 'object' && sub?.profissional_id) ? sub.profissional_id : appt.profissional_id;
+        const subPreco = (typeof sub === 'object' && sub?.is_free) ? 0 : getServicoPreco(subId, servicos);
+        if (subId) {
+          listaProcedimentos.push({
+            id: 'sub_' + sIdx + '_' + subId,
+            servico_id: subId,
+            servico_nome: getServicoNome(subId, servicos),
+            profissional_id: subProfId,
+            profissional_nome: getProfissionalNome(subProfId, profissionais),
+            preco_tabela: subPreco,
+            desconto_valor: 0,
+            desconto_pct: 0,
+            desconto_motivo: '',
+            valor_final: subPreco,
+            agendamento_id: appt.id,
+          });
+        }
+      });
+    }
+
+    // 2. DETECÇÃO DE ATENDIMENTOS DA MESMA CLIENTE NO MESMO DIA (Multi-profissionais)
+    // Ex: cliente fez coloração com um profissional e escova/unha com outro no mesmo dia!
+    const outrosDaCliente = agendamentos.filter(a => 
+      a.id !== appt.id &&
+      a.cliente_id === appt.cliente_id &&
+      a.data === appt.data &&
+      a.status !== 'cancelado' &&
+      a.status !== 'no_show'
+    );
+
+    const idsUnificados: string[] = [appt.id];
+
+    // Unifica automaticamente os procedimentos dos outros agendamentos da cliente hoje
+    outrosDaCliente.forEach(outro => {
+      idsUnificados.push(outro.id);
+      const prc = (outro.total_amount != null && Number(outro.total_amount) > 0)
+        ? Number(outro.total_amount)
+        : getServicoPreco(outro.servico_id, servicos);
+
+      listaProcedimentos.push({
+        id: 'outro_appt_' + outro.id,
+        servico_id: outro.servico_id,
+        servico_nome: getServicoNome(outro.servico_id, servicos),
+        profissional_id: outro.profissional_id,
+        profissional_nome: getProfissionalNome(outro.profissional_id, profissionais),
+        preco_tabela: prc,
+        desconto_valor: 0,
+        desconto_pct: 0,
+        desconto_motivo: '',
+        valor_final: prc,
+        agendamento_id: outro.id,
+      });
+    });
+
+    setCheckoutProcedimentos(listaProcedimentos);
+    setAgendamentosUnificadosIds(idsUnificados);
 
     // Prepara profissional padrão e etapa para o lançamento do insumo
     setInsumoProfissionalId(appt.profissional_id);
@@ -729,14 +929,15 @@ function AgendaContent() {
     }
 
     // Carregar insumos existentes salvos no agendamento, se houver
+    let insumosCarregados: InsumoAtendimento[] = [];
     if (Array.isArray(appt.insumos_detalhes) && appt.insumos_detalhes.length > 0) {
-      setCheckoutInsumos(appt.insumos_detalhes);
+      insumosCarregados = [...appt.insumos_detalhes];
     } else {
       const itens = await fetchItensComanda(appt.id);
       
       // Insumos da comanda
       const insumosDaComanda = itens.filter(i => i.type === 'INSUMO');
-      const mapInsumos: InsumoAtendimento[] = insumosDaComanda.map(i => {
+      insumosCarregados = insumosDaComanda.map(i => {
         const prod = estoque.find(p => p.id === i.inventory_id);
         const custoUn = (prod?.price_per_gram && prod.price_per_gram > 0)
           ? prod.price_per_gram
@@ -753,7 +954,6 @@ function AgendaContent() {
           profissional_id: appt.profissional_id,
         };
       });
-      setCheckoutInsumos(mapInsumos);
 
       // Produtos (Upsell)
       const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
@@ -761,7 +961,7 @@ function AgendaContent() {
         const prod = estoque.find(p => p.id === i.inventory_id);
         const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
         return {
-          id: Date.now().toString() + i.id, // Random id for list
+          id: Date.now().toString() + i.id,
           inventory_id: i.inventory_id,
           qty: i.qty,
           precoOriginal: precoBase,
@@ -772,11 +972,24 @@ function AgendaContent() {
       });
       setCheckoutProdutos(mapProdutos);
     }
+
+    // Se outros agendamentos unificados tinham insumos, agrega também!
+    outrosDaCliente.forEach(outro => {
+      if (Array.isArray(outro.insumos_detalhes) && outro.insumos_detalhes.length > 0) {
+        insumosCarregados.push(...outro.insumos_detalhes);
+      }
+    });
+
+    setCheckoutInsumos(insumosCarregados);
   };
 
   const fecharCheckout = () => {
     setCheckoutAppt(null);
     setCheckoutExtras([]);
+    setCheckoutProcedimentos([]);
+    setAgendamentosUnificadosIds([]);
+    setNovoProcServicoId('');
+    setNovoProcProfId('');
     setExtraServiceSelect('');
     setCheckoutInsumos([]);
     setCheckoutProdutos([]);
@@ -792,6 +1005,80 @@ function AgendaContent() {
     setCheckoutNovoProdQty('1');
     setCheckoutNovoProdDescPct('');
     setCheckoutNovoProdDescValor('');
+  };
+
+  const adicionarProcedimentoComanda = () => {
+    if (!novoProcServicoId || !novoProcProfId) return;
+    const srv = servicos.find(s => s.id === novoProcServicoId);
+    if (!srv) return;
+    const novo: ProcedimentoComanda = {
+      id: 'proc_extra_' + Date.now(),
+      servico_id: srv.id,
+      servico_nome: srv.nome,
+      profissional_id: novoProcProfId,
+      profissional_nome: getProfissionalNome(novoProcProfId, profissionais),
+      preco_tabela: srv.preco,
+      desconto_valor: 0,
+      desconto_pct: 0,
+      desconto_motivo: '',
+      valor_final: srv.preco,
+    };
+    setCheckoutProcedimentos(prev => [...prev, novo]);
+    setNovoProcServicoId('');
+  };
+
+  const removerProcedimentoComanda = (procId: string) => {
+    if (checkoutProcedimentos.length <= 1) {
+      alert('A comanda deve conter pelo menos 1 procedimento.');
+      return;
+    }
+    setCheckoutProcedimentos(prev => prev.filter(p => p.id !== procId));
+  };
+
+  const handleProcedimentoDescontoPct = (procId: string, pctStr: string) => {
+    setCheckoutProcedimentos(prev => prev.map(p => {
+      if (p.id !== procId) return p;
+      const pct = Math.min(100, Math.max(0, parseFloat(pctStr) || 0));
+      const val = Number(((p.preco_tabela * pct) / 100).toFixed(2));
+      return {
+        ...p,
+        desconto_pct: pct,
+        desconto_valor: val,
+        valor_final: Math.max(0, p.preco_tabela - val)
+      };
+    }));
+  };
+
+  const handleProcedimentoDescontoValor = (procId: string, valStr: string) => {
+    setCheckoutProcedimentos(prev => prev.map(p => {
+      if (p.id !== procId) return p;
+      const val = Math.min(p.preco_tabela, Math.max(0, parseFloat(valStr) || 0));
+      const pct = p.preco_tabela > 0 ? Number(((val / p.preco_tabela) * 100).toFixed(1)) : 0;
+      return {
+        ...p,
+        desconto_pct: pct,
+        desconto_valor: val,
+        valor_final: Math.max(0, p.preco_tabela - val)
+      };
+    }));
+  };
+
+  const handleProcedimentoDescontoMotivo = (procId: string, motivo: string) => {
+    setCheckoutProcedimentos(prev => prev.map(p => {
+      if (p.id !== procId) return p;
+      return { ...p, desconto_motivo: motivo };
+    }));
+  };
+
+  const handleProcedimentoProfissional = (procId: string, profId: string) => {
+    setCheckoutProcedimentos(prev => prev.map(p => {
+      if (p.id !== procId) return p;
+      return { 
+        ...p, 
+        profissional_id: profId,
+        profissional_nome: getProfissionalNome(profId, profissionais)
+      };
+    }));
   };
 
   const adicionarInsumoPorGrama = () => {
@@ -1303,7 +1590,7 @@ function AgendaContent() {
           )}
 
           {/* Agenda Kanban (Colunas por Profissional) */}
-          <div className="overflow-auto w-full pb-2 max-h-[calc(100vh-200px)] border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] shadow-sm custom-scrollbar">
+          <DragScrollX className="w-full min-w-0 border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] shadow-sm">
             {profissionaisVisiveisNaAgenda.length === 0 ? (
               <div className="p-12 text-center text-foreground/60">
                 <p className="text-base font-semibold">Nenhum profissional encontrado na categoria "{categoriaFiltro}".</p>
@@ -1382,10 +1669,17 @@ function AgendaContent() {
                   }
                 }
 
+                // Cor de destaque por agendamento (alterna entre 2 cores pela ordem de início)
+                const corPorAgendamento = new Map<string, typeof CORES_CLIENTE_AGENDA[number]>();
+                agendamentosFiltrados
+                  .filter(a => a.status !== 'cancelado' && (a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id))))
+                  .sort((x, y) => timeToMinutes(x.hora_inicio) - timeToMinutes(y.hora_inicio) || String(x.id).localeCompare(String(y.id)))
+                  .forEach((a, i) => corPorAgendamento.set(a.id, CORES_CLIENTE_AGENDA[i % CORES_CLIENTE_AGENDA.length]));
+
                 return (
                   <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
                     {/* Cabeçalho */}
-                    <div className="p-3 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-0 z-10">
+                    <div className="p-3 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)]">
                       {prof.foto_url ? (
                         <img src={prof.foto_url} alt={prof.nome} className="w-10 h-10 rounded-full object-cover border-2 border-gold/50 shadow-sm shrink-0" />
                       ) : (
@@ -1463,16 +1757,18 @@ function AgendaContent() {
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+                                    const cor = corPorAgendamento.get(a.id) ?? CORES_CLIENTE_AGENDA[0];
 
                                     return (
                                       <div 
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border rounded p-2 cursor-pointer hover:border-gold/50 transition-colors shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
-                                          isAuxiliarNeste ? 'bg-purple-950/20 border-purple-500/30' : 'bg-[var(--color-card)] border-[var(--border-subtle)]'
+                                        className={`text-xs border rounded p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
+                                          isAuxiliarNeste ? 'bg-purple-950/20 border-purple-500/30' : ''
                                         }`}
+                                        style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bg, borderColor: cor.border }}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : STATUS_COLORS[a.status] }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : cor.bar }}></div>
                                         <div className="pl-2">
                                           {isAuxiliarNeste && (
                                             <div className="flex items-center gap-1 text-[9px] font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30 mb-1 w-fit">
@@ -1503,7 +1799,8 @@ function AgendaContent() {
                                           <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
                                           <div className="flex items-center justify-between mt-1 gap-1">
                                             <div className="flex items-center gap-1">
-                                              <span className="text-[9px] text-foreground/50 uppercase">{STATUS_LABELS[a.status]}</span>
+                                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[a.status] }}></span>
+                                              <span className="text-[9px] text-foreground/60 uppercase font-semibold">{STATUS_LABELS[a.status]}</span>
                                               {a.allow_overlap && (
                                                 <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
                                                   Pausa liberada
@@ -1544,23 +1841,25 @@ function AgendaContent() {
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+                                    const cor = corPorAgendamento.get(a.id) ?? CORES_CLIENTE_AGENDA[0];
 
                                     return (
                                       <div 
                                         key={`ongoing-${a.id}-${time}`} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center ${
+                                        className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${
                                           isAuxiliarNeste 
                                             ? 'bg-purple-950/20 border-purple-500/40 hover:bg-purple-900/30' 
-                                            : 'bg-gold/[0.05] border-gold/30 hover:bg-gold/10 hover:border-gold'
+                                            : ''
                                         }`}
+                                        style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bgOngoing, borderColor: cor.border }}
                                         title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : STATUS_COLORS[a.status] }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : cor.bar }}></div>
                                         <div className="pl-1.5">
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
-                                              <span className="text-gold text-[10px]">↳</span> {cliente}
+                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#a855f7' : cor.bar }}>↳</span> {cliente}
                                               {isAuxiliarNeste && (
                                                 <span className="text-[9px] text-purple-400 font-bold bg-purple-500/20 px-1 rounded">Auxiliar</span>
                                               )}
@@ -1616,15 +1915,15 @@ function AgendaContent() {
               })}
             </div>
             )}
-          </div>
+          </DragScrollX>
         </div>
       )}
 
       {/* Modal de Ações do Agendamento */}
       {selectedAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-sm p-6 animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-start mb-4">
+          <CardGlass className="w-full max-w-sm p-6 animate-in fade-in zoom-in-95 max-h-[calc(100dvh-2rem)] flex flex-col">
+            <div className="flex justify-between items-start mb-4 shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-foreground mb-1">
                   {getClienteNome(selectedAppt.cliente_id, clientes)}
@@ -1641,7 +1940,8 @@ function AgendaContent() {
               </button>
             </div>
             
-            <div className="space-y-2 mb-6 text-sm text-foreground/80">
+            {/* Detalhes (rolável em telas baixas, para os botões de ação ficarem sempre visíveis) */}
+            <div className="space-y-2 mb-4 text-sm text-foreground/80 flex-1 min-h-0 overflow-y-auto pr-1">
               <p><strong>Data:</strong> {new Date(`${selectedAppt.data}T12:00:00`).toLocaleDateString('pt-BR')}</p>
               <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
               <p><strong>Profissional Titular:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
@@ -1696,7 +1996,7 @@ function AgendaContent() {
               )}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-[var(--border-subtle)]">
               {/* Botão de Lançar Insumos em Tempo Real (disponível quando em atendimento ou confirmado) */}
               {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && (
                 <Button 
@@ -2041,102 +2341,235 @@ function AgendaContent() {
 
       {/* Modal de Finalização (Checkout / Recebimento) */}
       {checkoutAppt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/[0.7] backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-xl p-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 overflow-y-auto">
+          <CardGlass className="w-full max-w-5xl xl:max-w-6xl p-5 sm:p-7 animate-in fade-in zoom-in-95 my-auto max-h-[94vh] overflow-y-auto overflow-x-hidden border border-gold/40 shadow-2xl">
+            <div className="flex justify-between items-start mb-6 pb-3 border-b border-white/10">
               <div>
-                <h3 className="text-xl font-bold font-serif text-foreground">Fechamento Prévio do Serviço (Secretaria)</h3>
-                <p className="text-xs text-amber-500 font-medium mt-0.5">Envio para conferência e confirmação da Gestão Financeira</p>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <h3 className="text-xl sm:text-2xl font-bold font-serif text-foreground">Fechamento Prévio do Serviço (Secretaria)</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-amber-500 font-medium mt-1">Envio para conferência e confirmação da Gestão Financeira</p>
               </div>
-              <button onClick={fecharCheckout} className="text-foreground/50 hover:text-foreground">
-                <X size={20} />
+              <button onClick={fecharCheckout} className="text-foreground/50 hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                <X size={22} />
               </button>
             </div>
             
-            <div className="space-y-5">
-              {/* Resumo do Principal */}
-              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg">
-                <p className="text-sm text-foreground/60">Serviço Agendado:</p>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="font-bold">
-                    {getServicoNome(checkoutAppt.servico_id, servicos)}
-                    {checkoutAppt.sub_servicos && checkoutAppt.sub_servicos.length > 0 && 
-                      ' + ' + checkoutAppt.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos)).join(' + ')
-                    }
-                  </p>
-                  <p className="font-bold text-gold">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      getServicoPreco(checkoutAppt.servico_id, servicos) +
-                      (checkoutAppt.sub_servicos || []).reduce((acc, sub) => acc + (typeof sub === 'object' && sub.is_free ? 0 : getServicoPreco(typeof sub === 'string' ? sub : sub.id, servicos)), 0)
-                    )}
-                  </p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* COLUNA ESQUERDA: Procedimentos, Insumos e Produtos */}
+              <div className="lg:col-span-7 space-y-4 min-w-0">
+                {/* Banner de Unificação Multi-Profissional da Cliente */}
+              {agendamentosUnificadosIds.length > 1 && (
+                <div className="p-3.5 bg-gradient-to-r from-purple-500/15 via-gold/10 to-transparent border border-purple-500/30 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-purple-500/20 text-purple-300 rounded-lg mt-0.5 shrink-0">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">Comanda Unificada Multi-Profissional</p>
+                    <p className="text-xs text-foreground/70 mt-0.5">
+                      Identificamos que <strong>{getClienteNome(checkoutAppt.cliente_id, clientes)}</strong> realizou {agendamentosUnificadosIds.length} procedimentos hoje com profissionais diferentes. Todos foram agrupados nesta comanda para cobrança e contabilização única na recepção!
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Serviços Extras */}
-              <div>
-                <h4 className="text-sm font-bold text-foreground mb-3">Serviços Adicionais Realizados <span className="text-foreground/30 font-normal">(opcional)</span></h4>
-                <div className="flex gap-2 mb-4">
-                  <select
-                    value={extraServiceSelect}
-                    onChange={(e) => setExtraServiceSelect(e.target.value)}
-                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
-                  >
-                    <option value="">Selecione um serviço extra...</option>
-                    {servicos.filter(s => s.ativo).map(s => (
-                      <option key={s.id} value={s.id}>{s.nome} - R$ {s.preco.toFixed(2)}</option>
-                    ))}
-                  </select>
-                  <Button 
-                    variant="outline" 
-                    type="button"
-                    onClick={() => {
-                      if (!extraServiceSelect) return;
-                      const srv = servicos.find(s => s.id === extraServiceSelect);
-                      if (srv) {
-                        setCheckoutExtras([...checkoutExtras, { id: Date.now().toString(), servicoId: srv.id, preco: srv.preco }]);
-                        setExtraServiceSelect('');
-                      }
-                    }}
-                  >
-                    Adicionar
-                  </Button>
+              {/* LISTA DE PROCEDIMENTOS REALIZADOS POR CADA PROFISSIONAL & DESCONTOS INDIVIDUAIS */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Sparkles size={16} className="text-gold" />
+                    Procedimentos Realizados pela Cliente
+                  </h4>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-bold font-mono">
+                    {checkoutProcedimentos.length} {checkoutProcedimentos.length === 1 ? 'procedimento' : 'procedimentos'}
+                  </span>
                 </div>
 
-                {checkoutExtras.length > 0 && (
-                  <div className="space-y-2">
-                    {checkoutExtras.map((extra, idx) => (
-                      <div key={extra.id} className="flex justify-between items-center p-3 bg-[var(--background)]/50 rounded-lg text-sm border border-[var(--border-subtle)]">
-                        <div className="flex-1 truncate pr-4">
-                          {getServicoNome(extra.servicoId, servicos)}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/50">R$</span>
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              className="w-24 bg-[var(--background)] border border-[var(--border-subtle)] rounded-md pl-8 pr-2 py-1 text-right focus:outline-none focus:border-gold" 
-                              value={extra.preco}
-                              onChange={(e) => {
-                                const newExtras = [...checkoutExtras];
-                                newExtras[idx].preco = parseFloat(e.target.value) || 0;
-                                setCheckoutExtras(newExtras);
-                              }}
-                            />
+                <div className="space-y-3">
+                  {checkoutProcedimentos.map((proc, pIdx) => {
+                    const pNome = getProfissionalNome(proc.profissional_id, profissionais);
+                    const sNome = proc.servico_nome || getServicoNome(proc.servico_id, servicos);
+                    const temDesconto = proc.desconto_valor > 0;
+
+                    return (
+                      <div key={proc.id} className="p-3.5 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-2.5 shadow-sm">
+                        {/* Linha Topo: Serviço, Profissional Executor e Preço de Tabela */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <span className="w-6 h-6 rounded-full bg-gold/15 text-gold text-xs font-bold flex items-center justify-center shrink-0">
+                              {pIdx + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-sm text-foreground truncate">{sNome}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px] text-foreground/50">Executado por:</span>
+                                <select
+                                  value={proc.profissional_id}
+                                  onChange={e => handleProcedimentoProfissional(proc.id, e.target.value)}
+                                  className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded px-2 py-0.5 text-xs text-gold font-bold focus:outline-none focus:border-gold"
+                                >
+                                  {profissionais.filter(p => p.ativo).map(p => (
+                                    <option key={p.id} value={p.id}>{p.nome}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
                           </div>
-                          <button 
-                            type="button" 
-                            onClick={() => setCheckoutExtras(checkoutExtras.filter(e => e.id !== extra.id))}
-                            className="text-red-500 hover:text-red-600 p-1 bg-red-500/10 rounded-md"
-                          >
-                            <X size={16} />
-                          </button>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                            <div className="text-right">
+                              <p className="text-[10px] text-foreground/40 uppercase font-semibold">Tabela</p>
+                              <p className={`font-mono text-sm font-bold ${temDesconto ? 'line-through text-foreground/40' : 'text-foreground'}`}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
+                              </p>
+                            </div>
+                            {checkoutProcedimentos.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removerProcedimentoComanda(proc.id)}
+                                className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                                title="Remover procedimento da comanda"
+                              >
+                                <X size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* BLOCO DE DESCONTO INDIVIDUAL DO PROFISSIONAL NESTE PROCEDIMENTO */}
+                        <div className="p-2.5 bg-foreground/[0.02] border border-border-subtle/70 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                              <Tag size={12} /> Desconto do Profissional ({pNome}):
+                            </span>
+                            {temDesconto ? (
+                              <span className="text-[11px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)} ({proc.desconto_pct.toFixed(0)}%)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-foreground/40">Sem desconto aplicado</span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                            <div className="sm:col-span-3">
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  placeholder="0"
+                                  value={proc.desconto_pct || ''}
+                                  onChange={e => handleProcedimentoDescontoPct(proc.id, e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs font-mono text-center focus:outline-none focus:border-emerald-500"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
+                              </div>
+                            </div>
+
+                            <div className="sm:col-span-4">
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  placeholder="0.00"
+                                  value={proc.desconto_valor || ''}
+                                  onChange={e => handleProcedimentoDescontoValor(proc.id, e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="sm:col-span-5">
+                              <input
+                                type="text"
+                                placeholder="Motivo (opcional, ex: Cliente fidelidade...)"
+                                value={proc.desconto_motivo || ''}
+                                onChange={e => handleProcedimentoDescontoMotivo(proc.id, e.target.value)}
+                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 px-2 text-xs focus:outline-none focus:border-emerald-500 placeholder:text-foreground/30"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Atalhos rápidos de % para este profissional */}
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span className="text-[10px] text-foreground/40 mr-1">Atalhos:</span>
+                            {['0', '5', '10', '15', '20', '30'].map(pctVal => (
+                              <button
+                                key={pctVal}
+                                type="button"
+                                onClick={() => handleProcedimentoDescontoPct(proc.id, pctVal)}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                                  (pctVal === '0' && proc.desconto_pct === 0) || (proc.desconto_pct === parseFloat(pctVal))
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                                    : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                                }`}
+                              >
+                                {pctVal === '0' ? 'Sem desc.' : `${pctVal}%`}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Valor Final a Cobrar deste Procedimento */}
+                          <div className="flex justify-between items-center pt-1 border-t border-[var(--border-subtle)] text-xs">
+                            <span className="text-foreground/60">Subtotal deste procedimento:</span>
+                            <span className="font-mono font-bold text-sm text-gold">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
+                </div>
+
+                {/* ADICIONAR OUTRO PROCEDIMENTO / PROFISSIONAL */}
+                <div className="p-3 bg-[var(--background)]/60 border border-dashed border-[var(--border-subtle)] rounded-xl space-y-2">
+                  <p className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
+                    <Plus size={14} className="text-gold" /> Adicionar Outro Procedimento / Profissional à Comanda:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <div className="sm:col-span-6">
+                      <select
+                        value={novoProcServicoId}
+                        onChange={e => setNovoProcServicoId(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                      >
+                        <option value="">Selecione o serviço...</option>
+                        {servicos.filter(s => s.ativo).map(s => (
+                          <option key={s.id} value={s.id}>{s.nome} — R$ {s.preco.toFixed(2)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-4">
+                      <select
+                        value={novoProcProfId}
+                        onChange={e => setNovoProcProfId(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                      >
+                        <option value="">Quem executou?</option>
+                        {profissionais.filter(p => p.ativo).map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!novoProcServicoId || !novoProcProfId}
+                        onClick={adicionarProcedimentoComanda}
+                        className="w-full text-xs h-[34px] py-1 border-gold/40 text-gold hover:bg-gold/10"
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* INSUMOS DO PROCEDIMENTO (Lançamento por Gramas / ml por Etapa e Profissional) */}
@@ -2502,13 +2935,16 @@ function AgendaContent() {
                   })()}
                 </div>
               </div>
+            </div>
 
+            {/* COLUNA DIREITA: Forma de Pagamento, Repartição Gestão e Resumo Financeiro */}
+            <div className="lg:col-span-5 space-y-4 min-w-0 flex flex-col">
               {/* FORMA DE PAGAMENTO */}
-              <div>
-                <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                  <CreditCard size={15} className="text-blue-400" />
-                  Forma de Pagamento
-                </h4>
+              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <CreditCard size={15} className="text-blue-400" />
+                    Forma de Pagamento
+                  </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   {([
                     ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-400 border-emerald-500/40'],
@@ -2554,281 +2990,238 @@ function AgendaContent() {
                 )}
               </div>
 
-              {/* TOTAL + REPARTIÇÃO TRI-PARTITE (PRODUTO -> COMISSÃO -> SALÃO) */}
+              {/* TOTAL + REPARTIÇÃO MULTI-PROFISSIONAL DISCRIMINADA */}
               {(() => {
-                const totalServico = getServicoPreco(checkoutAppt.servico_id, servicos) + (checkoutAppt.sub_servicos || []).reduce((acc, sub) => acc + (typeof sub === 'object' && sub.is_free ? 0 : getServicoPreco(typeof sub === 'string' ? sub : sub.id, servicos)), 0);
-                const totalExtras = checkoutExtras.reduce((acc, curr) => acc + curr.preco, 0);
+                const subtotalProcedimentosTabela = checkoutProcedimentos.reduce((sum, p) => sum + p.preco_tabela, 0);
+                const totalDescontosProcedimentos = checkoutProcedimentos.reduce((sum, p) => sum + p.desconto_valor, 0);
+                const totalProcedimentosLiquido = checkoutProcedimentos.reduce((sum, p) => sum + p.valor_final, 0);
                 const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
                 const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
                 
-                // O valor cobrado da cliente é o procedimento (+ extras e produtos de balcão). O custo do insumo é absorvido internamente.
-                const subtotalServicos = totalServico + totalExtras;
-                const subtotalCobradoCliente = subtotalServicos + totalProdutos;
+                // O valor cobrado da cliente é a soma dos procedimentos líquidos + produtos de balcão
+                const subtotalCobradoCliente = totalProcedimentosLiquido + totalProdutos;
                 
-                const valorDesconto = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
-                const totalCobradoClienteFinal = Math.max(0, subtotalCobradoCliente - valorDesconto);
+                // Desconto global adicional (opcional, caso a gerência queira arredondar ou conceder extra)
+                const valorDescontoGeral = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
+                const totalCobradoClienteFinal = Math.max(0, subtotalCobradoCliente - valorDescontoGeral);
+                const totalDescontosGerais = totalDescontosProcedimentos + valorDescontoGeral;
+                
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
                 const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalCobradoClienteFinal, taxasPagamento);
                 
-                // Procedimento líquido pós-desconto proporcional
-                const descServicoProp = subtotalCobradoCliente > 0 ? (valorDesconto * (subtotalServicos / subtotalCobradoCliente)) : 0;
-                const valorProcedimentoEfetivo = Math.max(0, subtotalServicos - descServicoProp);
+                // === REPARTIÇÃO POR PROFISSIONAL INDIVIDUAL ===
+                const porProfissional: Record<string, {
+                  procedimentos: ProcedimentoComanda[];
+                  subtotalTabela: number;
+                  totalDesconto: number;
+                  valorLiquido: number;
+                  insumosCusto: number;
+                  pctComissao: number;
+                  comissaoEstimada: number;
+                }> = {};
 
-                // === AS 3 PARTES DA REGRA DO SALÃO ===
-                // 1. PRODUTO (Fundo Reserva de Recompra)
+                checkoutProcedimentos.forEach(p => {
+                  if (!porProfissional[p.profissional_id]) {
+                    const regra = regrasComissao.find(r => r.professional_id === p.profissional_id && (r.service_id === p.servico_id || !r.service_id) && r.active);
+                    const pct = regra?.commission_pct ?? 50;
+                    porProfissional[p.profissional_id] = {
+                      procedimentos: [],
+                      subtotalTabela: 0,
+                      totalDesconto: 0,
+                      valorLiquido: 0,
+                      insumosCusto: 0,
+                      pctComissao: pct,
+                      comissaoEstimada: 0,
+                    };
+                  }
+                  porProfissional[p.profissional_id].procedimentos.push(p);
+                  porProfissional[p.profissional_id].subtotalTabela += p.preco_tabela;
+                  porProfissional[p.profissional_id].totalDesconto += p.desconto_valor;
+                  porProfissional[p.profissional_id].valorLiquido += p.valor_final;
+                });
+
+                // Atribuir insumos a cada profissional
+                checkoutInsumos.forEach(ins => {
+                  const pid = ins.profissional_id || checkoutAppt.profissional_id;
+                  if (porProfissional[pid]) {
+                    porProfissional[pid].insumosCusto += ins.custo_total;
+                  }
+                });
+
+                // Calcular comissão individual de cada profissional
+                Object.keys(porProfissional).forEach(pid => {
+                  const item = porProfissional[pid];
+                  const baseComissao = Math.max(0, item.valorLiquido - item.insumosCusto);
+                  item.comissaoEstimada = Number(((baseComissao * item.pctComissao) / 100).toFixed(2));
+                });
+
+                const comissaoTotalEquipe = Number(Object.values(porProfissional).reduce((sum, item) => sum + item.comissaoEstimada, 0).toFixed(2));
                 const fundoReservaProdutos = Number(totalInsumos.toFixed(2));
-
-                // 2. COMISSÃO DA EQUIPE (Titular + Auxiliares)
-                const regraTitular = regrasComissao.find(r => r.professional_id === checkoutAppt.profissional_id && r.service_id === checkoutAppt.servico_id && r.active);
-                const pctComissaoBase = regraTitular?.commission_pct ?? 50;
-
-                // Base de comissão = Procedimento deduzindo o custo do produto
-                const baseComissao = Math.max(0, valorProcedimentoEfetivo - fundoReservaProdutos);
-                const comissaoTotalEquipe = Number(((baseComissao * pctComissaoBase) / 100).toFixed(2));
-
-                // Participantes: Titular + Auxiliares
-                const allParticipantes = [checkoutAppt.profissional_id, ...(checkoutAppt.auxiliares_ids || [])].filter(Boolean);
-                const countParticipantes = allParticipantes.length;
-
-                // 3. SALÃO (Faturamento Líquido)
                 const margemProdutosVenda = totalProdutos > 0 ? (totalProdutos * 0.4) : 0;
-                const faturamentoLiquidoSalao = Number(Math.max(0, valorProcedimentoEfetivo - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0) + margemProdutosVenda).toFixed(2));
+                const faturamentoLiquidoSalao = Number(Math.max(0, totalProcedimentosLiquido - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0) + margemProdutosVenda).toFixed(2));
 
                 return (
                   <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
-                    {/* DESCONTO AO CLIENTE (COM AUTO-AJUSTE ENTRE % E R$) */}
-                    <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
+                    {/* DESCONTO GLOBAL ADICIONAL (OPCIONAL) */}
+                    <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Percent size={16} className="text-emerald-400" />
-                          <span className="text-sm font-bold text-foreground">Desconto ao Cliente</span>
+                        <div className="flex items-center gap-1.5">
+                          <Percent size={14} className="text-emerald-400" />
+                          <span className="text-xs font-bold text-foreground">Desconto Geral Adicional na Conta <span className="text-foreground/40 font-normal">(opcional)</span></span>
                         </div>
-                        {valorDesconto > 0 && (
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
-                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} ({checkoutDescontoPct || '0'}%)
+                        {valorDescontoGeral > 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
+                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}
                           </span>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-foreground/60 mb-1 block">Porcentagem (%)</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.5"
-                              placeholder="Ex: 10"
-                              value={checkoutDescontoPct}
-                              onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalCobradoCliente)}
-                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-emerald-500 font-mono"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">%</span>
-                          </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            placeholder="Desc. Geral (%)"
+                            value={checkoutDescontoPct}
+                            onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalCobradoCliente)}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
                         </div>
-
-                        <div>
-                          <label className="text-xs text-foreground/60 mb-1 block">Valor em Reais (R$)</label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 text-xs font-bold">R$</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              placeholder="Ex: 25.00"
-                              value={checkoutDescontoValor}
-                              onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalCobradoCliente)}
-                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:border-emerald-500 font-mono"
-                            />
-                          </div>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Desc. Geral (R$)"
+                            value={checkoutDescontoValor}
+                            onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalCobradoCliente)}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                          />
                         </div>
-                      </div>
-
-                      {/* Botões de Atalho de Desconto */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[11px] text-foreground/40 mr-1">Atalhos:</span>
-                        {[
-                          { label: 'Sem desc.', pct: '0' },
-                          { label: '5%', pct: '5' },
-                          { label: '10%', pct: '10' },
-                          { label: '15%', pct: '15' },
-                          { label: '20%', pct: '20' },
-                          { label: '25%', pct: '25' },
-                          { label: '30%', pct: '30' },
-                        ].map(btn => (
-                          <button
-                            key={btn.pct}
-                            type="button"
-                            onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalCobradoCliente)}
-                            className={`text-xs px-2.5 py-1 rounded-md border transition-all ${
-                              (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
-                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
-                                : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30 hover:text-foreground'
-                            }`}
-                          >
-                            {btn.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div>
-                        <input
-                          type="text"
-                          placeholder="Motivo / observação do desconto (opcional, ex: Aniversariante, Cortesia...)"
-                          value={checkoutDescontoMotivo}
-                          onChange={(e) => setCheckoutDescontoMotivo(e.target.value)}
-                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-emerald-500"
-                        />
                       </div>
                     </div>
 
-                    {/* CARD EXCLUSIVO DE REPARTIÇÃO FINANCEIRA DO SALÃO (SEQUÊNCIA TRIPLA) */}
-                    <div className="p-4 bg-gradient-to-br from-gold/10 via-purple-500/5 to-background border-2 border-gold/40 rounded-2xl space-y-3.5 shadow-lg">
+                    {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO */}
+                    <div className="p-4 bg-gradient-to-br from-gold/10 via-purple-500/5 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
                         <div className="flex items-center gap-2">
                           <Sparkles size={18} className="text-gold" />
                           <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
-                            Repartição Financeira (A Sequência do Salão)
+                            Demonstrativo Discriminado para a Gestora do Salão
                           </h4>
                         </div>
-                        <span className="text-[11px] text-gold font-bold px-2 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
-                          Divisão Tripla Automática
+                        <span className="text-[11px] text-gold font-bold px-2.5 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
+                          {Object.keys(porProfissional).length} {Object.keys(porProfissional).length === 1 ? 'Profissional' : 'Profissionais Envolvidos'}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {/* 1. PRODUTO */}
-                        <div className="p-3 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-1">
-                          <div className="flex items-center justify-between text-amber-400">
-                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                              <Beaker size={13} /> 1. Produto
-                            </span>
-                            <span className="text-[10px] font-mono font-semibold">Reserva</span>
-                          </div>
-                          <p className="text-xl font-bold font-mono text-amber-400">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
-                          </p>
-                          <p className="text-[10px] text-foreground/50 leading-tight">
-                            Fundo reservado para recompra de estoque por grama. Absorvido no serviço (não onera a cliente).
-                          </p>
-                        </div>
-
-                        {/* 2. COMISSÃO */}
-                        <div className="p-3 bg-[var(--background)]/80 border border-purple-500/30 rounded-xl space-y-1">
-                          <div className="flex items-center justify-between text-purple-300">
-                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                              <Users size={13} /> 2. Comissão Equipe
-                            </span>
-                            <span className="text-[10px] font-mono font-semibold">{pctComissaoBase}%</span>
-                          </div>
-                          <p className="text-xl font-bold font-mono text-purple-300">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
-                          </p>
-                          <p className="text-[10px] text-foreground/50 leading-tight">
-                            {countParticipantes > 1 
-                              ? `Dividida entre ${countParticipantes} profissionais (titular + auxiliares)` 
-                              : '100% para o profissional titular'}
-                          </p>
-                        </div>
-
-                        {/* 3. SALÃO */}
-                        <div className="p-3 bg-[var(--background)]/80 border border-emerald-500/30 rounded-xl space-y-1">
-                          <div className="flex items-center justify-between text-emerald-400">
-                            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                              <DollarSign size={13} /> 3. Salão Líquido
-                            </span>
-                            <span className="text-[10px] font-mono font-semibold">Faturamento</span>
-                          </div>
-                          <p className="text-xl font-bold font-mono text-emerald-400">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
-                          </p>
-                          <p className="text-[10px] text-foreground/50 leading-tight">
-                            Receita líquida que fica com o salão após deduzir produtos, comissões e taxas.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* DETALHAMENTO DO RATEIO DA COMISSÃO ENTRE TITULAR E AUXILIARES */}
-                      {countParticipantes > 1 && (
-                        <div className="p-3 bg-purple-500/10 border border-purple-500/25 rounded-xl space-y-2 mt-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1">
-                            <span className="font-bold text-purple-300 flex items-center gap-1.5">
-                              <Users size={14} /> Divisão da Comissão entre os Profissionais ({countParticipantes} envolvidos):
-                            </span>
-                            <span className="text-[11px] text-purple-300/70">
-                              Ajuste os % de cada um conforme necessário
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {allParticipantes.map((pid) => {
-                              const pNome = getProfissionalNome(pid, profissionais);
-                              const isTit = pid === checkoutAppt.profissional_id;
-                              const currentShare = splitComissaoCustom[pid] ?? Number((100 / countParticipantes).toFixed(1));
-                              const valorIndividual = Number((comissaoTotalEquipe * (currentShare / 100)).toFixed(2));
-
-                              return (
-                                <div key={pid} className="p-2.5 bg-[var(--background)] border border-purple-500/20 rounded-lg flex items-center justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <div className="font-bold text-xs text-foreground truncate flex items-center gap-1">
-                                      <span>{pNome}</span>
-                                      <span className={`text-[10px] px-1 py-0.2 rounded font-normal ${isTit ? 'bg-gold/20 text-gold' : 'bg-purple-500/20 text-purple-300'}`}>
-                                        {isTit ? 'Titular' : 'Auxiliar'}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs font-mono font-bold text-purple-300">
-                                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorIndividual)}
+                      {/* Lista de Procedimentos e Comissões por Profissional */}
+                      <div className="space-y-2">
+                        {Object.entries(porProfissional).map(([pid, dados]) => {
+                          const pNome = getProfissionalNome(pid, profissionais);
+                          return (
+                            <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
+                              <div className="flex items-center justify-between border-b border-border-subtle/50 pb-1.5">
+                                <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                  👤 {pNome}
+                                </span>
+                                <span className="text-purple-300 font-mono font-bold text-xs bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30">
+                                  Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
+                                </span>
+                              </div>
+                              
+                              {/* Procedimentos deste profissional */}
+                              <div className="space-y-1 text-foreground/80">
+                                {dados.procedimentos.map(proc => (
+                                  <div key={proc.id} className="flex justify-between items-center text-[11px]">
+                                    <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
+                                    <span className="font-mono whitespace-nowrap">
+                                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
+                                      {proc.desconto_valor > 0 && (
+                                        <span className="text-emerald-400 ml-1 font-semibold">
+                                          (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)})
+                                        </span>
+                                      )}
+                                      {' = '}
+                                      <strong className="text-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}</strong>
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      step="1"
-                                      value={currentShare}
-                                      onChange={e => {
-                                        const val = parseFloat(e.target.value) || 0;
-                                        setSplitComissaoCustom(prev => ({
-                                          ...prev,
-                                          [pid]: val
-                                        }));
-                                      }}
-                                      className="w-16 bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-purple-400 rounded p-1 text-xs text-center font-mono font-bold"
-                                    />
-                                    <span className="text-xs text-foreground/50 font-bold">%</span>
-                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Insumos deste profissional */}
+                              {dados.insumosCusto > 0 && (
+                                <div className="flex justify-between items-center text-[11px] text-amber-400 pt-1 border-t border-border-subtle/30 font-medium">
+                                  <span>Produtos/Insumos aplicados por {pNome}:</span>
+                                  <span className="font-mono font-bold">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
                                 </div>
-                              );
-                            })}
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-amber-400 text-[11px] font-bold uppercase">
+                            <span><Beaker size={12} className="inline mr-1"/> Fundo Produtos</span>
+                            <span className="text-[10px] font-mono">Reserva</span>
                           </div>
+                          <p className="text-base font-bold font-mono text-amber-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
+                          </p>
+                          <p className="text-[9px] text-foreground/50">Custo de estoque por grama consumido no serviço.</p>
                         </div>
-                      )}
+
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-purple-500/30 rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-purple-300 text-[11px] font-bold uppercase">
+                            <span><Users size={12} className="inline mr-1"/> Total Comissões</span>
+                            <span className="text-[10px] font-mono">Equipe</span>
+                          </div>
+                          <p className="text-base font-bold font-mono text-purple-300">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
+                          </p>
+                          <p className="text-[9px] text-foreground/50">Calculada diretamente sobre o procedimento de cada profissional.</p>
+                        </div>
+
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-500/30 rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-emerald-400 text-[11px] font-bold uppercase">
+                            <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
+                            <span className="text-[10px] font-mono">Receita</span>
+                          </div>
+                          <p className="text-base font-bold font-mono text-emerald-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
+                          </p>
+                          <p className="text-[9px] text-foreground/50">Faturamento líquido que fica com o salão.</p>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Breakdown Financeiro Final */}
-                    <div className="space-y-1 text-sm bg-foreground/[0.02] p-3 rounded-lg border border-[var(--border-subtle)]">
-                      <div className="flex justify-between text-foreground/60">
-                        <span>Serviço Agendado</span>
-                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico)}</span>
+                    {/* Breakdown Financeiro Final da Comanda */}
+                    <div className="space-y-1.5 text-sm bg-foreground/[0.02] p-3.5 rounded-xl border border-[var(--border-subtle)]">
+                      <div className="flex justify-between text-foreground/70">
+                        <span>Subtotal dos Procedimentos (Tabela)</span>
+                        <span className="font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
                       </div>
-                      {totalExtras > 0 && (
-                        <div className="flex justify-between text-foreground/60">
-                          <span>Serviços Extras</span>
-                          <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalExtras)}</span>
+                      {totalDescontosProcedimentos > 0 && (
+                        <div className="flex justify-between text-emerald-400 font-medium">
+                          <span>Descontos Concedidos pelos Profissionais</span>
+                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
+                        </div>
+                      )}
+                      {valorDescontoGeral > 0 && (
+                        <div className="flex justify-between text-emerald-400 font-medium">
+                          <span>Desconto Adicional da Recepção</span>
+                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
                         </div>
                       )}
                       {totalProdutos > 0 && (
-                        <div className="flex justify-between text-gold">
-                          <span>Produtos de Salão (Venda Balcão)</span>
-                          <span>+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
-                        </div>
-                      )}
-                      {valorDesconto > 0 && (
-                        <div className="flex justify-between text-emerald-400 font-semibold">
-                          <span>Desconto ao Cliente ({checkoutDescontoPct || '0'}%)</span>
-                          <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>
+                        <div className="flex justify-between text-gold font-medium">
+                          <span>Produtos de Salão (Venda / Balcão)</span>
+                          <span className="font-mono">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
                         </div>
                       )}
                       {taxaMaq.valorTaxa > 0 && (
@@ -2839,7 +3232,7 @@ function AgendaContent() {
                       )}
                       {totalInsumos > 0 && (
                         <div className="flex justify-between text-amber-400 text-xs pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Reserva Interna de Produtos ({checkoutInsumos.length} itens)</span>
+                          <span>Produtos Utilizados no Procedimento ({checkoutInsumos.length} itens)</span>
                           <span className="font-mono font-bold">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
                         </div>
                       )}
@@ -2861,51 +3254,74 @@ function AgendaContent() {
                         <Button variant="ghost" className="flex-1 sm:flex-none" onClick={fecharCheckout}>
                           Cancelar
                         </Button>
-                        <Button variant="primary" className="flex-1 sm:flex-none" onClick={async () => {
-                          // 1. Finalizar o atendimento principal e persistir o recebimento no banco
+                        <Button variant="primary" className="flex-1 sm:flex-none font-bold" onClick={async () => {
+                          const nomeCliente = getClienteNome(checkoutAppt.cliente_id, clientes);
+                          
+                          // Objeto completo da comanda unificada para persistência
+                          const comandaObj: ComandaMultiProfissional = {
+                            cliente_id: checkoutAppt.cliente_id,
+                            cliente_nome: nomeCliente,
+                            data: checkoutAppt.data,
+                            procedimentos: checkoutProcedimentos,
+                            insumos: checkoutInsumos,
+                            produtos_venda: checkoutProdutos.map(p => {
+                              const prodEstoque = estoque.find(e => e.id === p.inventory_id);
+                              return {
+                                inventory_id: p.inventory_id,
+                                name: prodEstoque?.name || 'Produto',
+                                qty: p.qty,
+                                precoOriginal: p.precoOriginal,
+                                preco: p.preco,
+                                descontoValor: p.descontoValor,
+                                profissional_id: checkoutAppt.profissional_id,
+                              };
+                            }),
+                            total_bruto_servicos: subtotalProcedimentosTabela,
+                            total_descontos_servicos: totalDescontosGerais,
+                            total_liquido_servicos: totalProcedimentosLiquido,
+                            total_produtos_venda: totalProdutos,
+                            total_insumos: totalInsumos,
+                            total_pago_cliente: totalCobradoClienteFinal,
+                            payment_method: checkoutPagamento,
+                            installments: numParcelas,
+                            agendamentos_unificados_ids: agendamentosUnificadosIds,
+                            fechado_em: new Date().toISOString(),
+                          };
+
+                          // 1. Finalizar o atendimento principal com a comanda unificada
                           await finalizarRecebimentoAgendamento({
                             id: checkoutAppt.id,
                             paymentMethod: checkoutPagamento,
-                            installments: checkoutPagamento === 'CREDITO' ? numParcelas : 1,
+                            installments: numParcelas,
                             totalAmount: totalCobradoClienteFinal,
                             productCost: fundoReservaProdutos,
                             insumosDetalhes: checkoutInsumos,
-                            auxiliaresIds: checkoutAppt.auxiliares_ids,
-                            splitComissao: splitComissaoCustom,
+                            comandaUnificada: comandaObj,
+                            financialStatus: 'PENDING_CONFIRMATION',
                           });
                           await mudarStatus(checkoutAppt.id, 'concluido');
                           
-                          // 2. Registrar extras como agendamentos concluídos
-                          if (checkoutExtras.length > 0) {
-                            for (const ext of checkoutExtras) {
-                              try {
-                                await fetch('/api/agendamentos/admin', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    cliente_id: checkoutAppt.cliente_id,
-                                    profissional_id: checkoutAppt.profissional_id,
-                                    servico_id: ext.servicoId,
-                                    data: checkoutAppt.data,
-                                    hora_inicio: checkoutAppt.hora_inicio,
-                                    status: 'concluido',
-                                    payment_method: checkoutPagamento,
-                                    total_amount: ext.preco,
-                                  })
-                                });
-                              } catch (e) {
-                                console.error("Erro ao registrar serviço extra", e);
-                              }
-                            }
+                          // 2. Se múltiplos agendamentos da mesma cliente no dia foram unificados, marcá-los como concluídos vinculados
+                          const outrosIds = agendamentosUnificadosIds.filter(id => id !== checkoutAppt.id);
+                          for (const outroId of outrosIds) {
+                            await finalizarRecebimentoAgendamento({
+                              id: outroId,
+                              paymentMethod: checkoutPagamento,
+                              installments: 1,
+                              totalAmount: 0, // Zerado para não duplicar faturamento no caixa
+                              unificadoEmId: checkoutAppt.id,
+                              financialStatus: 'PENDING_CONFIRMATION',
+                            });
+                            await mudarStatus(outroId, 'concluido');
                           }
                           
                           // 3. Baixar insumos do estoque registrando a etapa e profissional
                           for (const insumo of checkoutInsumos) {
                             if (insumo.qty_used > 0) {
-                              const profInsumoNome = getProfissionalNome(insumo.profissional_id || '', profissionais);
+                              const profInsumoNome = getProfissionalNome(insumo.profissional_id || checkoutAppt.profissional_id, profissionais);
                               await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
                                 appointmentId: checkoutAppt.id,
-                                notes: `Etapa: ${insumo.etapa || 'Procedimento'} (${insumo.qty_used}${insumo.unit} a R$${(insumo.price_per_gram || 0).toFixed(4)}/${insumo.unit}) - Executado por: ${profInsumoNome}`,
+                                notes: `Comanda [${nomeCliente}] - Etapa: ${insumo.etapa || 'Procedimento'} (${insumo.qty_used}${insumo.unit}) - Executado por: ${profInsumoNome}`,
                                 createdBy: profInsumoNome,
                               });
                             }
@@ -2920,38 +3336,48 @@ function AgendaContent() {
                                 : '';
                               await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
                                 appointmentId: checkoutAppt.id,
-                                notes: `Venda Salão: ${getServicoNome(checkoutAppt.servico_id, servicos)}${descNote}`,
+                                notes: `Venda Comanda [${nomeCliente}]: ${prod.qty}x un.${descNote}`,
                                 createdBy: profAtendimentoNome,
                               });
                             }
                           }
 
-                          // 4. Gerar comissões repartidas (Titular + Auxiliares) com dedução do Fundo de Produtos
-                          await criarComissoesAtendimentoCompartilhado({
-                            appointmentId: checkoutAppt.id,
-                            primaryProfessionalId: checkoutAppt.profissional_id,
-                            assistantIds: checkoutAppt.auxiliares_ids,
-                            serviceId: checkoutAppt.servico_id,
-                            totalAmount: valorProcedimentoEfetivo,
-                            productCost: fundoReservaProdutos,
-                            paymentMethod: checkoutPagamento,
-                            installments: numParcelas,
-                            appointmentDate: checkoutAppt.data,
-                            taxasCustom: taxasPagamento,
-                            splitPercentages: splitComissaoCustom,
-                          });
+                          // 4. Gerar comissões individuais para CADA profissional com base nos procedimentos por ele executados
+                          for (const [profId, dados] of Object.entries(porProfissional)) {
+                            if (dados.comissaoEstimada > 0) {
+                              const servicoIdRef = dados.procedimentos[0]?.servico_id || checkoutAppt.servico_id;
+                              const detalhesDesc = dados.procedimentos.map(p => {
+                                const dStr = p.desconto_valor > 0 ? ` (desc: -R$${p.desconto_valor.toFixed(2)})` : '';
+                                return `${p.servico_nome || getServicoNome(p.servico_id, servicos)}: R$${p.valor_final.toFixed(2)}${dStr}`;
+                              }).join(' + ');
+
+                              await criarComissao({
+                                appointmentId: checkoutAppt.id,
+                                professionalId: profId,
+                                serviceId: servicoIdRef,
+                                totalAmount: dados.valorLiquido,
+                                paymentMethod: checkoutPagamento,
+                                installments: numParcelas,
+                                appointmentDate: checkoutAppt.data,
+                                customCommissionAmount: dados.comissaoEstimada,
+                                notes: `Comanda Multi-Profissional [${nomeCliente}]: ${detalhesDesc}`,
+                                taxasCustom: taxasPagamento,
+                              });
+                            }
+                          }
                           
                           fecharCheckout();
                           fetchAgendamentos().then(setAgendamentos);
-                          alert(`Fechamento Prévio Registrado com Sucesso!\n\nCliente liberada na recepção.\nValor Cobrado da Cliente: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\n\nDivisão Interna do Salão:\n• Fundo Reserva de Produtos: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}\n• Comissões da Equipe: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}\n• Líquido Salão: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e confirmação final.`);
+                          alert(`Comanda Multi-Profissional Fechada com Sucesso!\n\nCliente liberada na recepção.\nCliente: ${nomeCliente}\nTotal Cobrado da Cliente: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\nProfissionais Envolvidos: ${Object.keys(porProfissional).length}\nProcedimentos Realizados: ${checkoutProcedimentos.length}\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e confirmação final.`);
                         }}>
-                          Registrar Fechamento Prévio (Liberar Cliente)
+                          Registrar Fechamento da Comanda (Liberar Cliente)
                         </Button>
                       </div>
                     </div>
                   </div>
                 );
               })()}
+              </div>
             </div>
           </CardGlass>
         </div>

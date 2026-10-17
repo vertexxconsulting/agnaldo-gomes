@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -35,8 +35,29 @@ export function AdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Quando recolhido, o menu expande (sobreposto ao conteúdo) ao passar o mouse
+  const compact = isCollapsed && !isHovered;
+
+  const handleMouseEnter = () => {
+    if (!isCollapsed) return;
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setIsHovered(true), 120);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+    setIsHovered(false);
+  };
+
+  useEffect(() => () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  }, []);
 
   // Confirmar role via Supabase e manter localStorage sincronizado
   useEffect(() => {
@@ -97,10 +118,10 @@ export function AdminSidebar({
           if (typeof onNavigate === 'function') onNavigate();
         }}
         className={base}
-        title={isCollapsed ? link.label : undefined}
+        title={compact ? link.label : undefined}
       >
         <Icon size={17} className="shrink-0" />
-        {!isCollapsed && (
+        {!compact && (
           <>
             <span className="truncate">{link.label}</span>
             {link.hub && (
@@ -119,23 +140,34 @@ export function AdminSidebar({
       <motion.aside
         initial={false}
         animate={{ width: isCollapsed ? 72 : 240 }}
-        className="border-r border-[var(--border-subtle)] bg-[var(--color-card)] flex-col hidden md:flex shrink-0 relative z-20"
+        className="hidden md:block shrink-0 relative z-40 h-full"
       >
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 bg-background border border-[var(--border-subtle)] rounded-full p-1 text-foreground/40 hover:text-gold hover:border-gold transition-colors z-30"
+          onClick={() => { setIsCollapsed(!isCollapsed); handleMouseLeave(); }}
+          className={`absolute -right-3 top-6 bg-background border border-[var(--border-subtle)] rounded-full p-1 text-foreground/40 hover:text-gold hover:border-gold transition-all z-30 ${isCollapsed && isHovered ? 'opacity-0 pointer-events-none' : ''}`}
+          title={isCollapsed ? 'Fixar menu aberto' : 'Recolher menu'}
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className="px-4 h-16 flex items-center justify-between border-b border-[var(--border-subtle)]">
+        <motion.div
+          initial={false}
+          animate={{ width: compact ? 72 : 240 }}
+          transition={{ type: 'tween', duration: 0.18 }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className={`absolute inset-y-0 left-0 flex flex-col overflow-hidden border-r border-[var(--border-subtle)] bg-[var(--color-card)] ${
+            isCollapsed && isHovered ? 'shadow-2xl' : ''
+          }`}
+        >
+        <div className="px-4 h-16 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0">
           {brand ? (
             <Link href={links.find(l => !l.hub)?.href ?? '/'} className="flex items-center gap-2 min-w-0">
               <span className="text-gold shrink-0">
                 <brand.icon size={22} />
               </span>
               <AnimatePresence>
-                {!isCollapsed && (
+                {!compact && (
                   <motion.span
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -149,7 +181,7 @@ export function AdminSidebar({
             </Link>
           ) : (
             <Link href="/" className="flex items-center gap-2 min-w-0">
-              {!isCollapsed ? (
+              {!compact ? (
                 <div className="relative h-14 w-40 shrink-0 -ml-2">
                   <Image src="/logo-agnaldo.svg" alt="Agnaldo Gomes" fill className="object-contain object-left" priority />
                 </div>
@@ -168,52 +200,53 @@ export function AdminSidebar({
           </button>
         </div>
 
-        <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
+        <div className="px-3 py-2 border-b border-[var(--border-subtle)] shrink-0">
           <Link href={backHref}>
-            <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] font-medium text-foreground/45 hover:text-foreground rounded-md transition-colors">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] font-medium text-foreground/45 hover:text-foreground rounded-md transition-colors whitespace-nowrap">
               <ArrowLeft size={13} />
-              {!isCollapsed && <span>{backLabel}</span>}
+              {!compact && <span>{backLabel}</span>}
             </div>
           </Link>
         </div>
 
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          {links.map(link => renderLinkItem(link))}
+        <nav className="flex-1 min-h-0 px-3 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
+          {links.map(link => renderLinkItem(link, handleMouseLeave))}
         </nav>
 
-        <div className="px-3 py-2 border-t border-[var(--border-subtle)] space-y-1">
+        <div className="px-3 py-2 border-t border-[var(--border-subtle)] space-y-1 shrink-0">
           {footerItems ? (
             typeof footerItems === 'object' && 'props' in (footerItems as any)
               ? (
-                  {...footerItems, props: { ...(footerItems as any).props, isCollapsed }} as any
+                  {...footerItems, props: { ...(footerItems as any).props, isCollapsed: compact }} as any
                 )
               : footerItems
           ) : (
             <Link href="/loja">
-              <div className="flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-foreground/60 hover:bg-foreground/5 hover:text-foreground transition-colors">
+              <div className="flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-foreground/60 hover:bg-foreground/5 hover:text-foreground transition-colors whitespace-nowrap">
                 <ExternalLink size={17} className="shrink-0" />
-                {!isCollapsed && <span className="truncate">Ver Loja</span>}
+                {!compact && <span className="truncate">Ver Loja</span>}
               </div>
             </Link>
           )}
           {!footerItems && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 hover:text-danger transition-colors"
+              className="w-full flex items-center gap-2.5 px-2.5 py-[0.55rem] rounded-lg text-[13px] font-medium text-danger/80 hover:bg-danger/5 hover:text-danger transition-colors whitespace-nowrap"
             >
               <LogOut size={17} className="shrink-0" />
-              {!isCollapsed && <span>Sair</span>}
+              {!compact && <span>Sair</span>}
             </button>
           )}
         </div>
 
-        {!isCollapsed && (
-          <div className="px-4 pb-3 pt-1 text-center">
+        {!compact && (
+          <div className="px-4 pb-3 pt-1 text-center shrink-0 whitespace-nowrap">
             <p className="text-[10px] text-foreground/30">
               Desenvolvido por <span className="font-semibold text-foreground/45">Vertex Consulting</span>
             </p>
           </div>
         )}
+        </motion.div>
       </motion.aside>
 
       <div className="md:hidden fixed top-0 inset-x-0 h-14 bg-[var(--color-card)] border-b border-[var(--border-subtle)] z-50 flex items-center justify-between px-4">

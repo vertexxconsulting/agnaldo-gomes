@@ -31,6 +31,8 @@ export interface Cliente {
   loyalty_points?: number;
 }
 
+export type PeriodoRecebimentoComissao = 'semanal' | 'quinzenal' | 'mensal';
+
 export interface Profissional {
   id: UUID;
   nome: string;
@@ -43,6 +45,9 @@ export interface Profissional {
   atualizado_em?: string;
   product_commission_pct?: number; // Comissão padrão sobre venda de produtos
   stock_pin?: string | null; // Senha/PIN própria do profissional para movimentações de estoque
+  periodo_recebimento?: PeriodoRecebimentoComissao; // 'semanal' | 'quinzenal' | 'mensal'
+  comissao_padrao?: number; // Comissão padrão sobre serviços (%)
+  cargo?: string | null; // Cargo ou função do profissional
 }
 
 export interface JornadaSemanal {
@@ -89,6 +94,8 @@ export interface Agendamento {
   product_cost?: number | null;
   insumos_detalhes?: InsumoAtendimento[];
   split_comissao?: Record<UUID, number>;
+  comanda_unificada?: ComandaMultiProfissional;
+  unificado_em_id?: UUID | null;
   financial_status?: 'PENDING_CONFIRMATION' | 'CONFIRMED' | string;
   confirmed_at?: string | null;
   confirmed_by?: string | null;
@@ -223,6 +230,55 @@ export interface InsumoAtendimento {
   etapa?: string;
   profissional_id?: string;
   horario?: string;
+}
+
+/** Procedimento individual dentro de uma comanda multi-profissional */
+export interface ProcedimentoComanda {
+  id: string;
+  servico_id: UUID;
+  servico_nome?: string;
+  profissional_id: UUID;
+  profissional_nome?: string;
+  preco_tabela: number;
+  desconto_valor: number;
+  desconto_pct: number;
+  desconto_motivo?: string;
+  valor_final: number;
+  insumos_custo?: number;
+  agendamento_id?: UUID;
+}
+
+/** Comanda unificada quando a cliente é atendida por múltiplos profissionais no mesmo dia */
+export interface ComandaMultiProfissional {
+  cliente_id: UUID;
+  cliente_nome: string;
+  data: string;
+  procedimentos: ProcedimentoComanda[];
+  insumos: InsumoAtendimento[];
+  produtos_venda: Array<{
+    inventory_id: UUID;
+    name: string;
+    qty: number;
+    precoOriginal?: number;
+    preco: number;
+    descontoValor?: number;
+    profissional_id?: UUID;
+  }>;
+  produtos_comprados?: Array<{
+    nome: string;
+    quantidade: number;
+    preco_unitario: number;
+  }>;
+  total_bruto_servicos: number;
+  total_descontos_servicos: number;
+  total_liquido_servicos: number;
+  total_produtos_venda: number;
+  total_insumos: number;
+  total_pago_cliente: number;
+  payment_method: FormaPagamento | string;
+  installments: number;
+  agendamentos_unificados_ids: UUID[];
+  fechado_em: string;
 }
 
 // ── TAXAS DE PAGAMENTO E MAQUININHAS ──────────────────────

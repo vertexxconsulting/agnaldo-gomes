@@ -1,12 +1,87 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History, X } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History, X, MapPin } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
 import { getClientes, getAgendamentos, getServicos, getProfissionais, getServicoNome, getServicoPreco, getProfissionalNome, STATUS_LABELS } from '@/lib/mock-data';
 import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
+
+// Utilitários para dividir e compor endereços de forma inteligente
+function parseEndereco(raw?: string | null) {
+  if (!raw) return { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '' };
+
+  let clean = raw.trim();
+  let cep = '';
+
+  const cepMatch = clean.match(/(?:CEP:?\s*)?(\d{5}-?\d{3})/i);
+  if (cepMatch) {
+    cep = cepMatch[1];
+    clean = clean.replace(cepMatch[0], '').replace(/,\s*,/g, ',').replace(/,\s*$/, '').trim();
+  }
+
+  const parts = clean.split(',').map(p => p.trim());
+
+  let rua = '';
+  let numero = '';
+  let complemento = '';
+  let bairro = '';
+  let cidade = '';
+
+  if (parts.length >= 4) {
+    rua = parts[0] || '';
+    const numPart = parts[1] || '';
+    if (numPart.includes(' - ')) {
+      const [n, c] = numPart.split(' - ');
+      numero = n.trim();
+      complemento = c.trim();
+    } else {
+      numero = numPart;
+    }
+    bairro = parts[2] || '';
+    cidade = parts.slice(3).join(', ') || '';
+  } else if (parts.length === 3) {
+    rua = parts[0] || '';
+    numero = parts[1] || '';
+    cidade = parts[2] || '';
+  } else if (parts.length === 2) {
+    rua = parts[0] || '';
+    numero = parts[1] || '';
+  } else {
+    rua = clean;
+  }
+
+  return { cep, rua, numero, complemento, bairro, cidade };
+}
+
+function comporEndereco(partes: {
+  rua?: string;
+  numero?: string;
+  bairro?: string;
+  cidade?: string;
+  complemento?: string;
+  cep?: string;
+}) {
+  const rua = (partes.rua || '').trim();
+  const numero = (partes.numero || '').trim();
+  const complemento = (partes.complemento || '').trim();
+  const bairro = (partes.bairro || '').trim();
+  const cidade = (partes.cidade || '').trim();
+  const cep = (partes.cep || '').trim();
+
+  const numFormatado = [numero, complemento].filter(Boolean).join(' - ');
+
+  const tokens = [
+    rua,
+    numFormatado,
+    bairro,
+    cidade,
+    cep ? `CEP ${cep}` : '',
+  ].filter(t => t !== '');
+
+  return tokens.join(', ');
+}
 
 export default function ClienteModule() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -22,21 +97,63 @@ export default function ClienteModule() {
   // Estados para o form
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Cliente | null>(null);
-  
-  const enderecoRef = useRef<HTMLInputElement>(null);
 
-  const buscarCep = async (cep: string) => {
-    const cepLimpo = cep.replace(/\D/g, '');
+  // Estados de endereço detalhado
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const numeroRef = useRef<HTMLInputElement>(null);
+
+  const buscarCep = async (cepInput: string) => {
+    const cepLimpo = cepInput.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
+    setBuscandoCep(true);
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
       const data = await res.json();
-      if (!data.erro && enderecoRef.current) {
-        enderecoRef.current.value = `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`;
+      if (!data.erro) {
+        if (data.logradouro) setRua(data.logradouro);
+        if (data.bairro) setBairro(data.bairro);
+        if (data.localidade) {
+          setCidade(`${data.localidade}${data.uf ? ' - ' + data.uf : ''}`);
+        }
+        setTimeout(() => {
+          numeroRef.current?.focus();
+        }, 100);
       }
     } catch (e) {
       console.error('Erro ao buscar CEP', e);
+    } finally {
+      setBuscandoCep(false);
     }
+  };
+
+  const abrirNovoCliente = () => {
+    setEditando(null);
+    setCep('');
+    setRua('');
+    setNumero('');
+    setBairro('');
+    setCidade('');
+    setComplemento('');
+    setShowForm(true);
+  };
+
+  const abrirEdicaoCliente = (c: Cliente) => {
+    setEditando(c);
+    const parsed = parseEndereco(c.endereco);
+    setCep(parsed.cep);
+    setRua(parsed.rua);
+    setNumero(parsed.numero);
+    setBairro(parsed.bairro);
+    setCidade(parsed.cidade);
+    setComplemento(parsed.complemento);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Carregar dados do Supabase (com fallback para mock)
@@ -98,6 +215,15 @@ export default function ClienteModule() {
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const enderecoCompleto = comporEndereco({
+      rua,
+      numero,
+      bairro,
+      cidade,
+      complemento,
+      cep,
+    });
+
     const payload = {
       id: editando?.id,
       codigo: form.get('codigo') as string,
@@ -105,7 +231,7 @@ export default function ClienteModule() {
       telefone: form.get('telefone') as string,
       email: (form.get('email') as string) || null,
       cpf: (form.get('cpf') as string) || null,
-      endereco: (form.get('endereco') as string) || null,
+      endereco: enderecoCompleto || null,
       nascimento: (form.get('nascimento') as string) || null,
       observacoes: (form.get('observacoes') as string) || null,
     };
@@ -194,7 +320,7 @@ export default function ClienteModule() {
             </button>
           )}
         </div>
-        <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={() => { setEditando(null); setShowForm(true); }}>
+        <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={abrirNovoCliente}>
           <UserPlus size={18} className="mr-2" /> Novo Cliente
         </Button>
       </div>
@@ -233,22 +359,108 @@ export default function ClienteModule() {
                 <label className="block text-xs text-foreground/60 mb-1">Data de Nascimento <span className="text-foreground/30">(opcional)</span></label>
                 <input name="nascimento" type="date" defaultValue={editando?.nascimento ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold [color-scheme:light] dark:[color-scheme:dark]" />
               </div>
-              <div>
-                <label className="block text-xs text-foreground/60 mb-1">CEP (Busca Automática)</label>
-                <input 
-                  type="text" 
-                  placeholder="00000-000" 
-                  onChange={(e) => {
-                    if (e.target.value.replace(/\D/g, '').length === 8) {
-                      buscarCep(e.target.value);
-                    }
-                  }}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs text-foreground/60 mb-1">Endereço Completo <span className="text-foreground/30">(opcional)</span></label>
-                <input ref={enderecoRef} name="endereco" type="text" placeholder="Rua, Número, Bairro, CEP, Cidade" defaultValue={editando?.endereco ?? ''} className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+
+              {/* Seção de Endereço Detalhado: CEP, Rua, Número, Bairro, Cidade, Complemento */}
+              <div className="md:col-span-2 pt-2 border-t border-[var(--border-subtle)]">
+                <span className="text-xs uppercase font-bold tracking-wider text-foreground flex items-center gap-1.5 mb-3">
+                  <MapPin size={14} className="text-foreground" /> Endereço do Cliente
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  {/* CEP com Busca Automática */}
+                  <div className="sm:col-span-3">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold flex items-center justify-between">
+                      <span>CEP</span>
+                      {buscandoCep && <span className="text-[10px] text-foreground font-normal animate-pulse">Buscando...</span>}
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="00000-000"
+                      value={cep}
+                      maxLength={9}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
+                        const formatted = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+                        setCep(formatted);
+                        if (raw.length === 8) {
+                          buscarCep(raw);
+                        }
+                      }}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold font-mono" 
+                    />
+                  </div>
+
+                  {/* Rua / Logradouro */}
+                  <div className="sm:col-span-6">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                      Rua / Logradouro
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Rua João Siqueira Filho"
+                      value={rua}
+                      onChange={(e) => setRua(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold"
+                    />
+                  </div>
+
+                  {/* Número */}
+                  <div className="sm:col-span-3">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                      Número
+                    </label>
+                    <input
+                      ref={numeroRef}
+                      type="text"
+                      placeholder="Ex: 120 ou S/N"
+                      value={numero}
+                      onChange={(e) => setNumero(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold font-mono"
+                    />
+                  </div>
+
+                  {/* Bairro */}
+                  <div className="sm:col-span-4">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Socomim"
+                      value={bairro}
+                      onChange={(e) => setBairro(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold"
+                    />
+                  </div>
+
+                  {/* Cidade */}
+                  <div className="sm:col-span-5">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                      Cidade / UF
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Telêmaco Borba - PR"
+                      value={cidade}
+                      onChange={(e) => setCidade(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold"
+                    />
+                  </div>
+
+                  {/* Complemento */}
+                  <div className="sm:col-span-3">
+                    <label className="block text-xs text-foreground/60 mb-1 font-semibold">
+                      Complemento <span className="text-foreground/30 font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Apto 101, Bloco B"
+                      value={complemento}
+                      onChange={(e) => setComplemento(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <div>
@@ -356,7 +568,7 @@ export default function ClienteModule() {
                       </div>
 
                       <div className="pt-2 flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1 text-xs py-1.5 h-auto" onClick={(e) => { e.stopPropagation(); setEditando(c); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Edit size={14} className="mr-1"/> Editar</Button>
+                        <Button variant="outline" size="sm" className="flex-1 text-xs py-1.5 h-auto" onClick={(e) => { e.stopPropagation(); abrirEdicaoCliente(c); }}><Edit size={14} className="mr-1"/> Editar</Button>
                         <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 h-auto py-1.5" onClick={(e) => { e.stopPropagation(); excluir(c.id); }}><Trash2 size={14}/></Button>
                       </div>
                     </div>

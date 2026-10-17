@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal, stock_pin, product_commission_pct } = body;
+    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal, stock_pin, product_commission_pct, periodo_recebimento } = body;
 
     if (!nome) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
@@ -65,6 +65,9 @@ export async function POST(req: Request) {
     const sched = (jornada_semanal ? { ...jornada_semanal } : {}) as any;
     if (stock_pin !== undefined) {
       sched._meta = { ...sched._meta, stock_pin: stock_pin ? String(stock_pin).trim() : null };
+    }
+    if (periodo_recebimento !== undefined) {
+      sched._meta = { ...sched._meta, periodo_recebimento: periodo_recebimento || 'semanal' };
     }
 
     const payload: Record<string, any> = {
@@ -82,6 +85,9 @@ export async function POST(req: Request) {
     if (stock_pin !== undefined) {
       payload.stock_pin = stock_pin ? String(stock_pin).trim() : null;
     }
+    if (periodo_recebimento !== undefined) {
+      payload.commission_frequency = periodo_recebimento;
+    }
 
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -94,8 +100,9 @@ export async function POST(req: Request) {
         .select('*')
         .single();
 
-      if (error && error.message?.includes('stock_pin')) {
+      if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency'))) {
         delete payload.stock_pin;
+        delete payload.commission_frequency;
         const retry = await supabaseAdmin
           .from('salon_professionals')
           .update(payload)
@@ -119,8 +126,9 @@ export async function POST(req: Request) {
         .select('*')
         .single();
 
-      if (error && error.message?.includes('stock_pin')) {
+      if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency'))) {
         delete payload.stock_pin;
+        delete payload.commission_frequency;
         const retry = await supabaseAdmin
           .from('salon_professionals')
           .insert(payload)

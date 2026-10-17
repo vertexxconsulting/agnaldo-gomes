@@ -13,7 +13,8 @@ import type {
   Agendamento, BloqueioAgenda, StatusAgendamento, CanalAgendamento,
   ProdutoEstoque, MovimentacaoEstoque, ServicoProduto,
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
-  InsumoAtendimento, ItemComanda, PaymentFee, ConfigTaxas
+  InsumoAtendimento, ItemComanda, PaymentFee, ConfigTaxas,
+  PeriodoRecebimentoComissao, ComandaMultiProfissional, ProcedimentoComanda
 } from './gestao-types';
 
 export function isUUID(str: string): boolean {
@@ -99,6 +100,7 @@ function mapCliente(r: Row): Cliente {
 function mapProfissional(r: Row): Profissional {
   const sched = (r.weekly_schedule ?? {}) as any;
   const metaPin = sched?._meta?.stock_pin;
+  const metaPeriodo = sched?._meta?.periodo_recebimento;
   return {
     id: r.id,
     nome: r.name ?? '',
@@ -108,6 +110,7 @@ function mapProfissional(r: Row): Profissional {
     ativo: r.active ?? true,
     jornada_semanal: sched as Profissional['jornada_semanal'],
     stock_pin: r.stock_pin || metaPin || null,
+    periodo_recebimento: (r.commission_frequency || metaPeriodo || 'semanal') as PeriodoRecebimentoComissao,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
   };
@@ -177,6 +180,8 @@ function mapAgendamento(r: Row): Agendamento {
     product_cost: prodCost,
     insumos_detalhes: insumosDet,
     split_comissao: metaObj.split_comissao || undefined,
+    comanda_unificada: metaObj.comanda_unificada || undefined,
+    unificado_em_id: metaObj.unificado_em_id || null,
     financial_status: finStatus,
     confirmed_at: r.confirmed_at || metaObj.confirmed_at || null,
     confirmed_by: r.confirmed_by || metaObj.confirmed_by || null,
@@ -495,6 +500,8 @@ export async function finalizarRecebimentoAgendamento(params: {
   insumosDetalhes?: InsumoAtendimento[] | any[];
   splitComissao?: Record<string, number>;
   auxiliaresIds?: string[];
+  comandaUnificada?: ComandaMultiProfissional;
+  unificadoEmId?: string;
   financialStatus?: 'PENDING_CONFIRMATION' | 'CONFIRMED';
 }): Promise<boolean> {
   const finStatus = params.financialStatus || 'PENDING_CONFIRMATION';
@@ -518,6 +525,13 @@ export async function finalizarRecebimentoAgendamento(params: {
   }
   if (params.auxiliaresIds && params.auxiliaresIds.length > 0) {
     metaObj.auxiliares_ids = params.auxiliaresIds;
+  }
+  if (params.comandaUnificada) {
+    metaObj.comanda_unificada = params.comandaUnificada;
+    metaObj.comanda_multi_profissional = true;
+  }
+  if (params.unificadoEmId) {
+    metaObj.unificado_em_id = params.unificadoEmId;
   }
 
   if (finStatus === 'CONFIRMED') {
@@ -575,6 +589,7 @@ export async function confirmarFechamentoGestao(params: {
   paymentMethod?: string;
   totalAmount?: number;
   confirmedBy?: string;
+  agendamentosUnificadosIds?: string[];
 }): Promise<boolean> {
   const { data: current } = await supabase
     .from(TBL.agendamentos)
@@ -608,6 +623,41 @@ export async function confirmarFechamentoGestao(params: {
     logSupabaseError(`[supabase] confirmarFechamentoGestao(${params.id}) error:`, error);
     return false;
   }
+
+  // Se houver agendamentos secundários unificados nesta comanda, confirma-os também com total_amount: 0
+  if (params.agendamentosUnificadosIds && params.agendamentosUnificadosIds.length > 0) {
+    for (const secId of params.agendamentosUnificadosIds) {
+      if (secId && secId !== params.id) {
+        try {
+          const { data: secCurrent } = await supabase
+            .from(TBL.agendamentos)
+            .select('sub_services')
+            .eq('id', secId)
+            .maybeSingle();
+          const secSubs = Array.isArray(secCurrent?.sub_services) ? secCurrent.sub_services : [];
+          const secMeta = secSubs.find((s: any) => s?._meta) || { _meta: true };
+          secMeta.financial_status = 'CONFIRMED';
+          secMeta.confirmed_at = new Date().toISOString();
+          secMeta.confirmed_by = params.confirmedBy || 'Gestão';
+          const cleanSecSubs = secSubs.filter((s: any) => !s?._meta);
+          cleanSecSubs.push(secMeta);
+
+          await supabase
+            .from(TBL.agendamentos)
+            .update({
+              status: 'COMPLETED',
+              total_amount: 0,
+              payment_method: params.paymentMethod || 'UNIFICADO',
+              sub_services: cleanSecSubs
+            })
+            .eq('id', secId);
+        } catch (secErr) {
+          console.warn('Erro ao sincronizar agendamento unificado secundário:', secId, secErr);
+        }
+      }
+    }
+  }
+
   return true;
 }
 
@@ -694,6 +744,7 @@ export async function criarProfissional(payload: {
   jornada_semanal?: Record<number, { inicio: string; fim: string }> | any;
   product_commission_pct?: number;
   stock_pin?: string | null;
+  periodo_recebimento?: PeriodoRecebimentoComissao | null;
   profile_id?: string | null;
 }): Promise<{ id?: string; error?: string }> {
   try {
@@ -714,6 +765,9 @@ export async function criarProfissional(payload: {
   if (payload.stock_pin) {
     sched._meta = { ...sched._meta, stock_pin: payload.stock_pin };
   }
+  if (payload.periodo_recebimento) {
+    sched._meta = { ...sched._meta, periodo_recebimento: payload.periodo_recebimento };
+  }
 
   const insert: Row = {
     name: payload.nome,
@@ -725,6 +779,7 @@ export async function criarProfissional(payload: {
     product_commission_pct: payload.product_commission_pct ?? 0,
   };
   if (payload.stock_pin) insert.stock_pin = payload.stock_pin;
+  if (payload.periodo_recebimento) insert.commission_frequency = payload.periodo_recebimento;
   if (payload.profile_id) insert.user_id = payload.profile_id;
 
   let { data, error } = await supabase
@@ -733,8 +788,9 @@ export async function criarProfissional(payload: {
     .select('id')
     .single();
 
-  if (error && error.message?.includes('stock_pin')) {
+  if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency'))) {
     delete insert.stock_pin;
+    delete insert.commission_frequency;
     const retry = await supabase.from(TBL.profissionais).insert(insert).select('id').single();
     data = retry.data;
     error = retry.error;
@@ -756,6 +812,7 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   jornada_semanal: Record<number, { inicio: string; fim: string }> | any;
   product_commission_pct: number;
   stock_pin: string | null;
+  periodo_recebimento: PeriodoRecebimentoComissao;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };
@@ -780,11 +837,15 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   if (payload.ativo !== undefined) patch.active = payload.ativo;
   if (payload.product_commission_pct !== undefined) patch.product_commission_pct = payload.product_commission_pct;
 
-  if (payload.jornada_semanal !== undefined || payload.stock_pin !== undefined) {
+  if (payload.jornada_semanal !== undefined || payload.stock_pin !== undefined || payload.periodo_recebimento !== undefined) {
     const sched = (payload.jornada_semanal ? { ...payload.jornada_semanal } : {}) as any;
     if (payload.stock_pin !== undefined) {
       sched._meta = { ...sched._meta, stock_pin: payload.stock_pin };
       patch.stock_pin = payload.stock_pin;
+    }
+    if (payload.periodo_recebimento !== undefined) {
+      sched._meta = { ...sched._meta, periodo_recebimento: payload.periodo_recebimento };
+      patch.commission_frequency = payload.periodo_recebimento;
     }
     patch.weekly_schedule = sched;
   }
@@ -794,8 +855,9 @@ export async function atualizarProfissional(id: string, payload: Partial<{
     .update(patch)
     .eq('id', id);
 
-  if (error && error.message?.includes('stock_pin')) {
+  if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency'))) {
     delete patch.stock_pin;
+    delete patch.commission_frequency;
     const retry = await supabase.from(TBL.profissionais).update(patch).eq('id', id);
     error = retry.error;
   }
@@ -808,6 +870,30 @@ export async function atualizarProfissional(id: string, payload: Partial<{
     return { ok: false, error: traduzirErro(error) };
   }
   return { ok: true };
+}
+
+export async function atualizarPeriodoRecebimentoProfissional(
+  id: string,
+  periodo: PeriodoRecebimentoComissao
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data: current } = await supabase
+      .from(TBL.profissionais)
+      .select('weekly_schedule')
+      .eq('id', id)
+      .maybeSingle();
+
+    const sched = (current?.weekly_schedule ? { ...current.weekly_schedule } : {}) as any;
+    sched._meta = { ...(sched._meta || {}), periodo_recebimento: periodo };
+
+    return atualizarProfissional(id, {
+      jornada_semanal: sched,
+      periodo_recebimento: periodo,
+    });
+  } catch (err: any) {
+    console.error('Erro ao atualizar período de recebimento:', err);
+    return { ok: false, error: err?.message || 'Erro inesperado' };
+  }
 }
 
 export async function excluirProfissional(id: string): Promise<{ ok: boolean; error?: string }> {

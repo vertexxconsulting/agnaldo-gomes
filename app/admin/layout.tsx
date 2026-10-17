@@ -122,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
         {/* Removido ThemeToggle conforme solicitação */}
-        <div className="pt-16 md:pt-0 px-4 sm:px-6 lg:px-8 pb-12 max-w-6xl mx-auto">
+        <div className={`pt-16 md:pt-0 px-4 sm:px-6 pb-12 mx-auto ${pathname.startsWith('/admin/agenda') ? 'max-w-none lg:px-6' : 'max-w-6xl lg:px-8'}`}>
           {children}
         </div>
       </main>

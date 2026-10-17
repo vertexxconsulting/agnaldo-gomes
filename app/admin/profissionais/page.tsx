@@ -16,7 +16,7 @@ import {
   criarProfissional, atualizarProfissional, excluirProfissional, vincularProfissionalServicos
 } from '@/lib/supabase-queries';
 import { supabase } from '@/lib/supabase';
-import type { Profissional, JornadaSemanal, Servico, ProfissionalServico } from '@/lib/gestao-types';
+import type { Profissional, JornadaSemanal, Servico, ProfissionalServico, PeriodoRecebimentoComissao } from '@/lib/gestao-types';
 import { ROLES, Role, ROLE_LABELS } from '@/lib/auth';
 import { 
   STUDIO_MODULES, LOJA_MODULES, ACADEMY_MODULES, 
@@ -42,6 +42,7 @@ export default function ProfissionaisPage() {
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<'Cabelo' | 'Unhas' | string>('Cabelo');
+  const [periodoRecebimento, setPeriodoRecebimento] = useState<PeriodoRecebimentoComissao>('semanal');
 
   // Estados para Acesso ao Sistema
   const [criarAcesso, setCriarAcesso] = useState(false);
@@ -178,6 +179,7 @@ export default function ProfissionaisPage() {
       jornada_semanal: jornada,
       product_commission_pct: Number(form.get('product_commission_pct')) || 0,
       stock_pin: pinDigitado,
+      periodo_recebimento: periodoRecebimento,
     };
 
     let profissionalId: string;
@@ -274,6 +276,7 @@ export default function ProfissionaisPage() {
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
       setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e?.toLowerCase()?.includes('unha')) ? 'Unhas' : 'Cabelo'));
+      setPeriodoRecebimento(prof.periodo_recebimento || 'semanal');
     } else {
       setEditando(null);
       setFotoLocal(null);
@@ -281,6 +284,7 @@ export default function ProfissionaisPage() {
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
       setCategoriaSelecionada('Cabelo');
+      setPeriodoRecebimento('semanal');
       setDiasAtivos([]);
       setCriarAcesso(false);
       setAcessoData({
@@ -424,6 +428,46 @@ export default function ProfissionaisPage() {
                   </div>
                   <p className="text-[10px] text-foreground/40 mt-1">Senha pessoal para dar entrada/baixa no estoque.</p>
                 </div>
+
+                {/* Período de Recebimento de Comissões */}
+                <div className="sm:col-span-12 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-foreground/5 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <label className="block text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Calendar size={14} className="text-gold" />
+                      Período de Recebimento de Comissões
+                    </label>
+                    <span className="text-[11px] text-foreground/50">Frequência com que o profissional prefere receber o fechamento</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    {[
+                      { id: 'semanal', label: 'Semanal', desc: 'A cada 7 dias (Padrão)', icon: '🗓️' },
+                      { id: 'quinzenal', label: 'Quinzenal', desc: 'A cada 15 dias', icon: '🌓' },
+                      { id: 'mensal', label: 'Mensal', desc: 'A cada mês fechado', icon: '📅' },
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setPeriodoRecebimento(item.id as PeriodoRecebimentoComissao)}
+                        className={`p-2.5 rounded-lg border text-left transition-all ${
+                          periodoRecebimento === item.id
+                            ? 'bg-gold/15 border-gold text-foreground shadow-sm'
+                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold flex items-center gap-1.5">
+                            <span>{item.icon}</span> {item.label}
+                          </span>
+                          {periodoRecebimento === item.id && (
+                            <CheckCircle2 size={14} className="text-gold" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-foreground/50 mt-0.5">{item.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="sm:col-span-7">
                   <label className="block text-xs text-foreground/60 mb-2">Especialidades</label>
                   <div className="flex flex-wrap gap-2">
@@ -759,6 +803,15 @@ export default function ProfissionaisPage() {
                       )}
                       <span className="flex items-center gap-1 text-gold/90 font-medium" title="PIN individual para autorizar entradas e baixas de estoque">
                         <Lock size={12} className="text-gold" /> PIN Estoque: <span className="font-mono bg-gold/10 px-1.5 py-0.5 rounded text-gold">{prof.stock_pin || '1234'}</span>
+                      </span>
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        prof.periodo_recebimento === 'quinzenal'
+                          ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                          : prof.periodo_recebimento === 'mensal'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                      }`}>
+                        {prof.periodo_recebimento === 'quinzenal' ? '🌓 Fechamento Quinzenal' : prof.periodo_recebimento === 'mensal' ? '📅 Fechamento Mensal' : '🗓️ Fechamento Semanal'}
                       </span>
                     </div>
 

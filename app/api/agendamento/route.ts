@@ -60,6 +60,8 @@ export async function POST(req: Request) {
       nome, 
       telefone, 
       email,
+      cpf,
+      endereco,
       clienteId: existingClienteId 
     } = body;
 
@@ -85,6 +87,8 @@ export async function POST(req: Request) {
           nome: nomeSanitizado,
           telefone: telefoneLimpo,
           email: emailSanitizado,
+          cpf: cpf ? sanitizeInput(cpf) : null,
+          endereco: endereco ? sanitizeInput(endereco) : null,
         });
         if (clienteSalvo) clienteId = clienteSalvo.id;
       } catch (err) {

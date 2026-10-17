@@ -18,9 +18,10 @@ import {
   fetchItensComanda,
   atualizarStatusAgendamento,
   salvarInsumoTempoRealProcedimento,
-  removerInsumoTempoRealProcedimento
+  removerInsumoTempoRealProcedimento,
+  atualizarPeriodoRecebimentoProfissional
 } from '@/lib/supabase-queries';
-import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento } from '@/lib/gestao-types';
+import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
 
 export default function MeuPainelPage() {
@@ -50,6 +51,19 @@ export default function MeuPainelPage() {
   const [produtoQty, setProdutoQty] = useState('1');
   const [produtoDescPct, setProdutoDescPct] = useState('');
   const [produtoDescValor, setProdutoDescValor] = useState('');
+  const [salvandoPeriodo, setSalvandoPeriodo] = useState(false);
+
+  const handleAlterarMeuPeriodo = async (novoPeriodo: PeriodoRecebimentoComissao) => {
+    if (!selectedProfId) return;
+    setSalvandoPeriodo(true);
+    const res = await atualizarPeriodoRecebimentoProfissional(selectedProfId, novoPeriodo);
+    if (res.ok) {
+      setProfissionais(prev => prev.map(p => p.id === selectedProfId ? { ...p, periodo_recebimento: novoPeriodo } : p));
+    } else {
+      alert(`Erro ao salvar preferência de recebimento: ${res.error}`);
+    }
+    setSalvandoPeriodo(false);
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -408,19 +422,88 @@ export default function MeuPainelPage() {
 
           <h2 className="text-xl font-bold mt-8 flex items-center gap-2">
             <DollarSign className="text-gold" />
-            Minhas Comissões & Fechamento Semanal
+            Minhas Comissões & Fechamento
           </h2>
-          <CardGlass className="p-6">
-            <p className="text-sm text-foreground/70 mb-4">
-              Consulte seus recebíveis semanais, comissões liberadas e valores em carência de cartão de crédito (D+30).
+          <CardGlass className="p-6 space-y-4">
+            {/* Cabeçalho do Período */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wider text-foreground/50">Seu Período de Recebimento</p>
+                <p className="text-sm font-semibold text-foreground mt-0.5">
+                  Como você prefere receber o fechamento das suas comissões?
+                </p>
+              </div>
+              {(() => {
+                const profAtivo = profissionais.find(p => p.id === selectedProfId);
+                const periodo = profAtivo?.periodo_recebimento || 'semanal';
+                return (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
+                    periodo === 'quinzenal'
+                      ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                      : periodo === 'mensal'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                  }`}>
+                    {periodo === 'quinzenal' ? '🌓 Quinzenal (15 dias)' : periodo === 'mensal' ? '📅 Mensal (Mês)' : '🗓️ Semanal (7 dias)'}
+                  </span>
+                );
+              })()}
+            </div>
+
+            {/* Seletor Interativo do Profissional */}
+            <div>
+              <p className="text-xs text-foreground/60 mb-2">Clique para definir sua frequência de recebimento:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  { id: 'semanal', label: 'Semanal', desc: 'A cada 7 dias (Toda semana)', icon: '🗓️' },
+                  { id: 'quinzenal', label: 'Quinzenal', desc: 'A cada 15 dias (Quinzena)', icon: '🌓' },
+                  { id: 'mensal', label: 'Mensal', desc: 'A cada mês (Fechamento do mês)', icon: '📅' },
+                ].map(item => {
+                  const profAtivo = profissionais.find(p => p.id === selectedProfId);
+                  const isSelected = (profAtivo?.periodo_recebimento || 'semanal') === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      disabled={salvandoPeriodo}
+                      onClick={() => handleAlterarMeuPeriodo(item.id as PeriodoRecebimentoComissao)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-gold/15 border-gold text-foreground shadow-sm ring-1 ring-gold/40'
+                          : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/30 hover:bg-foreground/[0.05]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold flex items-center gap-1.5">
+                          <span>{item.icon}</span> {item.label}
+                        </span>
+                        {isSelected && <CheckCircle2 size={15} className="text-gold" />}
+                      </div>
+                      <p className="text-[10px] text-foreground/50 mt-1">{item.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p className="text-xs text-foreground/60 pt-2 border-t border-[var(--border-subtle)]">
+              Consulte seus recebíveis, comissões liberadas no período e valores em carência de cartão de crédito (D+30).
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/admin/comissoes?aba=fechamento" className="flex-1">
-                <Button variant="secondary" className="w-full text-xs">
-                  <CalendarDays size={15} /> Fechamento Semanal
-                </Button>
-              </Link>
-              <Link href="/admin/comissoes?aba=recebiveis" className="flex-1">
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(() => {
+                const profAtivo = profissionais.find(p => p.id === selectedProfId);
+                const periodo = profAtivo?.periodo_recebimento || 'semanal';
+                const labelFechamento = periodo === 'quinzenal' ? 'Fechamento Quinzenal' : periodo === 'mensal' ? 'Fechamento Mensal' : 'Fechamento Semanal';
+                return (
+                  <Link href={`/admin/comissoes?aba=fechamento&prof=${selectedProfId}&periodo=${periodo}`} className="flex-1">
+                    <Button variant="secondary" className="w-full text-xs">
+                      <CalendarDays size={15} /> {labelFechamento}
+                    </Button>
+                  </Link>
+                );
+              })()}
+              <Link href={`/admin/comissoes?aba=recebiveis&prof=${selectedProfId}`} className="flex-1">
                 <Button variant="primary" className="w-full text-xs">
                   <DollarSign size={15} /> Consultar Recebíveis (D+30)
                 </Button>

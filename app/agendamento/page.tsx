@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Calendar, 
@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   UserCheck,
   Info,
-  Loader2
+  Loader2,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { getServicos, getProfissionais, getProfissionalServico } from '@/lib/mock-data';
@@ -28,6 +29,80 @@ import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { normalizarTelefoneDestino } from '@/lib/whatsapp';
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+function parseEndereco(raw?: string | null) {
+  if (!raw) return { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '' };
+
+  let clean = raw.trim();
+  let cep = '';
+
+  const cepMatch = clean.match(/(?:CEP:?\s*)?(\d{5}-?\d{3})/i);
+  if (cepMatch) {
+    cep = cepMatch[1];
+    clean = clean.replace(cepMatch[0], '').replace(/,\s*,/g, ',').replace(/,\s*$/, '').trim();
+  }
+
+  const parts = clean.split(',').map(p => p.trim());
+
+  let rua = '';
+  let numero = '';
+  let complemento = '';
+  let bairro = '';
+  let cidade = '';
+
+  if (parts.length >= 4) {
+    rua = parts[0] || '';
+    const numPart = parts[1] || '';
+    if (numPart.includes(' - ')) {
+      const [n, c] = numPart.split(' - ');
+      numero = n.trim();
+      complemento = c.trim();
+    } else {
+      numero = numPart;
+    }
+    bairro = parts[2] || '';
+    cidade = parts.slice(3).join(', ') || '';
+  } else if (parts.length === 3) {
+    rua = parts[0] || '';
+    numero = parts[1] || '';
+    cidade = parts[2] || '';
+  } else if (parts.length === 2) {
+    rua = parts[0] || '';
+    numero = parts[1] || '';
+  } else {
+    rua = clean;
+  }
+
+  return { cep, rua, numero, complemento, bairro, cidade };
+}
+
+function comporEndereco(partes: {
+  rua?: string;
+  numero?: string;
+  bairro?: string;
+  cidade?: string;
+  complemento?: string;
+  cep?: string;
+}) {
+  const rua = (partes.rua || '').trim();
+  const numero = (partes.numero || '').trim();
+  const complemento = (partes.complemento || '').trim();
+  const bairro = (partes.bairro || '').trim();
+  const cidade = (partes.cidade || '').trim();
+  const cep = (partes.cep || '').trim();
+
+  const numFormatado = [numero, complemento].filter(Boolean).join(' - ');
+
+  const tokens = [
+    rua,
+    numFormatado,
+    bairro,
+    cidade,
+    cep ? `CEP ${cep}` : '',
+  ].filter(t => t !== '');
+
+  return tokens.join(', ');
+}
 
 export default function AgendamentoPage() {
   const router = useRouter();
@@ -60,6 +135,9 @@ export default function AgendamentoPage() {
     whatsappUrl: string;
   } | null>(null);
 
+  const [buscandoCepAgendamento, setBuscandoCepAgendamento] = useState(false);
+  const numeroAgendamentoRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     profissionalId: '',
     servicoId: servicoParam || '',
@@ -71,6 +149,11 @@ export default function AgendamentoPage() {
     email: '',
     cpf: '',
     cep: '',
+    rua: '',
+    numero: '',
+    bairro: '',
+    cidade: '',
+    complemento: '',
     endereco: '',
   });
 
@@ -200,6 +283,7 @@ export default function AgendamentoPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.found && data.cliente) {
+          const parsed = parseEndereco(data.cliente.endereco || '');
           setFormData(prev => ({
             ...prev,
             clienteId: data.cliente.id,
@@ -207,6 +291,12 @@ export default function AgendamentoPage() {
             email: data.cliente.email || '',
             cpf: data.cliente.cpf || '',
             endereco: data.cliente.endereco || '',
+            cep: parsed.cep || prev.cep,
+            rua: parsed.rua,
+            numero: parsed.numero,
+            bairro: parsed.bairro,
+            cidade: parsed.cidade,
+            complemento: parsed.complemento,
           }));
           setClienteReconhecido(data.cliente.nome);
           setTelefoneVerificado(true);
@@ -226,20 +316,59 @@ export default function AgendamentoPage() {
     setTelefoneVerificado(true);
   };
 
+  const handleAddressChange = (field: 'cep' | 'rua' | 'numero' | 'bairro' | 'cidade' | 'complemento', value: string) => {
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      const enderecoCompleto = comporEndereco({
+        rua: updated.rua,
+        numero: updated.numero,
+        bairro: updated.bairro,
+        cidade: updated.cidade,
+        complemento: updated.complemento,
+        cep: updated.cep,
+      });
+      return { ...updated, endereco: enderecoCompleto };
+    });
+  };
+
   const buscarCep = async (cep: string) => {
     const cepLimpo = cep.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
+    setBuscandoCepAgendamento(true);
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
       const data = await res.json();
       if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
-          endereco: `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`
-        }));
+        const rua = data.logradouro || '';
+        const bairro = data.bairro || '';
+        const cidade = data.localidade ? `${data.localidade}${data.uf ? ' - ' + data.uf : ''}` : '';
+        const cepFormatado = cepLimpo.replace(/(\d{5})(\d{3})/, '$1-$2');
+        setFormData(prev => {
+          const enderecoCompleto = comporEndereco({
+            rua,
+            numero: prev.numero,
+            bairro,
+            cidade,
+            complemento: prev.complemento,
+            cep: cepFormatado
+          });
+          return {
+            ...prev,
+            cep: cepFormatado,
+            rua,
+            bairro,
+            cidade,
+            endereco: enderecoCompleto
+          };
+        });
+        setTimeout(() => {
+          numeroAgendamentoRef.current?.focus();
+        }, 100);
       }
     } catch (e) {
       console.error('Erro ao buscar CEP', e);
+    } finally {
+      setBuscandoCepAgendamento(false);
     }
   };
 
@@ -365,8 +494,18 @@ export default function AgendamentoPage() {
     try {
       // Envia data fictícia de "hoje" e "00:00" para passar pela validação da API
       const hojeStr = new Date().toISOString().split('T')[0];
+      const enderecoComposto = comporEndereco({
+        rua: formData.rua,
+        numero: formData.numero,
+        bairro: formData.bairro,
+        cidade: formData.cidade,
+        complemento: formData.complemento,
+        cep: formData.cep,
+      }) || formData.endereco;
+
       const payload = {
         ...formData,
+        endereco: enderecoComposto,
         data: formData.data || hojeStr,
         hora: formData.hora || '00:00'
       };
@@ -653,31 +792,107 @@ export default function AgendamentoPage() {
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">CEP (Busca Automática)</label>
-                    <input
-                      type="text"
-                      value={formData.cep}
-                      onChange={e => {
-                        const val = e.target.value;
-                        handleInputChange('cep', val);
-                        if (val.replace(/\D/g, '').length === 8) {
-                          buscarCep(val);
-                        }
-                      }}
-                      placeholder="00000-000"
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-foreground/70 mb-1.5">Endereço Completo (opcional)</label>
-                    <input
-                      type="text"
-                      value={formData.endereco}
-                      onChange={e => handleInputChange('endereco', e.target.value)}
-                      placeholder="Rua, Número, Bairro, CEP, Cidade"
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
-                    />
+                  {/* Seção de Endereço Detalhado: CEP, Rua, Número, Bairro, Cidade, Complemento */}
+                  <div className="md:col-span-2 pt-2 border-t border-[var(--border-subtle)]">
+                    <span className="text-xs uppercase font-bold tracking-wider text-foreground flex items-center gap-1.5 mb-3">
+                      <MapPin size={14} className="text-foreground" /> Endereço (opcional)
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      {/* CEP com Busca Automática */}
+                      <div className="sm:col-span-4">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold flex items-center justify-between">
+                          <span>CEP</span>
+                          {buscandoCepAgendamento && <span className="text-[10px] text-gold font-normal animate-pulse">Buscando...</span>}
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="00000-000"
+                          value={formData.cep}
+                          maxLength={9}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
+                            const formatted = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+                            handleAddressChange('cep', formatted);
+                            if (raw.length === 8) {
+                              buscarCep(raw);
+                            }
+                          }}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold font-mono" 
+                        />
+                      </div>
+
+                      {/* Rua / Logradouro */}
+                      <div className="sm:col-span-8">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold">
+                          Rua / Logradouro
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Rua João Siqueira Filho"
+                          value={formData.rua}
+                          onChange={(e) => handleAddressChange('rua', e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                        />
+                      </div>
+
+                      {/* Número */}
+                      <div className="sm:col-span-4">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold">
+                          Número
+                        </label>
+                        <input
+                          ref={numeroAgendamentoRef}
+                          type="text"
+                          placeholder="Ex: 120 ou S/N"
+                          value={formData.numero}
+                          onChange={(e) => handleAddressChange('numero', e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold font-mono"
+                        />
+                      </div>
+
+                      {/* Complemento */}
+                      <div className="sm:col-span-8">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold">
+                          Complemento <span className="text-foreground/40 font-normal">(opcional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Apto 102 / Bloco B"
+                          value={formData.complemento}
+                          onChange={(e) => handleAddressChange('complemento', e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                        />
+                      </div>
+
+                      {/* Bairro */}
+                      <div className="sm:col-span-6">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold">
+                          Bairro
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Socomim"
+                          value={formData.bairro}
+                          onChange={(e) => handleAddressChange('bairro', e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                        />
+                      </div>
+
+                      {/* Cidade */}
+                      <div className="sm:col-span-6">
+                        <label className="block text-xs text-foreground/70 mb-1.5 font-bold">
+                          Cidade / UF
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Telêmaco Borba - PR"
+                          value={formData.cidade}
+                          onChange={(e) => handleAddressChange('cidade', e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <Button 

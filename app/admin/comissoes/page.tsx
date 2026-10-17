@@ -21,7 +21,7 @@ import {
 } from '@/lib/supabase-queries';
 import type {
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
-  Profissional, Servico, PaymentFee, ConfigTaxas
+  Profissional, Servico, PaymentFee, ConfigTaxas, PeriodoRecebimentoComissao
 } from '@/lib/gestao-types';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -74,6 +74,72 @@ function getSemanaRange(refDate: Date = new Date()): { inicio: string; fim: stri
     inicio: toIso(monday),
     fim: toIso(sunday),
     label: `${toBr(monday)} a ${toBr(sunday)}`,
+  };
+}
+
+// Retorna início e fim da quinzena com offset (1ª: 01 a 15, 2ª: 16 ao final do mês)
+function getQuinzenaRange(offset: number = 0): { inicio: string; fim: string; label: string } {
+  const hoje = new Date();
+  const currentQuinzenaIndex = hoje.getDate() <= 15 ? 0 : 1;
+  const totalQuinzenas = hoje.getFullYear() * 24 + hoje.getMonth() * 2 + currentQuinzenaIndex + offset;
+
+  const ano = Math.floor(totalQuinzenas / 24);
+  const rem = ((totalQuinzenas % 24) + 24) % 24;
+  const mes = Math.floor(rem / 2);
+  const qIndex = rem % 2; // 0 ou 1
+
+  const toIso = (dt: Date) => {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const toBr = (dt: Date) => dt.toLocaleDateString('pt-BR');
+
+  if (qIndex === 0) {
+    const inicio = new Date(ano, mes, 1);
+    const fim = new Date(ano, mes, 15);
+    const nomeMes = inicio.toLocaleDateString('pt-BR', { month: 'short' });
+    return {
+      inicio: toIso(inicio),
+      fim: toIso(fim),
+      label: `1ª Quinzena de ${nomeMes}/${ano} (${toBr(inicio)} a ${toBr(fim)})`,
+    };
+  } else {
+    const inicio = new Date(ano, mes, 16);
+    const fim = new Date(ano, mes + 1, 0);
+    const nomeMes = inicio.toLocaleDateString('pt-BR', { month: 'short' });
+    return {
+      inicio: toIso(inicio),
+      fim: toIso(fim),
+      label: `2ª Quinzena de ${nomeMes}/${ano} (${toBr(inicio)} a ${toBr(fim)})`,
+    };
+  }
+}
+
+// Retorna início e fim do mês com offset
+function getMesRange(offset: number = 0): { inicio: string; fim: string; label: string } {
+  const hoje = new Date();
+  const targetDate = new Date(hoje.getFullYear(), hoje.getMonth() + offset, 1);
+  const ano = targetDate.getFullYear();
+  const mes = targetDate.getMonth();
+
+  const inicio = new Date(ano, mes, 1);
+  const fim = new Date(ano, mes + 1, 0);
+
+  const toIso = (dt: Date) => {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const toBr = (dt: Date) => dt.toLocaleDateString('pt-BR');
+  const nomeMes = targetDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  return {
+    inicio: toIso(inicio),
+    fim: toIso(fim),
+    label: `${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)} (${toBr(inicio)} a ${toBr(fim)})`,
   };
 }
 
@@ -170,7 +236,9 @@ export default function ComissoesPage() {
   const [profFiltro, setProfFiltro] = useState('todos');
   const [pagando, setPagando] = useState<string | null>(null);
 
-  // Estados do Fechamento Semanal de Caixa
+  // Estados do Fechamento de Caixa (Semanal, Quinzenal ou Mensal)
+  const [periodicidadeFechamento, setPeriodicidadeFechamento] = useState<PeriodoRecebimentoComissao>('semanal');
+  const [filtroPeriodoProfissional, setFiltroPeriodoProfissional] = useState<'todos' | 'semanal' | 'quinzenal' | 'mensal'>('todos');
   const [semanaOffset, setSemanaOffset] = useState(0); // 0 = atual, -1 = anterior, +1 = proxima
   const [profFiltroFechamento, setProfFiltroFechamento] = useState('todos');
   const [fechandoLote, setFechandoLote] = useState(false);
@@ -236,6 +304,10 @@ export default function ComissoesPage() {
         setProfFiltro(prof);
         setProfFiltroFechamento(prof);
         setProfFiltroRecebiveis(prof);
+      }
+      const per = p.get('periodo') as PeriodoRecebimentoComissao;
+      if (per && ['semanal', 'quinzenal', 'mensal'].includes(per)) {
+        setPeriodicidadeFechamento(per);
       }
     }
   }, []);
@@ -351,12 +423,21 @@ export default function ComissoesPage() {
   };
   const getSvcNome = (id?: string | null) => id ? (servicos.find(s => s.id === id)?.nome ?? '—') : '(Todos os serviços)';
 
-  // Intervalo da semana selecionada no Fechamento Semanal
+  // Intervalo do período selecionado no Fechamento (Semanal, Quinzenal ou Mensal)
   const semanaAtualRange = useMemo(() => {
+    if (periodicidadeFechamento === 'quinzenal') {
+      return getQuinzenaRange(semanaOffset);
+    }
+    if (periodicidadeFechamento === 'mensal') {
+      return getMesRange(semanaOffset);
+    }
     const d = new Date();
     d.setDate(d.getDate() + semanaOffset * 7);
     return getSemanaRange(d);
-  }, [semanaOffset]);
+  }, [semanaOffset, periodicidadeFechamento]);
+
+  const periodoNome = periodicidadeFechamento === 'quinzenal' ? 'Quinzena' : periodicidadeFechamento === 'mensal' ? 'Mês' : 'Semana';
+  const periodoAdjetivo = periodicidadeFechamento === 'quinzenal' ? 'quinzenal' : periodicidadeFechamento === 'mensal' ? 'mensal' : 'semanal';
 
   // Lista unificada de todos os recebíveis detalhados
   const todosRecebiveis = useMemo(() => {
@@ -395,21 +476,30 @@ export default function ComissoesPage() {
     });
   }, [comissoes, profissionais, taxas]);
 
-  // Fechamento semanal consolidado por profissional
+  // Fechamento consolidado por profissional no ciclo ativo
   const fechamentoSemanalData = useMemo(() => {
     const { inicio: semIni, fim: semFim } = semanaAtualRange;
 
-    return profissionais.map(prof => {
-      // 1. Atendimentos realizados na semana
+    const profsFiltrados = profissionais.filter(prof => {
+      if (profFiltroFechamento !== 'todos' && prof.id !== profFiltroFechamento) return false;
+      if (filtroPeriodoProfissional !== 'todos') {
+        const pref = prof.periodo_recebimento || 'semanal';
+        if (pref !== filtroPeriodoProfissional) return false;
+      }
+      return true;
+    });
+
+    return profsFiltrados.map(prof => {
+      // 1. Atendimentos realizados no período
       const comsNaSemana = comissoes.filter(c => {
         const d = c.created_at.slice(0, 10);
         return c.professional_id === prof.id && d >= semIni && d <= semFim;
       });
       const totalBrutoSemana = comsNaSemana.reduce((sum, c) => sum + c.total_amount, 0);
 
-      // 2. Parcelas liberadas para pagamento nesta semana:
-      // - Dinheiro, PIX, Débito feitos nesta semana (liberação imediata)
-      // - Crédito cujo prazo de 30 dias (due_date) amadureceu e venceu nesta semana!
+      // 2. Parcelas liberadas para pagamento neste período:
+      // - Dinheiro, PIX, Débito feitos neste período (liberação imediata)
+      // - Crédito cujo prazo de 30 dias (due_date) amadureceu e venceu neste período!
       const todasParcelasProf = comissoes
         .filter(c => c.professional_id === prof.id)
         .flatMap(c => (c.parcelas ?? []).map(p => ({
@@ -422,10 +512,10 @@ export default function ComissoesPage() {
 
       const parcelasLiberadasNaSemana = todasParcelasProf.filter(p => {
         if (p.payment_method === 'CREDITO') {
-          // Vencimento de crédito caiu nesta semana (D+30 concluído)
+          // Vencimento de crédito caiu neste período (D+30 concluído)
           return p.due_date >= semIni && p.due_date <= semFim;
         } else {
-          // Dinheiro, PIX, Débito: atendimento realizado nesta semana
+          // Dinheiro, PIX, Débito: atendimento realizado neste período
           return p.appointment_date >= semIni && p.appointment_date <= semFim;
         }
       });
@@ -436,7 +526,7 @@ export default function ComissoesPage() {
       const totalPendenteSemana = parcelasPendentes.reduce((sum, p) => sum + p.amount, 0);
       const totalPagoSemana = parcelasPagas.reduce((sum, p) => sum + p.amount, 0);
 
-      // 3. Comissões em carência D+30 (atendimentos em crédito desta semana que vencerão após o fim da semana)
+      // 3. Comissões em carência D+30 (atendimentos em crédito deste período que vencerão após o fim do período)
       const parcelasRetidasD30 = todasParcelasProf.filter(p => {
         return p.payment_method === 'CREDITO' && 
                p.appointment_date >= semIni && 
@@ -467,7 +557,7 @@ export default function ComissoesPage() {
         statusFechamento,
       };
     });
-  }, [semanaAtualRange, profissionais, comissoes]);
+  }, [semanaAtualRange, profissionais, comissoes, profFiltroFechamento, filtroPeriodoProfissional]);
 
   // Filtragem na aba Recebíveis por Período
   const recebiveisFiltrados = useMemo(() => {
@@ -538,17 +628,17 @@ export default function ComissoesPage() {
   const handleFecharCaixaProfissional = async (item: typeof fechamentoSemanalData[0]) => {
     const ids = item.parcelasPendentes.map(p => p.id);
     if (ids.length === 0) {
-      alert('Não há parcelas pendentes para fechar nesta semana.');
+      alert(`Não há parcelas pendentes para fechar neste período (${periodoAdjetivo}).`);
       return;
     }
-    if (!confirm(`Confirmar fechamento e pagamento da comissão semanal de ${fmt(item.totalPendenteSemana)} para ${item.prof.nome}?`)) {
+    if (!confirm(`Confirmar fechamento e pagamento da comissão ${periodoAdjetivo} de ${fmt(item.totalPendenteSemana)} para ${item.prof.nome}?`)) {
       return;
     }
     setFechandoLote(true);
     const res = await pagarLoteParcelas(ids);
     if (res.ok) {
       await carregarDados();
-      alert(`Fechamento da semana de ${item.prof.nome} concluído com sucesso! Valor quitado: ${fmt(item.totalPendenteSemana)}.`);
+      alert(`Fechamento ${periodoAdjetivo} de ${item.prof.nome} concluído com sucesso! Valor quitado: ${fmt(item.totalPendenteSemana)}.`);
     } else {
       alert(`Erro ao fechar caixa: ${res.error}`);
     }
@@ -558,18 +648,18 @@ export default function ComissoesPage() {
   const handleFecharTodosCaixasSemana = async () => {
     const todosIdsPendentes = fechamentoSemanalData.flatMap(f => f.parcelasPendentes.map(p => p.id));
     if (todosIdsPendentes.length === 0) {
-      alert('Todos os profissionais já estão quitados nesta semana.');
+      alert(`Todos os profissionais listados já estão quitados neste período (${periodoAdjetivo}).`);
       return;
     }
     const totalGeral = fechamentoSemanalData.reduce((s, f) => s + f.totalPendenteSemana, 0);
-    if (!confirm(`Deseja fechar o caixa semanal de TODOS os profissionais e quitar ${fmt(totalGeral)}?`)) {
+    if (!confirm(`Deseja fechar o caixa ${periodoAdjetivo} de TODOS os profissionais listados e quitar ${fmt(totalGeral)}?`)) {
       return;
     }
     setFechandoLote(true);
     const res = await pagarLoteParcelas(todosIdsPendentes);
     if (res.ok) {
       await carregarDados();
-      alert(`Fechamento geral da semana concluído com sucesso!`);
+      alert(`Fechamento geral ${periodoAdjetivo} concluído com sucesso!`);
     } else {
       alert(`Erro ao fechar caixa: ${res.error}`);
     }
@@ -634,16 +724,18 @@ export default function ComissoesPage() {
     if (!reciboModalData) return;
     const { prof, totalBrutoSemana, totalLiberadoSemana, totalRetidoD30, parcelasLiberadasNaSemana, statusFechamento } = reciboModalData;
     const cat = getProfCategoria(prof.id);
-    const texto = `🌟 *STUDIO AGNALDO GOMES — FECHAMENTO SEMANAL* 🌟\n\n` +
-      `👤 *Profissional:* ${prof.nome} (${cat})\n` +
+    const pref = prof.periodo_recebimento || 'semanal';
+    const prefLabel = pref === 'mensal' ? 'Mensal' : pref === 'quinzenal' ? 'Quinzenal' : 'Semanal';
+    const texto = `🌟 *STUDIO AGNALDO GOMES — FECHAMENTO ${periodoAdjetivo.toUpperCase()}* 🌟\n\n` +
+      `👤 *Profissional:* ${prof.nome} (${cat}) • Pref: ${prefLabel}\n` +
       `📅 *Período:* ${semanaAtualRange.label}\n` +
       `-----------------------------------------\n` +
-      `💈 *Produção Bruta da Semana:* ${fmt(totalBrutoSemana)}\n` +
+      `💈 *Produção Bruta do Período:* ${fmt(totalBrutoSemana)}\n` +
       `✅ *Comissão Liberada p/ Repasse:* ${fmt(totalLiberadoSemana)}\n` +
       `⏳ *Carência Cartão (a Liberar):* ${fmt(totalRetidoD30)}\n` +
       `📌 *Status do Fechamento:* ${statusFechamento === 'QUITADO' ? 'PAGO & FECHADO' : 'PENDENTE DE PAGAMENTO'}\n` +
       `-----------------------------------------\n` +
-      `*Atendimentos Liberados na Semana:*\n` +
+      `*Atendimentos Liberados no Período:*\n` +
       parcelasLiberadasNaSemana.map((p: any) => `• ${fmtDate(p.due_date || p.appointment_date)} - ${PAGAMENTO_CONFIG[p.payment_method as FormaPagamento]?.label ?? p.payment_method}: ${fmt(p.amount)} (${p.status === 'PAID' ? 'Pago' : 'Pendente'})`).join('\n') +
       `\n\n_Comissões em cartão de crédito são pagas 30 dias após o recebimento (D+30)._`;
 
@@ -688,7 +780,7 @@ export default function ComissoesPage() {
               onClick={() => setAba('fechamento')}
               className="px-3 py-1.5 rounded-lg bg-gold text-background font-bold hover:bg-gold-dim transition-colors text-xs"
             >
-              Ir para Fechamento Semanal →
+              Ir para Fechamento de Caixa →
             </button>
           </div>
         </div>
@@ -716,7 +808,7 @@ export default function ComissoesPage() {
         {/* NAVEGAÇÃO DE ABAS (Botões Clicáveis) */}
         <div className="flex flex-wrap items-center gap-2 mb-8">
           {[
-            { id: 'fechamento', label: 'Fechamento Semanal', icon: CalendarDays, highlight: true },
+            { id: 'fechamento', label: 'Fechamento de Comissões', icon: CalendarDays, highlight: true },
             { id: 'recebiveis', label: 'Recebíveis por Período', icon: Search },
             { id: 'resumo', label: 'Resumo por Profissional', icon: TrendingUp },
             { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
@@ -742,7 +834,7 @@ export default function ComissoesPage() {
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                     active ? 'bg-black/20 text-background' : 'bg-gold/20 text-foreground border border-gold/30'
                   }`}>
-                    Semana
+                    Ciclos
                   </span>
                 )}
                 {tabItem.badge !== undefined && (
@@ -769,16 +861,63 @@ export default function ComissoesPage() {
            ══════════════════════════════════════════════════════════════ */}
         {!loading && aba === 'fechamento' && (
           <div className="space-y-6">
-            {/* Seletor da Semana */}
+            {/* Seletor de Ciclo / Periodicidade de Fechamento */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gold/10 border border-gold/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gold/20 text-foreground shrink-0">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Ciclo de Fechamento de Comissões</h4>
+                  <p className="text-xs text-foreground/60">
+                    Defina o ciclo de cálculo: <strong>Semanal (7 dias)</strong>, <strong>Quinzenal (15 dias)</strong> ou <strong>Mensal (Mês)</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-background/80 border border-[var(--border-subtle)]">
+                {(['semanal', 'quinzenal', 'mensal'] as PeriodoRecebimentoComissao[]).map(per => {
+                  const active = periodicidadeFechamento === per;
+                  const labels = {
+                    semanal: '🗓️ Semanal (7d)',
+                    quinzenal: '🌓 Quinzenal (15d)',
+                    mensal: '📅 Mensal (Mês)',
+                  };
+                  return (
+                    <button
+                      key={per}
+                      type="button"
+                      onClick={() => {
+                        setPeriodicidadeFechamento(per);
+                        setSemanaOffset(0);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        active
+                          ? 'bg-gold text-background shadow-md'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                      }`}
+                    >
+                      {labels[per]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Barra de Navegação do Período */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)]">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase font-bold tracking-wider text-foreground flex items-center gap-1">
-                    <CalendarDays size={14} /> Fechamento de Caixa Semanal
+                    <CalendarDays size={14} /> Fechamento de Caixa {periodoNome}
                   </span>
-                  {semanaOffset === 0 && (
+                  {semanaOffset === 0 ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase">
-                      Semana Atual
+                      {periodoNome} Atual
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/20 text-foreground font-bold uppercase">
+                      {semanaOffset < 0 ? `${Math.abs(semanaOffset)} ${periodoNome.toLowerCase()}(s) atrás` : `+${semanaOffset} ${periodoNome.toLowerCase()}(s) à frente`}
                     </span>
                   )}
                 </div>
@@ -787,27 +926,27 @@ export default function ComissoesPage() {
                 </h3>
               </div>
 
-              {/* Controles de Navegação da Semana */}
+              {/* Controles de Navegação da Periodicidade */}
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setSemanaOffset(prev => prev - 1)}
                   className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/70 hover:text-foreground hover:bg-white/5 text-xs font-semibold flex items-center gap-1 transition-colors"
                 >
-                  <ChevronLeft size={14} /> Semana Anterior
+                  <ChevronLeft size={14} /> {periodoNome} Anterior
                 </button>
                 {semanaOffset !== 0 && (
                   <button
                     onClick={() => setSemanaOffset(0)}
                     className="px-3 py-1.5 rounded-lg bg-gold/15 text-foreground border border-gold/30 hover:bg-gold hover:text-background text-xs font-bold transition-colors"
                   >
-                    Semana Atual
+                    {periodoNome} Atual
                   </button>
                 )}
                 <button
                   onClick={() => setSemanaOffset(prev => prev + 1)}
                   className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/70 hover:text-foreground hover:bg-white/5 text-xs font-semibold flex items-center gap-1 transition-colors"
                 >
-                  Próxima Semana <ChevronRight size={14} />
+                  Próximo(a) {periodoNome} <ChevronRight size={14} />
                 </button>
 
                 <Button
@@ -816,15 +955,63 @@ export default function ComissoesPage() {
                   disabled={fechandoLote || fechamentoSemanalData.every(f => f.statusFechamento === 'QUITADO' || f.statusFechamento === 'SEM_MOVIMENTO')}
                   className="ml-2 text-xs"
                 >
-                  <CheckCircle2 size={15} className="mr-1.5" /> Fechar Caixa da Semana (Geral)
+                  <CheckCircle2 size={15} className="mr-1.5" /> Fechar Caixa ({periodoNome} Geral)
                 </Button>
               </div>
             </div>
 
-            {/* KPIs da Semana Selecionada */}
+            {/* Barra de Filtros por Preferência do Profissional */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-foreground/60 font-semibold flex items-center gap-1">
+                  <Filter size={13} /> Filtrar por Preferência:
+                </span>
+                {(['todos', 'semanal', 'quinzenal', 'mensal'] as const).map(f => {
+                  const active = filtroPeriodoProfissional === f;
+                  const labels = {
+                    todos: 'Todos',
+                    semanal: '🗓️ Preferem Semanal',
+                    quinzenal: '🌓 Preferem Quinzenal',
+                    mensal: '📅 Preferem Mensal',
+                  };
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFiltroPeriodoProfissional(f)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                        active
+                          ? 'bg-gold/20 text-foreground border-gold/40 font-bold'
+                          : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground hover:bg-white/5'
+                      }`}
+                    >
+                      {labels[f]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-foreground/60">Profissional:</span>
+                <select
+                  value={profFiltroFechamento}
+                  onChange={e => setProfFiltroFechamento(e.target.value)}
+                  className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold"
+                >
+                  <option value="todos">Todos os profissionais</option>
+                  {profissionais.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} ({(p.periodo_recebimento || 'semanal') === 'mensal' ? 'Mensal' : (p.periodo_recebimento || 'semanal') === 'quinzenal' ? 'Quinzenal' : 'Semanal'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* KPIs do Período Selecionado */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <CardGlass className="p-4 border-l-4 border-l-blue-400">
-                <p className="text-xs text-foreground/50">Faturamento Bruto da Semana</p>
+                <p className="text-xs text-foreground/50">Faturamento Bruto ({periodoNome})</p>
                 <p className="text-xl font-bold text-foreground mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalBrutoSemana, 0))}
                 </p>
@@ -834,7 +1021,7 @@ export default function ComissoesPage() {
               </CardGlass>
 
               <CardGlass className="p-4 border-l-4 border-l-emerald-400">
-                <p className="text-xs text-foreground/50">Comissões Liberadas na Semana</p>
+                <p className="text-xs text-foreground/50">Comissões Liberadas ({periodoNome})</p>
                 <p className="text-xl font-bold text-emerald-400 mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalLiberadoSemana, 0))}
                 </p>
@@ -854,7 +1041,7 @@ export default function ComissoesPage() {
               </CardGlass>
 
               <CardGlass className="p-4 border-l-4 border-l-gold">
-                <p className="text-xs text-foreground/50">Pendente de Repasse (Semana)</p>
+                <p className="text-xs text-foreground/50">Pendente de Repasse ({periodoNome})</p>
                 <p className="text-xl font-bold text-foreground mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalPendenteSemana, 0))}
                 </p>
@@ -872,7 +1059,7 @@ export default function ComissoesPage() {
                     <th className="py-3 px-4">Profissional</th>
                     <th className="py-3 px-4">Atendimentos</th>
                     <th className="py-3 px-4">Faturamento Bruto</th>
-                    <th className="py-3 px-4">Liberado na Semana</th>
+                    <th className="py-3 px-4">Liberado no Período</th>
                     <th className="py-3 px-4">Carência Cartão</th>
                     <th className="py-3 px-4">Status Caixa</th>
                     <th className="py-3 px-4 text-right">Ações</th>
@@ -881,6 +1068,7 @@ export default function ComissoesPage() {
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {fechamentoSemanalData.map(item => {
                     const cat = getProfCategoria(item.prof.id);
+                    const pref = item.prof.periodo_recebimento || 'semanal';
                     return (
                       <tr key={item.prof.id} className="hover:bg-foreground/5 transition-colors">
                         <td className="py-3.5 px-4 font-semibold">
@@ -894,9 +1082,20 @@ export default function ComissoesPage() {
                             )}
                             <div>
                               <p className="font-bold text-foreground">{item.prof.nome}</p>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-gold/15 text-foreground font-bold">
-                                {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
-                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold/15 text-foreground font-bold">
+                                  {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                                </span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                                  pref === 'mensal'
+                                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                    : pref === 'quinzenal'
+                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                }`}>
+                                  {pref === 'mensal' ? '📅 Mensal' : pref === 'quinzenal' ? '🌓 Quinzenal' : '🗓️ Semanal'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -1955,7 +2154,7 @@ export default function ComissoesPage() {
                   Studio Agnaldo Gomes • Gestão Financeira
                 </span>
                 <h3 className="text-2xl font-bold font-serif text-foreground print:text-black">
-                  Extrato de Fechamento Semanal
+                  Extrato de Fechamento {periodoNome}
                 </h3>
                 <p className="text-xs text-foreground/60 print:text-black/60 mt-0.5">
                   Período: <strong>{semanaAtualRange.label}</strong> • Emissão: {new Date().toLocaleDateString('pt-BR')}
@@ -1980,7 +2179,7 @@ export default function ComissoesPage() {
                     {reciboModalData.prof.nome}
                   </h4>
                   <p className="text-xs text-foreground/60 print:text-black/60">
-                    Categoria: <strong>{getProfCategoria(reciboModalData.prof.id) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}</strong>
+                    Categoria: <strong>{getProfCategoria(reciboModalData.prof.id) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}</strong> • Preferência de Repasse: <strong>{(reciboModalData.prof.periodo_recebimento || 'semanal') === 'mensal' ? '📅 Mensal' : (reciboModalData.prof.periodo_recebimento || 'semanal') === 'quinzenal' ? '🌓 Quinzenal' : '🗓️ Semanal'}</strong>
                   </p>
                 </div>
               </div>
@@ -2020,7 +2219,7 @@ export default function ComissoesPage() {
             {/* Tabela dos Lançamentos Liberados Nesta Semana */}
             <div className="mb-6">
               <h5 className="text-xs font-bold uppercase tracking-wider text-foreground/70 print:text-black mb-2 flex items-center justify-between">
-                <span>Comissões Liberadas Para Pagamento Nesta Semana</span>
+                <span>Comissões Liberadas Para Pagamento Neste Período ({periodoNome})</span>
                 <span className="text-[11px] font-normal text-foreground print:text-black">
                   {reciboModalData.parcelasLiberadasNaSemana.length} lançamentos
                 </span>
@@ -2062,7 +2261,7 @@ export default function ComissoesPage() {
                 </div>
               ) : (
                 <div className="p-4 text-center text-xs text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-lg">
-                  Nenhum repasse liberado nesta semana.
+                  Nenhum repasse liberado neste período ({periodoNome}).
                 </div>
               )}
             </div>
@@ -2133,7 +2332,7 @@ export default function ComissoesPage() {
                     }}
                     className="flex-1 sm:flex-none text-xs"
                   >
-                    <CheckCircle2 size={14} className="mr-1.5" /> Dar Baixa e Quitar Semana
+                    <CheckCircle2 size={14} className="mr-1.5" /> Dar Baixa e Quitar ({periodoNome})
                   </Button>
                 )}
                 <Button
