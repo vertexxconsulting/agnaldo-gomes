@@ -535,6 +535,26 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.22 Reorganização do Hub Central & Fidelidade 100% aos Dados Reais (`/hub`)
+
+- **Reorganização de Layout para Sinergia Operacional**:
+  - **Grid 1 (Operação Imediata do Studio)**:
+    - **Agenda de Hoje (2/3)**: lista em tempo real com clientes, procedimento, profissional, horários e status nítidos.
+    - **Equipe do Studio (1/3)**: movida para ficar diretamente **ao lado do card de Agenda**, permitindo ao gestor conferir simultaneamente os atendimentos do dia e a carga/status ao vivo de cada profissional da equipe.
+  - **Grid 2 (Analítico & Gestão Educacional)**:
+    - **Faturamento do Salão Mês a Mês (2/3)**: gráfico de barras consolidando fechamentos do ano.
+    - **Academy • Cursos Ativos (1/3)**: posicionado ao lado do faturamento, com métricas reais de gestão educacional.
+- **Eliminação Definitiva de Mocks e Fallbacks na Academy**:
+  - Removido o import `getCursos` de `lib/mock-data` e todas as fórmulas com fallbacks artificiais (`|| 24` alunos, `|| 148h` assistidas, `Math.max(4, 18 - idx*3)`).
+  - Consulta realizada diretamente via API `/api/admin-academy/cursos` e Supabase real.
+  - Se um curso ou a plataforma tiver `0` alunos, o sistema exibe fielmente `0 alunos`.
+  - Se tiver `0h` assistidas, exibe fielmente `0h assistidas`.
+  - Cada curso no Hub exibe badge real de status (`Publicado` ou `Rascunho`), contagem real de aulas gravadas no banco e contagem real de matrículas.
+- **Ampliação de Permissões das APIs da Academy e Loja (`lib/api-auth.ts`)**:
+  - `requireAcademyAuth` e `requireLojaAuth` agora autorizam também o perfil `studio_admin`, garantindo que o gestor geral transite e visualize todos os dados da Academy e Loja no Hub sem bloqueios ou erros 403.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

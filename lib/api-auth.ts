@@ -48,11 +48,11 @@ export async function requireStudioAuth(): Promise<AuthResult> {
 }
 
 export async function requireAcademyAuth(): Promise<AuthResult> {
-  return requireAuth(['academy_admin']);
+  return requireAuth(['academy_admin', 'studio_admin']);
 }
 
 export async function requireLojaAuth(): Promise<AuthResult> {
-  return requireAuth(['loja_admin']);
+  return requireAuth(['loja_admin', 'studio_admin']);
 }
 
 export async function requireAlunoAuth(): Promise<AuthResult> {

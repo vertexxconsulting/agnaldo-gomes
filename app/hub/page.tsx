@@ -25,7 +25,6 @@ import {
   fetchClientes, fetchAgendamentos, fetchServicos, fetchProfissionais, fetchEstoque,
 } from '@/lib/supabase-queries';
 import { getAllProducts } from '@/lib/shop-queries';
-import { getCursos } from '@/lib/mock-data';
 import type { Cliente, Agendamento, Servico, Profissional, ProdutoEstoque } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
 import { ROLES, type Role } from '@/lib/auth';
@@ -38,8 +37,9 @@ interface CursoItem {
   duracaoH: number;
   totalAulas: number;
   nivel: string;
-  alunosMatriculados?: number;
-  horasAssistidas?: number;
+  status: string;
+  alunosMatriculados: number;
+  horasAssistidas: number;
 }
 
 const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -211,14 +211,13 @@ export default function HubCentralPage() {
     (async () => {
       try {
         const [
-          clientes, agendamentos, servicos, profissionais, estoque, cursosData, shopProducts
+          clientes, agendamentos, servicos, profissionais, estoque, shopProducts
         ] = await Promise.all([
           fetchClientes().catch(() => []),
           fetchAgendamentos().catch(() => []),
           fetchServicos().catch(() => []),
           fetchProfissionais().catch(() => []),
           fetchEstoque().catch(() => []),
-          getCursos().catch(() => []),
           getAllProducts().catch(() => []),
         ]);
 
@@ -231,23 +230,62 @@ export default function HubCentralPage() {
         setEstoqueData(estoque);
         setProdutosLoja(shopProducts);
 
-        // Buscar estatísticas gerenciais da Academy
-        let totalAlunos = 0;
-        let totalMatriculas = 0;
-        let totalAulasAssistidas = 0;
+        // 1. Buscar cursos reais da API oficial da Academy ou Supabase direto
+        let cursosReais: any[] = [];
         try {
-          const statsRes = await fetch('/api/admin-academy/dashboard/stats').then(r => r.json());
-          if (statsRes && !statsRes.error) {
-            totalAlunos = statsRes.totalAlunos ?? 0;
-            totalMatriculas = statsRes.totalMatriculas ?? 0;
-            totalAulasAssistidas = statsRes.aulasConcluidas ?? 0;
+          const res = await fetch('/api/admin-academy/cursos', { cache: 'no-store' });
+          if (res.ok) {
+            cursosReais = await res.json();
           }
         } catch {
           // fallback silencioso
         }
 
-        // Estimar horas assistidas somando aulas concluídas (média de 25 min por aula)
-        const totalHorasAssistidas = Math.round((totalAulasAssistidas * 25) / 60);
+        if (!cursosReais || !Array.isArray(cursosReais) || cursosReais.length === 0) {
+          try {
+            const { data: directCourses } = await supabase
+              .from('courses')
+              .select('*')
+              .order('created_at', { ascending: false });
+            cursosReais = (directCourses || []).map((c: any) => ({
+              ...c,
+              totalAulas: 0,
+              enrollmentsCount: 0,
+              horasAssistidas: 0,
+            }));
+          } catch {
+            cursosReais = [];
+          }
+        }
+
+        // 2. Buscar estatísticas reais da Academy (100% dados reais do banco)
+        let totalAlunos = 0;
+        let totalMatriculas = 0;
+        let totalHorasAssistidas = 0;
+        try {
+          const statsRes = await fetch('/api/admin-academy/dashboard/stats', { cache: 'no-store' }).then(r => r.json());
+          if (statsRes && !statsRes.error) {
+            totalAlunos = statsRes.totalAlunos ?? 0;
+            totalMatriculas = statsRes.totalMatriculas ?? 0;
+            const aulasConcluidas = statsRes.aulasConcluidas ?? 0;
+            totalHorasAssistidas = Math.round((aulasConcluidas * 25) / 60);
+          }
+        } catch {
+          // fallback silencioso
+        }
+
+        // Sincronizar se houver contagens nos cursos reais
+        if (cursosReais.length > 0) {
+          const somaMatriculas = cursosReais.reduce((acc, c) => acc + (Number(c.enrollmentsCount) || 0), 0);
+          const somaHoras = cursosReais.reduce((acc, c) => acc + (Number(c.horasAssistidas) || 0), 0);
+          if (totalMatriculas === 0 && somaMatriculas > 0) {
+            totalMatriculas = somaMatriculas;
+            totalAlunos = somaMatriculas;
+          }
+          if (totalHorasAssistidas === 0 && somaHoras > 0) {
+            totalHorasAssistidas = Math.round(somaHoras);
+          }
+        }
 
         setAcademyStats({
           totalAlunos,
@@ -255,26 +293,19 @@ export default function HubCentralPage() {
           totalMatriculas,
         });
 
-        // Configurar cursos com métricas de gestão
-        const cursosFormatados: CursoItem[] = cursosData.map((c, idx) => {
-          // Alunos matriculados no curso (distribuição proporcional ou base)
-          const alunosMatriculados = totalMatriculas > 0 
-            ? Math.max(1, Math.round(totalMatriculas / Math.max(1, cursosData.length)) + (idx === 0 ? 5 : 0))
-            : Math.max(4, 18 - (idx * 3));
-          
-          // Horas assistidas estimadas para este curso
-          const horasAssistidas = Math.max(6, Math.round(alunosMatriculados * (c.duracaoHoras || 2) * 0.65));
-
+        // Configurar cursos com métricas 100% REAIS
+        const cursosFormatados: CursoItem[] = cursosReais.map((c: any) => {
           return {
             id: c.id,
-            titulo: c.titulo,
-            descricao: c.descricao,
-            capaUrl: c.capaUrl,
-            duracaoH: c.duracaoHoras,
-            totalAulas: c.totalAulas,
-            nivel: c.nivel,
-            alunosMatriculados,
-            horasAssistidas,
+            titulo: c.title || c.titulo || 'Curso sem título',
+            descricao: c.description || c.descricao || '',
+            capaUrl: c.thumbnail_url || c.capaUrl || '',
+            duracaoH: Number(c.duration_hours) || 0,
+            totalAulas: Number(c.totalAulas) || 0,
+            nivel: c.level || 'Iniciante',
+            status: c.status || 'DRAFT',
+            alunosMatriculados: Number(c.enrollmentsCount) || 0,
+            horasAssistidas: Number(c.horasAssistidas) || 0,
           };
         });
 
@@ -597,10 +628,10 @@ export default function HubCentralPage() {
           </div>
         </section>
 
-        {/* ===== GRID PRINCIPAL: Agenda de Hoje (2/3) + Academy Gestão (1/3) ===== */}
+        {/* ===== GRID 1: OPERAÇÃO DO STUDIO (Agenda de Hoje + Equipe do Studio) ===== */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           
-          {/* 1. AGENDA DE HOJE — Dados Coerentes e Claros */}
+          {/* 1. AGENDA DE HOJE — Dados Coerentes e Claros (2/3) */}
           <section className="xl:col-span-2 flex flex-col">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
               <div>
@@ -712,117 +743,7 @@ export default function HubCentralPage() {
             )}
           </section>
 
-          {/* 2. ACADEMY GESTÃO (Horas assistidas e alunos por curso) */}
-          {temModulo('academy') && (
-            <section className="flex flex-col">
-              <div className="flex items-center justify-between mb-2.5">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-gold">Gestão Educacional</p>
-                  <h3 className="text-base sm:text-lg font-serif font-bold text-foreground">Academy • Cursos Ativos</h3>
-                </div>
-                <Link href="/admin-academy/cursos">
-                  <span className="flex items-center gap-1 text-xs font-bold text-gold hover:underline">
-                    Gerenciar <ArrowUpRight size={13} />
-                  </span>
-                </Link>
-              </div>
-
-              {/* Métricas Administrativas da Academy */}
-              <Panel className="!p-3.5 mb-3 bg-gradient-to-br from-purple-500/10 via-[var(--color-card)] to-transparent border-purple-500/25">
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)]">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Alunos Ativos</p>
-                    <p className="text-xl font-black text-purple-950 mt-0.5">{academyStats.totalAlunos || 24}</p>
-                    <p className="text-[9px] text-purple-800/70 font-medium">Matrículas confirmadas</p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)]">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Horas Assistidas</p>
-                    <p className="text-xl font-black text-purple-950 mt-0.5">{academyStats.totalHorasAssistidas || 148}h</p>
-                    <p className="text-[9px] text-purple-800/70 font-medium">Consumo pelos alunos</p>
-                  </div>
-                </div>
-              </Panel>
-
-              {/* Lista dos Cursos com Foco em Alunos e Horas */}
-              <div className="space-y-2 flex-1">
-                {cursos.slice(0, 3).map((c) => (
-                  <Link key={c.id} href={`/admin-academy/cursos/${c.id}`}>
-                    <div className="group flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--color-card)] p-3 hover:border-gold/50 hover:shadow-sm transition-all">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden relative shrink-0 bg-foreground/5 border border-[var(--border-subtle)]">
-                        <Image src={c.capaUrl || '/agnaldo1.webp'} alt={c.titulo} fill className="object-cover" sizes="48px" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-bold text-foreground truncate group-hover:text-gold transition-colors">
-                          {c.titulo}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px]">
-                          <span className="font-bold text-purple-800 bg-purple-100 px-1.5 py-0.5 rounded">
-                            👥 {c.alunosMatriculados} alunos
-                          </span>
-                          <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                            ⏱️ {c.horasAssistidas}h assistidas
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-foreground/45 mt-1 truncate">
-                          {c.totalAulas} aulas gravadas • Nível {c.nivel}
-                        </p>
-                      </div>
-                      <ChevronRight size={14} className="text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* ===== SEÇÃO INFERIOR: Evolução de Faturamento + Equipe Atualizada ===== */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          
-          {/* Gráfico de Evolução Mensal do Salão */}
-          <section className="xl:col-span-2 flex flex-col">
-            <div className="flex items-center justify-between mb-2.5">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-gold">Evolução Financeira</p>
-                <h3 className="text-base sm:text-lg font-serif font-bold text-foreground">Faturamento do Salão (Mês a Mês)</h3>
-              </div>
-              <Link href="/admin/relatorios">
-                <span className="flex items-center gap-1 text-xs font-bold text-gold hover:underline">
-                  Relatório detalhado <ArrowUpRight size={13} />
-                </span>
-              </Link>
-            </div>
-
-            {!loading && kpis.porMes.some((p) => p.valor > 0) ? (
-              <Panel className="flex-1 !p-4">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={kpis.porMes}>
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} width={50} />
-                    <Tooltip
-                      formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
-                      contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                    />
-                    <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                      {kpis.porMes.map((_, i) => (
-                        <Cell key={i} fill={CORES[i % CORES.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Panel>
-            ) : (
-              <Panel className="py-12 flex-1 flex flex-col items-center justify-center text-center text-sm text-foreground/60">
-                <BarChart3 size={24} className="text-gold/40 mb-2" />
-                <p className="font-semibold text-foreground">Ainda não há fechamentos registrados para o gráfico.</p>
-                <p className="text-xs text-foreground/50 max-w-md mt-1">
-                  Os valores são computados em tempo real quando atendimentos são marcados como concluídos na Agenda ou no Caixa.
-                </p>
-              </Panel>
-            )}
-          </section>
-
-          {/* Equipe do Studio — Dados Reais e Destaque Apropriado */}
+          {/* 2. EQUIPE DO STUDIO — Posicionada diretamente ao lado da Agenda (1/3) */}
           <section className="flex flex-col">
             <div className="flex items-center justify-between mb-2.5">
               <div>
@@ -842,7 +763,7 @@ export default function HubCentralPage() {
               <Panel className="py-8 text-center text-xs text-foreground/40">Nenhum profissional cadastrado.</Panel>
             ) : (
               <div className="space-y-2.5 flex-1">
-                {equipeAtualizada.slice(0, 4).map((p) => (
+                {equipeAtualizada.slice(0, 5).map((p) => (
                   <Panel key={p.id} className="!p-3 flex items-center gap-3 hover:border-gold/40 transition-all">
                     {/* Foto / Avatar com Indicador */}
                     <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 border border-gold/40 bg-foreground/5 shadow-sm">
@@ -889,6 +810,133 @@ export default function HubCentralPage() {
               </div>
             )}
           </section>
+        </div>
+
+        {/* ===== GRID 2: FINANCEIRO & ACADEMY (Evolução de Faturamento + Gestão da Academy) ===== */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          
+          {/* 1. GRÁFICO DE FATURAMENTO MENSAL DO SALÃO (2/3) */}
+          <section className="xl:col-span-2 flex flex-col">
+            <div className="flex items-center justify-between mb-2.5">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-gold">Evolução Financeira</p>
+                <h3 className="text-base sm:text-lg font-serif font-bold text-foreground">Faturamento do Salão (Mês a Mês)</h3>
+              </div>
+              <Link href="/admin/relatorios">
+                <span className="flex items-center gap-1 text-xs font-bold text-gold hover:underline">
+                  Relatório detalhado <ArrowUpRight size={13} />
+                </span>
+              </Link>
+            </div>
+
+            {!loading && kpis.porMes.some((p) => p.valor > 0) ? (
+              <Panel className="flex-1 !p-4">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={kpis.porMes}>
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--foreground)' }} opacity={0.65} width={50} />
+                    <Tooltip
+                      formatter={(v) => [formatPrice(Number(v) || 0), 'Faturamento']}
+                      contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                    />
+                    <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                      {kpis.porMes.map((_, i) => (
+                        <Cell key={i} fill={CORES[i % CORES.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Panel>
+            ) : (
+              <Panel className="py-12 flex-1 flex flex-col items-center justify-center text-center text-sm text-foreground/60">
+                <BarChart3 size={24} className="text-gold/40 mb-2" />
+                <p className="font-semibold text-foreground">Ainda não há fechamentos registrados para o gráfico.</p>
+                <p className="text-xs text-foreground/50 max-w-md mt-1">
+                  Os valores são computados em tempo real quando atendimentos são marcados como concluídos na Agenda ou no Caixa.
+                </p>
+              </Panel>
+            )}
+          </section>
+
+          {/* 2. ACADEMY GESTÃO — Dados 100% Reais do Banco (1/3) */}
+          {temModulo('academy') && (
+            <section className="flex flex-col">
+              <div className="flex items-center justify-between mb-2.5">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-gold">Gestão Educacional</p>
+                  <h3 className="text-base sm:text-lg font-serif font-bold text-foreground">Academy • Cursos Ativos</h3>
+                </div>
+                <Link href="/admin-academy/cursos">
+                  <span className="flex items-center gap-1 text-xs font-bold text-gold hover:underline">
+                    Gerenciar <ArrowUpRight size={13} />
+                  </span>
+                </Link>
+              </div>
+
+              {/* Métricas Administrativas Reais da Academy (sem mocks nem fallbacks) */}
+              <Panel className="!p-3.5 mb-3 bg-gradient-to-br from-purple-500/10 via-[var(--color-card)] to-transparent border-purple-500/25">
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)]">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Alunos Ativos</p>
+                    <p className="text-xl font-black text-purple-950 mt-0.5">{academyStats.totalAlunos}</p>
+                    <p className="text-[9px] text-purple-800/70 font-medium">Matrículas confirmadas</p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--border-subtle)]">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Horas Assistidas</p>
+                    <p className="text-xl font-black text-purple-950 mt-0.5">{academyStats.totalHorasAssistidas}h</p>
+                    <p className="text-[9px] text-purple-800/70 font-medium">Consumo pelos alunos</p>
+                  </div>
+                </div>
+              </Panel>
+
+              {/* Lista dos Cursos com Foco em Alunos e Horas Reais */}
+              {loading ? (
+                <Panel className="py-8 text-center text-xs text-foreground/40">Carregando cursos...</Panel>
+              ) : cursos.length === 0 ? (
+                <Panel className="py-8 flex-1 flex flex-col items-center justify-center text-center text-sm text-foreground/60">
+                  <GraduationCap size={24} className="text-purple-600 mb-2" />
+                  <p className="font-semibold text-foreground">Nenhum curso cadastrado ainda na Academy.</p>
+                  <Link href="/admin-academy/cursos" className="text-gold font-bold text-xs hover:underline mt-2">
+                    Criar primeiro curso →
+                  </Link>
+                </Panel>
+              ) : (
+                <div className="space-y-2 flex-1">
+                  {cursos.slice(0, 3).map((c) => (
+                    <Link key={c.id} href={`/admin-academy/cursos/${c.id}`}>
+                      <div className="group flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--color-card)] p-3 hover:border-gold/50 hover:shadow-sm transition-all">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden relative shrink-0 bg-foreground/5 border border-[var(--border-subtle)]">
+                          <Image src={c.capaUrl || '/agnaldo1.webp'} alt={c.titulo} fill className="object-cover" sizes="48px" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-[12px] font-bold text-foreground truncate group-hover:text-gold transition-colors">
+                              {c.titulo}
+                            </p>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded shrink-0 ${c.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {c.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px]">
+                            <span className="font-bold text-purple-800 bg-purple-100 px-1.5 py-0.5 rounded">
+                              👥 {c.alunosMatriculados} {c.alunosMatriculados === 1 ? 'aluno' : 'alunos'}
+                            </span>
+                            <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                              ⏱️ {c.horasAssistidas}h assistidas
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-foreground/45 mt-1 truncate">
+                            {c.totalAulas} {c.totalAulas === 1 ? 'aula gravada' : 'aulas gravadas'} • Nível {c.nivel}
+                          </p>
+                        </div>
+                        <ChevronRight size={14} className="text-foreground/25 group-hover:text-gold group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
         {/* ===== FOOTER ELEGANTE ===== */}

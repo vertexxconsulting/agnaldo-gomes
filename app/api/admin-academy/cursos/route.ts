@@ -8,7 +8,7 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
-    const { data, error } = await auth.supabase!
+    const { data: courses, error } = await auth.supabase!
       .from('courses')
       .select('*')
       .order('created_at', { ascending: false });
@@ -18,7 +18,53 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    // Contar aulas, matrículas e horas assistidas reais por curso
+    const cursosComDadosReais = await Promise.all(
+      (courses || []).map(async (c: any) => {
+        const [modulesRes, enrollRes] = await Promise.all([
+          auth.supabase!.from('modules').select('id').eq('course_id', c.id),
+          auth.supabase!.from('course_enrollments').select('*', { count: 'exact', head: true }).eq('course_id', c.id),
+        ]);
+
+        const modIds = (modulesRes.data || []).map((m: any) => m.id);
+        let totalAulas = 0;
+        let horasAssistidas = 0;
+
+        if (modIds.length > 0) {
+          const { data: lessonsData, count } = await auth.supabase!
+            .from('lessons')
+            .select('id, duration_minutes', { count: 'exact' })
+            .in('module_id', modIds);
+          totalAulas = count || 0;
+
+          const lessonIds = (lessonsData || []).map((l: any) => l.id);
+          if (lessonIds.length > 0) {
+            const { data: progressData } = await auth.supabase!
+              .from('lesson_progress')
+              .select('lesson_id, completed')
+              .in('lesson_id', lessonIds)
+              .eq('completed', true);
+
+            if (progressData && progressData.length > 0) {
+              const completedSet = new Set(progressData.map((p: any) => p.lesson_id));
+              const totalMinutosAssistidos = (lessonsData || [])
+                .filter((l: any) => completedSet.has(l.id))
+                .reduce((acc: number, l: any) => acc + (Number(l.duration_minutes) || 15), 0);
+              horasAssistidas = Math.round((totalMinutosAssistidos / 60) * 10) / 10;
+            }
+          }
+        }
+
+        return {
+          ...c,
+          totalAulas,
+          enrollmentsCount: enrollRes.count || 0,
+          horasAssistidas,
+        };
+      })
+    );
+
+    return NextResponse.json(cursosComDadosReais);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
