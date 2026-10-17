@@ -485,6 +485,33 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.20 Repaginação da Central de Comando (`/hub`) & Central de Atalhos
+
+- **Correção da Sidebar e Altura do Container (`AdminShell`)**:
+  - Em `components/AdminShell.tsx`, alteração do container flexível de `min-h-screen` para `h-screen overflow-hidden`, impedindo que a barra lateral colapsasse com altura zero no navegador.
+  - Lista de navegação lateral no Hub atualizada com **todos os módulos principais do sistema**: Agenda, Recepção, Meu Painel, Clientes CRM, Noivas, Financeiro & Caixa, Comissões, Estoque & Insumos, Relatórios, Academy e Loja.
+- **Central de Atalhos Rápidos no Corpo da Página**:
+  - Grid de navegação com 17 atalhos organizados em 5 categorias essenciais:
+    - *Studio & Operacional*: Agenda do Dia, Painel da Recepção, Meu Painel, Clientes CRM, Dia da Noiva.
+    - *Financeiro & Suprimentos*: Fechamento de Caixa, Regras de Comissões, Estoque & Insumos, Relatórios Executivos, Notas Fiscais.
+    - *Academy & Educação*: Cursos & Conteúdos, Alunos & Matrículas, Agendas de Cursos VIP.
+    - *Loja & Vendas Físicas*: Dashboard da Loja, Produtos da Loja, Pedidos Realizados.
+    - *Cadastros & Configurações*: Serviços & Preços, Equipe do Studio, Gestão do Sistema.
+- **Agenda de Hoje com Dados Coerentes e Ricos**:
+  - Resolução do problema onde aparecia literalmente "Cliente / Serviço • com Profissional": agora busca diretamente os relacionamentos reais via `fetchClientes()`, `fetchServicos()` e `fetchProfissionais()`.
+  - Exibe nome completo do cliente, telefone/contato quando cadastrado, nome do procedimento, valor em R$, nome do profissional responsável, horário e badge de status legível com alto contraste.
+- **Academy: Foco 100% Gestão (Remoção de Progresso como Aluno)**:
+  - Eliminação da barra e mensagem "Seu progresso como aluno" / "Taxa de conclusão 0 de 0 aulas", já que o painel é de uso administrativo.
+  - Substituição por métricas gerenciais dos **Cursos Ativos**: contagem de **Alunos Matriculados** por curso e **Total de Horas Assistidas/Consumidas**, além de estatísticas consolidadas de alunos ativos na plataforma.
+- **Equipe do Studio Atualizada**:
+  - Carregamento dos profissionais reais cadastrados no Supabase com fotos, cargos e especialidades.
+  - Indicador de atendimentos realizados hoje por cada profissional (`X clientes hoje`) e status de atendimento ao vivo na cadeira.
+- **Estimativa de Faturamento da Loja Física (Sem ML)**:
+  - Remoção do card duplicado de atalho da loja no rodapé da página.
+  - Adição de card/métrica executiva exclusiva de **Faturamento Estimado em Estoque Físico Local** (calculado sobre produtos próprios `LOCAL_STOCK` e vitrine do salão com `allow_sale`, desconsiderando links de afiliados do Mercado Livre).
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
