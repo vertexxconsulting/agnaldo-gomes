@@ -693,82 +693,82 @@ export default function AdminFinanceiro() {
 
         {/* Resumo Gerencial: Confirmado vs Pendente */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <CardGlass className="p-4 border-l-4 border-l-emerald-500">
+          <CardGlass className="p-4 border-l-4 border-l-emerald-600 bg-emerald-500/5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-foreground/60 font-medium">Contabilizado (Gestão)</span>
-              <span className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-md"><ShieldCheck size={14}/></span>
+              <span className="text-xs text-foreground/70 font-semibold">Contabilizado (Gestão)</span>
+              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-md"><ShieldCheck size={14}/></span>
             </div>
-            <p className="text-xl font-bold text-emerald-500 mt-1">
+            <p className="text-xl font-black text-emerald-700 mt-1">
               R$ {totalConfirmadoGestao.toFixed(2)}
             </p>
-            <p className="text-[11px] text-foreground/40 mt-0.5">{contabilizadosGestao.length} oficializado(s)</p>
+            <p className="text-[11px] text-stone-600 font-medium mt-0.5">{contabilizadosGestao.length} oficializado(s)</p>
           </CardGlass>
 
-          <CardGlass className="p-4 border-l-4 border-l-amber-500">
+          <CardGlass className="p-4 border-l-4 border-l-amber-600 bg-amber-500/5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-foreground/60 font-medium">Aguardando Gestão</span>
-              <span className="p-1.5 bg-amber-500/10 text-amber-500 rounded-md"><Clock size={14}/></span>
+              <span className="text-xs text-foreground/70 font-semibold">Aguardando Gestão</span>
+              <span className="p-1.5 bg-amber-100 text-amber-800 rounded-md"><Clock size={14}/></span>
             </div>
-            <p className="text-xl font-bold text-amber-500 mt-1">
+            <p className="text-xl font-black text-amber-800 mt-1">
               R$ {totalPendenteGestao.toFixed(2)}
             </p>
-            <p className="text-[11px] text-foreground/40 mt-0.5">{preFechadosPendentes.length} pré-fechado(s) secretaria</p>
+            <p className="text-[11px] text-stone-600 font-medium mt-0.5">{preFechadosPendentes.length} pré-fechado(s) secretaria</p>
           </CardGlass>
 
-          <CardGlass className="p-4 border-l-4 border-l-gold">
+          <CardGlass className="p-4 border-l-4 border-l-gold bg-gold/5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-foreground/60 font-medium">Dinheiro Contabilizado</span>
-              <span className="p-1.5 bg-gold/10 text-gold rounded-md"><Banknote size={14}/></span>
+              <span className="text-xs text-foreground/70 font-semibold">Dinheiro Contabilizado</span>
+              <span className="p-1.5 bg-gold/15 text-gold-dim rounded-md"><Banknote size={14}/></span>
             </div>
-            <p className="text-xl font-bold text-foreground mt-1">
+            <p className="text-xl font-black text-foreground mt-1">
               R$ {totalDinheiroConfirmado.toFixed(2)}
             </p>
-            <p className="text-[11px] text-foreground/40 mt-0.5">Espécie confirmada</p>
+            <p className="text-[11px] text-stone-600 font-medium mt-0.5">Espécie confirmada</p>
           </CardGlass>
 
-          <CardGlass className="p-4 border-l-4 border-l-blue-500">
+          <CardGlass className="p-4 border-l-4 border-l-blue-600 bg-blue-500/5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-foreground/60 font-medium">Cartões e PIX Contabilizados</span>
-              <span className="p-1.5 bg-blue-500/10 text-blue-500 rounded-md"><CreditCard size={14}/></span>
+              <span className="text-xs text-foreground/70 font-semibold">Cartões e PIX Contabilizados</span>
+              <span className="p-1.5 bg-blue-100 text-blue-800 rounded-md"><CreditCard size={14}/></span>
             </div>
-            <p className="text-xl font-bold text-foreground mt-1">
+            <p className="text-xl font-black text-foreground mt-1">
               R$ {(totalCartoesConfirmado + totalPixConfirmado).toFixed(2)}
             </p>
-            <p className="text-[11px] text-foreground/40 mt-0.5">PIX R$ {totalPixConfirmado.toFixed(2)} | Cartões R$ {totalCartoesConfirmado.toFixed(2)}</p>
+            <p className="text-[11px] text-stone-600 font-medium mt-0.5">PIX R$ {totalPixConfirmado.toFixed(2)} | Cartões R$ {totalCartoesConfirmado.toFixed(2)}</p>
           </CardGlass>
         </div>
 
         {/* Abas de Filtro de Status */}
         <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
-          <span className="text-xs text-foreground/50 flex items-center gap-1 mr-1">
+          <span className="text-xs text-foreground/70 font-semibold flex items-center gap-1 mr-1">
             <Filter size={13} /> Filtrar:
           </span>
           <button
             onClick={() => setFiltroStatus('TODOS')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               filtroStatus === 'TODOS'
                 ? 'bg-foreground text-background shadow-sm'
-                : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
+                : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
             }`}
           >
             Todos ({agendamentosDia.length})
           </button>
           <button
             onClick={() => setFiltroStatus('PENDING_CONFIRMATION')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               filtroStatus === 'PENDING_CONFIRMATION'
-                ? 'bg-amber-500 text-black shadow-sm font-bold'
-                : 'text-amber-500 hover:bg-amber-500/10'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-amber-800 hover:bg-amber-100/70 border border-amber-200/60'
             }`}
           >
             <Clock size={13} /> Aguardando Gestão ({preFechadosPendentes.length})
           </button>
           <button
             onClick={() => setFiltroStatus('CONFIRMED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               filtroStatus === 'CONFIRMED'
-                ? 'bg-emerald-600 text-white shadow-sm font-bold'
-                : 'text-emerald-500 hover:bg-emerald-500/10'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-emerald-800 hover:bg-emerald-100/70 border border-emerald-200/60'
             }`}
           >
             <ShieldCheck size={13} /> Contabilizados Gestão ({contabilizadosGestao.length})
@@ -781,14 +781,14 @@ export default function AdminFinanceiro() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-foreground/5 border-b border-border-subtle">
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase">Horário</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase">Cliente</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase">Procedimento / Profissional</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase">Forma Declarada</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase text-right">Valor</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase text-center">Status Atendimento</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase text-center">Status Financeiro</th>
-                  <th className="p-4 text-xs font-semibold text-foreground/60 uppercase text-center">Ações da Gestão</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider">Horário</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider">Cliente</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider">Procedimento / Profissional</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider">Forma Declarada</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider text-right">Valor</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider text-center">Status Atendimento</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider text-center">Status Financeiro</th>
+                  <th className="p-4 text-xs font-bold text-foreground/80 uppercase tracking-wider text-center">Ações da Gestão</th>
                 </tr>
               </thead>
               <tbody>
@@ -832,7 +832,7 @@ export default function AdminFinanceiro() {
                         <td className="p-4">
                           <p className="text-sm font-bold text-foreground">{nomeCliente}</p>
                           <p className="text-xs text-foreground/50 font-mono mt-0.5">
-                            {cpfCliente ? `CPF: ${cpfCliente}` : <span className="text-amber-500/80">Sem CPF</span>}
+                            {cpfCliente ? `CPF: ${cpfCliente}` : <span className="text-stone-500 font-medium text-[11px]">Sem CPF</span>}
                           </p>
                         </td>
                         <td className="p-4">
@@ -854,7 +854,7 @@ export default function AdminFinanceiro() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       {p.desconto_valor > 0 && (
-                                        <span className="text-amber-400 font-medium text-[10px]">
+                                        <span className="text-amber-800 font-bold text-[10px]">
                                           Desc: -R$ {p.desconto_valor.toFixed(2)}
                                         </span>
                                       )}
@@ -866,12 +866,12 @@ export default function AdminFinanceiro() {
                                 ))}
                               </div>
                               {ag.comanda_unificada!.produtos_comprados && ag.comanda_unificada!.produtos_comprados.length > 0 && (
-                                <p className="text-[11px] text-teal-400 font-mono flex items-center gap-1 pt-0.5">
+                                <p className="text-[11px] text-teal-800 font-bold font-mono flex items-center gap-1 pt-0.5">
                                   <ShoppingBag size={11} /> {ag.comanda_unificada!.produtos_comprados.length} produto(s) Home Care inclusos
                                 </p>
                               )}
                               {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                                <p className="text-[11px] text-amber-400/90 font-mono flex items-center gap-1">
+                                <p className="text-[11px] text-amber-800 font-bold font-mono flex items-center gap-1">
                                   <Beaker size={11} /> Insumos / Fundo de Produtos: R$ {Number(ag.product_cost).toFixed(2)}
                                 </p>
                               )}
@@ -881,7 +881,7 @@ export default function AdminFinanceiro() {
                               <p className="text-sm font-medium text-foreground">{nomeServico}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-xs text-foreground/60">Prof.: {nomeProf}</span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold border border-blue-500/30 flex items-center gap-1">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-bold border border-blue-300 flex items-center gap-1">
                                   <Layers size={10} /> Integrado na Comanda Conjunta
                                 </span>
                               </div>
@@ -890,15 +890,15 @@ export default function AdminFinanceiro() {
                             <div>
                               <p className="text-sm font-medium text-foreground">{nomeServico}</p>
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                <span className="text-xs text-foreground/50">Prof.: {nomeProf}</span>
+                                <span className="text-xs text-foreground/60">Prof.: {nomeProf}</span>
                                 {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 font-semibold border border-purple-300 dark:border-purple-500/30 flex items-center gap-1">
-                                    <Users size={11} className="text-purple-700 dark:text-purple-300" /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
+                                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-950 font-bold border border-purple-300 flex items-center gap-1 shadow-xs">
+                                    <Users size={12} className="text-purple-800" /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
                                   </span>
                                 )}
                               </div>
                               {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                                <p className="text-[11px] text-amber-400 font-mono mt-1 flex items-center gap-1">
+                                <p className="text-[11px] text-amber-800 font-bold font-mono mt-1 flex items-center gap-1">
                                   <Beaker size={11} /> Fundo Produtos: R$ {Number(ag.product_cost).toFixed(2)}
                                 </p>
                               )}
@@ -907,27 +907,27 @@ export default function AdminFinanceiro() {
                         </td>
                         <td className="p-4">
                           {isUnificado ? (
-                            <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 inline-flex items-center gap-1">
+                            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-900 border border-blue-300 inline-flex items-center gap-1 shadow-xs">
                               <Layers size={11} /> Comanda Única
                             </span>
                           ) : (() => {
                             const m = (ag.payment_method || '').toUpperCase();
                             if (m === 'DINHEIRO') {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 inline-flex items-center gap-1"><Banknote size={12}/> Dinheiro</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-xs"><Banknote size={12}/> Dinheiro</span>;
                             }
                             if (m === 'PIX') {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-teal-500/10 text-teal-500 border border-teal-500/20 inline-flex items-center gap-1"><Smartphone size={12}/> PIX</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-950 border border-emerald-300 inline-flex items-center gap-1 shadow-xs"><Smartphone size={12}/> PIX</span>;
                             }
                             if (m.includes('CREDITO') || m.includes('CRÉDITO')) {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 inline-flex items-center gap-1"><CreditCard size={12}/> C. Crédito</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-950 border border-blue-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12}/> C. Crédito</span>;
                             }
                             if (m.includes('DEBITO') || m.includes('DÉBITO')) {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 inline-flex items-center gap-1"><CreditCard size={12}/> C. Débito</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-950 border border-indigo-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12}/> C. Débito</span>;
                             }
                             if (m) {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-foreground/10 text-foreground/80 inline-flex items-center gap-1">💳 {ag.payment_method}</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-stone-100 text-stone-900 border border-stone-300 inline-flex items-center gap-1 shadow-xs">💳 {ag.payment_method}</span>;
                             }
-                            return <span className="text-xs text-foreground/40 italic">Aguardando</span>;
+                            return <span className="text-xs text-stone-500 font-medium">Aguardando</span>;
                           })()}
                         </td>
                         <td className="p-4 text-right">
@@ -936,22 +936,31 @@ export default function AdminFinanceiro() {
                               <span className="font-mono text-xs text-foreground/40 line-through">
                                 R$ {getServicoPreco(ag.servico_id, servicos).toFixed(2)}
                               </span>
-                              <span className="text-[11px] text-blue-400 font-semibold">
+                              <span className="text-[11px] text-blue-700 font-bold">
                                 Faturado em conjunto
                               </span>
                             </div>
                           ) : (
-                            <span className={`font-bold text-sm ${isConfirmed ? 'text-emerald-500' : 'text-amber-500'}`}>
+                            <span className={`font-black text-sm ${
+                              isConfirmed 
+                                ? 'text-emerald-700' 
+                                : isPendingConfirmation 
+                                ? 'text-amber-800' 
+                                : 'text-stone-900'
+                            }`}>
                               R$ {valor.toFixed(2)}
                             </span>
                           )}
                         </td>
                         <td className="p-4 text-center">
-                          <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold border
-                            ${ag.status === 'concluido' ? 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10' : 
-                              ag.status === 'em_atendimento' ? 'text-blue-400 border-blue-400/20 bg-blue-400/10' :
-                              ag.status === 'cancelado' || ag.status === 'no_show' ? 'text-red-400 border-red-400/20 bg-red-400/10' : 
-                              'text-amber-400 border-amber-400/20 bg-amber-400/10'}`}
+                          <span className={`text-[11px] uppercase px-2.5 py-0.5 rounded-full font-bold border shadow-xs
+                            ${ag.status === 'concluido' 
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300' 
+                              : ag.status === 'em_atendimento' 
+                              ? 'bg-blue-100 text-blue-900 border-blue-300' 
+                              : ag.status === 'cancelado' || ag.status === 'no_show' 
+                              ? 'bg-red-100 text-red-900 border-red-300' 
+                              : 'bg-amber-100 text-amber-950 border-amber-300'}`}
                           >
                             {STATUS_LABELS[ag.status] || ag.status}
                           </span>
@@ -959,27 +968,27 @@ export default function AdminFinanceiro() {
                         <td className="p-4 text-center">
                           {isUnificado ? (
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30 inline-flex items-center gap-1">
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-900 border border-blue-300 inline-flex items-center gap-1 shadow-xs">
                                 <Layers size={11} /> Unificado
                               </span>
-                              <span className="text-[10px] text-foreground/40">Comanda da Cliente</span>
+                              <span className="text-[10px] text-foreground/50 font-medium">Comanda da Cliente</span>
                             </div>
                           ) : isPendingConfirmation ? (
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 inline-flex items-center gap-1">
-                                <Clock size={12} className="animate-spin" /> Pré-fechado (Secretaria)
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-xs">
+                                <Clock size={12} className="animate-spin text-amber-700" /> Pré-fechado (Secretaria)
                               </span>
-                              <span className="text-[10px] text-foreground/50">Aguardando Gestão</span>
+                              <span className="text-[10px] text-stone-600 font-semibold">Aguardando Gestão</span>
                             </div>
                           ) : isConfirmed ? (
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 inline-flex items-center gap-1">
-                                <ShieldCheck size={12} /> Contabilizado
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-950 border border-emerald-300 inline-flex items-center gap-1 shadow-xs">
+                                <ShieldCheck size={12} className="text-emerald-700" /> Contabilizado
                               </span>
-                              <span className="text-[10px] text-foreground/40 font-mono">Oficial</span>
+                              <span className="text-[10px] text-stone-600 font-mono font-semibold">Oficial</span>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-foreground/40 italic">Ainda não concluído</span>
+                            <span className="text-xs text-stone-500 font-medium">Ainda não concluído</span>
                           )}
                         </td>
                         <td className="p-4 text-center">
@@ -1047,7 +1056,7 @@ export default function AdminFinanceiro() {
                                   ) : (
                                     <Link
                                       href="/admin/clientes"
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200"
                                       title="Cadastre o CPF do cliente na aba Clientes para emitir nota"
                                     >
                                       <AlertTriangle size={12} /> Cadastrar CPF
@@ -1055,7 +1064,7 @@ export default function AdminFinanceiro() {
                                   )}
                                 </>
                               ) : (
-                                <span className="text-xs text-foreground/40 italic">—</span>
+                                <span className="text-xs text-stone-400 font-semibold">—</span>
                               )}
                             </div>
                           )}
@@ -1177,7 +1186,7 @@ export default function AdminFinanceiro() {
                       <span className="text-foreground/50">Forma:</span>
                       <span className="font-semibold text-gold uppercase">{ag.payment_method || 'Não definida'}</span>
                       <span className="text-foreground/30">•</span>
-                      <span className={`font-semibold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-700' : 'text-amber-800'}`}>
                         {ag.financial_status === 'CONFIRMED' ? 'Contabilizado' : 'Aguardando Gestão'}
                       </span>
                     </div>
@@ -1191,7 +1200,7 @@ export default function AdminFinanceiro() {
                       <Scissors size={14} className="text-gold" />
                       Procedimentos Realizados ({procedimentos.length})
                     </h4>
-                    <span className="text-[11px] text-foreground/50">
+                    <span className="text-[11px] text-foreground/70 font-medium">
                       Discriminado por profissional com descontos aplicados
                     </span>
                   </div>
@@ -1199,7 +1208,7 @@ export default function AdminFinanceiro() {
                   <div className="rounded-xl border border-white/10 overflow-hidden bg-black/20">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-white/5 border-b border-white/10 text-foreground/60 font-semibold">
+                        <tr className="bg-white/5 border-b border-white/10 text-foreground/70 font-bold">
                           <th className="p-3">Procedimento</th>
                           <th className="p-3">Profissional</th>
                           <th className="p-3 text-right">Tabela</th>
@@ -1215,7 +1224,7 @@ export default function AdminFinanceiro() {
                               <td className="p-3">
                                 <p className="font-bold text-foreground">{p.servico_nome}</p>
                                 {p.desconto_motivo && (
-                                  <p className="text-[10px] text-amber-400/90 italic mt-0.5">
+                                  <p className="text-[10px] text-amber-800 font-semibold italic mt-0.5">
                                     Motivo desconto: "{p.desconto_motivo}"
                                   </p>
                                 )}
@@ -1228,7 +1237,7 @@ export default function AdminFinanceiro() {
                               </td>
                               <td className="p-3 text-right">
                                 {p.desconto_valor > 0 ? (
-                                  <span className="font-bold text-amber-400 font-mono">
+                                  <span className="font-bold text-amber-800 font-mono">
                                     -R$ {p.desconto_valor.toFixed(2)} ({p.desconto_pct}%)
                                   </span>
                                 ) : (
@@ -1251,14 +1260,14 @@ export default function AdminFinanceiro() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Produtos Insumos Usados */}
                     {totalInsumos > 0 && (
-                      <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-                          <Beaker size={14} /> Fundo de Reserva de Insumos / Produtos
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                          <Beaker size={14} className="text-amber-700" /> Fundo de Reserva de Insumos / Produtos
                         </div>
-                        <p className="text-[11px] text-foreground/60 leading-relaxed">
+                        <p className="text-[11px] text-foreground/70 leading-relaxed font-medium">
                           Produtos utilizados durante a execução dos serviços (coloração, oxigenada, pós, ampolas).
                         </p>
-                        <p className="font-mono font-bold text-amber-300 text-sm pt-1">
+                        <p className="font-mono font-bold text-amber-900 text-sm pt-1">
                           R$ {totalInsumos.toFixed(2)}
                         </p>
                       </div>
@@ -1266,15 +1275,15 @@ export default function AdminFinanceiro() {
 
                     {/* Produtos Home Care Comprados */}
                     {produtosComprados.length > 0 && (
-                      <div className="p-3.5 rounded-xl bg-teal-500/5 border border-teal-500/20 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-400">
-                          <ShoppingBag size={14} /> Produtos Comprados (Home Care)
+                      <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900">
+                          <ShoppingBag size={14} className="text-teal-700" /> Produtos Comprados (Home Care)
                         </div>
                         <div className="space-y-1 pt-1">
                           {produtosComprados.map((prod: any, pIdx: number) => (
                             <div key={pIdx} className="flex items-center justify-between text-xs">
-                              <span className="text-foreground/80">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
-                              <span className="font-mono text-teal-300 font-bold">
+                              <span className="text-foreground/80 font-medium">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
+                              <span className="font-mono text-teal-800 font-bold">
                                 R$ {((Number(prod.preco_unitario || prod.preco || 0)) * (Number(prod.quantidade || prod.qty || 1))).toFixed(2)}
                               </span>
                             </div>
@@ -1292,7 +1301,7 @@ export default function AdminFinanceiro() {
                       <ShieldCheck size={14} className="text-gold" />
                       Demonstrativo Discriminado da Gestora do Salão
                     </h4>
-                    <span className="text-[10px] text-foreground/40 font-mono">
+                    <span className="text-[10px] text-foreground/50 font-mono font-semibold">
                       Auditoria de Comissões e Repartição
                     </span>
                   </div>
@@ -1305,21 +1314,21 @@ export default function AdminFinanceiro() {
                             👑 {dp.profissional_nome}
                             <span className="text-[11px] text-foreground/50 font-normal">({dp.especialidade})</span>
                           </span>
-                          <span className="text-xs font-mono font-bold text-emerald-400">
+                          <span className="text-xs font-mono font-bold text-emerald-600">
                             Comissão Estimada: R$ {dp.valorComissao.toFixed(2)} ({dp.pctComissao}%)
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-foreground/60 pt-0.5">
+                        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-foreground/70 pt-0.5">
                           <div>
-                            <span className="text-foreground/40 block">Tabela Bruta:</span>
+                            <span className="text-foreground/50 block">Tabela Bruta:</span>
                             R$ {dp.somaTabela.toFixed(2)}
                           </div>
                           <div>
-                            <span className="text-foreground/40 block">Desconto Próprio:</span>
+                            <span className="text-foreground/50 block">Desconto Próprio:</span>
                             {dp.somaDesconto > 0 ? `-R$ ${dp.somaDesconto.toFixed(2)}` : 'R$ 0,00'}
                           </div>
                           <div>
-                            <span className="text-foreground/40 block">Base Líquida:</span>
+                            <span className="text-foreground/50 block">Base Líquida:</span>
                             R$ {dp.liquidoBase.toFixed(2)}
                           </div>
                         </div>
@@ -1336,13 +1345,13 @@ export default function AdminFinanceiro() {
                       <span className="font-mono font-bold">R$ {subtotalServicos.toFixed(2)}</span>
                     </div>
                     {totalDescontos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-400">
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-800 font-bold">
                         <span>(-) Total Descontos dos Profissionais:</span>
                         <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
                       </div>
                     )}
                     {totalProdutos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-400">
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-800 font-bold">
                         <span>(+) Produtos Adicionais:</span>
                         <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
                       </div>
@@ -1456,8 +1465,8 @@ export default function AdminFinanceiro() {
                   {editingApptGestao.auxiliares_ids && editingApptGestao.auxiliares_ids.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {editingApptGestao.auxiliares_ids.map(aid => (
-                        <span key={aid} className="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-200 font-semibold border border-purple-300 dark:border-purple-500/30 flex items-center gap-1">
-                          <Users size={10} className="text-purple-700 dark:text-purple-300" /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                        <span key={aid} className="text-[11px] px-2.5 py-0.5 rounded bg-purple-100 text-purple-950 font-bold border border-purple-300 flex items-center gap-1 shadow-xs">
+                          <Users size={11} className="text-purple-800" /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
                         </span>
                       ))}
                     </div>
@@ -1467,10 +1476,10 @@ export default function AdminFinanceiro() {
                 {/* Resumo da Repartição do Salão (Fundo Produtos + Comissões + Líquido) */}
                 {editingApptGestao.product_cost != null && Number(editingApptGestao.product_cost) > 0 && (
                   <div className="pt-2 border-t border-white/10 space-y-1">
-                    <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                    <p className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
                       <Beaker size={12} /> Fundo de Reserva de Produtos: R$ {Number(editingApptGestao.product_cost).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-foreground/40">
+                    <p className="text-[10px] text-foreground/60 font-medium">
                       Custo total dos produtos por grama reservado para recompra de estoque.
                     </p>
                   </div>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Tokens — tema claro (padrão do salão) */
 @theme {
   --color-background: #faf8f3;

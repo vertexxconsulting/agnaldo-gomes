@@ -2574,25 +2574,25 @@ function AgendaContent() {
               </div>
 
               {/* INSUMOS DO PROCEDIMENTO (Lançamento por Gramas / ml por Etapa e Profissional) */}
-              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Scale size={16} className="text-amber-400" />
+                    <Scale size={16} className="text-amber-700" />
                     Produtos Utilizados no Procedimento (Cobrança por Grama)
                   </h4>
                   {checkoutInsumos.length > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold font-mono">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 font-bold border border-amber-300 font-mono">
                       {checkoutInsumos.length} {checkoutInsumos.length === 1 ? 'lançamento' : 'lançamentos'}
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-foreground/50">
+                <p className="text-xs text-foreground/70 font-medium">
                   Lançamento de cada produto consumido por etapa (ex: descoloração, tonalização, tratamento) e quem realizou. O custo por grama é calculado automaticamente.
                 </p>
 
                 {/* Formulário de Adicionar Insumo da Etapa */}
-                <div className="p-3 bg-[var(--background)] border border-amber-500/20 rounded-lg space-y-3">
+                <div className="p-3 bg-[var(--background)] border border-amber-500/30 rounded-lg space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Etapa do Serviço</label>
@@ -2601,7 +2601,7 @@ function AgendaContent() {
                         value={insumoEtapa}
                         onChange={e => setInsumoEtapa(e.target.value)}
                         placeholder="Ex: Etapa 1 - Mechas / Descoloração"
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400 font-medium"
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
                       />
                     </div>
                     <div>
@@ -2609,7 +2609,7 @@ function AgendaContent() {
                       <select
                         value={insumoProfissionalId}
                         onChange={e => setInsumoProfissionalId(e.target.value)}
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400 font-medium"
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
                       >
                         <option value={checkoutAppt.profissional_id}>
                           {getProfissionalNome(checkoutAppt.profissional_id, profissionais)} (Titular)
@@ -2625,7 +2625,7 @@ function AgendaContent() {
 
                   {/* Atalhos de Etapas Frequentes */}
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-[10px] text-foreground/40 self-center mr-1">Atalhos:</span>
+                    <span className="text-[10px] text-foreground/50 self-center mr-1 font-medium">Atalhos:</span>
                     {[
                       '1. Descoloração',
                       '2. Tonalização / Matização',
@@ -2638,8 +2638,8 @@ function AgendaContent() {
                         onClick={() => setInsumoEtapa(etp)}
                         className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
                           insumoEtapa === etp 
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
-                            : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                            ? 'bg-amber-100 text-amber-950 border-amber-400 font-bold'
+                            : 'border-[var(--border-subtle)] text-foreground/70 hover:text-foreground font-medium'
                         }`}
                       >
                         {etp}
@@ -2704,34 +2704,34 @@ function AgendaContent() {
                       const profNome = getProfissionalNome(ins.profissional_id || '', profissionais);
                       const isTitular = ins.profissional_id === checkoutAppt.profissional_id;
                       return (
-                        <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--background)] border border-amber-500/20 rounded-lg text-xs">
+                        <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--background)] border border-amber-500/30 rounded-lg text-xs">
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                               <span className="font-bold text-foreground truncate">{ins.name}</span>
-                              <span className="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 font-mono text-[10px]">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-mono font-bold text-[10px] border border-amber-200">
                                 {ins.qty_used} {ins.unit}
                               </span>
-                              <span className="text-[10px] text-foreground/40 font-mono">
+                              <span className="text-[10px] text-stone-500 font-mono font-medium">
                                 (R$ {ins.price_per_gram.toFixed(4)}/{ins.unit})
                               </span>
                             </div>
-                            <div className="text-[11px] text-foreground/50 flex flex-wrap items-center gap-2">
-                              {ins.etapa && <span className="text-foreground/70 font-medium">📍 {ins.etapa}</span>}
+                            <div className="text-[11px] text-foreground/60 flex flex-wrap items-center gap-2">
+                              {ins.etapa && <span className="text-foreground/80 font-medium">📍 {ins.etapa}</span>}
                               {profNome && (
-                                <span className={isTitular ? 'text-gold font-semibold' : 'text-foreground/80 font-semibold'}>
+                                <span className={isTitular ? 'text-gold font-bold' : 'text-foreground/80 font-semibold'}>
                                   👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
                                 </span>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-bold font-mono text-amber-400 text-sm">
+                            <span className="font-black font-mono text-amber-800 text-sm">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ins.custo_total)}
                             </span>
                             <button
                               type="button"
                               onClick={() => removerInsumoPorGrama(idx)}
-                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
+                              className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-500/10 transition-colors"
                               title="Remover este produto"
                             >
                               <X size={14} />
@@ -2741,12 +2741,12 @@ function AgendaContent() {
                       );
                     })}
 
-                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between text-xs font-semibold">
-                      <span className="text-foreground/80 flex items-center gap-1.5">
-                        <Beaker size={14} className="text-amber-400" />
+                    <div className="p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-lg flex items-center justify-between text-xs font-bold">
+                      <span className="text-foreground/90 flex items-center gap-1.5">
+                        <Beaker size={14} className="text-amber-700" />
                         Total Custo de Produtos do Atendimento:
                       </span>
-                      <span className="text-amber-400 font-bold font-mono text-sm">
+                      <span className="text-amber-900 font-black font-mono text-sm">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0))}
                       </span>
                     </div>
@@ -3154,9 +3154,9 @@ function AgendaContent() {
 
                               {/* Insumos deste profissional */}
                               {dados.insumosCusto > 0 && (
-                                <div className="flex justify-between items-center text-[11px] text-amber-400 pt-1 border-t border-border-subtle/30 font-medium">
+                                <div className="flex justify-between items-center text-[11px] text-amber-800 pt-1 border-t border-border-subtle/30 font-bold">
                                   <span>Produtos/Insumos aplicados por {pNome}:</span>
-                                  <span className="font-mono font-bold">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
+                                  <span className="font-mono">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
                                 </div>
                               )}
                             </div>
@@ -3167,86 +3167,86 @@ function AgendaContent() {
                       {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
                         <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-amber-400 text-[11px] font-bold uppercase">
-                            <span><Beaker size={12} className="inline mr-1"/> Fundo Produtos</span>
+                          <div className="flex items-center justify-between text-amber-800 text-[11px] font-bold uppercase">
+                            <span><Beaker size={12} className="inline mr-1 text-amber-700"/> Fundo Produtos</span>
                             <span className="text-[10px] font-mono">Reserva</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-amber-400">
+                          <p className="text-base font-black font-mono text-amber-800">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
                           </p>
-                          <p className="text-[9px] text-foreground/50">Custo de estoque por grama consumido no serviço.</p>
+                          <p className="text-[9px] text-foreground/60 font-medium">Custo de estoque por grama consumido no serviço.</p>
                         </div>
 
                         <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-foreground/70 text-[11px] font-bold uppercase">
+                          <div className="flex items-center justify-between text-foreground/80 text-[11px] font-bold uppercase">
                             <span><Users size={12} className="inline mr-1 text-gold"/> Total Comissões</span>
                             <span className="text-[10px] font-mono">Equipe</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-foreground">
+                          <p className="text-base font-black font-mono text-foreground">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
                           </p>
-                          <p className="text-[9px] text-foreground/50">Calculada diretamente sobre o procedimento de cada profissional.</p>
+                          <p className="text-[9px] text-foreground/60 font-medium">Calculada diretamente sobre o procedimento de cada profissional.</p>
                         </div>
 
                         <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
+                          <div className="flex items-center justify-between text-emerald-800 text-[11px] font-bold uppercase">
                             <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
                             <span className="text-[10px] font-mono">Receita</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-emerald-800 dark:text-emerald-400">
+                          <p className="text-base font-black font-mono text-emerald-800">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
                           </p>
-                          <p className="text-[9px] text-foreground/50">Faturamento líquido que fica com o salão.</p>
+                          <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Breakdown Financeiro Final da Comanda */}
                     <div className="space-y-1.5 text-sm bg-foreground/[0.02] p-3.5 rounded-xl border border-[var(--border-subtle)]">
-                      <div className="flex justify-between text-foreground/70">
+                      <div className="flex justify-between text-foreground/80 font-medium">
                         <span>Subtotal dos Procedimentos (Tabela)</span>
                         <span className="font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
                       </div>
                       {totalDescontosProcedimentos > 0 && (
-                        <div className="flex justify-between text-emerald-800 dark:text-emerald-400 font-semibold">
+                        <div className="flex justify-between text-emerald-800 font-bold">
                           <span>Descontos Concedidos pelos Profissionais</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
                         </div>
                       )}
                       {valorDescontoGeral > 0 && (
-                        <div className="flex justify-between text-emerald-800 dark:text-emerald-400 font-semibold">
+                        <div className="flex justify-between text-emerald-800 font-bold">
                           <span>Desconto Adicional da Recepção</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
                         </div>
                       )}
                       {totalProdutos > 0 && (
-                        <div className="flex justify-between text-gold font-medium">
+                        <div className="flex justify-between text-gold font-bold">
                           <span>Produtos de Salão (Venda / Balcão)</span>
                           <span className="font-mono">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
                         </div>
                       )}
                       {taxaMaq.valorTaxa > 0 && (
-                        <div className="flex justify-between text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                        <div className="flex justify-between text-amber-800 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
                           <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
                           <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
                         </div>
                       )}
                       {totalInsumos > 0 && (
-                        <div className="flex justify-between text-amber-400 text-xs pt-1 border-t border-[var(--border-subtle)]">
+                        <div className="flex justify-between text-amber-800 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
                           <span>Produtos Utilizados no Procedimento ({checkoutInsumos.length} itens)</span>
-                          <span className="font-mono font-bold">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
+                          <span className="font-mono">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
                         </div>
                       )}
                     </div>
                     
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
                       <div>
-                        <p className="text-xs text-foreground/60 mb-0.5 uppercase tracking-wider font-semibold">Valor Total a Pagar pela Cliente</p>
+                        <p className="text-xs text-foreground/70 mb-0.5 uppercase tracking-wider font-bold">Valor Total a Pagar pela Cliente</p>
                         <p className="text-3xl font-bold font-serif text-gold">
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}
                         </p>
                         {numParcelas > 1 && (
-                          <p className="text-xs text-amber-400 mt-0.5">
+                          <p className="text-xs text-amber-800 font-bold mt-0.5">
                             {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
                           </p>
                         )}

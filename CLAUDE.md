@@ -449,6 +449,18 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
   - Barra de busca instantânea que filtra por nome do profissional ou por nome do serviço (expandindo automaticamente os resultados correspondentes).
   - Filtro por profissional integrado que foca e abre a sanfona do profissional selecionado.
 
+### 8.18 Correção de Contraste e Legibilidade de Cores (Tailwind v4 e Badges)
+- **Declaração Explícita de `@custom-variant dark (&:where(.dark, .dark *))`**:
+  - No Tailwind CSS v4, o seletor `dark:` por padrão utiliza media query de sistema (`prefers-color-scheme: dark`). Quando o sistema operacional do usuário está em modo escuro, as classes `dark:` eram acionadas mesmo com a aplicação no tema padrão claro (`#faf8f3`), causando textos claros (lavanda pastel `text-purple-200`, `text-emerald-400`, etc.) sobre fundos claros. A inclusão da diretiva `@custom-variant dark` garante que variantes dark só se apliquem quando a classe `.dark` estiver presente.
+- **Tabela de Atendimentos e Fechamento (`/admin/pagamentos`)**:
+  - **Pills de Auxiliares**: estilizados com `bg-purple-100 text-purple-950 border border-purple-300 font-bold`, garantindo contraste AAA sobre o fundo do card.
+  - **Status de Atendimento**: tags com fundo, borda e texto de alto contraste (`bg-emerald-100 text-emerald-900 border-emerald-300` para Concluído; `bg-amber-100 text-amber-950 border-amber-300` para Confirmado/Agendado; `bg-red-100 text-red-900 border-red-300` para Cancelado; `bg-blue-100 text-blue-900 border-blue-300` para Em Atendimento).
+  - **Formas Declaradas**: badges com tipografia nítida e cores sólidas (Dinheiro, PIX, Crédito, Débito e "Aguardando" legível em `text-stone-500 font-medium`).
+  - **Coluna Valor**: valores não-confirmados renderizados em `text-stone-900 font-black` (ou `text-amber-800` quando pré-fechados pela secretaria), removendo o amarelo/laranja lavado sobre o fundo claro.
+  - **Status Financeiro**: badges "Pré-fechado (Secretaria)" e "Contabilizado" com cores ricas e tipografia em negrito legível.
+- **Modais de Extrato, Insumos por Grama e Checkout da Agenda**:
+  - Revisão de todos os indicadores de desconto, insumos, taxas e totais para tons profundos (`text-amber-800`, `text-emerald-700`, `text-teal-800`), eliminando texto esmaecido.
+
 ---
 
 ## 9. Comandos Úteis de Desenvolvimento

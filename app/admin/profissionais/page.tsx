@@ -774,12 +774,12 @@ export default function ProfissionaisPage() {
                       <h3 className="font-bold text-lg truncate">{prof.nome}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
-                          ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
-                          : 'bg-gold/15 text-gold border border-gold/30'
+                          ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                          : 'bg-gold/15 text-gold-dim border border-gold/40'
                       }`}>
                         {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${prof.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${prof.ativo ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-red-100 text-red-900 border-red-300'}`}>
                         {prof.ativo ? 'Ativo' : 'Inativo'}
                       </span>
                     </div>
@@ -788,27 +788,27 @@ export default function ProfissionaisPage() {
                     {prof.especialidades && prof.especialidades.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {prof.especialidades.map(esp => (
-                          <span key={esp} className="px-2 py-0.5 rounded-full text-[10px] bg-gold/10 text-gold font-medium">{esp}</span>
+                          <span key={esp} className="px-2 py-0.5 rounded-full text-[10px] bg-gold/15 text-gold-dim border border-gold/30 font-bold">{esp}</span>
                         ))}
                       </div>
                     )}
 
                     {/* Stats e Comissões */}
-                    <div className="flex flex-wrap gap-4 text-xs text-foreground/60 mt-2">
+                    <div className="flex flex-wrap gap-4 text-xs text-foreground/70 mt-2 font-medium">
                       <span className="flex items-center gap-1"><Calendar size={12} /> {stats.totalServicos} serviços</span>
-                      <span className="flex items-center gap-1" title="Valor total de serviços executados"><CheckCircle2 size={12} className="text-emerald-400" /> R$ {stats.totalValor.toFixed(2)}</span>
+                      <span className="flex items-center gap-1" title="Valor total de serviços executados"><CheckCircle2 size={12} className="text-emerald-700" /> R$ {stats.totalValor.toFixed(2)}</span>
                       {prof.product_commission_pct !== undefined && prof.product_commission_pct > 0 && (
-                        <span className="flex items-center gap-1"><DollarSign size={12} className="text-amber-400" /> {prof.product_commission_pct}% em produtos</span>
+                        <span className="flex items-center gap-1"><DollarSign size={12} className="text-amber-700" /> {prof.product_commission_pct}% em produtos</span>
                       )}
-                      <span className="flex items-center gap-1 text-gold/90 font-medium" title="PIN individual para autorizar entradas e baixas de estoque">
-                        <Lock size={12} className="text-gold" /> PIN Estoque: <span className="font-mono bg-gold/10 px-1.5 py-0.5 rounded text-gold">{prof.stock_pin || '1234'}</span>
+                      <span className="flex items-center gap-1 text-gold-dim font-bold" title="PIN individual para autorizar entradas e baixas de estoque">
+                        <Lock size={12} className="text-gold-dim" /> PIN Estoque: <span className="font-mono bg-gold/15 px-1.5 py-0.5 rounded text-gold-dim">{prof.stock_pin || '1234'}</span>
                       </span>
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                         prof.periodo_recebimento === 'quinzenal'
-                          ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
+                          ? 'bg-purple-100 text-purple-950 border-purple-300'
                           : prof.periodo_recebimento === 'mensal'
-                            ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
-                            : 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                            : 'bg-blue-100 text-blue-900 border-blue-300'
                       }`}>
                         {prof.periodo_recebimento === 'quinzenal' ? '🌓 Fechamento Quinzenal' : prof.periodo_recebimento === 'mensal' ? '📅 Fechamento Mensal' : '🗓️ Fechamento Semanal'}
                       </span>

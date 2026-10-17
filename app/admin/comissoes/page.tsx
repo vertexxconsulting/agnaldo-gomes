@@ -1108,12 +1108,12 @@ export default function ComissoesPage() {
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold/15 text-foreground font-bold">
                                   {cat === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                                 </span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
                                   pref === 'mensal'
-                                    ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/20'
+                                    ? 'bg-purple-100 text-purple-950 border-purple-300'
                                     : pref === 'quinzenal'
-                                    ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/20'
-                                    : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/20'
+                                    ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                                 }`}>
                                   {pref === 'mensal' ? '📅 Mensal' : pref === 'quinzenal' ? '🌓 Quinzenal' : '🗓️ Semanal'}
                                 </span>
@@ -1121,32 +1121,32 @@ export default function ComissoesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-foreground/70 font-mono">
+                        <td className="py-3.5 px-4 text-foreground/80 font-mono font-semibold">
                           {item.qtdAtendimentos} serv.
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-foreground">
+                        <td className="py-3.5 px-4 font-bold text-foreground">
                           {fmt(item.totalBrutoSemana)}
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-emerald-400">
+                        <td className="py-3.5 px-4 font-black text-emerald-700">
                           {fmt(item.totalLiberadoSemana)}
                           {item.totalPendenteSemana > 0 && (
-                            <span className="block text-[10px] text-foreground font-normal">
+                            <span className="block text-[10px] text-amber-800 font-bold">
                               ({fmt(item.totalPendenteSemana)} pendente)
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-foreground/90">
+                        <td className="py-3.5 px-4 font-bold text-foreground/90">
                           {fmt(item.totalRetidoD30)}
                           {item.totalRetidoD30 > 0 && (
-                            <span className="block text-[10px] text-foreground/40 font-normal">
+                            <span className="block text-[10px] text-foreground/60 font-medium">
                               libera em 30 dias
                             </span>
                           )}
                         </td>
                         <td className="py-3.5 px-4">
                           {item.statusFechamento === 'QUITADO' && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                              <CheckCircle2 size={12} /> Quitado
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-xs">
+                              <CheckCircle2 size={12} className="text-emerald-700" /> Quitado
                             </span>
                           )}
                           {item.statusFechamento === 'PENDENTE' && (

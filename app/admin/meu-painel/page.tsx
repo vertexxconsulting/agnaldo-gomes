@@ -446,10 +446,10 @@ export default function MeuPainelPage() {
                 return (
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
                     periodo === 'quinzenal'
-                      ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
+                      ? 'bg-purple-100 text-purple-950 border border-purple-300'
                       : periodo === 'mensal'
-                        ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
-                        : 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
+                        ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                        : 'bg-blue-100 text-blue-900 border border-blue-300'
                   }`}>
                     {periodo === 'quinzenal' ? '🌓 Quinzenal (15 dias)' : periodo === 'mensal' ? '📅 Mensal (Mês)' : '🗓️ Semanal (7 dias)'}
                   </span>
