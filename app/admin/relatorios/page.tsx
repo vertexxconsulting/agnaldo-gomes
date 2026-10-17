@@ -9,13 +9,14 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Users, Scissors, AlertTriangle, Calendar, Filter, 
-  DollarSign, CheckCircle2, Clock, ChevronRight, FileDown, Image as ImageIcon, Download
+  DollarSign, CheckCircle2, Clock, ChevronRight, FileDown, Image as ImageIcon, Download,
+  BarChart3, PieChart as PieIcon, Crown
 } from 'lucide-react';
 import { gerarRelatorioFiltrado, ReportData, TipoPeriodoRelatorio, FiltroRelatorio } from '@/lib/reports';
 import { exportarRelatorioPDF, exportarRelatorioSVG } from '@/lib/export-reports';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/mock-data';
 
-const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#14B8A6'];
+const COLORS = ['#C5A059', '#059669', '#2563EB', '#7C3AED', '#D97706', '#0891B2', '#E11D48', '#4F46E5', '#16A34A', '#64748B'];
 
 export default function RelatoriosPage() {
   const hoje = new Date();
@@ -27,6 +28,7 @@ export default function RelatoriosPage() {
   const [mesEscolhido, setMesEscolhido] = useState<number>(mesAtual);
   const [anoEscolhido, setAnoEscolhido] = useState<number>(anoAtual);
   
+  const [viewServicos, setViewServicos] = useState<'donut' | 'ranking'>('donut');
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -221,138 +223,326 @@ export default function RelatoriosPage() {
         <>
           {/* KPIs Rápidos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <CardGlass className="p-5 flex flex-col justify-between relative overflow-hidden border-gold/20">
+            <CardGlass className="p-5 flex flex-col justify-between relative overflow-hidden border-gold/30 bg-gold/5">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-foreground/50">Faturamento Bruto</span>
-                <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Faturamento Bruto</span>
+                <span className="p-2 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs">
                   <DollarSign size={18} />
                 </span>
               </div>
               <div className="mt-3">
                 <span className="text-3xl font-black text-gold">R$ {data.faturamentoBruto.toFixed(2)}</span>
-                <p className="text-[11px] text-foreground/40 mt-0.5">Total faturado no período</p>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Total faturado no período</p>
               </div>
             </CardGlass>
             
-            <CardGlass className="p-5 flex flex-col justify-between">
+            <CardGlass className="p-5 flex flex-col justify-between bg-blue-500/5 border-blue-500/20">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-foreground/50">Atendimentos</span>
-                <span className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Atendimentos</span>
+                <span className="p-2 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 shadow-xs">
                   <Users size={18} />
                 </span>
               </div>
               <div className="mt-3">
                 <span className="text-3xl font-black text-foreground">{data.totalAtendimentos}</span>
-                <p className="text-[11px] text-foreground/40 mt-0.5">Clientes atendidos</p>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Clientes atendidos</p>
               </div>
             </CardGlass>
 
-            <CardGlass className="p-5 flex flex-col justify-between">
+            <CardGlass className="p-5 flex flex-col justify-between bg-amber-500/5 border-amber-500/20">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-foreground/50">Ticket Médio</span>
-                <span className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Ticket Médio</span>
+                <span className="p-2 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
                   <TrendingUp size={18} />
                 </span>
               </div>
               <div className="mt-3">
-                <span className="text-3xl font-black text-amber-400">R$ {data.ticketMedio.toFixed(2)}</span>
-                <p className="text-[11px] text-foreground/40 mt-0.5">Média por atendimento</p>
+                <span className="text-3xl font-black text-amber-800">R$ {data.ticketMedio.toFixed(2)}</span>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Média por atendimento</p>
               </div>
             </CardGlass>
 
-            <CardGlass className="p-5 flex flex-col justify-between">
+            <CardGlass className="p-5 flex flex-col justify-between bg-red-500/5 border-red-500/20">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-foreground/50">Cancelamentos</span>
-                <span className="p-2 rounded-lg bg-red-500/10 text-red-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Cancelamentos</span>
+                <span className="p-2 rounded-lg bg-red-100 text-red-800 border border-red-200 shadow-xs">
                   <AlertTriangle size={18} />
                 </span>
               </div>
               <div className="mt-3">
-                <span className="text-3xl font-black text-red-500">{data.totalCancelamentos}</span>
-                <p className="text-[11px] text-foreground/40 mt-0.5">Cancelados ou No-show</p>
+                <span className="text-3xl font-black text-red-600">{data.totalCancelamentos}</span>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Cancelados ou No-show</p>
               </div>
             </CardGlass>
           </div>
 
           {/* Gráficos */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Gráfico 1: Distribuição de Serviços */}
-            <CardGlass className="p-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 border-b border-[var(--border-subtle)] pb-2 flex items-center gap-2">
-                <Scissors size={16} className="text-gold" /> Distribuição de Serviços
-              </h3>
-              
-              {data.servicosMaisProcurados.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-foreground/40 text-sm">
-                  Nenhum serviço realizado neste período.
-                </div>
-              ) : (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={data.servicosMaisProcurados}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={85}
-                        paddingAngle={4}
-                        dataKey="quantidade"
-                        nameKey="nome"
-                      >
-                        {data.servicosMaisProcurados.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}
-                        itemStyle={{ color: 'var(--foreground)' }}
-                        formatter={(val: any, name: any, item: any) => [
-                          `${val} atendimentos (R$ ${item?.payload?.faturamento?.toFixed(2) || 0})`,
-                          item?.payload?.nome
-                        ]}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </CardGlass>
+          {(() => {
+            const totalServicosRealizados = data.servicosMaisProcurados.reduce((sum, s) => sum + s.quantidade, 0);
 
-            {/* Gráfico 2: Performance Profissional */}
-            <CardGlass className="p-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 border-b border-[var(--border-subtle)] pb-2 flex items-center gap-2">
-                <Users size={16} className="text-gold" /> Performance por Profissional (Faturamento)
-              </h3>
-              
-              {data.performanceProfissionais.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-foreground/40 text-sm">
-                  Nenhum atendimento registrado para os profissionais neste período.
-                </div>
-              ) : (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.performanceProfissionais}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                      <XAxis dataKey="nome" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
-                      <Tooltip 
-                        cursor={{ fill: 'var(--foreground)', opacity: 0.05 }}
-                        contentStyle={{ backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}
-                        itemStyle={{ color: 'var(--foreground)' }}
-                        formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, 'Faturamento']}
-                      />
-                      <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
-                        {data.performanceProfissionais.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </CardGlass>
-          </div>
+            // Agrupamento dos Top 5 serviços + "Demais Serviços" para o Donut ficar perfeito e nítido
+            const top5 = data.servicosMaisProcurados.slice(0, 5);
+            const outros = data.servicosMaisProcurados.slice(5);
+            const outrosQtd = outros.reduce((acc, s) => acc + s.quantidade, 0);
+            const outrosFat = outros.reduce((acc, s) => acc + s.faturamento, 0);
+            const outrosPct = totalServicosRealizados > 0 ? Math.round((outrosQtd / totalServicosRealizados) * 100) : 0;
+
+            const dadosDonut = [
+              ...top5.map((s, idx) => ({
+                ...s,
+                cor: COLORS[idx % COLORS.length],
+              })),
+              ...(outros.length > 0 ? [{
+                nome: `Demais Serviços (${outros.length})`,
+                quantidade: outrosQtd,
+                faturamento: outrosFat,
+                porcentagem: outrosPct,
+                cor: '#64748B',
+                isOutros: true,
+              }] : [])
+            ];
+
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Gráfico 1: Distribuição de Serviços */}
+                <CardGlass className="p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-[var(--border-subtle)] pb-3">
+                      <div>
+                        <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
+                          <Scissors size={16} className="text-gold" /> Distribuição de Serviços
+                        </h3>
+                        <p className="text-[11px] text-foreground/50 mt-0.5">
+                          Procura e representatividade por procedimento
+                        </p>
+                      </div>
+
+                      {data.servicosMaisProcurados.length > 0 && (
+                        <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-lg border border-border-subtle self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => setViewServicos('donut')}
+                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              viewServicos === 'donut'
+                                ? 'bg-gold text-black shadow-xs'
+                                : 'text-foreground/60 hover:text-foreground'
+                            }`}
+                          >
+                            <PieIcon size={13} /> Destaques
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewServicos('ranking')}
+                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              viewServicos === 'ranking'
+                                ? 'bg-gold text-black shadow-xs'
+                                : 'text-foreground/60 hover:text-foreground'
+                            }`}
+                          >
+                            <BarChart3 size={13} /> Ranking ({data.servicosMaisProcurados.length})
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {data.servicosMaisProcurados.length === 0 ? (
+                      <div className="h-64 flex items-center justify-center text-foreground/40 text-sm">
+                        Nenhum serviço realizado neste período.
+                      </div>
+                    ) : viewServicos === 'donut' ? (
+                      <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
+                        {/* Donut com Centro Informativo */}
+                        <div className="relative w-48 h-48 shrink-0 flex items-center justify-center">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={dadosDonut}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={52}
+                                outerRadius={78}
+                                paddingAngle={3}
+                                dataKey="quantidade"
+                                nameKey="nome"
+                                strokeWidth={2}
+                                stroke="var(--color-card)"
+                              >
+                                {dadosDonut.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.cor} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const item = payload[0].payload;
+                                    return (
+                                      <div className="bg-[var(--color-card)] p-3 rounded-xl shadow-xl border border-[var(--border-subtle)] text-xs space-y-1 z-50">
+                                        <p className="font-bold text-foreground flex items-center gap-1.5">
+                                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.cor }} />
+                                          {item.nome}
+                                        </p>
+                                        <p className="text-foreground/80 font-medium">
+                                          <strong className="text-foreground font-mono">{item.quantidade}</strong> atendimentos ({item.porcentagem}%)
+                                        </p>
+                                        <p className="font-mono text-gold-dim font-bold">
+                                          Faturamento: R$ {item.faturamento.toFixed(2)}
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          {/* Centro Informativo */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                            <span className="text-2xl font-black font-serif text-gold leading-none">{totalServicosRealizados}</span>
+                            <span className="text-[10px] uppercase font-bold text-foreground/60 tracking-wider mt-1">Serviços</span>
+                          </div>
+                        </div>
+
+                        {/* Lista dos Destaques com Barra de Progresso */}
+                        <div className="flex-1 min-w-0 w-full space-y-2">
+                          {dadosDonut.map((item, idx) => (
+                            <div key={idx} className="p-2 rounded-lg bg-foreground/[0.02] border border-border-subtle/50 hover:bg-foreground/[0.05] transition-colors">
+                              <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
+                                    style={{ backgroundColor: item.cor }} 
+                                  />
+                                  <span className="font-bold text-foreground truncate text-xs" title={item.nome}>
+                                    {idx === 0 && '👑 '}{item.nome}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                                  <span className="font-bold text-foreground">{item.quantidade}x</span>
+                                  <span className="text-foreground/50">({item.porcentagem}%)</span>
+                                </div>
+                              </div>
+                              <div className="w-full bg-foreground/10 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-500" 
+                                  style={{ width: `${Math.max(item.porcentagem, 3)}%`, backgroundColor: item.cor }} 
+                                />
+                              </div>
+                              <div className="flex justify-between items-center text-[10px] text-foreground/50 mt-1">
+                                <span>Faturamento:</span>
+                                <span className="font-mono font-bold text-foreground/80">
+                                  R$ {item.faturamento.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {data.servicosMaisProcurados.map((item, idx) => {
+                          const maxQtd = data.servicosMaisProcurados[0]?.quantidade || 1;
+                          const relPct = Math.round((item.quantidade / maxQtd) * 100);
+                          const cor = COLORS[idx % COLORS.length];
+                          return (
+                            <div key={idx} className="p-2 rounded-lg bg-foreground/[0.02] border border-border-subtle/50 flex items-center justify-between gap-3 text-xs">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center font-mono font-bold text-[10px] shrink-0 ${
+                                  idx === 0 ? 'bg-gold text-black font-extrabold' : idx === 1 ? 'bg-stone-300 text-black' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-foreground/10 text-foreground/70'
+                                }`}>
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex justify-between items-center mb-0.5">
+                                    <span className="font-bold text-foreground truncate" title={item.nome}>
+                                      {item.nome}
+                                    </span>
+                                    <span className="font-mono text-foreground/80 shrink-0 ml-2 font-bold text-[11px]">
+                                      {item.quantidade}x ({item.porcentagem}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-foreground/10 rounded-full h-1.5 overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${relPct}%`, backgroundColor: cor }} />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 font-mono text-[11px]">
+                                <span className="font-bold text-gold-dim block">R$ {item.faturamento.toFixed(2)}</span>
+                                <span className="text-[10px] text-foreground/40 block">Méd: R$ {(item.faturamento / Math.max(item.quantidade, 1)).toFixed(0)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </CardGlass>
+
+                {/* Gráfico 2: Performance Profissional */}
+                <CardGlass className="p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="mb-5 border-b border-[var(--border-subtle)] pb-3">
+                      <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
+                        <Users size={16} className="text-gold" /> Performance por Profissional
+                      </h3>
+                      <p className="text-[11px] text-foreground/50 mt-0.5">
+                        Faturamento bruto gerado por cada membro da equipe
+                      </p>
+                    </div>
+                    
+                    {data.performanceProfissionais.length === 0 ? (
+                      <div className="h-64 flex items-center justify-center text-foreground/40 text-sm">
+                        Nenhum atendimento registrado para os profissionais neste período.
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={data.performanceProfissionais} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(20, 18, 14, 0.08)" vertical={false} />
+                            <XAxis 
+                              dataKey="nome" 
+                              stroke="var(--foreground)" 
+                              opacity={0.7} 
+                              fontSize={11} 
+                              tickLine={false} 
+                              axisLine={false} 
+                            />
+                            <YAxis 
+                              stroke="var(--foreground)" 
+                              opacity={0.7} 
+                              fontSize={11} 
+                              tickLine={false} 
+                              axisLine={false} 
+                              tickFormatter={(v) => `R$${v}`} 
+                            />
+                            <Tooltip 
+                              cursor={{ fill: 'var(--foreground)', opacity: 0.04 }}
+                              contentStyle={{ 
+                                backgroundColor: 'var(--color-card)', 
+                                color: 'var(--foreground)', 
+                                border: '1px solid var(--border-subtle)', 
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
+                              }}
+                              itemStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                              formatter={(val: any, name: any, item: any) => [
+                                `R$ ${Number(val).toFixed(2)} (${item?.payload?.atendimentos || 0} atendimentos)`,
+                                'Faturamento'
+                              ]}
+                            />
+                            <Bar dataKey="faturamento" radius={[6, 6, 0, 0]}>
+                              {data.performanceProfissionais.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                </CardGlass>
+              </div>
+            );
+          })()}
 
           {/* Tabela Detalhada de Atendimentos */}
           <CardGlass className="p-6">

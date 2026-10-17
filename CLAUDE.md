@@ -463,6 +463,28 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.19 Redesenho Executivo de Gráficos e Distribuição de Serviços (`/admin/relatorios`)
+
+- **Eliminação de Sobreposição e Poluição Visual**:
+  - O gráfico de **"Distribuição de Serviços"** anteriormente gerava 20+ fatias finas como agulhas com uma legenda flutuante do Recharts que quebrava em ~7 linhas e sobrepunha o próprio gráfico em formato de pizza.
+  - A legenda flutuante foi completamente removida de dentro do canvas do Recharts, desacoplando o gráfico da lista de categorias.
+- **Visual Executivo: Donut Limpo (Top 5 + Demais)**:
+  - Agrupamento inteligente dos 5 serviços com maior volume de atendimentos e consolidação do restante sob a fatia **"Demais Serviços"**, limitando o Donut a no máximo 6 arcos bem definidos e elegantes.
+  - Centro do Donut ampliado com métrica executiva integrada: contador total de atendimentos (`totalServicosRealizados`) em tipografia dourada refinada e rótulo claro.
+  - Painel lateral dedicado de detalhamento dos Top 5:
+    - Indicador de cor, nome do serviço e porcentagem da demanda.
+    - Barra de progresso visual proporcional à participação.
+    - Quantidade de atendimentos e faturamento total gerado em reais (`R$`).
+- **Alternância de Visualização ("Destaques" vs. "Ranking Geral")**:
+  - Seletor rápido no cabeçalho do card:
+    - **Destaques**: Visualização Donut Chart + Top 5 com foco analítico imediato.
+    - **Ranking Geral**: Listagem completa e rolável de todos os serviços realizados no período, com ranking ordenado (#1, #2, #3 com badge dourado), barras relativas ao serviço líder, total de atendimentos, faturamento acumulado e ticket médio por atendimento.
+- **Otimização do Gráfico de "Performance por Profissional"**:
+  - Linhas de grade sutis e elegantes (`rgba(20, 18, 14, 0.08)`), tooltips flutuantes com sombra suave e bordas arredondadas.
+  - Cartões de KPIs Rápidos reformulados com alto contraste (`bg-emerald-100 text-emerald-800`, `bg-blue-100 text-blue-800`, etc.), garantindo leitura clara em qualquer tela.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
