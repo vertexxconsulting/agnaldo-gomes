@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { ROLES, Role, ROLE_LABELS } from '@/lib/auth';
 import { Plus, UserPlus, X, Search, Scissors, Shield, Sparkles, CheckCircle2, Lock, UserCheck } from 'lucide-react';
