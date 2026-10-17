@@ -21,17 +21,17 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Se vier userId, é atualização de role
+    // Se vier userId, é atualização de role / permissões
     if (body.userId) {
-      const { userId, newRole, permissions } = body;
-      await updateUserRole(userId, newRole, permissions);
+      const { userId, newRole, permissions, avatar_url, professional_id } = body;
+      await updateUserRole(userId, newRole, permissions, { avatar_url, professional_id });
       return NextResponse.json({ success: true });
     } 
     
     // Se vier email/password, é criação de usuário
     if (body.email && body.password) {
-      const { email, full_name, password, role, permissions } = body;
-      const result = await createAdminUser({ email, full_name, password, role, permissions });
+      const { email, full_name, password, role, permissions, avatar_url, professional_id } = body;
+      const result = await createAdminUser({ email, full_name, password, role, permissions, avatar_url, professional_id });
       return NextResponse.json({ success: true, user: result.user });
     }
 

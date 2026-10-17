@@ -555,6 +555,29 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.23 Restrição da Agenda por Profissional & Cadastro Inteligente de Acesso na Equipe
+
+- **Visualização Focada da Agenda (`/admin/agenda`) por Perfil de Usuário**:
+  - **Agnaldo Gomes (Gestor Admin) & Recepção/Secretaria**: Mantêm a visão panorâmica completa com todos os 7 profissionais nas colunas do Kanban, filtros por categoria (*Todos*, *Cabelo*, *Unhas*) e dropdown seletor de profissional.
+  - **Profissional do Salão (`studio_profissional`)**:
+    - Ao efetuar login, o sistema detecta o vínculo com o profissional cadastrado (via `user_id`, `permissions.professional_id`, e-mail ou nome).
+    - A agenda exibe **exclusivamente a coluna e os agendamentos dele**, ocultando o dropdown dos outros colegas e categorias alheias.
+    - O cabeçalho apresenta o card de identificação: foto de perfil oficial, badge de especialidade (*Cabelo* ou *Unhas*), horário de jornada e contagem de atendimentos do dia.
+    - No modal de criação de agendamento (`+ Novo Agendamento`), o profissional é travado no titular autenticado, impedindo agendamentos em colunas alheias.
+- **Preparação Automática na Criação de Acesso da Equipe (`/admin/equipe`)**:
+  - Seletor de tipo de acesso: **✂️ Profissional do Salão** vs **🛡️ Cargo Administrativo**.
+  - No fluxo de profissional: dropdown lista todos os membros cadastrados na tabela `salon_professionals`.
+  - Ao selecionar um profissional:
+    - O sistema carrega automaticamente a **foto oficial de perfil** (com preview e badge *"Foto Vinculada"*).
+    - Preenche nome completo, nickname sanitizado (`@nome`) e gera e-mail sugerido (`nome@agnaldogomes.com`).
+    - Atribui o cargo de *Profissional do Salão* (`studio_profissional`) e vincula o `professional_id`.
+    - **O gestor precisa apenas definir a senha inicial**, eliminando redigitação manual de dados.
+- **Backend & Sincronização Bidirecional (`lib/admin-users.ts` e `/api/admin/equipe`)**:
+  - `createAdminUser` e `updateUserRole` atualizados para aceitar `avatar_url` e `professional_id`.
+  - Atualiza automaticamente `salon_professionals.user_id = user.id` no Supabase, garantindo integridade e consistência entre as contas de autenticação e os registros do salão.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

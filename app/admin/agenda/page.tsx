@@ -16,6 +16,8 @@ import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, 
 import type { Profissional } from '@/lib/gestao-types';
 import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign } from 'lucide-react';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
+import { supabase } from '@/lib/supabase';
+import { ROLES, getUserRole, isOwner } from '@/lib/auth';
 
 /**
  * Paleta de destaque por cliente na agenda. Propositalmente apenas 2 cores bem
@@ -202,6 +204,9 @@ function AgendaContent() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [bloqueiosDia, setBloqueiosDia] = useState<BloqueioAgenda[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [meuProfissional, setMeuProfissional] = useState<Profissional | null>(null);
+  const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
@@ -450,6 +455,52 @@ function AgendaContent() {
       setServicoProdutos(spData);
       setTaxasPagamento(taxasData.taxas);
       setRegrasComissao(regrasData);
+
+      // Identificar o papel do usuário logado (ex: Agnaldo = Admin vê todos; Edinaldo/Elen/Erica = vê apenas a si mesmo)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUser(user);
+          const role = getUserRole(user);
+          const owner = isOwner(user);
+          const userMeta = (user.user_metadata || {}) as Record<string, any>;
+
+          const { data: profProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          const effectiveRole = profProfile?.role || role;
+          const isFullAdmin = owner ||
+            effectiveRole === ROLES.ADMIN ||
+            effectiveRole === ROLES.STUDIO_ADMIN ||
+            effectiveRole === ROLES.STUDIO_SECRETARIA ||
+            userMeta?.role === 'admin' ||
+            userMeta?.isOwner === true;
+
+          if (!isFullAdmin) {
+            const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
+            const ativos = profissionaisData.filter((p: Profissional) => p.ativo);
+            const matchedProf = ativos.find((p: Profissional) =>
+              (profIdFromPerm && p.id === profIdFromPerm) ||
+              (p.user_id && p.user_id === user.id) ||
+              (p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
+              (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase()) ||
+              (profProfile?.full_name && p.nome.toLowerCase() === profProfile.full_name.toLowerCase())
+            );
+
+            if (matchedProf) {
+              setMeuProfissional(matchedProf);
+              setIsRestrictedProfissional(true);
+              setProfFiltro(matchedProf.id);
+            }
+          }
+        }
+      } catch (authErr) {
+        console.warn('Erro ao verificar perfil do usuário na agenda:', authErr);
+      }
+
       setLoading(false);
     };
     carregarDados();
@@ -494,8 +545,11 @@ function AgendaContent() {
 
   // Profissionais visíveis na agenda (colunas do Kanban)
   const profissionaisVisiveisNaAgenda = useMemo(() => {
+    if (isRestrictedProfissional && meuProfissional) {
+      return [meuProfissional];
+    }
     return profissionaisFiltradosPorCategoria.filter(p => profFiltro === 'todos' || p.id === profFiltro);
-  }, [profissionaisFiltradosPorCategoria, profFiltro]);
+  }, [profissionaisFiltradosPorCategoria, profFiltro, isRestrictedProfissional, meuProfissional]);
 
   const idsVisiveis = useMemo(() => new Set(profissionaisVisiveisNaAgenda.map(p => p.id)), [profissionaisVisiveisNaAgenda]);
 
@@ -1210,10 +1264,11 @@ function AgendaContent() {
   };
 
   const abrirFormNovo = (hora?: string, profId = '', isEncaixe = false) => {
+    const finalProfId = profId || (isRestrictedProfissional && meuProfissional ? meuProfissional.id : '');
     setEditingApptId(null);
     setFormData({
       cliente_id: '',
-      profissional_id: profId,
+      profissional_id: finalProfId,
       servico_id: '',
       sub_servicos: [] as any[],
       auxiliares_ids: [] as string[],
@@ -1396,88 +1451,133 @@ function AgendaContent() {
     <div className="py-4">
       <SectionTitle title="Agenda do Salão" subtitle="Gerenciamento de horários e profissionais" align="left" />
 
-      {/* Filtro por Categoria de Profissional (Cabelo / Unhas) e Profissionais */}
-      <div className="mt-8 mb-4 space-y-3">
-        {/* Seletor de Categoria */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-foreground/50 mr-1 flex items-center gap-1">
-            <Sparkles size={13} className="text-gold" /> Categoria:
-          </span>
-          <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl gap-1 shadow-sm">
-            <button
-              onClick={() => handleCategoriaChange('todas')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                categoriaFiltro === 'todas'
-                  ? 'bg-gold text-background shadow'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-              }`}
-            >
-              <span>Todos os Atendimentos</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                categoriaFiltro === 'todas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-              }`}>
-                {countPorCategoria.todas || 0}
-              </span>
-            </button>
-            <button
-              onClick={() => handleCategoriaChange('Cabelo')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                categoriaFiltro === 'Cabelo'
-                  ? 'bg-gold text-background shadow'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-              }`}
-            >
-              <span>Cabelo</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                categoriaFiltro === 'Cabelo' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-              }`}>
-                {countPorCategoria.Cabelo || 0}
-              </span>
-            </button>
-            <button
-              onClick={() => handleCategoriaChange('Unhas')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                categoriaFiltro === 'Unhas'
-                  ? 'bg-gold text-background shadow'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-              }`}
-            >
-              <span>Unhas</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                categoriaFiltro === 'Unhas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-              }`}>
-                {countPorCategoria.Unhas || 0}
-              </span>
-            </button>
+      {/* Filtro por Categoria ou Card do Profissional Exclusivo */}
+      <div className="mt-8 mb-4">
+        {isRestrictedProfissional && meuProfissional ? (
+          <div className="p-4 bg-gradient-to-r from-gold/15 via-[var(--color-card)] to-[var(--color-card)] border border-gold/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              {meuProfissional.foto_url || meuProfissional.avatar_url ? (
+                <img
+                  src={meuProfissional.foto_url || meuProfissional.avatar_url || ''}
+                  alt={meuProfissional.nome}
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-gold shadow-md shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-gold/20 text-gold flex items-center justify-center font-extrabold text-xl border-2 border-gold/40 shadow-sm shrink-0">
+                  {meuProfissional.nome.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-gold bg-gold/15 px-2.5 py-0.5 rounded-full border border-gold/30">
+                    Sua Agenda Pessoal
+                  </span>
+                  <span className="text-xs font-semibold text-foreground/70 flex items-center gap-1">
+                    {getCategoriaProfissional(meuProfissional) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                  </span>
+                </div>
+                <h2 className="text-lg font-black text-foreground mt-0.5 tracking-tight">
+                  {meuProfissional.nome}
+                </h2>
+                <p className="text-xs text-foreground/60">
+                  Visualização individual de atendimentos e horários do salão
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 self-end sm:self-auto bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] px-4 py-2.5 rounded-xl">
+              <CalendarDays size={18} className="text-gold" />
+              <div className="text-right">
+                <div className="text-[10px] uppercase font-bold text-foreground/50 tracking-wider">Atendimentos no Dia</div>
+                <div className="text-base font-mono font-black text-gold">
+                  {agendamentosFiltrados.length} {agendamentosFiltrados.length === 1 ? 'cliente' : 'clientes'}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Seletor de Categoria */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/50 mr-1 flex items-center gap-1">
+                <Sparkles size={13} className="text-gold" /> Categoria:
+              </span>
+              <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl gap-1 shadow-sm">
+                <button
+                  onClick={() => handleCategoriaChange('todas')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    categoriaFiltro === 'todas'
+                      ? 'bg-gold text-background shadow'
+                      : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                  }`}
+                >
+                  <span>Todos os Atendimentos</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    categoriaFiltro === 'todas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                  }`}>
+                    {countPorCategoria.todas || 0}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleCategoriaChange('Cabelo')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    categoriaFiltro === 'Cabelo'
+                      ? 'bg-gold text-background shadow'
+                      : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                  }`}
+                >
+                  <span>Cabelo</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    categoriaFiltro === 'Cabelo' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                  }`}>
+                    {countPorCategoria.Cabelo || 0}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleCategoriaChange('Unhas')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    categoriaFiltro === 'Unhas'
+                      ? 'bg-gold text-background shadow'
+                      : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                  }`}
+                >
+                  <span>Unhas</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    categoriaFiltro === 'Unhas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                  }`}>
+                    {countPorCategoria.Unhas || 0}
+                  </span>
+                </button>
+              </div>
+            </div>
 
-        {/* Filtro Profissionais (Select) */}
-        <div className="relative w-full max-w-md">
-          <User2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gold pointer-events-none" />
-          <select
-            value={profFiltro}
-            onChange={(e) => setProfFiltro(e.target.value)}
-            className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-gold rounded-xl pl-10 pr-10 py-3 text-sm font-bold text-foreground appearance-none shadow-sm cursor-pointer transition-colors hover:border-gold/50"
-          >
-            <option value="todos" className="font-bold">
-              {categoriaFiltro === 'todas' ? 'Todos os Profissionais' : `Todos (${categoriaFiltro})`} ({profissionaisFiltradosPorCategoria.length})
-            </option>
-            {profissionaisFiltradosPorCategoria.map(p => {
-              const cat = getCategoriaProfissional(p);
-              return (
-                <option key={p.id} value={p.id} className="font-medium">
-                  {p.nome} — {cat === 'Unhas' ? 'Unhas' : 'Cabelo'}
+            {/* Filtro Profissionais (Select) */}
+            <div className="relative w-full max-w-md">
+              <User2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gold pointer-events-none" />
+              <select
+                value={profFiltro}
+                onChange={(e) => setProfFiltro(e.target.value)}
+                className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] focus:border-gold rounded-xl pl-10 pr-10 py-3 text-sm font-bold text-foreground appearance-none shadow-sm cursor-pointer transition-colors hover:border-gold/50"
+              >
+                <option value="todos" className="font-bold">
+                  {categoriaFiltro === 'todas' ? 'Todos os Profissionais' : `Todos (${categoriaFiltro})`} ({profissionaisFiltradosPorCategoria.length})
                 </option>
-              );
-            })}
-          </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
+                {profissionaisFiltradosPorCategoria.map(p => {
+                  const cat = getCategoriaProfissional(p);
+                  return (
+                    <option key={p.id} value={p.id} className="font-medium">
+                      {p.nome} — {cat === 'Unhas' ? 'Unhas' : 'Cabelo'}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Controles de Busca / Filtros */}
@@ -3654,44 +3754,67 @@ function AgendaContent() {
                     <User2 size={14} className="text-gold" />
                     2. Profissional *
                   </span>
-                  {categoriaFiltro !== 'todas' && (
+                  {categoriaFiltro !== 'todas' && !isRestrictedProfissional && (
                     <span className="text-[10px] text-gold font-medium">
                       Filtro ativo: {categoriaFiltro === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
                     </span>
                   )}
                 </label>
-                <select 
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-semibold"
-                  value={formData.profissional_id}
-                  onChange={e => {
-                    const profId = e.target.value;
-                    setFormData(f => ({ ...f, profissional_id: profId, servico_id: '', sub_servicos: [] }));
-                  }}
-                  required
-                >
-                  <option value="">Selecione quem irá atender</option>
-                  {profissionais.some(p => getCategoriaProfissional(p) === 'Cabelo') && (
-                    <optgroup label="✂️ Cabelo">
-                      {profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo').map(p => (
-                        <option key={p.id} value={p.id}>{p.nome}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {profissionais.some(p => getCategoriaProfissional(p) === 'Unhas') && (
-                    <optgroup label="💅 Unhas">
-                      {profissionais.filter(p => getCategoriaProfissional(p) === 'Unhas').map(p => (
-                        <option key={p.id} value={p.id}>{p.nome}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {profissionais.some(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))) && (
-                    <optgroup label="Outras Categorias">
-                      {profissionais.filter(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))).map(p => (
-                        <option key={p.id} value={p.id}>{p.nome}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                {isRestrictedProfissional && meuProfissional ? (
+                  <div className="flex items-center gap-3 p-3 bg-gold/10 border border-gold/30 rounded-xl">
+                    {meuProfissional.foto_url || meuProfissional.avatar_url ? (
+                      <img
+                        src={meuProfissional.foto_url || meuProfissional.avatar_url || ''}
+                        alt={meuProfissional.nome}
+                        className="w-10 h-10 rounded-xl object-cover border-2 border-gold/40 shadow-sm shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-gold/20 text-gold flex items-center justify-center font-extrabold text-sm border border-gold/30 shrink-0">
+                        {meuProfissional.nome.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-foreground truncate">{meuProfissional.nome}</div>
+                      <div className="text-xs text-foreground/60">{getCategoriaProfissional(meuProfissional) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'} • Titular do Atendimento</div>
+                    </div>
+                    <span className="text-[10px] font-bold text-gold uppercase tracking-wider px-2 py-1 bg-gold/20 border border-gold/30 rounded-lg">
+                      Sua Agenda
+                    </span>
+                  </div>
+                ) : (
+                  <select 
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-semibold"
+                    value={formData.profissional_id}
+                    onChange={e => {
+                      const profId = e.target.value;
+                      setFormData(f => ({ ...f, profissional_id: profId, servico_id: '', sub_servicos: [] }));
+                    }}
+                    required
+                  >
+                    <option value="">Selecione quem irá atender</option>
+                    {profissionais.some(p => getCategoriaProfissional(p) === 'Cabelo') && (
+                      <optgroup label="✂️ Cabelo">
+                        {profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo').map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {profissionais.some(p => getCategoriaProfissional(p) === 'Unhas') && (
+                      <optgroup label="💅 Unhas">
+                        {profissionais.filter(p => getCategoriaProfissional(p) === 'Unhas').map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {profissionais.some(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))) && (
+                      <optgroup label="Outras Categorias">
+                        {profissionais.filter(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))).map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
               </div>
 
               {/* Auxiliares / Co-participantes do Procedimento */}
