@@ -775,7 +775,7 @@ export default function ProfissionaisPage() {
                       <h3 className="font-bold text-lg truncate">{prof.nome}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
-                          ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                          ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
                           : 'bg-gold/15 text-gold border border-gold/30'
                       }`}>
                         {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
@@ -806,10 +806,10 @@ export default function ProfissionaisPage() {
                       </span>
                       <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         prof.periodo_recebimento === 'quinzenal'
-                          ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                          ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
                           : prof.periodo_recebimento === 'mensal'
-                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                            ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
+                            : 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
                       }`}>
                         {prof.periodo_recebimento === 'quinzenal' ? '🌓 Fechamento Quinzenal' : prof.periodo_recebimento === 'mensal' ? '📅 Fechamento Mensal' : '🗓️ Fechamento Semanal'}
                       </span>

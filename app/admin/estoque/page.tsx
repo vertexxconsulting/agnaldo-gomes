@@ -29,7 +29,7 @@ const MOV_LABELS: Record<MovTipo, { label: string; cor: string }> = {
   IN: { label: 'Entrada', cor: 'text-emerald-400 bg-emerald-500/10' },
   OUT_SALE: { label: 'Venda', cor: 'text-blue-400 bg-blue-500/10' },
   OUT_PROCEDURE: { label: 'Insumo', cor: 'text-amber-400 bg-amber-500/10' },
-  ADJUSTMENT: { label: 'Ajuste', cor: 'text-purple-400 bg-purple-500/10' },
+  ADJUSTMENT: { label: 'Ajuste', cor: 'text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/10 border border-purple-300 dark:border-purple-500/20' },
 };
 
 const CATEGORIAS_SUGERIDAS = ['Química', 'Coloração', 'Tratamento', 'Cuidados', 'Revenda', 'Higiene', 'Equipamentos'];

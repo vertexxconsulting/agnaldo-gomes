@@ -356,8 +356,8 @@ export default function MeuPainelPage() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           {isAuxiliar && (
-                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30 flex items-center gap-1 w-fit mb-1.5">
-                              <Users size={11} /> Auxiliar de {titularNome}
+                            <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 font-bold text-[10px] border border-purple-300 dark:border-purple-500/30 flex items-center gap-1 w-fit mb-1.5">
+                              <Users size={11} className="text-purple-700 dark:text-purple-300" /> Auxiliar de {titularNome}
                             </span>
                           )}
                           <h3 className="text-2xl font-bold text-foreground">
@@ -439,10 +439,10 @@ export default function MeuPainelPage() {
                 return (
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
                     periodo === 'quinzenal'
-                      ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                      ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
                       : periodo === 'mensal'
-                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                        ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
+                        : 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
                   }`}>
                     {periodo === 'quinzenal' ? '🌓 Quinzenal (15 dias)' : periodo === 'mensal' ? '📅 Mensal (Mês)' : '🗓️ Semanal (7 dias)'}
                   </span>
@@ -562,10 +562,10 @@ export default function MeuPainelPage() {
       {/* MODAL INSUMOS EM TEMPO REAL */}
       {insumosModalOpen && activeAgendamento && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-xl p-6 max-h-[92vh] overflow-y-auto border-purple-500/35 shadow-2xl">
+          <CardGlass className="w-full max-w-xl p-6 max-h-[92vh] overflow-y-auto border-purple-300 dark:border-purple-500/35 shadow-2xl">
             <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="p-2 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/30">
                   <Beaker size={20} />
                 </span>
                 <div>
@@ -580,7 +580,7 @@ export default function MeuPainelPage() {
               </button>
             </div>
 
-            <div className="bg-purple-950/20 border border-purple-500/25 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
+            <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-500/25 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
               <div>
                 <span className="text-foreground/50 block">Cliente:</span>
                 <span className="font-bold text-foreground text-sm">{getClienteNome(activeAgendamento.cliente_id)}</span>
@@ -687,7 +687,7 @@ export default function MeuPainelPage() {
                     key={v}
                     type="button"
                     onClick={() => setInsumoQty(String(v))}
-                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-500/20 hover:text-purple-300 text-[10px] text-foreground/70 border border-foreground/10 transition-colors"
+                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-100 hover:text-purple-800 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 text-[10px] text-foreground/70 border border-foreground/10 transition-colors"
                   >
                     +{v}g
                   </button>
@@ -713,7 +713,7 @@ export default function MeuPainelPage() {
                       <div key={idx} className="p-2.5 text-xs flex justify-between items-center gap-2">
                         <div>
                           <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-200 text-[9px] font-bold border border-purple-300 dark:border-purple-500/30">
                               {item.etapa || 'Procedimento'}
                             </span>
                             <span className="text-[10px] text-foreground/50">

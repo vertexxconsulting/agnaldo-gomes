@@ -1764,15 +1764,15 @@ function AgendaContent() {
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border rounded p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
-                                          isAuxiliarNeste ? 'bg-purple-950/20 border-purple-500/30' : ''
+                                          isAuxiliarNeste ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-500/30' : ''
                                         }`}
                                         style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bg, borderColor: cor.border }}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : cor.bar }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#9333ea' : cor.bar }}></div>
                                         <div className="pl-2">
                                           {isAuxiliarNeste && (
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30 mb-1 w-fit">
-                                              <Users size={10} />
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-purple-900 dark:text-purple-200 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-300 dark:border-purple-500/30 mb-1 w-fit">
+                                              <Users size={10} className="text-purple-700 dark:text-purple-300" />
                                               <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
                                             </div>
                                           )}
@@ -1815,12 +1815,12 @@ function AgendaContent() {
                                                   e.stopPropagation();
                                                   abrirLancarInsumoTempoReal(a);
                                                 }}
-                                                className="px-1.5 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white font-bold text-[9px] flex items-center gap-1 transition-all border border-purple-500/40 shadow-xs cursor-pointer"
+                                                className="px-1.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer"
                                               >
-                                                <Beaker size={10} />
+                                                <Beaker size={10} className="text-purple-200" />
                                                 <span>+ Insumo</span>
                                                 {a.insumos_detalhes && a.insumos_detalhes.length > 0 && (
-                                                  <span className="bg-purple-900/80 text-purple-200 px-1 rounded-full text-[8px] font-mono">
+                                                  <span className="bg-purple-950/70 text-purple-100 px-1 rounded-full text-[8px] font-mono font-bold">
                                                     {a.insumos_detalhes.length}
                                                   </span>
                                                 )}
@@ -1849,19 +1849,19 @@ function AgendaContent() {
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${
                                           isAuxiliarNeste 
-                                            ? 'bg-purple-950/20 border-purple-500/40 hover:bg-purple-900/30' 
+                                            ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-500/40 hover:bg-purple-100 dark:hover:bg-purple-900/30' 
                                             : ''
                                         }`}
                                         style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bgOngoing, borderColor: cor.border }}
                                         title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#a855f7' : cor.bar }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#9333ea' : cor.bar }}></div>
                                         <div className="pl-1.5">
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
-                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#a855f7' : cor.bar }}>↳</span> {cliente}
+                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#9333ea' : cor.bar }}>↳</span> {cliente}
                                               {isAuxiliarNeste && (
-                                                <span className="text-[9px] text-purple-400 font-bold bg-purple-500/20 px-1 rounded">Auxiliar</span>
+                                                <span className="text-[9px] text-purple-900 dark:text-purple-200 font-bold bg-purple-100 dark:bg-purple-900/40 px-1 rounded border border-purple-300 dark:border-purple-500/30">Auxiliar</span>
                                               )}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -1892,9 +1892,9 @@ function AgendaContent() {
                                                   e.stopPropagation();
                                                   abrirLancarInsumoTempoReal(a);
                                                 }}
-                                                className="px-1.5 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white font-bold text-[8px] flex items-center gap-1 transition-all border border-purple-500/40 shadow-xs cursor-pointer shrink-0"
+                                                className="px-1.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                                               >
-                                                <Beaker size={9} />
+                                                <Beaker size={9} className="text-purple-200" />
                                                 <span>+ Insumo</span>
                                               </button>
                                             )}
@@ -1946,14 +1946,14 @@ function AgendaContent() {
               <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
               <p><strong>Profissional Titular:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
               {selectedAppt.auxiliares_ids && selectedAppt.auxiliares_ids.length > 0 && (
-                <div className="text-xs bg-purple-500/10 border border-purple-500/25 p-2 rounded-lg text-purple-300 space-y-1">
+                <div className="text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/30 p-2 rounded-lg text-purple-900 dark:text-purple-200 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
-                    <Users size={13} className="text-purple-400" />
+                    <Users size={13} className="text-purple-700 dark:text-purple-300" />
                     <span>Auxiliares Co-participantes:</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {selectedAppt.auxiliares_ids.map(id => (
-                      <span key={id} className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 text-[11px] font-semibold">
+                      <span key={id} className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-900 dark:text-purple-200 text-[11px] font-semibold border border-purple-300 dark:border-purple-500/30">
                         {getProfissionalNome(id, profissionais)}
                       </span>
                     ))}
@@ -1970,10 +1970,10 @@ function AgendaContent() {
 
               {/* Resumo de Insumos já aplicados neste agendamento */}
               {selectedAppt.insumos_detalhes && selectedAppt.insumos_detalhes.length > 0 && (
-                <div className="text-xs bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-lg text-purple-200 space-y-1.5 mt-2">
+                <div className="text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/30 p-2.5 rounded-lg text-foreground dark:text-purple-200 space-y-1.5 mt-2">
                   <div className="font-bold flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-purple-300">
-                      <Beaker size={13} /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
+                    <span className="flex items-center gap-1.5 text-purple-900 dark:text-purple-300 font-bold">
+                      <Beaker size={13} className="text-purple-700 dark:text-purple-300" /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
                     </span>
                     <span className="font-mono text-gold font-bold">
                       R$ {Number(selectedAppt.product_cost || 0).toFixed(2)}
@@ -1987,7 +1987,7 @@ function AgendaContent() {
                       </div>
                     ))}
                     {selectedAppt.insumos_detalhes.length > 3 && (
-                      <p className="text-[10px] text-purple-300/70 italic text-right">
+                      <p className="text-[10px] text-purple-700 dark:text-purple-300/80 italic text-right">
                         +{selectedAppt.insumos_detalhes.length - 3} outro(s) produto(s)...
                       </p>
                     )}
@@ -2001,13 +2001,13 @@ function AgendaContent() {
               {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && (
                 <Button 
                   variant="secondary" 
-                  className="bg-purple-600/25 hover:bg-purple-600/35 text-purple-200 border-purple-500/50 font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
                   onClick={() => {
                     abrirLancarInsumoTempoReal(selectedAppt);
                     setSelectedAppt(null);
                   }}
                 >
-                  <Beaker size={16} className="text-purple-400" />
+                  <Beaker size={16} className="text-purple-200" />
                   Lançar Produtos da Etapa (Tempo Real)
                 </Button>
               )}
@@ -2050,7 +2050,7 @@ function AgendaContent() {
                   <Button variant="outline" className="text-red-400 border-red-500/20 hover:bg-red-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'cancelado'); setSelectedAppt(null); }}>
                     Cancelar
                   </Button>
-                  <Button variant="outline" className="text-purple-400 border-purple-500/20 hover:bg-purple-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
+                  <Button variant="outline" className="text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-500/40 hover:bg-purple-50 dark:hover:bg-purple-950/30 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
                     Faltou
                   </Button>
                 </div>
@@ -2063,12 +2063,12 @@ function AgendaContent() {
       {/* Modal de Lançamento de Insumos em Tempo Real (Durante o Procedimento por Titular ou Auxiliar) */}
       {liveInsumoAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border-purple-500/35 shadow-2xl">
+          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border-purple-300 dark:border-purple-500/35 shadow-2xl">
             {/* Header */}
             <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-4">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  <span className="p-2 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/30">
                     <Beaker size={22} />
                   </span>
                   <div>
@@ -2090,7 +2090,7 @@ function AgendaContent() {
             </div>
 
             {/* Resumo do Atendimento */}
-            <div className="bg-purple-950/20 border border-purple-500/25 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-500/25 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
               <div>
                 <span className="text-[11px] text-foreground/50 uppercase font-semibold block">Cliente & Procedimento</span>
                 <span className="font-bold text-foreground text-base">{getClienteNome(liveInsumoAppt.cliente_id, clientes)}</span>
@@ -2114,8 +2114,8 @@ function AgendaContent() {
 
             {/* Formulário de Nova Aplicação */}
             <div className="bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4 mb-5 space-y-4">
-              <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
-                <Plus size={14} /> Registrar Nova Aplicação no Procedimento
+              <h4 className="text-xs font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
+                <Plus size={14} className="text-purple-700 dark:text-purple-400" /> Registrar Nova Aplicação no Procedimento
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2238,7 +2238,7 @@ function AgendaContent() {
                     key={val}
                     type="button"
                     onClick={() => setLiveInsumoQtd(String(val))}
-                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-500/20 hover:text-purple-300 text-[11px] text-foreground/70 border border-foreground/10 transition-colors"
+                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-100 hover:text-purple-800 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 text-[11px] text-foreground/70 border border-foreground/10 transition-colors"
                   >
                     +{val}g
                   </button>
@@ -2257,7 +2257,7 @@ function AgendaContent() {
 
               {(!liveInsumoAppt.insumos_detalhes || liveInsumoAppt.insumos_detalhes.length === 0) ? (
                 <div className="p-6 text-center border border-dashed border-[var(--border-subtle)] rounded-xl text-foreground/50 text-xs">
-                  <Beaker size={24} className="mx-auto mb-2 opacity-40 text-purple-400" />
+                  <Beaker size={24} className="mx-auto mb-2 opacity-60 text-purple-600 dark:text-purple-400" />
                   Nenhum produto registrado ainda. Selecione a etapa e o produto acima para lançar no momento da aplicação.
                 </div>
               ) : (
@@ -2270,11 +2270,11 @@ function AgendaContent() {
                       <div key={idx} className="p-3 bg-foreground/[0.015] hover:bg-foreground/[0.03] transition-colors flex items-center justify-between gap-3 text-xs">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30">
+                            <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-200 font-bold text-[10px] border border-purple-300 dark:border-purple-500/30">
                               {ins.etapa || 'Procedimento'}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${
-                              isTitular ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                              isTitular ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30' : 'bg-purple-100 dark:bg-purple-500/15 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
                             }`}>
                               {isTitular ? <Sparkles size={10} /> : <Users size={10} />}
                               {profNome}
@@ -2361,8 +2361,8 @@ function AgendaContent() {
               <div className="lg:col-span-7 space-y-4 min-w-0">
                 {/* Banner de Unificação Multi-Profissional da Cliente */}
               {agendamentosUnificadosIds.length > 1 && (
-                <div className="p-3.5 bg-gradient-to-r from-purple-500/15 via-gold/10 to-transparent border border-purple-500/30 rounded-xl flex items-start gap-3">
-                  <div className="p-2 bg-purple-500/20 text-purple-300 rounded-lg mt-0.5 shrink-0">
+                <div className="p-3.5 bg-gradient-to-r from-purple-100/60 via-gold/10 to-transparent dark:from-purple-500/15 dark:via-gold/10 dark:to-transparent border border-purple-200 dark:border-purple-500/30 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg mt-0.5 shrink-0">
                     <Users size={18} />
                   </div>
                   <div>
@@ -2715,9 +2715,9 @@ function AgendaContent() {
                               </span>
                             </div>
                             <div className="text-[11px] text-foreground/50 flex flex-wrap items-center gap-2">
-                              {ins.etapa && <span className="text-amber-300 font-medium">📍 {ins.etapa}</span>}
+                              {ins.etapa && <span className="text-amber-500 dark:text-amber-300 font-medium">📍 {ins.etapa}</span>}
                               {profNome && (
-                                <span className={isTitular ? 'text-gold' : 'text-purple-300'}>
+                                <span className={isTitular ? 'text-gold' : 'text-purple-800 dark:text-purple-300 font-semibold'}>
                                   👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
                                 </span>
                               )}
@@ -2947,10 +2947,10 @@ function AgendaContent() {
                   </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   {([
-                    ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-400 border-emerald-500/40'],
-                    ['PIX', 'PIX', Smartphone, 'text-blue-400 border-blue-500/40'],
-                    ['DEBITO', 'Débito', CreditCard, 'text-purple-400 border-purple-500/40'],
-                    ['CREDITO', 'Crédito', CreditCard, 'text-amber-400 border-amber-500/40'],
+                    ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-700 dark:text-emerald-400 border-emerald-400 dark:border-emerald-500/40'],
+                    ['PIX', 'PIX', Smartphone, 'text-blue-700 dark:text-blue-400 border-blue-400 dark:border-blue-500/40'],
+                    ['DEBITO', 'Débito', CreditCard, 'text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/40'],
+                    ['CREDITO', 'Crédito', CreditCard, 'text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-500/40'],
                   ] as const).map(([val, label, Icon, cor]) => (
                     <button
                       key={val}
@@ -3127,7 +3127,7 @@ function AgendaContent() {
                                 <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
                                   👤 {pNome}
                                 </span>
-                                <span className="text-purple-300 font-mono font-bold text-xs bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30">
+                                <span className="text-purple-900 dark:text-purple-200 font-mono font-bold text-xs bg-purple-100 dark:bg-purple-500/15 px-2 py-0.5 rounded border border-purple-300 dark:border-purple-500/30">
                                   Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
                                 </span>
                               </div>
@@ -3176,12 +3176,12 @@ function AgendaContent() {
                           <p className="text-[9px] text-foreground/50">Custo de estoque por grama consumido no serviço.</p>
                         </div>
 
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-purple-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-purple-300 text-[11px] font-bold uppercase">
-                            <span><Users size={12} className="inline mr-1"/> Total Comissões</span>
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-purple-300 dark:border-purple-500/30 rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-purple-900 dark:text-purple-300 text-[11px] font-bold uppercase">
+                            <span><Users size={12} className="inline mr-1 text-purple-700 dark:text-purple-300"/> Total Comissões</span>
                             <span className="text-[10px] font-mono">Equipe</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-purple-300">
+                          <p className="text-base font-bold font-mono text-purple-900 dark:text-purple-200">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
                           </p>
                           <p className="text-[9px] text-foreground/50">Calculada diretamente sobre o procedimento de cada profissional.</p>
@@ -3694,13 +3694,13 @@ function AgendaContent() {
               </div>
 
               {/* Auxiliares / Co-participantes do Procedimento */}
-              <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
+              <div className="p-3 bg-purple-50/70 dark:bg-purple-500/5 border border-purple-200 dark:border-purple-500/20 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Users size={14} className="text-purple-400" />
+                    <Users size={14} className="text-purple-700 dark:text-purple-400" />
                     Auxiliares do Procedimento (Co-participantes)
                   </label>
-                  <span className="text-[10px] text-purple-400 font-semibold px-2 py-0.5 bg-purple-500/10 rounded-full border border-purple-500/20">
+                  <span className="text-[10px] text-purple-900 dark:text-purple-200 font-semibold px-2 py-0.5 bg-purple-100 dark:bg-purple-500/10 rounded-full border border-purple-300 dark:border-purple-500/20">
                     Opcional • {formData.auxiliares_ids.length} selecionado(s)
                   </span>
                 </div>
@@ -3726,11 +3726,11 @@ function AgendaContent() {
                           }}
                           className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${
                             isSelected
-                              ? 'bg-purple-600/25 border-purple-500 text-purple-200 font-bold shadow-sm'
-                              : 'border-[var(--border-subtle)] text-foreground/70 hover:border-purple-500/40 hover:text-foreground bg-[var(--background)]'
+                              ? 'bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-600/30 dark:border-purple-500 dark:text-purple-100 font-bold shadow-sm'
+                              : 'border-[var(--border-subtle)] text-foreground/70 hover:border-purple-400 hover:text-foreground bg-[var(--background)]'
                           }`}
                         >
-                          {isSelected ? <Check size={12} className="text-purple-300" /> : <Plus size={12} className="text-foreground/40" />}
+                          {isSelected ? <Check size={12} className="text-purple-700 dark:text-purple-300" /> : <Plus size={12} className="text-foreground/40" />}
                           <span>{p.nome}</span>
                           {isSelected && <span className="text-[10px] opacity-75 font-normal">(Auxiliar)</span>}
                         </button>
@@ -3738,8 +3738,8 @@ function AgendaContent() {
                     })}
                 </div>
                 {formData.auxiliares_ids.length > 0 && (
-                  <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[11px] text-purple-300 flex items-center gap-2">
-                    <Sparkles size={14} className="shrink-0 text-purple-400" />
+                  <div className="p-2 bg-purple-100/70 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg text-[11px] text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                    <Sparkles size={14} className="shrink-0 text-purple-700 dark:text-purple-400" />
                     <span>
                       <strong>Equipe do Procedimento:</strong> {getProfissionalNome(formData.profissional_id, profissionais)} (Titular) + {formData.auxiliares_ids.map(id => getProfissionalNome(id, profissionais)).join(', ')} (Auxiliares).
                     </span>

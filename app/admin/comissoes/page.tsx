@@ -38,7 +38,7 @@ type Aba = 'resumo' | 'fechamento' | 'recebiveis' | 'parcelas' | 'historico' | '
 const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: typeof Banknote; cor: string; badge: string }> = {
   DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400', badge: 'Imediato' },
   PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400', badge: 'Imediato' },
-  DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400', badge: 'Imediato' },
+  DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-700 dark:text-purple-300', badge: 'Imediato' },
   CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground', badge: 'D+30' },
   BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400', badge: 'D+3' },
 };
@@ -1088,10 +1088,10 @@ export default function ComissoesPage() {
                                 </span>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
                                   pref === 'mensal'
-                                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                    ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-500/20'
                                     : pref === 'quinzenal'
-                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/20'
+                                    : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/20'
                                 }`}>
                                   {pref === 'mensal' ? '📅 Mensal' : pref === 'quinzenal' ? '🌓 Quinzenal' : '🗓️ Semanal'}
                                 </span>
@@ -1313,9 +1313,9 @@ export default function ComissoesPage() {
                 </p>
               </CardGlass>
 
-              <CardGlass className="p-4 border-l-4 border-l-purple-400">
+              <CardGlass className="p-4 border-l-4 border-l-purple-500">
                 <p className="text-xs text-foreground/50">Já Quitado no Período</p>
-                <p className="text-xl font-bold text-purple-400 mt-1">
+                <p className="text-xl font-bold text-purple-800 dark:text-purple-300 mt-1">
                   {fmt(recebiveisFiltrados.filter(i => i.status === 'PAID').reduce((s, i) => s + i.amount, 0))}
                 </p>
                 <p className="text-[11px] text-foreground/50 mt-1">
@@ -1881,7 +1881,7 @@ export default function ComissoesPage() {
               {taxas.map(taxa => {
                 const tipoConfig = {
                   credito: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground bg-amber-500/10 border-amber-500/20' },
-                  debito: { label: 'Débito', icon: CreditCard, cor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+                  debito: { label: 'Débito', icon: CreditCard, cor: 'text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/10 border-purple-300 dark:border-purple-500/20' },
                   pix: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
                   dinheiro: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                   boleto: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400 bg-gray-500/10 border-gray-500/20' },

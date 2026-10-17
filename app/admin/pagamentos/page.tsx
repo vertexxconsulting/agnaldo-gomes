@@ -20,7 +20,7 @@ const EXPENSE_CATEGORIES: Record<string, { label: string; icon: any; color: stri
   PAYROLL: { label: 'Pagamento de Funcionários', icon: Users, color: 'text-blue-500 bg-blue-500/10' },
   MAINTENANCE: { label: 'Manutenção do Salão', icon: Wrench, color: 'text-amber-500 bg-amber-500/10' },
   SUPPLIES: { label: 'Alimentação / Insumos', icon: Coffee, color: 'text-orange-500 bg-orange-500/10' },
-  BILLS: { label: 'Contas (Água, Luz, Internet)', icon: Receipt, color: 'text-purple-500 bg-purple-500/10' },
+  BILLS: { label: 'Contas (Água, Luz, Internet)', icon: Receipt, color: 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/10' },
   OTHER: { label: 'Outras Despesas', icon: Archive, color: 'text-slate-500 bg-slate-500/10' }
 };
 
@@ -892,8 +892,8 @@ export default function AdminFinanceiro() {
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                                 <span className="text-xs text-foreground/50">Prof.: {nomeProf}</span>
                                 {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
-                                    <Users size={11} /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-200 font-semibold border border-purple-300 dark:border-purple-500/30 flex items-center gap-1">
+                                    <Users size={11} className="text-purple-700 dark:text-purple-300" /> +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
                                   </span>
                                 )}
                               </div>
@@ -1456,8 +1456,8 @@ export default function AdminFinanceiro() {
                   {editingApptGestao.auxiliares_ids && editingApptGestao.auxiliares_ids.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {editingApptGestao.auxiliares_ids.map(aid => (
-                        <span key={aid} className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30 flex items-center gap-1">
-                          <Users size={10} /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                        <span key={aid} className="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-200 font-semibold border border-purple-300 dark:border-purple-500/30 flex items-center gap-1">
+                          <Users size={10} className="text-purple-700 dark:text-purple-300" /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
                         </span>
                       ))}
                     </div>

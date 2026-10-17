@@ -868,8 +868,8 @@ export default function IAAssistentePage() {
           {/* Módulo Academy */}
           <CardGlass className="p-6 space-y-4 border-purple-500/20">
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                <GraduationCap size={15} /> 3. Agnaldo Gomes Academy
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
+                <GraduationCap size={15} className="text-purple-700 dark:text-purple-400" /> 3. Agnaldo Gomes Academy
               </h4>
               <input
                 type="checkbox"

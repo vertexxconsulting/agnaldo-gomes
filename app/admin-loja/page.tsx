@@ -64,7 +64,7 @@ export default function AdminLojaDashboard() {
   const ecossistema = [
     { href: '/hub', label: 'Command Center', desc: 'Gerencie tudo em um só lugar', icon: Sparkles, cor: 'text-amber-500', bg: 'bg-amber-500/10', hover: 'hover:border-amber-500/50 hover:bg-amber-50' },
     { href: '/admin', label: 'Studio / Agenda', desc: 'Agendamentos e clientes', icon: CalendarDays, cor: 'text-slate-700', bg: 'bg-slate-100', hover: 'hover:border-slate-400 hover:bg-slate-50' },
-    { href: '/admin-academy', label: 'Academy', desc: 'Cursos e alunos', icon: Users, cor: 'text-purple-500', bg: 'bg-purple-500/10', hover: 'hover:border-purple-400 hover:bg-purple-50' },
+    { href: '/admin-academy', label: 'Academy', desc: 'Cursos e alunos', icon: Users, cor: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100 dark:bg-purple-500/10', hover: 'hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20' },
   ];
 
   return (
