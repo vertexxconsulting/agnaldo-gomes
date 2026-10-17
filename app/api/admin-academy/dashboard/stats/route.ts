@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       { count: totalAlunos },
       { count: alunosAtivos },
       { count: cursosPublicados },
+      { count: cursosTotal },
       { count: totalMatriculas },
       { data: progressoData },
       { data: receitaData },
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'STUDENT'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'STUDENT'),
       supabase.from('courses').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED'),
+      supabase.from('courses').select('*', { count: 'exact', head: true }),
       supabase.from('course_enrollments').select('*', { count: 'exact', head: true }),
       supabase
         .from('lesson_progress')
@@ -44,10 +46,16 @@ export async function GET(request: NextRequest) {
 
     const receitaTotal = receitaData?.reduce((sum: number, e: { courses?: { price?: number | string } | null }) => sum + Number(e.courses?.price || 0), 0) ?? 0;
 
+    const totalCursosNum = cursosTotal ?? 0;
+    const publicadosNum = cursosPublicados ?? 0;
+    const rascunhosNum = Math.max(0, totalCursosNum - publicadosNum);
+
     return NextResponse.json({
       totalAlunos: totalAlunos ?? 0,
       alunosAtivos: alunosAtivos ?? 0,
-      cursosPublicados: cursosPublicados ?? 0,
+      cursosPublicados: publicadosNum,
+      cursosTotal: totalCursosNum,
+      cursosRascunho: rascunhosNum,
       totalMatriculas: totalMatriculas ?? 0,
       taxaConclusao,
       receitaTotal,

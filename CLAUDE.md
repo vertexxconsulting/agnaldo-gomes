@@ -512,6 +512,29 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.21 Ciclo de Publicação de Cursos & Dashboard da Academy (`/admin-academy`)
+
+- **Controle de Publicação dos Cursos (`DRAFT` vs `PUBLISHED`)**:
+  - Novos cursos são criados inicialmente com status `DRAFT` (Rascunho), garantindo que módulos, aulas e vídeos sejam estruturados antes de ficarem visíveis para os alunos.
+  - O catálogo público e área do aluno filtram estritamente por `status = 'PUBLISHED'`, mantendo rascunhos 100% ocultos.
+- **Botões e Ações de Publicar / Despublicar**:
+  - **Na Grade de Cursos (`/admin-academy/cursos`)**:
+    - Cada card exibe badge de status nítido com alto contraste (🟢 *Publicado* ou 🟡 *Rascunho*).
+    - Botão de ação rápida integrado: **"Publicar para Alunos"** (para rascunhos) ou **"Mudar para Rascunho"** (para cursos publicados), disparando atualização atômica via `PATCH`.
+  - **Na Edição do Curso (`/admin-academy/cursos/[cursoId]`)**:
+    - Cabeçalho superior com badge de status e botão proeminente **"🚀 Publicar Curso"** / **"Mudar para Rascunho"**.
+    - Painel informativo na aba *Detalhes* explicando a visibilidade e o impacto na plataforma.
+- **Atualização das Rotas da API (`/api/admin-academy/cursos/[id]`)**:
+  - Rota `PUT` atualizada para receber e persistir o campo `status` no payload.
+  - Implementado método `PATCH` para alternância ágil de status sem necessidade de reenviar todo o formulário.
+  - Rota de estatísticas (`/api/admin-academy/dashboard/stats`) ajustada para contabilizar `cursosPublicados`, `cursosTotal` e `cursosRascunho`.
+- **Ajustes no Dashboard da Academy (`/admin-academy`)**:
+  - Substituição da busca de mock por chamada à API real de cursos, exibindo os cursos cadastrados pelo administrador na seção *Seus Cursos Cadastrados*.
+  - Indicador de cursos em rascunho no card *Cursos Publicados* (`X em rascunho`).
+  - Remoção da trava `max-w-6xl` no layout da Academy (`/admin-academy/layout.tsx`), aproveitando a largura total fluida da tela (`w-full max-w-none px-3 sm:px-5 lg:px-6`).
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

@@ -80,7 +80,7 @@ export default function AdminAcademyLayout({ children }: { children: React.React
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
         {/* Removido ThemeToggle conforme solicitação */}
-        <div className="pt-16 md:pt-0 px-4 sm:px-6 lg:px-8 pb-12 max-w-6xl mx-auto">
+        <div className="pt-16 md:pt-2 px-3 sm:px-5 lg:px-6 pb-12 w-full max-w-none">
           {children}
         </div>
       </main>

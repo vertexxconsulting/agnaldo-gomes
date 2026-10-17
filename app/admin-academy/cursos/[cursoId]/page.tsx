@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, AlertTriangle, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, CheckCircle2, AlertTriangle, UploadCloud, Globe, EyeOff } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -19,6 +19,7 @@ interface Curso {
   stripe_payment_link?: string;
   price?: number;
   certificate_bg_url?: string;
+  status: string;
 }
 
 interface Modulo {
@@ -67,7 +68,7 @@ export default function AdminEdicaoCursoPage() {
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; paymentLink?: string; error?: string } | null>(null);
-  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', certificate_bg_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null, level: 'Iniciante' });
+  const [cursoForm, setCursoForm] = useState({ title: '', description: '', thumbnail_url: '', certificate_bg_url: '', stripe_payment_link: '', price: 0, current_price: null as number | null, original_price: null as number | null, level: 'Iniciante', status: 'DRAFT' });
 
   const isCreatingPayment = paymentLoading;
 
@@ -115,6 +116,7 @@ export default function AdminEdicaoCursoPage() {
           current_price: c.current_price || null,
           original_price: c.original_price || null,
           level: c.level || 'Iniciante',
+          status: c.status || 'DRAFT',
         });
       }
 
@@ -156,6 +158,35 @@ export default function AdminEdicaoCursoPage() {
       }
     } catch (err) {
       console.error('Erro ao salvar curso:', err);
+      alert('Erro de conexão');
+    }
+    setSaving(false);
+  };
+
+  const handleTogglePublish = async () => {
+    if (!curso) return;
+    const isCurrentlyPublished = curso.status === 'PUBLISHED';
+    const nextStatus = isCurrentlyPublished ? 'DRAFT' : 'PUBLISHED';
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin-academy/cursos/${cursoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setCurso(updated.curso);
+        setCursoForm(prev => ({ ...prev, status: nextStatus }));
+        alert(nextStatus === 'PUBLISHED' 
+          ? '🎉 Curso publicado com sucesso! Agora ele está visível para os alunos e contabilizado no dashboard.' 
+          : '📦 Curso revertido para rascunho. Ele não aparecerá para os alunos até ser publicado novamente.');
+      } else {
+        const err = await res.json();
+        alert('Erro ao alterar status: ' + (err.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      console.error('Erro ao alternar publicação:', err);
       alert('Erro de conexão');
     }
     setSaving(false);
@@ -324,19 +355,55 @@ export default function AdminEdicaoCursoPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       {/* Header Fixo */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-gold/10 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-gold/10 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <Link href="/admin-academy/cursos" className="p-2 hover:bg-foreground/5 rounded-full text-foreground/70 transition-colors">
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Editar Curso</h1>
-            <p className="text-sm text-foreground/60">{curso.title}</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">Editar Curso</h1>
+              {curso.status === 'PUBLISHED' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  <CheckCircle2 size={11} className="text-emerald-700" /> Publicado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300">
+                  <EyeOff size={11} className="text-amber-800" /> Rascunho (Oculto)
+                </span>
+              )}
+            </div>
+            <p className="text-xs sm:text-sm text-foreground/60 truncate max-w-md">{curso.title}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={carregarDados} disabled={loading}>Recarregar</Button>
+        <div className="flex items-center gap-2.5">
+          {curso.status === 'PUBLISHED' ? (
+            <button
+              onClick={handleTogglePublish}
+              disabled={saving}
+              className="px-3.5 py-2 rounded-xl border border-amber-500/40 text-amber-700 hover:bg-amber-500/10 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              title="Ocultar dos alunos e reverter para rascunho"
+            >
+              <EyeOff size={14} />
+              <span>Mudar para Rascunho</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleTogglePublish}
+              disabled={saving}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg"
+              title="Publicar curso para ficar disponível aos alunos"
+            >
+              <Globe size={14} />
+              <span>Publicar Curso</span>
+            </button>
+          )}
+
+          <Button variant="outline" onClick={carregarDados} disabled={loading || saving} size="sm">
+            Recarregar
+          </Button>
+
           <Button variant="primary" className="flex items-center gap-2" onClick={handleSaveCurso} disabled={saving}>
             <Save size={16} /> {saving ? <Loader2 size={16} className="animate-spin" /> : 'Salvar Alterações'}
           </Button>
@@ -372,6 +439,52 @@ export default function AdminEdicaoCursoPage() {
         {/* Tab Detalhes */}
         {activeTab === 'detalhes' && (
           <div className="space-y-6">
+            {/* Status Card Informativo */}
+            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              curso.status === 'PUBLISHED' 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-950' 
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-950'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  curso.status === 'PUBLISHED' ? 'bg-emerald-500/20 text-emerald-700' : 'bg-amber-500/20 text-amber-700'
+                }`}>
+                  {curso.status === 'PUBLISHED' ? <Globe size={20} /> : <EyeOff size={20} />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">
+                    {curso.status === 'PUBLISHED' ? 'Curso Publicado e Ativo' : 'Curso em Modo Rascunho'}
+                  </h3>
+                  <p className="text-xs opacity-80">
+                    {curso.status === 'PUBLISHED' 
+                      ? 'Este curso está visível no catálogo para os alunos e contabilizado nas métricas do painel.' 
+                      : 'Este curso está oculto para os alunos. Somente administradores podem visualizá-lo e editar suas aulas.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleTogglePublish}
+                disabled={saving}
+                className={`px-4 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all shrink-0 ${
+                  curso.status === 'PUBLISHED'
+                    ? 'border border-amber-500/50 bg-background text-amber-800 hover:bg-amber-500/15'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                }`}
+              >
+                {curso.status === 'PUBLISHED' ? (
+                  <>
+                    <EyeOff size={13} />
+                    <span>Reverter para Rascunho</span>
+                  </>
+                ) : (
+                  <>
+                    <Globe size={13} />
+                    <span>Publicar Agora</span>
+                  </>
+                )}
+              </button>
+            </div>
+
             <div className="bg-card-bg border border-gold/20 p-6 rounded-xl">
               <h2 className="text-lg font-bold text-foreground mb-4">Informações Básicas</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

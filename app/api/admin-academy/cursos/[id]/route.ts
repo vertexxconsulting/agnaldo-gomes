@@ -34,7 +34,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     const body = await req.json();
-    const { title, description, thumbnail_url, duration_hours, level, tags, stripe_payment_link, price, certificate_bg_url } = body;
+    const { title, description, thumbnail_url, duration_hours, level, tags, stripe_payment_link, price, certificate_bg_url, status } = body;
 
     const payload: Record<string, unknown> = {};
     if (title !== undefined) payload.title = String(title).trim();
@@ -46,6 +46,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (stripe_payment_link !== undefined) payload.stripe_payment_link = stripe_payment_link;
     if (price !== undefined) payload.price = Number(price) || 0;
     if (certificate_bg_url !== undefined) payload.certificate_bg_url = certificate_bg_url;
+    if (status !== undefined && ['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(status)) {
+      payload.status = status;
+    }
 
     const { data, error } = await auth.supabase!
       .from('courses')
@@ -62,6 +65,43 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ success: true, curso: data });
   } catch (err) {
     console.error('[api/admin-academy/cursos/[id]] Erro inesperado:', err);
+    const message = err instanceof Error ? err.message : 'Erro interno';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAcademyAuth();
+  if (auth.error) return auth.error;
+
+  const { id } = await params;
+
+  try {
+    const body = await req.json();
+    const { status } = body;
+
+    if (!status || !['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(status)) {
+      return NextResponse.json(
+        { error: 'Status inválido. Utilize DRAFT, PUBLISHED ou ARCHIVED.' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await auth.supabase!
+      .from('courses')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[api/admin-academy/cursos/[id]] Erro no PATCH:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, curso: data });
+  } catch (err) {
+    console.error('[api/admin-academy/cursos/[id]] Erro inesperado no PATCH:', err);
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
   }

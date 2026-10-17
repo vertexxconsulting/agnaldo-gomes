@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Loader2, Globe, EyeOff, CheckCircle2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/ui/Modal';
 
@@ -24,6 +24,7 @@ export default function AdminCursosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   const carregar = async () => {
     setLoading(true);
@@ -100,6 +101,29 @@ export default function AdminCursosPage() {
     setDeletingId(null);
   };
 
+  const handleTogglePublish = async (curso: Curso) => {
+    const isCurrentlyPublished = curso.status === 'PUBLISHED';
+    const nextStatus = isCurrentlyPublished ? 'DRAFT' : 'PUBLISHED';
+    setPublishingId(curso.id);
+    try {
+      const res = await fetch(`/api/admin-academy/cursos/${curso.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        setCursos(prev => prev.map(c => c.id === curso.id ? { ...c, status: nextStatus } : c));
+      } else {
+        const err = await res.json();
+        alert('Erro ao alterar status: ' + (err.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      console.error('Erro ao alternar publicação do curso:', err);
+      alert('Erro de conexão');
+    }
+    setPublishingId(null);
+  };
+
   const filteredCursos = cursos.filter(curso =>
     curso.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -161,49 +185,105 @@ export default function AdminCursosPage() {
 
       {/* Grade de Cursos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredCursos.map(curso => (
-          <div key={curso.id} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden flex flex-col group hover:border-gold/50 transition-colors">
+        {filteredCursos.map(curso => {
+          const isPublished = curso.status === 'PUBLISHED';
+          const isPublishing = publishingId === curso.id;
 
-            {/* Capa */}
-            <div className="aspect-video relative bg-foreground border-b border-[var(--border-subtle)]">
-              <div
-                className="absolute inset-0 bg-cover bg-center opacity-80"
-                style={{ backgroundImage: `url(${curso.thumbnail_url})` }}
-              />
+          return (
+            <div key={curso.id} className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl overflow-hidden flex flex-col group hover:border-gold/50 transition-all shadow-sm">
 
-              <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Link href={`/admin-academy/cursos/${curso.id}`}>
-                  <button className="bg-black/60 backdrop-blur border border-white/20 p-1.5 rounded text-white hover:text-gold transition-colors">
-                    <Edit2 size={16} />
+              {/* Capa */}
+              <div className="aspect-video relative bg-foreground/10 border-b border-[var(--border-subtle)]">
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-90 group-hover:scale-105 transition-transform duration-300"
+                  style={{ backgroundImage: `url(${curso.thumbnail_url || '/agnaldo1.webp'})` }}
+                />
+
+                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link href={`/admin-academy/cursos/${curso.id}`}>
+                    <button className="bg-black/70 backdrop-blur border border-white/20 p-1.5 rounded-lg text-white hover:text-gold transition-colors" title="Editar curso">
+                      <Edit2 size={15} />
+                    </button>
+                  </Link>
+                  <button 
+                    className="bg-black/70 backdrop-blur border border-white/20 p-1.5 rounded-lg text-white hover:text-red-400 transition-colors"
+                    onClick={() => confirmDelete(curso)}
+                    disabled={deletingId === curso.id}
+                    title="Excluir curso"
+                  >
+                    {deletingId === curso.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                   </button>
-                </Link>
-                <button 
-                  className="bg-black/60 backdrop-blur border border-white/20 p-1.5 rounded text-white hover:text-red-500 transition-colors"
-                  onClick={() => confirmDelete(curso)}
-                  disabled={deletingId === curso.id}
-                >
-                  {deletingId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                </button>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col flex-1">
+                {/* Badge de Status */}
+                <div className="flex items-center justify-between mb-2.5">
+                  {isPublished ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      <CheckCircle2 size={11} className="text-emerald-700" /> Publicado
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300">
+                      <EyeOff size={11} className="text-amber-800" /> Rascunho (Oculto)
+                    </span>
+                  )}
+                  <span className="text-[10px] text-foreground/45 font-medium">
+                    {new Date(curso.created_at).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+
+                <h3 className="font-bold text-foreground text-base mb-1 line-clamp-2" title={curso.title}>
+                  {curso.title}
+                </h3>
+
+                {/* Botões de Ação Direta no Card */}
+                <div className="mt-auto pt-4 space-y-2 border-t border-[var(--border-subtle)]">
+                  {isPublished ? (
+                    <button
+                      onClick={() => handleTogglePublish(curso)}
+                      disabled={isPublishing}
+                      className="w-full py-2 px-3 rounded-lg border border-[var(--border-subtle)] hover:border-amber-500/50 hover:bg-amber-500/10 text-foreground/70 hover:text-amber-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                      title="Ocultar este curso dos alunos e reverter para rascunho"
+                    >
+                      {isPublishing ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <>
+                          <EyeOff size={13} />
+                          <span>Mudar para Rascunho</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleTogglePublish(curso)}
+                      disabled={isPublishing}
+                      className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm hover:shadow disabled:opacity-50"
+                      title="Publicar para que este curso apareça no catálogo dos alunos"
+                    >
+                      {isPublishing ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Globe size={13} />
+                          <span>Publicar para Alunos</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <Link href={`/admin-academy/cursos/${curso.id}`} className="block w-full">
+                    <button className="w-full py-1.5 px-3 rounded-lg bg-foreground/5 hover:bg-foreground/10 text-foreground font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors">
+                      <Edit2 size={12} />
+                      <span>Editar Módulos & Aulas</span>
+                    </button>
+                  </Link>
+                </div>
               </div>
             </div>
-
-            <div className="p-4 flex flex-col flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-foreground/50 bg-[var(--background)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)]">
-                  {curso.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
-                </span>
-              </div>
-
-              <h3 className="font-bold text-foreground text-base mb-1 line-clamp-1" title={curso.title}>
-                {curso.title}
-              </h3>
-
-              <div className="flex items-center justify-between text-xs text-foreground/50 mt-auto pt-4 border-t border-[var(--border-subtle)]">
-                <span>Criado em: {new Date(curso.created_at).toLocaleDateString('pt-BR')}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {filteredCursos.length === 0 && (
           <div className="col-span-full text-center py-12 text-foreground/50">
