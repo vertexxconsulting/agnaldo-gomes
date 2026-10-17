@@ -606,27 +606,26 @@ export default function EstoquePage() {
   const produtosVenda = produtos.filter(p => p.allow_sale && p.active).length;
 
   return (
-    <div className="py-8">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Estoque do Salão" subtitle="Insumos · Produtos para Venda · Movimentações" align="left" />
+    <div className="py-4 w-full">
+      <SectionTitle title="Estoque do Salão" subtitle="Insumos · Produtos para Venda · Movimentações" align="left" />
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 mb-6">
-          {[
-            { icon: Package, label: 'Produtos Ativos', value: totalProdutos, cor: 'text-gold' },
-            { icon: BarChart3, label: 'Valor em Estoque', value: fmt(totalEmEstoque), cor: 'text-emerald-400' },
-            { icon: ShoppingBag, label: 'Para Venda', value: produtosVenda, cor: 'text-blue-400' },
-            { icon: AlertTriangle, label: 'Alertas Baixo', value: alertas.length, cor: alertas.length > 0 ? 'text-amber-400' : 'text-foreground/40' },
-          ].map((k, i) => (
-            <CardGlass key={i} className="p-4 flex items-center gap-3">
-              <k.icon size={22} className={k.cor} />
-              <div>
-                <p className="text-xs text-foreground/50">{k.label}</p>
-                <p className={`text-lg font-bold ${k.cor}`}>{k.value}</p>
-              </div>
-            </CardGlass>
-          ))}
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-5">
+        {[
+          { icon: Package, label: 'Produtos Ativos', value: totalProdutos, cor: 'text-gold' },
+          { icon: BarChart3, label: 'Valor em Estoque', value: fmt(totalEmEstoque), cor: 'text-emerald-400' },
+          { icon: ShoppingBag, label: 'Para Venda', value: produtosVenda, cor: 'text-blue-400' },
+          { icon: AlertTriangle, label: 'Alertas Baixo', value: alertas.length, cor: alertas.length > 0 ? 'text-amber-400' : 'text-foreground/40' },
+        ].map((k, i) => (
+          <CardGlass key={i} className="p-3 flex items-center gap-2.5">
+            <k.icon size={18} className={`${k.cor} shrink-0`} />
+            <div className="min-w-0">
+              <p className="text-[11px] text-foreground/50 truncate">{k.label}</p>
+              <p className={`text-base font-bold ${k.cor} truncate`}>{k.value}</p>
+            </div>
+          </CardGlass>
+        ))}
+      </div>
 
         {/* NAVEGAÇÃO DE ABAS PADRONIZADA */}
         <div className="border-b border-[var(--border-subtle)] mb-8">
@@ -940,7 +939,6 @@ export default function EstoquePage() {
             })}
           </div>
         )}
-      </div>
 
       {/* MODAL: Formulário Produto */}
       {showForm && (

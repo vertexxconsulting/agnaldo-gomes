@@ -123,71 +123,71 @@ export default function ReceptionDashboard() {
       </div>
 
       {/* Atalhos Rápidos no Topo */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Link href="/admin/agenda" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary hover:text-primary transition-colors text-foreground">
-          <Clock size={20} className="text-primary" />
-          Novo Agendamento
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        <Link href="/admin/agenda" className="flex items-center justify-center py-2.5 px-3 gap-2 text-xs font-medium rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary hover:text-primary transition-colors text-foreground">
+          <Clock size={16} className="text-primary shrink-0" />
+          <span>Novo Agendamento</span>
         </Link>
-        <Link href="/admin/clientes" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-secondary hover:text-secondary transition-colors text-foreground">
-          <UserPlus size={20} className="text-secondary" />
-          Novo Cliente
+        <Link href="/admin/clientes" className="flex items-center justify-center py-2.5 px-3 gap-2 text-xs font-medium rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-secondary hover:text-secondary transition-colors text-foreground">
+          <UserPlus size={16} className="text-secondary shrink-0" />
+          <span>Novo Cliente</span>
         </Link>
-        <Link href="/admin/estoque" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-accent hover:text-accent transition-colors text-foreground">
-          <ShoppingCart size={20} className="text-accent" />
-          Venda Balcão
+        <Link href="/admin/estoque" className="flex items-center justify-center py-2.5 px-3 gap-2 text-xs font-medium rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-accent hover:text-accent transition-colors text-foreground">
+          <ShoppingCart size={16} className="text-accent shrink-0" />
+          <span>Venda Balcão</span>
         </Link>
-        <Link href="/admin/relatorios" className="flex flex-col items-center justify-center p-4 gap-2 text-xs font-medium rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-info hover:text-info transition-colors text-foreground">
-          <Wallet size={20} className="text-info" />
-          Despesas / Resumo
+        <Link href="/admin/relatorios" className="flex items-center justify-center py-2.5 px-3 gap-2 text-xs font-medium rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-info hover:text-info transition-colors text-foreground">
+          <Wallet size={16} className="text-info shrink-0" />
+          <span>Despesas / Resumo</span>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         
         {/* Coluna Esquerda / Central: Fila de Atendimento e Caixa */}
-        <div className="xl:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-5">
           
           {/* Fila 1: Aguardando Pagamento (Serviço Concluído, pronto para Receber no Caixa) */}
           {aguardandoRecebimento.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-emerald-500">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+            <div className="space-y-3">
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                 Aguardando Pagamento / Caixa ({aguardandoRecebimento.length})
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {aguardandoRecebimento.map(ag => {
                   const srv = getServico(ag.servico_id);
                   return (
-                    <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-emerald-500/30 bg-emerald-500/5 shadow-md">
+                    <Panel key={ag.id} className="p-3 sm:p-3.5 flex flex-col relative overflow-hidden group border-emerald-500/30 bg-emerald-500/5 shadow-sm rounded-xl">
                       <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full mb-1 inline-block">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-600/30 px-2 py-0.5 rounded-full mb-1 inline-block">
                             ● Serviço Concluído
                           </span>
-                          <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
-                          <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
+                          <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
+                          <p className="text-xs text-foreground/70 truncate">{srv?.nome}</p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-gold font-mono block">
+                        <div className="text-right shrink-0 ml-2">
+                          <span className="text-xs sm:text-sm font-bold text-gold font-mono block">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(srv?.preco || 0)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 mb-5">
-                        <Scissors size={14} className="text-foreground/40" />
-                        <span className="text-xs text-foreground/60">Atendido por {getProfissionalNome(ag.profissional_id)}</span>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Scissors size={13} className="text-foreground/40 shrink-0" />
+                        <span className="text-[11px] text-foreground/60 truncate">Atendido por {getProfissionalNome(ag.profissional_id)}</span>
                       </div>
                       
                       <div className="mt-auto">
                         <Button 
                           variant="primary" 
                           onClick={() => setCheckoutAppt(ag)}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-none shadow-lg shadow-emerald-600/30 py-2.5 text-sm"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-none shadow-sm py-1.5 px-3 text-xs rounded-lg"
                         >
-                          <Banknote size={18} className="mr-2" />
+                          <Banknote size={15} className="mr-1.5" />
                           Ir para Fechamento Prévio
                         </Button>
                       </div>
@@ -199,51 +199,51 @@ export default function ReceptionDashboard() {
           )}
 
           {/* Fila 2: Na Cadeira (Em Atendimento) */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+          <div className="space-y-3">
+            <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-foreground">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
               Na Cadeira Agora (Em Atendimento)
             </h2>
             
             {naCadeira.length === 0 ? (
-              <Panel className="p-8 text-center text-foreground/50 border-dashed">
+              <Panel className="p-6 text-center text-xs text-foreground/50 border-dashed">
                 Nenhuma cliente em atendimento na cadeira no momento.
               </Panel>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {naCadeira.map(ag => {
                   const srv = getServico(ag.servico_id);
                   return (
-                    <Panel key={ag.id} className="p-5 flex flex-col relative overflow-hidden group border-primary/20 bg-primary/5">
+                    <Panel key={ag.id} className="p-3 sm:p-3.5 flex flex-col relative overflow-hidden group border-primary/20 bg-primary/5 rounded-xl">
                       <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-[11px] font-semibold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full mb-1 inline-block">
+                          <span className="text-[10px] font-semibold text-primary/90 bg-primary/10 px-2 py-0.5 rounded-full mb-1 inline-block">
                             Em Atendimento
                           </span>
-                          <h3 className="text-lg font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
-                          <p className="text-sm text-foreground/70 truncate">{srv?.nome}</p>
+                          <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
+                          <p className="text-xs text-foreground/70 truncate">{srv?.nome}</p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-xs bg-[var(--color-background)] px-2 py-1 rounded-md text-foreground/60 border border-[var(--color-border)]">
+                        <div className="text-right shrink-0 ml-2">
+                          <span className="text-[10px] bg-[var(--color-background)] px-1.5 py-0.5 rounded text-foreground/60 border border-[var(--color-border)] font-mono">
                             Iniciou {ag.hora_inicio}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 mb-5">
-                        <Scissors size={14} className="text-foreground/40" />
-                        <span className="text-xs text-foreground/60">{getProfissionalNome(ag.profissional_id)}</span>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Scissors size={13} className="text-foreground/40 shrink-0" />
+                        <span className="text-[11px] text-foreground/60 truncate">{getProfissionalNome(ag.profissional_id)}</span>
                       </div>
                       
-                      <div className="mt-auto space-y-2">
+                      <div className="mt-auto space-y-1.5">
                         {/* Botão de Concluir Atendimento */}
                         <Button 
                           variant="primary" 
                           onClick={() => handleConcluirAtendimento(ag.id)}
-                          className="w-full font-bold shadow-md"
+                          className="w-full font-bold shadow-sm py-1.5 px-3 text-xs rounded-lg"
                         >
-                          <CheckCircle2 size={16} className="mr-2" />
+                          <CheckCircle2 size={15} className="mr-1.5" />
                           Concluir Atendimento
                         </Button>
 
@@ -251,9 +251,9 @@ export default function ReceptionDashboard() {
                         <button
                           type="button"
                           onClick={() => setCheckoutAppt(ag)}
-                          className="w-full text-xs text-emerald-500 hover:text-emerald-400 font-medium py-1 flex items-center justify-center gap-1 transition-colors"
+                          className="w-full text-[11px] text-emerald-800 dark:text-emerald-400 hover:underline font-semibold py-0.5 flex items-center justify-center gap-1 transition-colors"
                         >
-                          <Banknote size={14} />
+                          <Banknote size={13} />
                           Ou ir direto para Fechamento Prévio
                         </button>
                       </div>
@@ -266,30 +266,32 @@ export default function ReceptionDashboard() {
         </div>
 
         {/* Coluna Direita: Próximos a Chegar */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Clock className="text-foreground/50" />
+        <div className="space-y-3">
+          <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-foreground">
+            <Clock size={16} className="text-foreground/50" />
             Próximos a Chegar
           </h2>
           
-          <div className="space-y-3">
+          <div className="space-y-2">
             {proximos.length === 0 ? (
-              <p className="text-sm text-foreground/50 p-4 text-center border border-[var(--color-border)] rounded-xl border-dashed">
+              <p className="text-xs text-foreground/50 p-4 text-center border border-[var(--color-border)] rounded-xl border-dashed">
                 Nenhum agendamento pendente para hoje.
               </p>
             ) : (
               proximos.map(ag => (
-                <div key={ag.id} className="flex items-center justify-between p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl hover:border-foreground/20 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="text-center">
-                      <span className="block font-mono text-sm font-bold text-foreground">{ag.hora_inicio}</span>
+                <div key={ag.id} className="flex items-center justify-between py-2 px-2.5 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg hover:border-foreground/20 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="text-center shrink-0">
+                      <span className="block font-mono text-xs font-bold text-foreground">{ag.hora_inicio}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-sm truncate">{getClienteNome(ag.cliente_id)}</p>
-                      <p className="text-xs text-foreground/50 truncate">com {getProfissionalNome(ag.profissional_id)}</p>
+                      <p className="font-bold text-xs text-foreground truncate">{getClienteNome(ag.cliente_id)}</p>
+                      <p className="text-[11px] text-foreground/50 truncate">com {getProfissionalNome(ag.profissional_id)}</p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => handleCheckin(ag.id)}>Chegou</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCheckin(ag.id)} className="h-6 py-0 px-2 text-[11px] shrink-0 font-medium">
+                    Chegou
+                  </Button>
                 </div>
               ))
             )}

@@ -298,9 +298,8 @@ export default function ProfissionaisPage() {
   };
 
   return (
-    <div className="py-8">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Comissão · Agenda" align="left" />
+    <div className="py-4 w-full">
+      <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Comissão · Agenda" align="left" />
 
         {/* Barra de ações */}
         <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
@@ -865,11 +864,10 @@ export default function ProfissionaisPage() {
         </div>
 
         {filtrados.length === 0 && (
-          <CardGlass className="text-center py-8 mt-6">
-            <p className="text-foreground/50">Nenhum profissional encontrado.</p>
+          <CardGlass className="text-center py-6 mt-4">
+            <p className="text-xs text-foreground/50">Nenhum profissional encontrado.</p>
           </CardGlass>
         )}
-      </div>
     </div>
   );
 }

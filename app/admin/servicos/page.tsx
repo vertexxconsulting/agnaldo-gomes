@@ -134,9 +134,8 @@ export default function ServicosPage() {
   };
 
   return (
-    <div className="py-8">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Serviços" subtitle="Cadastro · Categorias · Duração · Preço" align="left" />
+    <div className="py-4 w-full">
+      <SectionTitle title="Serviços" subtitle="Cadastro · Categorias · Duração · Preço" align="left" />
 
         {/* Ações */}
         <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
@@ -334,20 +333,19 @@ export default function ServicosPage() {
         </CardGlass>
 
         {/* Resumo */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
           {[
             { label: 'Total', value: servicos.length },
             { label: 'Ativos', value: servicos.filter(s => s.ativo).length },
             { label: 'Categorias', value: categorias.length },
             { label: 'Ticket médio', value: `R$ ${Math.round(servicos.filter(s => s.ativo).reduce((a, s) => a + s.preco, 0) / Math.max(1, servicos.filter(s => s.ativo).length))}` },
           ].map((item, i) => (
-            <CardGlass key={i} className="text-center py-4">
-              <span className="text-xs text-foreground/50 uppercase tracking-wider">{item.label}</span>
-              <div className="text-2xl font-bold text-gold mt-1">{item.value}</div>
+            <CardGlass key={i} className="text-center py-2.5 px-3">
+              <span className="text-[10px] text-foreground/50 uppercase tracking-wider">{item.label}</span>
+              <div className="text-base sm:text-lg font-bold text-gold mt-0.5">{item.value}</div>
             </CardGlass>
           ))}
         </div>
-      </div>
     </div>
   );
 }

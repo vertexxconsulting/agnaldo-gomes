@@ -17,10 +17,10 @@ export function CardGlass({
     <div
       className={cn(
         'glass rounded-2xl backdrop-blur-md',
-        compact ? 'p-5' : 'p-8',
+        compact ? 'p-3 sm:p-3.5' : 'p-4 sm:p-5',
         withBorder && 'border border-white/10',
-        'shadow-lg',
-        'hover:shadow-xl transition-all duration-300',
+        'shadow-md',
+        'hover:shadow-lg transition-all duration-300',
         className
       )}
     >

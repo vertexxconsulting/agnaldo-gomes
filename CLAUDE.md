@@ -416,6 +416,21 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.16 Expansão Lateral Completa e Design Compacto dos Cards e Textos
+
+- **Aproveitamento Total da Largura (Eliminação de Margens Artificiais)**:
+  - No layout administrativo mestre (`app/admin/layout.tsx`), remoção da trava restritiva de `max-w-6xl` que criava espaços vazios laterais indesejados. O conteúdo agora ocupa elegantemente a largura total (`w-full max-w-none px-3 sm:px-5 lg:px-6`).
+  - Remoção de containers rígidos (`container mx-auto px-6`) nas abas de Estoque, Serviços, Profissionais e Comissões, padronizando a largura total fluida em todas as seções.
+- **Compactação Proporcional de Cards, Textos e Ações**:
+  - **`Panel` e `StatCard` (`components/ui/Panel.tsx`)**: Padding reduzido para `p-3 sm:p-3.5`, valores numéricos ajustados de `text-2xl` para `text-lg sm:text-xl font-bold`, ícones discretos e labels enxutas em `text-[10px]`.
+  - **Dashboard da Recepção (`app/admin/page.tsx`)**:
+    - Botões de atalhos rápidos compactados horizontalmente com padding `py-2.5 px-3` e ícones `size={16}`.
+    - Cards de atendimento ("Na Cadeira Agora" e "Aguardando Caixa") com tipografia proporcional (`text-sm sm:text-base` para nomes de clientes, `text-xs` para serviços e botões otimizados em `text-xs py-1.5 px-3`).
+    - Lista "Próximos a Chegar" condensada em `py-2 px-2.5` com botões "Chegou" em altura reduzida (`h-6`).
+  - **`CardGlass` (`components/CardGlass.tsx`)**: Padding padrão reduzido de `p-8` / `p-5` para `p-4 sm:p-5` / `p-3 sm:p-3.5` em modo compacto.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

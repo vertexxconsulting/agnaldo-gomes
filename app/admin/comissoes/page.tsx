@@ -754,9 +754,8 @@ export default function ComissoesPage() {
   const vencidas = parcelas.filter(p => isVencida(p.due_date)).length;
 
   return (
-    <div className="py-8">
-      <div className="container mx-auto px-6">
-        <SectionTitle title="Comissões de Profissionais" subtitle="Fechamento Semanal · Recebíveis D+30 · Repasses Financeiros" align="left" />
+    <div className="py-4 w-full">
+      <SectionTitle title="Comissões de Profissionais" subtitle="Fechamento Semanal · Recebíveis D+30 · Repasses Financeiros" align="left" />
 
         {/* ALERTA DE REGRA DE NEGÓCIO OFICIAL */}
         <div className="mt-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-gold/10 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-sm">
@@ -2142,7 +2141,6 @@ export default function ComissoesPage() {
             </CardGlass>
           </div>
         )}
-      </div>
 
       {/* MODAL: RECIBO / EXTRATO DE FECHAMENTO SEMANAL */}
       {reciboModalData && (

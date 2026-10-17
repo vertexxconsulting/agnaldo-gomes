@@ -25,14 +25,14 @@ export function Panel({
         'rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)]',
         'shadow-sm',
         'transition-shadow duration-300 hover:shadow-md',
-        compact ? 'p-4' : 'p-6',
+        compact ? 'p-3 sm:p-3.5' : 'p-4 sm:p-5',
         className
       )}
     >
       {(title || action) && (
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
           {title && (
-            <h3 className="text-sm font-bold text-foreground">{title}</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-foreground">{title}</h3>
           )}
           {action && <div className="shrink-0">{action}</div>}
         </div>
@@ -85,23 +85,23 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'rounded-xl border bg-[var(--color-card)] p-4 flex flex-col gap-3 transition-shadow hover:shadow-md',
+        'rounded-xl border bg-[var(--color-card)] p-3 sm:p-3.5 flex flex-col gap-1.5 transition-shadow hover:shadow-md',
         tones[tone],
         className
       )}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-wider font-semibold text-foreground/50 truncate">
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-foreground/50 truncate">
           {label}
         </p>
         {Icon && (
-          <div className={cn('p-1.5 rounded-lg shrink-0', iconBg[tone])}>
-            <Icon size={16} />
+          <div className={cn('p-1 rounded-md shrink-0', iconBg[tone])}>
+            <Icon size={14} />
           </div>
         )}
       </div>
       <div>
-        <p className={cn('text-2xl font-bold tracking-tight', valueTone[tone])}>
+        <p className={cn('text-lg sm:text-xl font-bold tracking-tight', valueTone[tone])}>
           {value}
         </p>
       </div>
@@ -126,22 +126,22 @@ export function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-end justify-between gap-3 mb-4', className)}>
+    <div className={cn('flex items-end justify-between gap-3 mb-3', className)}>
       <div>
         {eyebrow && (
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary mb-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary mb-1">
             {eyebrow}
           </p>
         )}
-        <h2 className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground">
+        <h2 className="font-serif text-lg md:text-xl font-bold tracking-tight text-foreground">
           {title}
         </h2>
         {description && (
-          <p className="text-sm text-foreground/70 mt-1 max-w-xl">
+          <p className="text-xs text-foreground/70 mt-0.5 max-w-xl">
             {description}
           </p>
         )}
-        <div className="w-7 h-[3px] rounded-full bg-primary mt-2" />
+        <div className="w-6 h-[2.5px] rounded-full bg-primary mt-1.5" />
       </div>
       {action && <div className="shrink-0 pb-0.5">{action}</div>}
     </div>
