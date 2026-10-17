@@ -431,6 +431,26 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.17 Regras de Comissão Agrupadas por Profissional (Expandir/Recolher)
+
+- **Eliminação da Lista Misturada (`app/admin/comissoes/page.tsx` - Aba "Regras de Comissão")**:
+  - As centenas de regras por serviço foram organizadas em cartões expansíveis individuais (sanfona/accordion) para cada profissional da equipe.
+  - Cada card exibe avatar, nome do profissional, especialidade, percentual geral e quantidade de procedimentos configurados.
+- **Visualização Clara e Ajustes Precisos**:
+  - Ao expandir o profissional, é exibida sua tabela dedicada de serviços com:
+    - Procedimento e categoria.
+    - Preço base do serviço de tabela.
+    - Percentual de comissão aplicada (ex: `40%`).
+    - Repasse estimado em reais (ex: `R$ 192,00`), permitindo ao gestor visualizar o impacto financeiro exato de cada regra.
+    - Botão de edição direta da comissão e exclusão.
+  - Botão de ação rápida `+ Adicionar Serviço` diretamente no cabeçalho ou rodapé de cada profissional.
+- **Navegação Produtiva e Busca Rápida**:
+  - Botões para "Expandir Todos" e "Recolher Todos" em um único clique.
+  - Barra de busca instantânea que filtra por nome do profissional ou por nome do serviço (expandindo automaticamente os resultados correspondentes).
+  - Filtro por profissional integrado que foca e abre a sanfona do profissional selecionado.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

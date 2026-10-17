@@ -7,7 +7,7 @@ import {
   Banknote, Smartphone, RefreshCw, Filter, SlidersHorizontal,
   CalendarDays, Calendar, ChevronLeft, ChevronRight, Info,
   Check, Copy, Printer, Sparkles, Share2, Search, ArrowRight,
-  Calculator, ShieldCheck, CheckCircle
+  Calculator, ShieldCheck, CheckCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
@@ -261,6 +261,29 @@ export default function ComissoesPage() {
   const [formRegra, setFormRegra] = useState({ professional_id: '', service_id: '', commission_pct: 40, notes: '' });
   const [salvandoRegra, setSalvandoRegra] = useState(false);
   const [erroModal, setErroModal] = useState<string | null>(null);
+
+  // Estados de expandir/recolher e busca da aba de regras por profissional
+  const [profsExpandidosRegras, setProfsExpandidosRegras] = useState<Record<string, boolean>>({});
+  const [buscaRegraServico, setBuscaRegraServico] = useState('');
+
+  const toggleProfRegra = (profId: string) => {
+    setProfsExpandidosRegras(prev => ({
+      ...prev,
+      [profId]: !prev[profId]
+    }));
+  };
+
+  const expandirTodosProfs = () => {
+    const todos: Record<string, boolean> = {};
+    profissionais.forEach(p => { todos[p.id] = true; });
+    setProfsExpandidosRegras(todos);
+  };
+
+  const recolherTodosProfs = () => {
+    const nenhum: Record<string, boolean> = {};
+    profissionais.forEach(p => { nenhum[p.id] = false; });
+    setProfsExpandidosRegras(nenhum);
+  };
 
   // Estados de Taxas e Maquininhas
   const [taxas, setTaxas] = useState<PaymentFee[]>([]);
@@ -1718,94 +1741,306 @@ export default function ComissoesPage() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            ABA 6: REGRAS DE COMISSÃO POR SERVIÇO
+            ABA 6: REGRAS DE COMISSÃO POR SERVIÇO (AGRUPADAS POR PROFISSIONAL COM EXPANDIR/RECOLHER)
            ══════════════════════════════════════════════════════════════ */}
-        {!loading && aba === 'regras' && (
-          <div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div>
-                <h3 className="text-lg font-bold">Regras e Percentuais de Repasse por Serviço</h3>
-                <p className="text-xs text-foreground/50">
-                  Configure o percentual de comissão de cada profissional específico por procedimento/serviço.
-                </p>
-              </div>
-              <Button variant="primary" onClick={() => abrirRegra()}>
-                <Plus size={16} className="mr-1.5" /> Nova Regra por Serviço
-              </Button>
-            </div>
+        {!loading && aba === 'regras' && (() => {
+          const termoBusca = buscaRegraServico.toLowerCase().trim();
 
-            {/* Regras específicas por serviço */}
-            <div>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3">
-                <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
-                  Tabela de Comissões por Procedimento
-                </h4>
-                
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-xs text-foreground/50">
-                    <Filter size={14} /> Filtrar Profissional:
+          // Filtra profissionais pelo seletor e pela busca
+          const profissionaisFiltrados = profissionais.filter(prof => {
+            if (profFiltro !== 'todos' && prof.id !== profFiltro) return false;
+            if (!termoBusca) return true;
+
+            const matchNome = (prof.nome || '').toLowerCase().includes(termoBusca);
+            const matchCargo = (prof.categoria || prof.cargo || '').toLowerCase().includes(termoBusca);
+
+            // Verifica se algum serviço específico deste profissional contém o termo buscado
+            const regrasDeste = regras.filter(r => r.professional_id === prof.id && !!r.service_id);
+            const matchServico = regrasDeste.some(r => {
+              const svcNome = (servicos.find(s => s.id === r.service_id)?.nome || '').toLowerCase();
+              return svcNome.includes(termoBusca);
+            });
+
+            return matchNome || matchCargo || matchServico;
+          });
+
+          const totalRegrasGerais = regras.filter(r => !!r.service_id).length;
+
+          return (
+            <div className="space-y-4">
+              {/* Topo / Título & Botão de Criação */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-foreground">
+                    Regras e Percentuais de Repasse por Serviço
+                  </h3>
+                  <p className="text-xs text-foreground/50 mt-0.5">
+                    Configure individualmente o percentual de repasse de cada profissional por procedimento.
+                  </p>
+                </div>
+                <Button variant="primary" size="sm" onClick={() => abrirRegra()} className="py-2 px-3 text-xs">
+                  <Plus size={15} className="mr-1.5" /> Nova Regra por Serviço
+                </Button>
+              </div>
+
+              {/* Barra de Filtros e Ferramentas */}
+              <CardGlass className="p-3">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 text-xs">
+                  {/* Busca Rápida por Profissional ou Serviço */}
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome do profissional ou do serviço..."
+                      value={buscaRegraServico}
+                      onChange={e => setBuscaRegraServico(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:border-gold"
+                    />
+                    {buscaRegraServico && (
+                      <button
+                        onClick={() => setBuscaRegraServico('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground p-0.5"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </div>
-                  <select
-                    value={profFiltro}
-                    onChange={e => setProfFiltro(e.target.value)}
-                    className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
-                  >
-                    <option value="todos">Todos os profissionais</option>
-                    {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
-                </div>
-              </div>
 
-              {regras.filter(r => !!r.service_id && (profFiltro === 'todos' || r.professional_id === profFiltro)).length > 0 ? (
-                <CardGlass className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-foreground/40 text-xs uppercase tracking-wider border-b border-[var(--border-subtle)]">
-                        {profFiltro === 'todos' && <th className="py-3 px-4">Profissional</th>}
-                        <th className="py-3 px-4">Serviço Específico</th>
-                        <th className="py-3 px-4">Comissão Aplicada</th>
-                        <th className="py-3 px-4 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {regras.filter(r => !!r.service_id && (profFiltro === 'todos' || r.professional_id === profFiltro)).map(r => (
-                        <tr key={r.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-foreground/5">
-                          {profFiltro === 'todos' && <td className="py-3 px-4 font-semibold">{getProfNome(r.professional_id)}</td>}
-                          <td className="py-3 px-4 text-foreground/80">{getSvcNome(r.service_id)}</td>
-                          <td className="py-3 px-4 font-bold text-foreground text-base">{r.commission_pct}%</td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="inline-flex gap-1">
-                              <button
-                                onClick={() => abrirRegra(r)}
-                                title="Editar regra"
-                                className="p-1.5 rounded hover:bg-foreground/5 text-foreground/60 hover:text-foreground"
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <button
-                                onClick={() => excluirRegra(r.id)}
-                                title="Excluir regra"
-                                className="p-1.5 rounded hover:bg-red-500/10 text-foreground/60 hover:text-red-400"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                  {/* Filtro por Profissional */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-foreground/50 text-[11px] whitespace-nowrap flex items-center gap-1">
+                      <Filter size={12} /> Profissional:
+                    </span>
+                    <select
+                      value={profFiltro}
+                      onChange={e => setProfFiltro(e.target.value)}
+                      className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gold font-medium"
+                    >
+                      <option value="todos">Todos os profissionais ({profissionais.length})</option>
+                      {profissionais.map(p => (
+                        <option key={p.id} value={p.id}>{p.nome}</option>
                       ))}
-                    </tbody>
-                  </table>
-                </CardGlass>
-              ) : (
-                <div className="text-center py-10 text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
-                  <SlidersHorizontal size={28} className="mx-auto mb-2 opacity-30 text-foreground" />
-                  <p className="text-sm font-medium">Nenhuma regra por serviço cadastrada.</p>
-                  <p className="text-xs text-foreground/40 mt-1">Clique em "Nova Regra por Serviço" acima para definir a comissão dos profissionais em cada procedimento.</p>
+                    </select>
+                  </div>
+
+                  {/* Ações Rápidas: Expandir Todos / Recolher Todos */}
+                  <div className="flex items-center gap-1.5 shrink-0 pt-1 lg:pt-0 border-t lg:border-t-0 border-[var(--border-subtle)]">
+                    <button
+                      type="button"
+                      onClick={expandirTodosProfs}
+                      className="px-2.5 py-1 rounded border border-[var(--border-subtle)] hover:bg-foreground/5 text-[11px] font-medium flex items-center gap-1 text-foreground/70 transition-colors"
+                      title="Expandir todas as listas de serviços dos profissionais"
+                    >
+                      <ChevronDown size={13} /> Expandir Todos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={recolherTodosProfs}
+                      className="px-2.5 py-1 rounded border border-[var(--border-subtle)] hover:bg-foreground/5 text-[11px] font-medium flex items-center gap-1 text-foreground/70 transition-colors"
+                      title="Recolher todas as listas de serviços dos profissionais"
+                    >
+                      <ChevronUp size={13} /> Recolher Todos
+                    </button>
+                    <span className="text-[10px] text-foreground/40 font-mono ml-1 px-2 py-0.5 bg-foreground/5 rounded-full">
+                      {totalRegrasGerais} regras
+                    </span>
+                  </div>
                 </div>
-              )}
+              </CardGlass>
+
+              {/* Lista de Profissionais em Sanfona (Accordion) */}
+              <div className="space-y-3">
+                {profissionaisFiltrados.length === 0 ? (
+                  <div className="text-center py-10 text-foreground/40 border border-dashed border-[var(--border-subtle)] rounded-xl">
+                    <SlidersHorizontal size={24} className="mx-auto mb-2 opacity-30 text-foreground" />
+                    <p className="text-sm font-medium">Nenhum profissional encontrado com os filtros atuais.</p>
+                    <p className="text-xs text-foreground/40 mt-1">Limpe o campo de busca ou selecione "Todos os profissionais".</p>
+                  </div>
+                ) : (
+                  profissionaisFiltrados.map(prof => {
+                    let regrasDoProf = regras.filter(r => r.professional_id === prof.id && !!r.service_id);
+
+                    // Se houver busca de serviço específica, filtra as regras exibidas
+                    if (termoBusca) {
+                      regrasDoProf = regrasDoProf.filter(r => {
+                        const sNome = (servicos.find(s => s.id === r.service_id)?.nome || '').toLowerCase();
+                        const pNome = (prof.nome || '').toLowerCase();
+                        return sNome.includes(termoBusca) || pNome.includes(termoBusca);
+                      });
+                    }
+
+                    // Se prof estiver selecionado no filtro ou houver busca, fica expandido por padrão
+                    const isExpanded = profsExpandidosRegras[prof.id] !== undefined
+                      ? profsExpandidosRegras[prof.id]
+                      : (profFiltro === prof.id || Boolean(termoBusca));
+
+                    return (
+                      <CardGlass key={prof.id} className="p-0 overflow-hidden transition-all duration-200 border border-[var(--border-subtle)]">
+                        {/* Header do Profissional (Clicável para expandir/recolher) */}
+                        <div
+                          onClick={() => toggleProfRegra(prof.id)}
+                          className={`p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none transition-colors ${
+                            isExpanded ? 'bg-foreground/[0.04] border-b border-[var(--border-subtle)]' : 'hover:bg-foreground/[0.02]'
+                          }`}
+                        >
+                          {/* Info do Profissional */}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-gold/15 text-gold flex items-center justify-center font-bold text-xs shrink-0 border border-gold/30">
+                              {(prof.nome || 'P').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-foreground truncate">
+                                  {prof.nome}
+                                </h4>
+                                {prof.categoria && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-foreground/5 text-foreground/50 border border-[var(--border-subtle)] font-medium">
+                                    {prof.categoria}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-foreground/50 truncate flex items-center gap-2 mt-0.5">
+                                <span>Comissão geral: <strong className="text-foreground/70">{prof.comissao_padrao ?? 40}%</strong></span>
+                                <span>•</span>
+                                <span className={regrasDoProf.length > 0 ? 'text-gold font-medium' : 'text-foreground/40'}>
+                                  {regrasDoProf.length} {regrasDoProf.length === 1 ? 'regra de serviço' : 'regras de serviço'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Ações e Botão de Expandir */}
+                          <div className="flex items-center justify-end gap-2 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                abrirRegra(undefined, prof.id);
+                              }}
+                              className="text-xs py-1 px-2.5 h-7 rounded border font-semibold flex items-center gap-1 shadow-xs"
+                            >
+                              <Plus size={13} />
+                              <span className="hidden sm:inline">Adicionar Serviço</span>
+                            </Button>
+
+                            <div className="w-7 h-7 rounded-md flex items-center justify-center text-foreground/40 hover:text-foreground transition-transform">
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Conteúdo Expandido: Tabela de Serviços e Comissões */}
+                        {isExpanded && (
+                          <div className="p-3 sm:p-4 bg-background/50 animate-in fade-in duration-200">
+                            {regrasDoProf.length === 0 ? (
+                              <div className="py-6 px-4 text-center border border-dashed border-[var(--border-subtle)] rounded-lg">
+                                <p className="text-xs text-foreground/50 font-medium">
+                                  Nenhum serviço com percentual específico configurado para {prof.nome}.
+                                </p>
+                                <p className="text-[11px] text-foreground/40 mt-0.5">
+                                  Atendimentos deste profissional utilizam a comissão padrão ({prof.comissao_padrao ?? 40}%).
+                                </p>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => abrirRegra(undefined, prof.id)}
+                                  className="mt-3 text-xs py-1 px-3"
+                                >
+                                  <Plus size={13} className="mr-1" /> Configurar Primeiro Procedimento
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="border border-[var(--border-subtle)] rounded-lg overflow-x-auto bg-[var(--color-card)]">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-left text-foreground/40 text-[10px] uppercase tracking-wider border-b border-[var(--border-subtle)] bg-foreground/[0.02]">
+                                        <th className="py-2 px-3">Procedimento / Serviço</th>
+                                        <th className="py-2 px-3">Preço Base</th>
+                                        <th className="py-2 px-3">Comissão</th>
+                                        <th className="py-2 px-3">Repasse Estimado</th>
+                                        <th className="py-2 px-3 text-right">Ações</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border-subtle)]">
+                                      {regrasDoProf.map(r => {
+                                        const svc = servicos.find(s => s.id === r.service_id);
+                                        const precoBase = svc?.preco || 0;
+                                        const repasseEstimado = (precoBase * r.commission_pct) / 100;
+
+                                        return (
+                                          <tr key={r.id} className="hover:bg-foreground/[0.02] transition-colors">
+                                            <td className="py-2 px-3">
+                                              <p className="font-bold text-foreground text-xs">{getSvcNome(r.service_id)}</p>
+                                              {svc?.categoria && (
+                                                <span className="text-[10px] text-foreground/40">{svc.categoria}</span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 font-mono text-foreground/70">
+                                              {precoBase > 0 ? fmt(precoBase) : '—'}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                              <span className="inline-block px-2 py-0.5 rounded font-bold text-xs font-mono bg-gold/15 text-gold border border-gold/30">
+                                                {r.commission_pct}%
+                                              </span>
+                                            </td>
+                                            <td className="py-2 px-3 font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
+                                              {precoBase > 0 ? fmt(repasseEstimado) : '—'}
+                                            </td>
+                                            <td className="py-2 px-3 text-right">
+                                              <div className="inline-flex items-center gap-1">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => abrirRegra(r)}
+                                                  title="Editar comissão deste serviço"
+                                                  className="p-1.5 rounded hover:bg-gold/10 text-foreground/60 hover:text-gold transition-colors"
+                                                >
+                                                  <Edit size={13} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => excluirRegra(r.id)}
+                                                  title="Remover regra deste serviço"
+                                                  className="p-1.5 rounded hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"
+                                                >
+                                                  <Trash2 size={13} />
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-1 px-1">
+                                  <p className="text-[11px] text-foreground/40 font-mono">
+                                    {regrasDoProf.length} serviço{regrasDoProf.length === 1 ? '' : 's'} com regra específica
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => abrirRegra(undefined, prof.id)}
+                                    className="text-[11px] font-semibold text-gold hover:underline flex items-center gap-1"
+                                  >
+                                    <Plus size={12} /> Adicionar outro serviço para {prof.nome}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardGlass>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════════════════════
             ABA 7: TAXAS E MAQUININHAS
