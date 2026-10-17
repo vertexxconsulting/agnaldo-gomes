@@ -1181,8 +1181,9 @@ function AgendaContent() {
   const adicionarProdutoAoCheckout = () => {
     if (!checkoutNovoProdId) return;
     const prod = estoque.find(e => e.id === checkoutNovoProdId);
-    if (!prod) return;
-    const q = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
+    if (!prod || (prod.stock_qty ?? 0) <= 0) return;
+    const maxDisponivel = prod.stock_qty ?? 1;
+    const q = Math.min(maxDisponivel, Math.max(1, parseInt(checkoutNovoProdQty) || 1));
     const precoOriginal = prod.sale_price || 0;
     const subtotalItem = precoOriginal * q;
     const descVal = Math.min(subtotalItem, Math.max(0, parseFloat(checkoutNovoProdDescValor) || 0));
@@ -2182,7 +2183,7 @@ function AgendaContent() {
                   >
                     <option value="">Selecione o produto do estoque...</option>
                     {estoque
-                      .filter(p => p.allow_procedure_use)
+                      .filter(p => p.allow_procedure_use && (p.stock_qty ?? 0) > 0)
                       .map(p => {
                         const precoG = (p.price_per_gram && p.price_per_gram > 0)
                           ? p.price_per_gram
@@ -2655,7 +2656,7 @@ function AgendaContent() {
                         className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400"
                       >
                         <option value="">Selecione o produto utilizado...</option>
-                        {estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale)).map(p => {
+                        {estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale) && (p.stock_qty ?? 0) > 0).map(p => {
                           const ppg = (p.price_per_gram && p.price_per_gram > 0)
                             ? p.price_per_gram
                             : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
@@ -2840,7 +2841,7 @@ function AgendaContent() {
                         className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
                       >
                         <option value="">Selecione o produto...</option>
-                        {estoque.filter(p => p.allow_sale && p.active).map(p => (
+                        {estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0).map(p => (
                           <option key={p.id} value={p.id}>
                             {p.name} — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.sale_price || 0)} ({p.stock_qty} em estoque)
                           </option>

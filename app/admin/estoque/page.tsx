@@ -755,7 +755,7 @@ export default function EstoquePage() {
                           title="Dar baixa no estoque com senha (procedimento, perda ou avaria)">
                           <TrendingDown size={13} /> Baixa
                         </button>
-                        {p.allow_sale && (
+                        {p.allow_sale && (p.stock_qty ?? 0) > 0 && (
                           <button onClick={() => abrirVenda(p)}
                             className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-blue-500/30 text-blue-400 text-xs hover:bg-blue-500/10 transition-colors"
                             title="Vender produto no salão">
@@ -1383,7 +1383,7 @@ export default function EstoquePage() {
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
                     >
                       <option value="">Selecione o produto...</option>
-                      {produtos.filter(p => p.active && p.allow_sale).map(p => (
+                      {produtos.filter(p => p.active && p.allow_sale && (p.stock_qty ?? 0) > 0).map(p => (
                         <option key={p.id} value={p.id}>
                           {p.name} {p.brand ? `(${p.brand})` : ''} — {fmt(p.sale_price || 0)} [{fmtQty(p.stock_qty, p.unit)}]
                         </option>

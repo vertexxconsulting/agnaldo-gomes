@@ -393,7 +393,26 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 - **Padrão de Alto Contraste para Textos e Badges Verdes**:
   - Eliminação de verdes pastéis esmaecidos (`text-emerald-300` / `text-emerald-400` puros) sobre fundos claros que violavam critérios de acessibilidade WCAG.
   - No tema claro (`--background: #faf8f3`), aplicação sistemática de verdes profundos legíveis (`text-emerald-800`, `text-emerald-900`, `text-emerald-950` e caixas informativas em `bg-emerald-100/90 border-emerald-300`).
-  - Preservação da legibilidade no modo escuro via classes `dark:text-emerald-300`, `dark:text-emerald-200` e `dark:bg-emerald-950/40`.
+---
+
+## 8.15 Ocultação Sistemática de Produtos sem Saldo em Estoque (Fechamento, Comanda, Balcão e Vitrine)
+
+- **Regra de Negócio Rígida**:
+  - Nenhum produto com saldo em estoque zerado ou negativo (`stock_qty <= 0` ou `stock_quantity <= 0`) pode ser exibido para venda ou seleção em qualquer ponto do sistema.
+  - O produto é automaticamente ocultado de todas as listagens de venda e só volta a ficar visível quando for registrada uma nova entrada com saldo positivo no estoque.
+- **Pontos Cobertos**:
+  1. **Modal de Fechamento / Checkout (`components/CheckoutModal.tsx` e `app/admin/agenda/page.tsx`)**:
+     - Seletor "Adicionar produto da prateleira..." e insumos de checkout filtram apenas produtos ativos com `allow_sale` e `stock_qty > 0`.
+     - Trava de validação na inclusão para impedir adição manual de itens zerados e bloqueio de quantidade superior ao estoque disponível.
+  2. **Comanda do Profissional (`app/admin/meu-painel/page.tsx`)**:
+     - Seletores de insumos de procedimento e upsell de venda filtram produtos com saldo `> 0`.
+     - Validação estrita na função `handleSalvarProduto` bloqueando qualquer lançamento de produtos esgotados.
+  3. **Venda de Balcão e Catálogo de Estoque (`app/admin/estoque/page.tsx`)**:
+     - Botão "Vender" só é renderizado em cards com saldo positivo `stock_qty > 0`.
+     - O seletor do modal "Venda de Produtos no Salão (Balcão)" exibe apenas itens com saldo positivo.
+  4. **Vitrine da Loja Online (`lib/shop-queries.ts`, `app/(shop)/loja/page.tsx`, `categoria/[slug]/page.tsx`, `p/[id]/page.tsx`)**:
+     - Listagens de produtos, destaques, categorias e mais vendidos ocultam produtos locais (`LOCAL_STOCK`) que estejam com `stock_quantity <= 0` (mantendo produtos `AFFILIATE_ML` que operam via links externos).
+     - Validação defensiva no carrinho e na tela de detalhes do produto bloqueando adição se esgotado.
 
 ---
 

@@ -86,7 +86,14 @@ export default function ProductDetailPage() {
     return notFound();
   }
 
+  const outOfStock = produto.type === 'LOCAL_STOCK' && (produto.stock_quantity ?? 0) <= 0;
+  const installments = produto.price ? (produto.price / 12).toFixed(2) : null;
+
   const handleAddToCart = () => {
+    if (outOfStock) {
+      alert('Produto esgotado.');
+      return;
+    }
     addItem({
       id: produto.id,
       product_id: produto.id,
@@ -112,9 +119,6 @@ export default function ProductDetailPage() {
       setShippingMsg('Correios PAC (3 a 7 dias úteis): R$ 28,50 • SEDEX expresso: R$ 42,90');
     }
   };
-
-  const outOfStock = produto.type === 'LOCAL_STOCK' && produto.stock_quantity === 0;
-  const installments = produto.price ? (produto.price / 12).toFixed(2) : null;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-10 max-w-6xl relative">

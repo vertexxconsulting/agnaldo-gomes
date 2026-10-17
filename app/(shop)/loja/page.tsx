@@ -65,7 +65,8 @@ export default function LojaHome() {
           setFetchError(error.message);
           setProducts([]);
         } else if (data) {
-          setProducts(data.map(toProduct));
+          const list = data.map(toProduct).filter((p: ShopProduct) => p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0);
+          setProducts(list);
         } else {
           setProducts([]);
         }
@@ -91,12 +92,13 @@ export default function LojaHome() {
   }, []);
 
   const categories = useMemo(() => {
-    return [...new Set(products.filter(p => p.active).map(p => p.category))];
+    return [...new Set(products.filter(p => p.active && (p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0)).map(p => p.category))];
   }, [products]);
 
   const filtered = useMemo(() => {
     return products.filter(p => {
       if (!p.active) return false;
+      if (p.type !== 'AFFILIATE_ML' && (p.stock_quantity ?? 0) <= 0) return false;
       if (selectedCategory && p.category !== selectedCategory) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -106,13 +108,17 @@ export default function LojaHome() {
     });
   }, [products, selectedCategory, search]);
 
-  const featured = useMemo(() => products.filter(p => p.featured).slice(0, 4), [products]);
+  const featured = useMemo(() => products.filter(p => p.featured && (p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0)).slice(0, 4), [products]);
   const maisVendidos = useMemo(
-    () => [...products.filter(p => p.type === 'LOCAL_STOCK')].sort((a, b) => b.reviews - a.reviews).slice(0, 8),
+    () => [...products.filter(p => p.type === 'LOCAL_STOCK' && (p.stock_quantity ?? 0) > 0)].sort((a, b) => b.reviews - a.reviews).slice(0, 8),
     [products]
   );
 
   const handleAddToCart = (p: ShopProduct) => {
+    if (p.type === 'LOCAL_STOCK' && (p.stock_quantity ?? 0) <= 0) {
+      alert('Produto temporariamente sem estoque disponível.');
+      return;
+    }
     addItem({ id: p.id, product_id: p.id, type: 'LOCAL_STOCK', name: p.name, price: p.price ?? 0, image_url: p.image_url, quantity: 1 });
     setToast(`${p.name.length > 38 ? p.name.slice(0, 38) + '…' : p.name} adicionado!`);
     setTimeout(() => setToast(null), 2500);

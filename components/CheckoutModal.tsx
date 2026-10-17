@@ -578,7 +578,7 @@ export function CheckoutModal({
                     className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
                   >
                     <option value="">Adicionar produto da prateleira...</option>
-                    {estoque.filter(p => p.allow_sale && p.active).map(p => (
+                    {estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.name} — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.sale_price || 0)} ({p.stock_qty} un)
                       </option>
@@ -604,8 +604,9 @@ export function CheckoutModal({
                     onClick={() => {
                       if (!checkoutNovoProdId) return;
                       const prodSel = estoque.find(p => p.id === checkoutNovoProdId);
-                      if (!prodSel) return;
-                      const q = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
+                      if (!prodSel || (prodSel.stock_qty ?? 0) <= 0) return;
+                      const maxDisponivel = prodSel.stock_qty ?? 1;
+                      const q = Math.min(maxDisponivel, Math.max(1, parseInt(checkoutNovoProdQty) || 1));
                       const basePrice = prodSel.sale_price || 0;
 
                       setCheckoutProdutos(prev => [...prev, {

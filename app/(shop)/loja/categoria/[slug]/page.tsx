@@ -71,7 +71,8 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           setError(error.message);
           setProducts([]);
         } else if (data) {
-          setProducts(data.map(toProduct));
+          const list = data.map(toProduct).filter((p: ShopProduct) => p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0);
+          setProducts(list);
         } else {
           setProducts([]);
         }
@@ -92,6 +93,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
 
   const filtered = products.filter(p => {
     if (!p.active) return false;
+    if (p.type !== 'AFFILIATE_ML' && (p.stock_quantity ?? 0) <= 0) return false;
     if (targetCategory && p.category !== targetCategory) return false;
     return true;
   });

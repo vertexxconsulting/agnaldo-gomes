@@ -268,15 +268,22 @@ export default function MeuPainelPage() {
     const prod = produtosLoja.find(p => p.id === produtoSelecionado);
     if (!prod) return;
 
+    const stockDisponivel = Number(prod.stock_quantity ?? (prod as any).stock ?? (prod as any).stock_qty ?? 0);
+    if (stockDisponivel <= 0) {
+      alert('Produto com estoque zerado no momento. Não é possível lançar.');
+      return;
+    }
+
+    const finalQty = Math.min(qtyNum, stockDisponivel);
     const precoBase = prod.price ?? 0;
-    const sub = precoBase * qtyNum;
+    const sub = precoBase * finalQty;
     const descVal = Math.min(sub, Math.max(0, parseFloat(produtoDescValor) || 0));
-    const precoFinalUnit = (sub - descVal) / qtyNum;
+    const precoFinalUnit = (sub - descVal) / finalQty;
 
     await salvarItemComanda(activeAgendamento.id, {
       inventory_id: produtoSelecionado,
       type: 'PRODUTO',
-      qty: qtyNum,
+      qty: finalQty,
       price: precoFinalUnit
     });
 
@@ -288,8 +295,8 @@ export default function MeuPainelPage() {
     setProdutoDescValor('');
   };
 
-  const insumosDoEstoque = estoque.filter(p => p.allow_procedure_use);
-  const produtosDeVenda = estoque.filter(p => p.allow_sale);
+  const insumosDoEstoque = estoque.filter(p => p.allow_procedure_use && (p.stock_qty ?? 0) > 0);
+  const produtosDeVenda = estoque.filter(p => p.allow_sale && (p.stock_qty ?? 0) > 0);
 
   if (loading) {
     return <div className="p-8 text-center text-foreground/50">Carregando painel...</div>;
@@ -780,8 +787,8 @@ export default function MeuPainelPage() {
                     }}
                   >
                     <option value="">Selecione o Produto...</option>
-                    {produtosLoja.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} — R$ {p.price}</option>
+                    {produtosLoja.filter(p => (Number(p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0)) > 0).map(p => (
+                      <option key={p.id} value={p.id}>{p.name} — R$ {p.price} ({p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0} un)</option>
                     ))}
                   </select>
                   <input 

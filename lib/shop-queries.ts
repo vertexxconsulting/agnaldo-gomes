@@ -6,13 +6,15 @@ import { ShopProduct } from '@/lib/shop-mock';
  * Se a coluna 'featured' não existir no DB (migration pendente),
  * todos os produtos retornam com featured=false via mapRowToProduct.
  */
+const hasStock = (p: ShopProduct) => p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0;
+
 export async function getAllProducts(): Promise<ShopProduct[]> {
   const { data, error } = await supabase
     .from('products')
     .select('*')
     .eq('active', true);
   if (error || !data) return [];
-  return data.map(mapRowToProduct);
+  return data.map(mapRowToProduct).filter(hasStock);
 }
 
 /**
@@ -38,7 +40,7 @@ export async function getProductsByCategory(category: string): Promise<ShopProdu
     .eq('category', category)
     .eq('active', true);
   if (error || !data) return [];
-  return data.map(mapRowToProduct);
+  return data.map(mapRowToProduct).filter(hasStock);
 }
 
 /**
@@ -60,7 +62,7 @@ export async function getFeaturedProducts(): Promise<ShopProduct[]> {
     .eq('active', true)
     .limit(4);
   if (error || !data) return [];
-  return data.map(mapRowToProduct);
+  return data.map(mapRowToProduct).filter(hasStock);
 }
 
 /**
@@ -78,7 +80,7 @@ export async function getRelatedProducts(
     .eq('active', true)
     .limit(8);
   if (error || !data) return [];
-  return data.map(mapRowToProduct);
+  return data.map(mapRowToProduct).filter(hasStock);
 }
 
 /**
