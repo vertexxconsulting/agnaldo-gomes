@@ -1764,15 +1764,15 @@ function AgendaContent() {
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border rounded p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
-                                          isAuxiliarNeste ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-500/30' : ''
+                                          isAuxiliarNeste ? 'bg-gold/10 dark:bg-gold/5 border-gold/40' : ''
                                         }`}
                                         style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bg, borderColor: cor.border }}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#9333ea' : cor.bar }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : cor.bar }}></div>
                                         <div className="pl-2">
                                           {isAuxiliarNeste && (
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-purple-900 dark:text-purple-200 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded border border-purple-300 dark:border-purple-500/30 mb-1 w-fit">
-                                              <Users size={10} className="text-purple-700 dark:text-purple-300" />
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit">
+                                              <Users size={10} className="text-gold" />
                                               <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
                                             </div>
                                           )}
@@ -1815,12 +1815,12 @@ function AgendaContent() {
                                                   e.stopPropagation();
                                                   abrirLancarInsumoTempoReal(a);
                                                 }}
-                                                className="px-1.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                                                className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer"
                                               >
-                                                <Beaker size={10} className="text-purple-200" />
+                                                <Beaker size={10} className="text-white" />
                                                 <span>+ Insumo</span>
                                                 {a.insumos_detalhes && a.insumos_detalhes.length > 0 && (
-                                                  <span className="bg-purple-950/70 text-purple-100 px-1 rounded-full text-[8px] font-mono font-bold">
+                                                  <span className="bg-black/30 text-white px-1 rounded-full text-[8px] font-mono font-bold">
                                                     {a.insumos_detalhes.length}
                                                   </span>
                                                 )}
@@ -1849,19 +1849,19 @@ function AgendaContent() {
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${
                                           isAuxiliarNeste 
-                                            ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-500/40 hover:bg-purple-100 dark:hover:bg-purple-900/30' 
+                                            ? 'bg-gold/10 dark:bg-gold/5 border-gold/40 hover:bg-gold/15' 
                                             : ''
                                         }`}
                                         style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bgOngoing, borderColor: cor.border }}
                                         title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#9333ea' : cor.bar }}></div>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : cor.bar }}></div>
                                         <div className="pl-1.5">
                                           <div className="flex items-center justify-between gap-1">
                                             <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
-                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#9333ea' : cor.bar }}>↳</span> {cliente}
+                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#C5A059' : cor.bar }}>↳</span> {cliente}
                                               {isAuxiliarNeste && (
-                                                <span className="text-[9px] text-purple-900 dark:text-purple-200 font-bold bg-purple-100 dark:bg-purple-900/40 px-1 rounded border border-purple-300 dark:border-purple-500/30">Auxiliar</span>
+                                                <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30">Auxiliar</span>
                                               )}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -1892,9 +1892,9 @@ function AgendaContent() {
                                                   e.stopPropagation();
                                                   abrirLancarInsumoTempoReal(a);
                                                 }}
-                                                className="px-1.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                                                className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
                                               >
-                                                <Beaker size={9} className="text-purple-200" />
+                                                <Beaker size={9} className="text-white" />
                                                 <span>+ Insumo</span>
                                               </button>
                                             )}
@@ -1946,14 +1946,14 @@ function AgendaContent() {
               <p><strong>Horário:</strong> {selectedAppt.hora_inicio} às {getAgendamentoHoraFim(selectedAppt, servicos)}</p>
               <p><strong>Profissional Titular:</strong> {getProfissionalNome(selectedAppt.profissional_id, profissionais)}</p>
               {selectedAppt.auxiliares_ids && selectedAppt.auxiliares_ids.length > 0 && (
-                <div className="text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/30 p-2 rounded-lg text-purple-900 dark:text-purple-200 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <Users size={13} className="text-purple-700 dark:text-purple-300" />
+                <div className="text-xs bg-foreground/[0.03] border border-[var(--border-subtle)] p-2.5 rounded-lg text-foreground space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-foreground/80">
+                    <Users size={13} className="text-gold" />
                     <span>Auxiliares Co-participantes:</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {selectedAppt.auxiliares_ids.map(id => (
-                      <span key={id} className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-900 dark:text-purple-200 text-[11px] font-semibold border border-purple-300 dark:border-purple-500/30">
+                      <span key={id} className="px-2 py-0.5 rounded bg-foreground/5 text-foreground text-[11px] font-semibold border border-[var(--border-subtle)]">
                         {getProfissionalNome(id, profissionais)}
                       </span>
                     ))}
@@ -1970,12 +1970,12 @@ function AgendaContent() {
 
               {/* Resumo de Insumos já aplicados neste agendamento */}
               {selectedAppt.insumos_detalhes && selectedAppt.insumos_detalhes.length > 0 && (
-                <div className="text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/30 p-2.5 rounded-lg text-foreground dark:text-purple-200 space-y-1.5 mt-2">
+                <div className="text-xs bg-foreground/[0.03] border border-[var(--border-subtle)] p-2.5 rounded-lg text-foreground space-y-1.5 mt-2">
                   <div className="font-bold flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-purple-900 dark:text-purple-300 font-bold">
-                      <Beaker size={13} className="text-purple-700 dark:text-purple-300" /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
+                    <span className="flex items-center gap-1.5 text-foreground font-bold">
+                      <Beaker size={13} className="text-gold" /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
                     </span>
-                    <span className="font-mono text-gold font-bold">
+                    <span className="font-mono text-foreground font-bold">
                       R$ {Number(selectedAppt.product_cost || 0).toFixed(2)}
                     </span>
                   </div>
@@ -1987,7 +1987,7 @@ function AgendaContent() {
                       </div>
                     ))}
                     {selectedAppt.insumos_detalhes.length > 3 && (
-                      <p className="text-[10px] text-purple-700 dark:text-purple-300/80 italic text-right">
+                      <p className="text-[10px] text-foreground/50 italic text-right">
                         +{selectedAppt.insumos_detalhes.length - 3} outro(s) produto(s)...
                       </p>
                     )}
@@ -2000,14 +2000,14 @@ function AgendaContent() {
               {/* Botão de Lançar Insumos em Tempo Real (disponível quando em atendimento ou confirmado) */}
               {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && (
                 <Button 
-                  variant="secondary" 
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
+                  variant="primary" 
+                  className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
                   onClick={() => {
                     abrirLancarInsumoTempoReal(selectedAppt);
                     setSelectedAppt(null);
                   }}
                 >
-                  <Beaker size={16} className="text-purple-200" />
+                  <Beaker size={16} className="text-white" />
                   Lançar Produtos da Etapa (Tempo Real)
                 </Button>
               )}
@@ -2050,7 +2050,7 @@ function AgendaContent() {
                   <Button variant="outline" className="text-red-400 border-red-500/20 hover:bg-red-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'cancelado'); setSelectedAppt(null); }}>
                     Cancelar
                   </Button>
-                  <Button variant="outline" className="text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-500/40 hover:bg-purple-50 dark:hover:bg-purple-950/30 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
+                  <Button variant="outline" className="text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
                     Faltou
                   </Button>
                 </div>
@@ -2063,12 +2063,12 @@ function AgendaContent() {
       {/* Modal de Lançamento de Insumos em Tempo Real (Durante o Procedimento por Titular ou Auxiliar) */}
       {liveInsumoAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border-purple-300 dark:border-purple-500/35 shadow-2xl">
+          <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border border-[var(--border-subtle)] shadow-2xl">
             {/* Header */}
             <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-4">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/30">
+                  <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/30">
                     <Beaker size={22} />
                   </span>
                   <div>
@@ -2090,11 +2090,11 @@ function AgendaContent() {
             </div>
 
             {/* Resumo do Atendimento */}
-            <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-500/25 rounded-xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="bg-foreground/[0.03] border border-[var(--border-subtle)] rounded-xl p-4 mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
               <div>
-                <span className="text-[11px] text-foreground/50 uppercase font-semibold block">Cliente & Procedimento</span>
-                <span className="font-bold text-foreground text-base">{getClienteNome(liveInsumoAppt.cliente_id, clientes)}</span>
-                <span className="text-gold text-xs block font-medium">
+                <span className="text-[11px] text-foreground/50 uppercase font-semibold tracking-wider block">Cliente & Procedimento</span>
+                <span className="font-bold text-foreground text-lg block">{getClienteNome(liveInsumoAppt.cliente_id, clientes)}</span>
+                <span className="text-foreground/80 text-xs block font-medium mt-0.5">
                   {getServicoNome(liveInsumoAppt.servico_id, servicos)}
                   {liveInsumoAppt.sub_servicos && liveInsumoAppt.sub_servicos.length > 0 &&
                     ' + ' + liveInsumoAppt.sub_servicos.map(s => getServicoNome(typeof s === 'string' ? s : s.id, servicos)).join(' + ')
@@ -2102,8 +2102,8 @@ function AgendaContent() {
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[11px] text-foreground/50 uppercase font-semibold block">Fundo de Insumos Acumulado</span>
-                <span className="font-mono font-bold text-lg text-gold">
+                <span className="text-[11px] text-foreground/50 uppercase font-semibold tracking-wider block">Fundo de Insumos Acumulado</span>
+                <span className="font-mono font-bold text-2xl text-foreground block">
                   R$ {Number(liveInsumoAppt.product_cost || 0).toFixed(2)}
                 </span>
                 <span className="text-[11px] text-foreground/60 block">
@@ -2114,8 +2114,8 @@ function AgendaContent() {
 
             {/* Formulário de Nova Aplicação */}
             <div className="bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4 mb-5 space-y-4">
-              <h4 className="text-xs font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
-                <Plus size={14} className="text-purple-700 dark:text-purple-400" /> Registrar Nova Aplicação no Procedimento
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                <Plus size={14} className="text-gold stroke-[2.5]" /> Registrar Nova Aplicação no Procedimento
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2125,7 +2125,7 @@ function AgendaContent() {
                     Etapa do Procedimento:
                   </label>
                   <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-gold"
                     value={liveInsumoEtapa}
                     onChange={e => setLiveInsumoEtapa(e.target.value)}
                   >
@@ -2153,7 +2153,7 @@ function AgendaContent() {
                     Profissional que Aplicou:
                   </label>
                   <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-gold"
                     value={liveInsumoProfId}
                     onChange={e => setLiveInsumoProfId(e.target.value)}
                   >
@@ -2176,7 +2176,7 @@ function AgendaContent() {
                     Produto Utilizado (Estoque de Insumos):
                   </label>
                   <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-purple-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-gold"
                     value={liveInsumoProdId}
                     onChange={e => setLiveInsumoProdId(e.target.value)}
                   >
@@ -2214,13 +2214,13 @@ function AgendaContent() {
                       step="any"
                       min="0.1"
                       placeholder="Qtd (g ou ml)"
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground font-mono focus:outline-none focus:border-purple-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground font-mono focus:outline-none focus:border-gold"
                       value={liveInsumoQtd}
                       onChange={e => setLiveInsumoQtd(e.target.value)}
                     />
                     <Button
                       variant="primary"
-                      className="bg-purple-600 hover:bg-purple-700 text-white shrink-0 px-4 text-xs font-bold"
+                      className="bg-gold hover:bg-gold-dim text-white shrink-0 px-5 text-xs font-bold shadow-sm"
                       onClick={handleRegistrarInsumoTempoReal}
                       disabled={liveInsumoLoading || !liveInsumoProdId || !liveInsumoQtd}
                     >
@@ -2238,7 +2238,7 @@ function AgendaContent() {
                     key={val}
                     type="button"
                     onClick={() => setLiveInsumoQtd(String(val))}
-                    className="px-2 py-0.5 rounded bg-foreground/5 hover:bg-purple-100 hover:text-purple-800 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 text-[11px] text-foreground/70 border border-foreground/10 transition-colors"
+                    className="px-2.5 py-1 rounded bg-foreground/5 hover:bg-gold/15 hover:text-gold hover:border-gold/40 text-[11px] text-foreground/80 font-medium border border-foreground/10 transition-colors cursor-pointer"
                   >
                     +{val}g
                   </button>
@@ -2257,7 +2257,7 @@ function AgendaContent() {
 
               {(!liveInsumoAppt.insumos_detalhes || liveInsumoAppt.insumos_detalhes.length === 0) ? (
                 <div className="p-6 text-center border border-dashed border-[var(--border-subtle)] rounded-xl text-foreground/50 text-xs">
-                  <Beaker size={24} className="mx-auto mb-2 opacity-60 text-purple-600 dark:text-purple-400" />
+                  <Beaker size={26} className="mx-auto mb-2 opacity-30 text-foreground" />
                   Nenhum produto registrado ainda. Selecione a etapa e o produto acima para lançar no momento da aplicação.
                 </div>
               ) : (
@@ -2270,11 +2270,11 @@ function AgendaContent() {
                       <div key={idx} className="p-3 bg-foreground/[0.015] hover:bg-foreground/[0.03] transition-colors flex items-center justify-between gap-3 text-xs">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-200 font-bold text-[10px] border border-purple-300 dark:border-purple-500/30">
+                            <span className="px-2 py-0.5 rounded bg-foreground/5 text-foreground font-semibold text-[10px] border border-[var(--border-subtle)]">
                               {ins.etapa || 'Procedimento'}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${
-                              isTitular ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30' : 'bg-purple-100 dark:bg-purple-500/15 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/30'
+                              isTitular ? 'bg-gold/15 text-gold-dim dark:text-gold border border-gold/30' : 'bg-foreground/10 text-foreground border border-[var(--border-subtle)]'
                             }`}>
                               {isTitular ? <Sparkles size={10} /> : <Users size={10} />}
                               {profNome}
@@ -2295,7 +2295,7 @@ function AgendaContent() {
 
                         <div className="text-right shrink-0 flex items-center gap-3">
                           <div>
-                            <div className="font-mono font-bold text-gold text-sm">
+                            <div className="font-mono font-bold text-foreground text-sm">
                               R$ {Number(ins.custo_total || 0).toFixed(2)}
                             </div>
                             <div className="text-[10px] text-foreground/40">
@@ -2321,20 +2321,20 @@ function AgendaContent() {
             </div>
 
             {/* Aviso informativo e botão fechar */}
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 flex items-center gap-2 mb-4">
-              <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
-              <span>
-                <strong>Tudo sincronizado:</strong> A baixa no estoque é imediata. O atendimento continua em andamento normalmente e todos estes produtos já estarão pré-carregados quando a secretária abrir o Fechamento no Caixa.
+            <div className="bg-emerald-100/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-xl p-3.5 text-xs text-emerald-950 dark:text-emerald-100 flex items-start gap-2.5 mb-4 shadow-xs">
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-700 dark:text-emerald-400 mt-0.5" />
+              <span className="leading-relaxed">
+                <strong className="text-emerald-900 dark:text-emerald-200 font-bold">Tudo sincronizado:</strong> A baixa no estoque é imediata. O atendimento continua em andamento normalmente e todos estes produtos já estarão pré-carregados quando a secretária abrir o Fechamento no Caixa.
               </span>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full py-2.5 text-sm font-semibold"
+            <button
+              type="button"
+              className="w-full py-3 text-sm font-bold bg-foreground text-background hover:bg-foreground/90 transition-all rounded-xl shadow-sm cursor-pointer"
               onClick={() => setLiveInsumoAppt(null)}
             >
               Concluir Lançamento da Etapa e Voltar para a Agenda
-            </Button>
+            </button>
           </CardGlass>
         </div>
       )}
@@ -2361,13 +2361,13 @@ function AgendaContent() {
               <div className="lg:col-span-7 space-y-4 min-w-0">
                 {/* Banner de Unificação Multi-Profissional da Cliente */}
               {agendamentosUnificadosIds.length > 1 && (
-                <div className="p-3.5 bg-gradient-to-r from-purple-100/60 via-gold/10 to-transparent dark:from-purple-500/15 dark:via-gold/10 dark:to-transparent border border-purple-200 dark:border-purple-500/30 rounded-xl flex items-start gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg mt-0.5 shrink-0">
+                <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-gold/20 text-gold rounded-lg mt-0.5 shrink-0">
                     <Users size={18} />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-foreground">Comanda Unificada Multi-Profissional</p>
-                    <p className="text-xs text-foreground/70 mt-0.5">
+                    <p className="text-xs text-foreground/80 mt-0.5">
                       Identificamos que <strong>{getClienteNome(checkoutAppt.cliente_id, clientes)}</strong> realizou {agendamentosUnificadosIds.length} procedimentos hoje com profissionais diferentes. Todos foram agrupados nesta comanda para cobrança e contabilização única na recepção!
                     </p>
                   </div>
@@ -2440,11 +2440,11 @@ function AgendaContent() {
                         {/* BLOCO DE DESCONTO INDIVIDUAL DO PROFISSIONAL NESTE PROCEDIMENTO */}
                         <div className="p-2.5 bg-foreground/[0.02] border border-border-subtle/70 rounded-lg space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
                               <Tag size={12} /> Desconto do Profissional ({pNome}):
                             </span>
                             {temDesconto ? (
-                              <span className="text-[11px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                              <span className="text-[11px] text-emerald-900 dark:text-emerald-300 font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/60">
                                 -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)} ({proc.desconto_pct.toFixed(0)}%)
                               </span>
                             ) : (
@@ -2505,7 +2505,7 @@ function AgendaContent() {
                                 onClick={() => handleProcedimentoDescontoPct(proc.id, pctVal)}
                                 className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
                                   (pctVal === '0' && proc.desconto_pct === 0) || (proc.desconto_pct === parseFloat(pctVal))
-                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-bold'
                                     : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
                                 }`}
                               >
@@ -2715,9 +2715,9 @@ function AgendaContent() {
                               </span>
                             </div>
                             <div className="text-[11px] text-foreground/50 flex flex-wrap items-center gap-2">
-                              {ins.etapa && <span className="text-amber-500 dark:text-amber-300 font-medium">📍 {ins.etapa}</span>}
+                              {ins.etapa && <span className="text-foreground/70 font-medium">📍 {ins.etapa}</span>}
                               {profNome && (
-                                <span className={isTitular ? 'text-gold' : 'text-purple-800 dark:text-purple-300 font-semibold'}>
+                                <span className={isTitular ? 'text-gold font-semibold' : 'text-foreground/80 font-semibold'}>
                                   👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
                                 </span>
                               )}
@@ -2790,7 +2790,7 @@ function AgendaContent() {
                             {temDesc ? (
                               <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
                                 <span className="line-through">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal)}</span>
-                                <span className="text-emerald-400 font-semibold">
+                                <span className="text-emerald-800 dark:text-emerald-400 font-semibold">
                                   Desc: {prod.descontoPct ? `${prod.descontoPct.toFixed(0)}%` : ''} (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal - subFinal)})
                                 </span>
                               </p>
@@ -2918,7 +2918,7 @@ function AgendaContent() {
                         <div className="flex justify-between items-center text-xs pt-1">
                           <span className="text-foreground/60">
                             Total do item: <strong className="text-foreground font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItemFinal)}</strong>
-                            {descValItem > 0 && <span className="text-emerald-400 ml-1.5 font-medium">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
+                            {descValItem > 0 && <span className="text-emerald-800 dark:text-emerald-400 ml-1.5 font-semibold">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
                           </span>
                           <Button
                             variant="primary"
@@ -3066,11 +3066,11 @@ function AgendaContent() {
                     <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <Percent size={14} className="text-emerald-400" />
+                          <Percent size={14} className="text-emerald-700 dark:text-emerald-400" />
                           <span className="text-xs font-bold text-foreground">Desconto Geral Adicional na Conta <span className="text-foreground/40 font-normal">(opcional)</span></span>
                         </div>
                         {valorDescontoGeral > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
+                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold font-mono border border-emerald-300 dark:border-emerald-700/60">
                             -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}
                           </span>
                         )}
@@ -3104,7 +3104,7 @@ function AgendaContent() {
                     </div>
 
                     {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO */}
-                    <div className="p-4 bg-gradient-to-br from-gold/10 via-purple-500/5 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
+                    <div className="p-4 bg-gradient-to-br from-gold/10 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
                         <div className="flex items-center gap-2">
                           <Sparkles size={18} className="text-gold" />
@@ -3127,7 +3127,7 @@ function AgendaContent() {
                                 <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
                                   👤 {pNome}
                                 </span>
-                                <span className="text-purple-900 dark:text-purple-200 font-mono font-bold text-xs bg-purple-100 dark:bg-purple-500/15 px-2 py-0.5 rounded border border-purple-300 dark:border-purple-500/30">
+                                <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)]">
                                   Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
                                 </span>
                               </div>
@@ -3140,7 +3140,7 @@ function AgendaContent() {
                                     <span className="font-mono whitespace-nowrap">
                                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
                                       {proc.desconto_valor > 0 && (
-                                        <span className="text-emerald-400 ml-1 font-semibold">
+                                        <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
                                           (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)})
                                         </span>
                                       )}
@@ -3176,23 +3176,23 @@ function AgendaContent() {
                           <p className="text-[9px] text-foreground/50">Custo de estoque por grama consumido no serviço.</p>
                         </div>
 
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-purple-300 dark:border-purple-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-purple-900 dark:text-purple-300 text-[11px] font-bold uppercase">
-                            <span><Users size={12} className="inline mr-1 text-purple-700 dark:text-purple-300"/> Total Comissões</span>
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-foreground/70 text-[11px] font-bold uppercase">
+                            <span><Users size={12} className="inline mr-1 text-gold"/> Total Comissões</span>
                             <span className="text-[10px] font-mono">Equipe</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-purple-900 dark:text-purple-200">
+                          <p className="text-base font-bold font-mono text-foreground">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
                           </p>
                           <p className="text-[9px] text-foreground/50">Calculada diretamente sobre o procedimento de cada profissional.</p>
                         </div>
 
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-emerald-400 text-[11px] font-bold uppercase">
+                        <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
+                          <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
                             <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
                             <span className="text-[10px] font-mono">Receita</span>
                           </div>
-                          <p className="text-base font-bold font-mono text-emerald-400">
+                          <p className="text-base font-bold font-mono text-emerald-800 dark:text-emerald-400">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
                           </p>
                           <p className="text-[9px] text-foreground/50">Faturamento líquido que fica com o salão.</p>
@@ -3207,13 +3207,13 @@ function AgendaContent() {
                         <span className="font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
                       </div>
                       {totalDescontosProcedimentos > 0 && (
-                        <div className="flex justify-between text-emerald-400 font-medium">
+                        <div className="flex justify-between text-emerald-800 dark:text-emerald-400 font-semibold">
                           <span>Descontos Concedidos pelos Profissionais</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
                         </div>
                       )}
                       {valorDescontoGeral > 0 && (
-                        <div className="flex justify-between text-emerald-400 font-medium">
+                        <div className="flex justify-between text-emerald-800 dark:text-emerald-400 font-semibold">
                           <span>Desconto Adicional da Recepção</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
                         </div>
@@ -3694,13 +3694,13 @@ function AgendaContent() {
               </div>
 
               {/* Auxiliares / Co-participantes do Procedimento */}
-              <div className="p-3 bg-purple-50/70 dark:bg-purple-500/5 border border-purple-200 dark:border-purple-500/20 rounded-xl space-y-2">
+              <div className="p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Users size={14} className="text-purple-700 dark:text-purple-400" />
+                    <Users size={14} className="text-gold" />
                     Auxiliares do Procedimento (Co-participantes)
                   </label>
-                  <span className="text-[10px] text-purple-900 dark:text-purple-200 font-semibold px-2 py-0.5 bg-purple-100 dark:bg-purple-500/10 rounded-full border border-purple-300 dark:border-purple-500/20">
+                  <span className="text-[10px] text-foreground font-semibold px-2 py-0.5 bg-foreground/5 rounded-full border border-[var(--border-subtle)]">
                     Opcional • {formData.auxiliares_ids.length} selecionado(s)
                   </span>
                 </div>
@@ -3726,20 +3726,20 @@ function AgendaContent() {
                           }}
                           className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${
                             isSelected
-                              ? 'bg-purple-100 border-purple-500 text-purple-900 dark:bg-purple-600/30 dark:border-purple-500 dark:text-purple-100 font-bold shadow-sm'
-                              : 'border-[var(--border-subtle)] text-foreground/70 hover:border-purple-400 hover:text-foreground bg-[var(--background)]'
+                              ? 'bg-gold/15 border-gold text-foreground font-bold shadow-xs'
+                              : 'border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40 hover:text-foreground bg-[var(--background)]'
                           }`}
                         >
-                          {isSelected ? <Check size={12} className="text-purple-700 dark:text-purple-300" /> : <Plus size={12} className="text-foreground/40" />}
+                          {isSelected ? <Check size={12} className="text-gold" /> : <Plus size={12} className="text-foreground/40" />}
                           <span>{p.nome}</span>
-                          {isSelected && <span className="text-[10px] opacity-75 font-normal">(Auxiliar)</span>}
+                          {isSelected && <span className="text-[10px] text-gold font-normal">(Auxiliar)</span>}
                         </button>
                       );
                     })}
                 </div>
                 {formData.auxiliares_ids.length > 0 && (
-                  <div className="p-2 bg-purple-100/70 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg text-[11px] text-purple-900 dark:text-purple-200 flex items-center gap-2">
-                    <Sparkles size={14} className="shrink-0 text-purple-700 dark:text-purple-400" />
+                  <div className="p-2 bg-gold/10 border border-gold/25 rounded-lg text-[11px] text-foreground flex items-center gap-2">
+                    <Sparkles size={14} className="shrink-0 text-gold" />
                     <span>
                       <strong>Equipe do Procedimento:</strong> {getProfissionalNome(formData.profissional_id, profissionais)} (Titular) + {formData.auxiliares_ids.map(id => getProfissionalNome(id, profissionais)).join(', ')} (Auxiliares).
                     </span>

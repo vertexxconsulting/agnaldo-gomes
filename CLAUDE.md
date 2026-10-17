@@ -385,6 +385,18 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.14 Refinamento Cromático: Eliminação do Roxo com Dourado e Alto Contraste de Verdes
+
+- **Eliminação de Roxo com Dourado (Aberração Cromática e Baixo Contraste)**:
+  - Substituição de fundos roxos (`bg-purple-50` / `bg-purple-950/20`) combinados com tipografia dourada (`text-gold`) por containers neutros de alta sofisticação (`bg-foreground/[0.03]` com bordas `border-[var(--border-subtle)]`).
+  - Destaques, ações primárias e identificadores de auxiliares/etapas unificados com a paleta oficial Studio Agnaldo Gomes (`bg-gold`, `text-gold` e `border-gold/30`), garantindo leitura 100% nítida em qualquer dispositivo.
+- **Padrão de Alto Contraste para Textos e Badges Verdes**:
+  - Eliminação de verdes pastéis esmaecidos (`text-emerald-300` / `text-emerald-400` puros) sobre fundos claros que violavam critérios de acessibilidade WCAG.
+  - No tema claro (`--background: #faf8f3`), aplicação sistemática de verdes profundos legíveis (`text-emerald-800`, `text-emerald-900`, `text-emerald-950` e caixas informativas em `bg-emerald-100/90 border-emerald-300`).
+  - Preservação da legibilidade no modo escuro via classes `dark:text-emerald-300`, `dark:text-emerald-200` e `dark:bg-emerald-950/40`.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

@@ -735,11 +735,11 @@ export default function AgendamentoPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {clienteReconhecido ? (
-                    <div className="md:col-span-2 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center gap-3 text-xs text-emerald-400">
-                      <UserCheck size={20} className="text-emerald-400 shrink-0" />
+                    <div className="md:col-span-2 p-3.5 bg-emerald-100/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-xl flex items-center gap-3 text-xs text-emerald-950 dark:text-emerald-100 shadow-xs">
+                      <UserCheck size={20} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
                       <div>
-                        <p className="font-bold text-foreground text-sm">Cadastro localizado!</p>
-                        <p className="text-foreground/70">Bem-vindo(a) de volta, <strong>{clienteReconhecido}</strong>. Seus dados foram carregados.</p>
+                        <p className="font-bold text-emerald-950 dark:text-emerald-100 text-sm">Cadastro localizado!</p>
+                        <p className="text-emerald-900/80 dark:text-emerald-200/80">Bem-vindo(a) de volta, <strong>{clienteReconhecido}</strong>. Seus dados foram carregados.</p>
                       </div>
                     </div>
                   ) : (
@@ -1163,7 +1163,7 @@ export default function AgendamentoPage() {
               {statusData && (
                 <div className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
                   statusData.tipo === 'aberto'
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                    ? 'bg-emerald-100/90 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700/60 font-semibold shadow-xs'
                     : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                 }`}>
                   {statusData.tipo === 'aberto' ? <CheckCircle size={16} className="shrink-0" /> : <AlertTriangle size={16} className="shrink-0" />}
