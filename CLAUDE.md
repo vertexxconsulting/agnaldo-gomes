@@ -635,6 +635,21 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.26 Abertura Direta de Ofertas de Afiliados do Mercado Livre (`/loja`)
+
+- **Resolução do Botão "Ver Oferta"**:
+  - Anteriormente, o botão "Ver Oferta" nos cards de produtos afiliados (`AFFILIATE_ML`) chamava a função de adicionar ao carrinho local (`onAdd(produto)`), gerando um toast de "Adicionado!" enganoso sem que o produto pudesse ser comprado no checkout local da loja.
+  - **Comportamento Corrigido**:
+    - Ao clicar em **"Ver Oferta"** (na Home da Loja `/loja` ou em Categorias `/loja/categoria/[slug]`), o sistema abre imediatamente o link oficial do produto no Mercado Livre (`produto.ml_link`) em uma nova aba (`window.open(..., '_blank')`).
+    - Caso o link de afiliado não esteja preenchido, o clique redireciona elegantemente para a página de detalhes do item (`/loja/p/[id]`).
+    - O botão agora exibe o ícone oficial de link externo (`<ExternalLink />`) e estilização destacada.
+    - Se o cliente clicar na imagem ou título do card, ele é levado à página do produto para ver fotos, descrição e o botão proeminente *"Comprar no Mercado Livre"*.
+- **Proteção do Carrinho Local (`store/cartStore.ts` & `/api/cart`)**:
+  - A API `/api/cart` rejeita qualquer tentativa de inserir produtos `AFFILIATE_ML` no carrinho de estoque físico local, preservando a integridade das compras e do frete.
+  - Correção na hidratação da store (`cartStore.hydrate(true)`), garantindo sincronização instantânea dos itens no carrinho ao adicionar produtos de estoque local (`LOCAL_STOCK`).
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

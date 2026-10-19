@@ -20,7 +20,7 @@ interface CartState {
   removeItem: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
-  hydrate: () => Promise<void>;
+  hydrate: (force?: boolean) => Promise<void>;
   getTotal: () => number;
   getItemCount: () => number;
 }
@@ -54,8 +54,8 @@ export const useCartStore = create<CartState>()(
       isHydrated: false,
       isLoading: false,
 
-      hydrate: async () => {
-        if (get().isHydrated) return;
+      hydrate: async (force = false) => {
+        if (get().isHydrated && !force) return;
         set({ isLoading: true });
         try {
           const data = await fetchCart();
@@ -84,8 +84,8 @@ export const useCartStore = create<CartState>()(
         set({ isLoading: true });
         try {
           await apiCall('POST', { productId: newItem.product_id, quantity });
-          // Re-hidratar para pegar dados atualizados do servidor
-          await get().hydrate();
+          // Re-hidratar forçado para pegar dados atualizados do servidor
+          await get().hydrate(true);
         } catch (error) {
           console.error('[cartStore] Erro ao adicionar:', error);
           throw error;
@@ -98,7 +98,7 @@ export const useCartStore = create<CartState>()(
         set({ isLoading: true });
         try {
           await apiCall('DELETE', { productId });
-          await get().hydrate();
+          await get().hydrate(true);
         } catch (error) {
           console.error('[cartStore] Erro ao remover:', error);
           throw error;
@@ -111,7 +111,7 @@ export const useCartStore = create<CartState>()(
         set({ isLoading: true });
         try {
           await apiCall('PATCH', { productId, quantity });
-          await get().hydrate();
+          await get().hydrate(true);
         } catch (error) {
           console.error('[cartStore] Erro ao atualizar:', error);
           throw error;

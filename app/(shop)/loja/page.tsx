@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag, ArrowRight, Star, Truck, ShieldCheck, Search, Sparkles, Flame } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Star, Truck, ShieldCheck, Search, Sparkles, Flame, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCartStore } from '@/store/cartStore';
 
@@ -115,12 +115,21 @@ export default function LojaHome() {
   );
 
   const handleAddToCart = (p: ShopProduct) => {
+    if (p.type === 'AFFILIATE_ML') {
+      if (p.ml_link) {
+        window.open(p.ml_link, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = `/loja/p/${p.id}`;
+      }
+      return;
+    }
+
     if (p.type === 'LOCAL_STOCK' && (p.stock_quantity ?? 0) <= 0) {
       alert('Produto temporariamente sem estoque disponível.');
       return;
     }
     addItem({ id: p.id, product_id: p.id, type: 'LOCAL_STOCK', name: p.name, price: p.price ?? 0, image_url: p.image_url, quantity: 1 });
-    setToast(`${p.name.length > 38 ? p.name.slice(0, 38) + '…' : p.name} adicionado!`);
+    setToast(`${p.name.length > 38 ? p.name.slice(0, 38) + '…' : p.name} adicionado ao carrinho!`);
     setTimeout(() => setToast(null), 2500);
   };
 
@@ -326,7 +335,21 @@ export default function LojaHome() {
 
 function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: ShopProduct) => void }) {
   const isAffiliate = produto.type === 'AFFILIATE_ML';
-  const outOfStock = produto.type === 'LOCAL_STOCK' && produto.stock_quantity === 0;
+  const outOfStock = produto.type === 'LOCAL_STOCK' && (produto.stock_quantity ?? 0) === 0;
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isAffiliate) {
+      if (produto.ml_link) {
+        window.open(produto.ml_link, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = `/loja/p/${produto.id}`;
+      }
+      return;
+    }
+    onAdd(produto);
+  };
 
   return (
     <Link href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
@@ -384,12 +407,28 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
           </div>
 
           <button
-            onClick={(e) => { e.preventDefault(); onAdd(produto); }}
+            onClick={handleButtonClick}
             disabled={outOfStock}
-            className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:group-hover:bg-slate-100 disabled:group-hover:text-slate-900"
+            className={`w-full text-[11px] font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-1.5 rounded-sm shadow-sm transition-all cursor-pointer ${
+              isAffiliate
+                ? 'bg-blue-600 text-white hover:bg-blue-700 border border-blue-600'
+                : 'bg-slate-100 text-slate-900 border border-slate-200 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white'
+            } ${outOfStock ? 'opacity-50 cursor-not-allowed group-hover:bg-slate-100 group-hover:text-slate-900' : ''}`}
+            title={isAffiliate ? 'Abrir oferta no Mercado Livre' : 'Comprar produto'}
           >
-            <ShoppingBag size={14} />
-            {outOfStock ? 'Indisponível' : isAffiliate ? 'Ver Oferta' : 'Detalhes'}
+            {isAffiliate ? (
+              <>
+                <ExternalLink size={13} />
+                <span>Ver Oferta</span>
+              </>
+            ) : outOfStock ? (
+              'Indisponível'
+            ) : (
+              <>
+                <ShoppingBag size={13} />
+                <span>Comprar</span>
+              </>
+            )}
           </button>
         </div>
       </div>

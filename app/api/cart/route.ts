@@ -121,6 +121,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
     }
 
+    // Produtos afiliados do Mercado Livre devem ser comprados via link externo
+    if (product.type === 'AFFILIATE_ML') {
+      return NextResponse.json({ 
+        error: 'Produtos do Mercado Livre são adquiridos diretamente na oferta externa.',
+        isAffiliate: true 
+      }, { status: 400 });
+    }
+
     // Verificar estoque se LOCAL_STOCK
     if (product.type === 'LOCAL_STOCK' && (product.stock_quantity || 0) < quantity) {
       return NextResponse.json({ 

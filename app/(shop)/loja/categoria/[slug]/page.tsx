@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { type ShopProduct } from '@/lib/shop-mock';
 
@@ -148,42 +148,72 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-              {displayList.map((produto) => (
-                <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
-                  {/* Imagem */}
-                  <div className="relative w-full pt-[100%] bg-white">
-                    {produto.image_url ? (
-                      <Image
-                        src={produto.image_url}
-                        alt={produto.name}
-                        fill
-                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
-                        <ShoppingBag size={48} />
+              {displayList.map((produto) => {
+                const isAffiliate = produto.type === 'AFFILIATE_ML';
+                return (
+                  <Link key={produto.id} href={`/loja/p/${produto.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all duration-300 relative h-full overflow-hidden">
+                    {/* Badge Mercado Livre */}
+                    {isAffiliate && (
+                      <div className="absolute top-2 left-2 z-10">
+                        <span className="bg-blue-100 text-blue-800 text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border border-blue-200">
+                          Mercado Livre
+                        </span>
                       </div>
                     )}
-                  </div>
 
-                  {/* Info */}
-                  <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
-                    <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1 mt-2">
-                      {produto.name}
-                    </h3>
-
-                    <div className="mt-auto">
-                      <div className="text-lg font-bold text-slate-900 mb-3">
-                        R$ {Number(produto.price ?? 0).toFixed(2)}
-                      </div>
-
-                      <button className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm">
-                        <ShoppingBag size={14} /> Detalhes
-                      </button>
+                    {/* Imagem */}
+                    <div className="relative w-full pt-[100%] bg-white">
+                      {produto.image_url ? (
+                        <Image
+                          src={produto.image_url}
+                          alt={produto.name}
+                          fill
+                          className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
+                          <ShoppingBag size={48} />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              ))}
+
+                    {/* Info */}
+                    <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
+                      <h3 className="text-[12px] text-slate-700 leading-tight mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors flex-1 mt-2">
+                        {produto.name}
+                      </h3>
+
+                      <div className="mt-auto">
+                        <div className="text-lg font-bold text-slate-900 mb-3">
+                          {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2)}` : 'Ver oferta'}
+                        </div>
+
+                        {isAffiliate ? (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (produto.ml_link) {
+                                window.open(produto.ml_link, '_blank', 'noopener,noreferrer');
+                              } else {
+                                window.location.href = `/loja/p/${produto.id}`;
+                              }
+                            }}
+                            className="w-full bg-blue-600 text-white hover:bg-blue-700 border border-blue-600 text-[11px] font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-1.5 rounded-sm shadow-sm transition-colors cursor-pointer"
+                            title="Abrir oferta no Mercado Livre"
+                          >
+                            <ExternalLink size={13} /> Ver Oferta
+                          </button>
+                        ) : (
+                          <button className="w-full bg-slate-100 text-slate-900 border border-slate-200 text-[11px] font-bold uppercase tracking-wider py-2 group-hover:bg-amber-500 group-hover:border-amber-500 group-hover:text-white transition-colors flex items-center justify-center gap-2 rounded-sm shadow-sm">
+                            <ShoppingBag size={14} /> Detalhes
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
