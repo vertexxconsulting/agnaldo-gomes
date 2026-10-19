@@ -23,6 +23,8 @@ import type {
   RegraComissao, Comissao, ParcelaComissao, FormaPagamento,
   Profissional, Servico, PaymentFee, ConfigTaxas, PeriodoRecebimentoComissao
 } from '@/lib/gestao-types';
+import { supabase } from '@/lib/supabase';
+import { ROLES, getUserRole, isOwner } from '@/lib/auth';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtDate = (d: string) => {
@@ -225,6 +227,11 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
 }
 
 export default function ComissoesPage() {
+  // Controle de Permissão e Identificação do Usuário Logado
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
+  const [meuProfissional, setMeuProfissional] = useState<Profissional | null>(null);
+
   const [aba, setAba] = useState<Aba>('fechamento');
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [todosProfissionais, setTodosProfissionais] = useState<Profissional[]>([]);
@@ -341,14 +348,81 @@ export default function ComissoesPage() {
       fetchProfissionais(), fetchServicos(), fetchRegrasComissao(),
       fetchComissoes(), fetchParcelasPendentes(), fetchTaxasPagamento(),
     ]);
-    setTodosProfissionais(profs);
-    setProfissionais(profs.filter(p => p.ativo));
-    setServicos(svcs.filter(s => s.ativo));
-    setRegras(rgs);
-    setComissoes(coms);
-    setParcelas(parcs as any);
-    setTaxas(taxasData.taxas);
-    setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
+
+    // Verificar se o usuário logado é um profissional do salão restrito
+    let profRestrito: Profissional | null = null;
+    let restrito = false;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUser(user);
+        const role = getUserRole(user);
+        const owner = isOwner(user);
+        const userMeta = (user.user_metadata || {}) as Record<string, any>;
+
+        const { data: profProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const effectiveRole = profProfile?.role || role;
+        const isFullAdmin = owner ||
+          effectiveRole === ROLES.ADMIN ||
+          effectiveRole === ROLES.STUDIO_ADMIN ||
+          effectiveRole === ROLES.STUDIO_SECRETARIA ||
+          userMeta?.role === 'admin' ||
+          userMeta?.isOwner === true;
+
+        if (!isFullAdmin) {
+          const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
+          const ativos = profs.filter((p: Profissional) => p.ativo);
+          const matchedProf = ativos.find((p: Profissional) =>
+            (profIdFromPerm && p.id === profIdFromPerm) ||
+            (p.user_id && p.user_id === user.id) ||
+            (p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
+            (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase()) ||
+            (profProfile?.full_name && p.nome.toLowerCase() === profProfile.full_name.toLowerCase())
+          );
+
+          if (matchedProf) {
+            profRestrito = matchedProf;
+            restrito = true;
+            setMeuProfissional(matchedProf);
+            setIsRestrictedProfissional(true);
+            setProfFiltro(matchedProf.id);
+            setProfFiltroFechamento(matchedProf.id);
+            setProfFiltroRecebiveis(matchedProf.id);
+          }
+        }
+      }
+    } catch (authErr) {
+      console.warn('Erro ao verificar perfil do usuário em comissões:', authErr);
+    }
+
+    if (restrito && profRestrito) {
+      // Isolamento estrito de dados: o profissional enxerga UNICAMENTE seu faturamento e comissões
+      setTodosProfissionais([profRestrito]);
+      setProfissionais([profRestrito]);
+      setServicos(svcs.filter(s => s.ativo));
+      setRegras(rgs.filter(r => r.professional_id === profRestrito!.id));
+      setComissoes(coms.filter(c => c.professional_id === profRestrito!.id));
+      setParcelas(parcs.filter((p: any) => p.professional_id === profRestrito!.id) as any);
+      setTaxas(taxasData.taxas);
+      setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
+      setAba(prev => prev === 'taxas' ? 'fechamento' : prev);
+    } else {
+      setTodosProfissionais(profs);
+      setProfissionais(profs.filter(p => p.ativo));
+      setServicos(svcs.filter(s => s.ativo));
+      setRegras(rgs);
+      setComissoes(coms);
+      setParcelas(parcs as any);
+      setTaxas(taxasData.taxas);
+      setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
+    }
+
     if (taxasData.taxas.length > 0) {
       const defaultCard = taxasData.taxas.find(t => t.payment_type === 'credito' && t.active) || taxasData.taxas[0];
       setSimRegraId(defaultCard.id);
@@ -767,21 +841,62 @@ export default function ComissoesPage() {
     setTimeout(() => setWhatsAppCopiado(false), 3000);
   };
 
-  // KPIs globais
+  // KPIs
   const totalPendente = parcelas.reduce((s, p) => s + p.amount, 0);
   const mesAtual = new Date().toISOString().slice(0, 7);
+  const comissoesMesAtual = comissoes.filter(c => c.created_at.slice(0, 7) === mesAtual);
+  const totalFaturamentoMes = comissoesMesAtual.reduce((s, c) => s + c.total_amount, 0);
   const totalPagoMes = comissoes
     .flatMap(c => c.parcelas ?? [])
     .filter(p => p.status === 'PAID' && (p.paid_at ?? '').slice(0, 7) === mesAtual)
     .reduce((s, p) => s + p.amount, 0);
   const vencidas = parcelas.filter(p => isVencida(p.due_date)).length;
 
+  // Lista de abas adaptada ao perfil do usuário
+  const abasDisponiveis = [
+    { id: 'fechamento', label: isRestrictedProfissional ? 'Meu Fechamento' : 'Fechamento de Comissões', icon: CalendarDays, highlight: true },
+    { id: 'recebiveis', label: isRestrictedProfissional ? 'Meus Recebíveis' : 'Recebíveis por Período', icon: Search },
+    { id: 'resumo', label: isRestrictedProfissional ? 'Meu Resumo' : 'Resumo por Profissional', icon: TrendingUp },
+    { id: 'parcelas', label: isRestrictedProfissional ? 'A Receber' : 'A Pagar', icon: Clock, badge: parcelas.length },
+    { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
+    { id: 'regras', label: isRestrictedProfissional ? 'Minhas Comissões (% Serviço)' : 'Regras de Comissão', icon: DollarSign, badge: regras.length },
+    ...(!isRestrictedProfissional ? [{ id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length }] : []),
+  ];
+
   return (
     <div className="py-4 w-full">
-      <SectionTitle title="Comissões de Profissionais" subtitle="Fechamento Semanal · Recebíveis D+30 · Repasses Financeiros" align="left" />
+      <SectionTitle 
+        title={isRestrictedProfissional && meuProfissional ? `Comissões & Faturamento · ${meuProfissional.nome}` : "Comissões de Profissionais"} 
+        subtitle={isRestrictedProfissional ? "Acompanhamento Individual · Fechamento · Extratos e Recebíveis D+30" : "Fechamento Semanal · Recebíveis D+30 · Repasses Financeiros"} 
+        align="left" 
+      />
+
+        {/* BANNER DE ACESSO INDIVIDUAL DO PROFISSIONAL */}
+        {isRestrictedProfissional && meuProfissional && (
+          <div className="mt-4 mb-4 p-4 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-between gap-3 text-xs shadow-sm">
+            <div className="flex items-center gap-3">
+              {meuProfissional.foto_url ? (
+                <img src={meuProfissional.foto_url} alt={meuProfissional.nome} className="w-11 h-11 rounded-full object-cover border-2 border-gold/50 shadow-xs shrink-0" />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-gold/20 flex items-center justify-center text-foreground font-bold shrink-0">
+                  <User2 size={22} className="text-gold" />
+                </div>
+              )}
+              <div>
+                <p className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <span>Painel Financeiro Individual · {meuProfissional.nome}</span>
+                  <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-gold/20 text-gold font-mono font-bold">Acesso Profissional</span>
+                </p>
+                <p className="text-foreground/70 text-xs mt-0.5">
+                  Visualização restrita: você tem acesso exclusivo aos seus atendimentos realizados, faturamento bruto gerado e repasses de comissão.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ALERTA DE REGRA DE NEGÓCIO OFICIAL */}
-        <div className="mt-6 mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-gold/10 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-sm">
+        <div className="mt-4 mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-gold/10 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/20 text-foreground shrink-0">
               <CreditCard size={18} />
@@ -802,19 +917,24 @@ export default function ComissoesPage() {
               onClick={() => setAba('fechamento')}
               className="px-3 py-1.5 rounded-lg bg-gold text-background font-bold hover:bg-gold-dim transition-colors text-xs"
             >
-              Ir para Fechamento de Caixa →
+              Ir para Fechamento →
             </button>
           </div>
         </div>
 
-        {/* KPIs Globais */}
+        {/* KPIs Adaptados (Individual vs Geral) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {[
+          {(isRestrictedProfissional && meuProfissional ? [
+            { icon: TrendingUp, label: 'Meu Faturamento Bruto (Mês)', value: fmt(totalFaturamentoMes), cor: 'text-foreground' },
+            { icon: Clock, label: 'Minhas Comissões a Receber', value: fmt(totalPendente), cor: 'text-foreground' },
+            { icon: CheckCircle2, label: 'Já Recebido (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-emerald-400' },
+            { icon: DollarSign, label: 'Meus Atendimentos (Mês)', value: `${comissoesMesAtual.length} serv.`, cor: 'text-gold' },
+          ] : [
             { icon: Clock, label: 'A Pagar (Total Geral)', value: fmt(totalPendente), cor: 'text-foreground' },
             { icon: CheckCircle2, label: 'Pago (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-emerald-400' },
             { icon: AlertTriangle, label: 'Parcelas Vencidas', value: vencidas, cor: vencidas > 0 ? 'text-red-400' : 'text-foreground/40' },
             { icon: User2, label: 'Profissionais Ativos', value: profissionais.length, cor: 'text-foreground' },
-          ].map((k, i) => (
+          ]).map((k, i) => (
             <CardGlass key={i} className="p-4 flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-foreground/5 shrink-0">
                 <k.icon size={22} className={k.cor} />
@@ -829,15 +949,7 @@ export default function ComissoesPage() {
 
         {/* NAVEGAÇÃO DE ABAS (Botões Clicáveis) */}
         <div className="flex flex-wrap items-center gap-2 mb-8">
-          {[
-            { id: 'fechamento', label: 'Fechamento de Comissões', icon: CalendarDays, highlight: true },
-            { id: 'recebiveis', label: 'Recebíveis por Período', icon: Search },
-            { id: 'resumo', label: 'Resumo por Profissional', icon: TrendingUp },
-            { id: 'parcelas', label: 'A Pagar', icon: Clock, badge: parcelas.length },
-            { id: 'historico', label: 'Histórico', icon: CreditCard, badge: comissoes.length },
-            { id: 'regras', label: 'Regras de Comissão', icon: DollarSign, badge: regras.length },
-            { id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length },
-          ].map(tabItem => {
+          {abasDisponiveis.map(tabItem => {
             const active = aba === tabItem.id;
             const Icon = tabItem.icon;
             return (
@@ -971,63 +1083,78 @@ export default function ComissoesPage() {
                   Próximo(a) {periodoNome} <ChevronRight size={14} />
                 </button>
 
-                <Button
-                  variant="primary"
-                  onClick={handleFecharTodosCaixasSemana}
-                  disabled={fechandoLote || fechamentoSemanalData.every(f => f.statusFechamento === 'QUITADO' || f.statusFechamento === 'SEM_MOVIMENTO')}
-                  className="ml-2 text-xs"
-                >
-                  <CheckCircle2 size={15} className="mr-1.5" /> Fechar Caixa ({periodoNome} Geral)
-                </Button>
+                {!isRestrictedProfissional && (
+                  <Button
+                    variant="primary"
+                    onClick={handleFecharTodosCaixasSemana}
+                    disabled={fechandoLote || fechamentoSemanalData.every(f => f.statusFechamento === 'QUITADO' || f.statusFechamento === 'SEM_MOVIMENTO')}
+                    className="ml-2 text-xs"
+                  >
+                    <CheckCircle2 size={15} className="mr-1.5" /> Fechar Caixa ({periodoNome} Geral)
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Barra de Filtros por Preferência do Profissional */}
+            {/* Barra de Filtros por Preferência do Profissional / Perfil Individual */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--border-subtle)] text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-foreground/60 font-semibold flex items-center gap-1">
-                  <Filter size={13} /> Filtrar por Preferência:
-                </span>
-                {(['todos', 'semanal', 'quinzenal', 'mensal'] as const).map(f => {
-                  const active = filtroPeriodoProfissional === f;
-                  const labels = {
-                    todos: 'Todos',
-                    semanal: '🗓️ Preferem Semanal',
-                    quinzenal: '🌓 Preferem Quinzenal',
-                    mensal: '📅 Preferem Mensal',
-                  };
-                  return (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => setFiltroPeriodoProfissional(f)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                        active
-                          ? 'bg-gold/20 text-foreground border-gold/40 font-bold'
-                          : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground hover:bg-white/5'
-                      }`}
-                    >
-                      {labels[f]}
-                    </button>
-                  );
-                })}
-              </div>
+              {isRestrictedProfissional && meuProfissional ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground/60 font-semibold">Profissional:</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gold/15 text-gold border border-gold/30 font-bold">
+                    <User2 size={13} />
+                    <span>{meuProfissional.nome}</span>
+                    <span className="text-[10px] text-foreground/50 font-normal">({(meuProfissional.periodo_recebimento || 'semanal') === 'mensal' ? 'Ciclo Mensal' : (meuProfissional.periodo_recebimento || 'semanal') === 'quinzenal' ? 'Ciclo Quinzenal' : 'Ciclo Semanal'})</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-foreground/60 font-semibold flex items-center gap-1">
+                      <Filter size={13} /> Filtrar por Preferência:
+                    </span>
+                    {(['todos', 'semanal', 'quinzenal', 'mensal'] as const).map(f => {
+                      const active = filtroPeriodoProfissional === f;
+                      const labels = {
+                        todos: 'Todos',
+                        semanal: '🗓️ Preferem Semanal',
+                        quinzenal: '🌓 Preferem Quinzenal',
+                        mensal: '📅 Preferem Mensal',
+                      };
+                      return (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFiltroPeriodoProfissional(f)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                            active
+                              ? 'bg-gold/20 text-foreground border-gold/40 font-bold'
+                              : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground hover:bg-white/5'
+                          }`}
+                        >
+                          {labels[f]}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-foreground/60">Profissional:</span>
-                <select
-                  value={profFiltroFechamento}
-                  onChange={e => setProfFiltroFechamento(e.target.value)}
-                  className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold"
-                >
-                  <option value="todos">Todos os profissionais</option>
-                  {profissionais.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome} ({(p.periodo_recebimento || 'semanal') === 'mensal' ? 'Mensal' : (p.periodo_recebimento || 'semanal') === 'quinzenal' ? 'Quinzenal' : 'Semanal'})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground/60">Profissional:</span>
+                    <select
+                      value={profFiltroFechamento}
+                      onChange={e => setProfFiltroFechamento(e.target.value)}
+                      className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-gold"
+                    >
+                      <option value="todos">Todos os profissionais</option>
+                      {profissionais.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} ({(p.periodo_recebimento || 'semanal') === 'mensal' ? 'Mensal' : (p.periodo_recebimento || 'semanal') === 'quinzenal' ? 'Quinzenal' : 'Semanal'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* KPIs do Período Selecionado */}
@@ -1170,7 +1297,7 @@ export default function ComissoesPage() {
                               <Printer size={13} /> Extrato
                             </button>
 
-                            {item.statusFechamento === 'PENDENTE' && (
+                            {item.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && (
                               <Button
                                 variant="primary"
                                 size="sm"
@@ -1260,18 +1387,25 @@ export default function ComissoesPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/50 mb-1">Profissional</label>
-                  <select
-                    value={profFiltroRecebiveis}
-                    onChange={e => setProfFiltroRecebiveis(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                  >
-                    <option value="todos">Todos os profissionais</option>
-                    {profissionais.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome} ({getProfCategoria(p.id)})
-                      </option>
-                    ))}
-                  </select>
+                  {isRestrictedProfissional && meuProfissional ? (
+                    <div className="p-2 bg-[var(--background)] border border-gold/30 rounded-lg text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <User2 size={13} className="text-gold" />
+                      <span>{meuProfissional.nome}</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={profFiltroRecebiveis}
+                      onChange={e => setProfFiltroRecebiveis(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                    >
+                      <option value="todos">Todos os profissionais</option>
+                      {profissionais.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nome} ({getProfCategoria(p.id)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-foreground/50 mb-1">Forma Pagamento</label>
@@ -1357,7 +1491,7 @@ export default function ComissoesPage() {
                     <th className="py-3 px-4">Valor Total</th>
                     <th className="py-3 px-4">Taxa Cartão</th>
                     <th className="py-3 px-4">Comissão Líquida</th>
-                    <th className="py-3 px-4">Líquido Salão</th>
+                    {!isRestrictedProfissional && <th className="py-3 px-4">Líquido Salão</th>}
                     <th className="py-3 px-4">Liberação (Prazo)</th>
                     <th className="py-3 px-4 text-right">Ação</th>
                   </tr>
@@ -1409,11 +1543,13 @@ export default function ComissoesPage() {
                             ({item.commission_pct}%)
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className="text-xs font-mono font-bold text-emerald-400">
-                            {fmt((item as any).liquido_salao ?? 0)}
-                          </span>
-                        </td>
+                        {!isRestrictedProfissional && (
+                          <td className="py-3.5 px-4">
+                            <span className="text-xs font-mono font-bold text-emerald-400">
+                              {fmt((item as any).liquido_salao ?? 0)}
+                            </span>
+                          </td>
+                        )}
                         <td className="py-3.5 px-4">
                           <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold border ${item.d30Info.cor}`}>
                             {item.d30Info.label}
@@ -1421,16 +1557,22 @@ export default function ComissoesPage() {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           {item.status === 'PENDING' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => marcarPago(item.id)}
-                              disabled={pagando === item.id}
-                              className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
-                            >
-                              <CheckCircle2 size={13} className="mr-1" />
-                              {pagando === item.id ? 'Baixando...' : 'Pagar'}
-                            </Button>
+                            !isRestrictedProfissional ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => marcarPago(item.id)}
+                                disabled={pagando === item.id}
+                                className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
+                              >
+                                <CheckCircle2 size={13} className="mr-1" />
+                                {pagando === item.id ? 'Baixando...' : 'Pagar'}
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-foreground/50 italic">
+                                Aguardando repasse
+                              </span>
+                            )
                           )}
                           {item.status === 'PAID' && (
                             <span className="text-xs text-emerald-400 font-semibold">
@@ -1443,7 +1585,7 @@ export default function ComissoesPage() {
                   })}
                   {recebiveisFiltrados.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-foreground/40">
+                      <td colSpan={isRestrictedProfissional ? 8 : 9} className="py-12 text-center text-foreground/40">
                         <Calendar size={36} className="mx-auto mb-2 text-foreground opacity-40" />
                         <p className="font-semibold text-foreground/70">Nenhum recebível encontrado no período selecionado.</p>
                         <p className="text-xs text-foreground/40 mt-1">Tente ajustar as datas inicial e final ou mudar o filtro de profissional.</p>
@@ -1463,12 +1605,20 @@ export default function ComissoesPage() {
           <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h3 className="text-lg font-bold">Visão Consolidada por Profissional</h3>
-                <p className="text-xs text-foreground/50">Valores a repassar e porcentagem de comissão ativa de cada membro da equipe.</p>
+                <h3 className="text-lg font-bold">
+                  {isRestrictedProfissional ? 'Meu Resumo Financeiro' : 'Visão Consolidada por Profissional'}
+                </h3>
+                <p className="text-xs text-foreground/50">
+                  {isRestrictedProfissional 
+                    ? 'Seus valores acumulados a receber e histórico de repasses de comissão.' 
+                    : 'Valores a repassar e porcentagem de comissão ativa de cada membro da equipe.'}
+                </p>
               </div>
-              <Button variant="primary" onClick={() => abrirRegra()}>
-                <Plus size={16} className="mr-1.5" /> Nova Regra de Comissão
-              </Button>
+              {!isRestrictedProfissional && (
+                <Button variant="primary" onClick={() => abrirRegra()}>
+                  <Plus size={16} className="mr-1.5" /> Nova Regra de Comissão
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1504,15 +1654,17 @@ export default function ComissoesPage() {
                             title="Clique para ver as regras de serviço deste profissional"
                             className="px-2.5 py-1 rounded-lg bg-gold/10 text-foreground border border-gold/30 hover:bg-gold/20 text-xs font-bold transition-colors flex items-center gap-1"
                           >
-                            {qtdRegras} {qtdRegras === 1 ? 'regra de serviço' : 'regras de serviço'} <Edit size={11} />
+                            {qtdRegras} {qtdRegras === 1 ? 'regra de serviço' : 'regras de serviço'} {!isRestrictedProfissional && <Edit size={11} />}
                           </button>
-                        ) : (
+                        ) : !isRestrictedProfissional ? (
                           <button
                             onClick={() => abrirRegra(undefined, prof.id)}
                             className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-foreground border border-amber-500/20 hover:bg-amber-500/20 text-xs font-medium transition-colors"
                           >
                             + Definir Regra
                           </button>
+                        ) : (
+                          <span className="text-[11px] text-foreground/40 italic">Comissão Padrão</span>
                         )}
                       </div>
 
@@ -1566,14 +1718,21 @@ export default function ComissoesPage() {
                 <div className="flex items-center gap-2 text-xs text-foreground/50">
                   <Filter size={14} /> Profissional:
                 </div>
-                <select
-                  value={profFiltro}
-                  onChange={e => setProfFiltro(e.target.value)}
-                  className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
-                >
-                  <option value="todos">Todos os profissionais</option>
-                  {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                {isRestrictedProfissional && meuProfissional ? (
+                  <div className="px-3 py-1 rounded-lg bg-foreground/5 border border-gold/30 text-xs text-foreground font-semibold flex items-center gap-1.5">
+                    <User2 size={13} className="text-gold" />
+                    <span>{meuProfissional.nome}</span>
+                  </div>
+                ) : (
+                  <select
+                    value={profFiltro}
+                    onChange={e => setProfFiltro(e.target.value)}
+                    className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="todos">Todos os profissionais</option>
+                    {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                )}
                 <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-foreground transition-colors">
                   <RefreshCw size={14} />
                 </button>
@@ -1610,16 +1769,22 @@ export default function ComissoesPage() {
                           <StatusBadge status={vencida && p.status === 'PENDING' ? 'OVERDUE' : p.status} />
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => marcarPago(p.id)}
-                            disabled={pagando === p.id}
-                            className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                          >
-                            <CheckCircle2 size={13} className="mr-1" />
-                            {pagando === p.id ? 'Baixando...' : 'Marcar como Pago'}
-                          </Button>
+                          {!isRestrictedProfissional ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => marcarPago(p.id)}
+                              disabled={pagando === p.id}
+                              className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                            >
+                              <CheckCircle2 size={13} className="mr-1" />
+                              {pagando === p.id ? 'Baixando...' : 'Marcar como Pago'}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-foreground/50 italic">
+                              {p.status === 'PAID' ? '✓ Repassado' : 'Aguardando repasse'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1655,14 +1820,21 @@ export default function ComissoesPage() {
                 <div className="flex items-center gap-2 text-xs text-foreground/50">
                   <Filter size={14} /> Profissional:
                 </div>
-                <select
-                  value={profFiltro}
-                  onChange={e => setProfFiltro(e.target.value)}
-                  className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
-                >
-                  <option value="todos">Todos os profissionais</option>
-                  {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                {isRestrictedProfissional && meuProfissional ? (
+                  <div className="px-3 py-1 rounded-lg bg-foreground/5 border border-gold/30 text-xs text-foreground font-semibold flex items-center gap-1.5">
+                    <User2 size={13} className="text-gold" />
+                    <span>{meuProfissional.nome}</span>
+                  </div>
+                ) : (
+                  <select
+                    value={profFiltro}
+                    onChange={e => setProfFiltro(e.target.value)}
+                    className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-gold"
+                  >
+                    <option value="todos">Todos os profissionais</option>
+                    {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                )}
                 <button onClick={carregarDados} title="Atualizar" className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-foreground transition-colors">
                   <RefreshCw size={14} />
                 </button>
@@ -1772,15 +1944,19 @@ export default function ComissoesPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-foreground">
-                    Regras e Percentuais de Repasse por Serviço
+                    {isRestrictedProfissional ? 'Meus Percentuais de Repasse por Serviço' : 'Regras e Percentuais de Repasse por Serviço'}
                   </h3>
                   <p className="text-xs text-foreground/50 mt-0.5">
-                    Configure individualmente o percentual de repasse de cada profissional por procedimento.
+                    {isRestrictedProfissional 
+                      ? 'Consulte os percentuais de comissão configurados para cada um dos seus procedimentos.' 
+                      : 'Configure individualmente o percentual de repasse de cada profissional por procedimento.'}
                   </p>
                 </div>
-                <Button variant="primary" size="sm" onClick={() => abrirRegra()} className="py-2 px-3 text-xs">
-                  <Plus size={15} className="mr-1.5" /> Nova Regra por Serviço
-                </Button>
+                {!isRestrictedProfissional && (
+                  <Button variant="primary" size="sm" onClick={() => abrirRegra()} className="py-2 px-3 text-xs">
+                    <Plus size={15} className="mr-1.5" /> Nova Regra por Serviço
+                  </Button>
+                )}
               </div>
 
               {/* Barra de Filtros e Ferramentas */}
@@ -1791,7 +1967,7 @@ export default function ComissoesPage() {
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
                     <input
                       type="text"
-                      placeholder="Buscar por nome do profissional ou do serviço..."
+                      placeholder="Buscar por nome do serviço..."
                       value={buscaRegraServico}
                       onChange={e => setBuscaRegraServico(e.target.value)}
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:border-gold"
@@ -1811,16 +1987,23 @@ export default function ComissoesPage() {
                     <span className="text-foreground/50 text-[11px] whitespace-nowrap flex items-center gap-1">
                       <Filter size={12} /> Profissional:
                     </span>
-                    <select
-                      value={profFiltro}
-                      onChange={e => setProfFiltro(e.target.value)}
-                      className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gold font-medium"
-                    >
-                      <option value="todos">Todos os profissionais ({profissionais.length})</option>
-                      {profissionais.map(p => (
-                        <option key={p.id} value={p.id}>{p.nome}</option>
-                      ))}
-                    </select>
+                    {isRestrictedProfissional && meuProfissional ? (
+                      <div className="px-3 py-1 rounded-lg bg-foreground/5 border border-gold/30 text-xs text-foreground font-semibold flex items-center gap-1.5">
+                        <User2 size={13} className="text-gold" />
+                        <span>{meuProfissional.nome}</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={profFiltro}
+                        onChange={e => setProfFiltro(e.target.value)}
+                        className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gold font-medium"
+                      >
+                        <option value="todos">Todos os profissionais ({profissionais.length})</option>
+                        {profissionais.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
                   {/* Ações Rápidas: Expandir Todos / Recolher Todos */}
@@ -1911,19 +2094,21 @@ export default function ComissoesPage() {
 
                           {/* Ações e Botão de Expandir */}
                           <div className="flex items-center justify-end gap-2 shrink-0">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                abrirRegra(undefined, prof.id);
-                              }}
-                              className="text-xs py-1 px-2.5 h-7 rounded border font-semibold flex items-center gap-1 shadow-xs"
-                            >
-                              <Plus size={13} />
-                              <span className="hidden sm:inline">Adicionar Serviço</span>
-                            </Button>
+                            {!isRestrictedProfissional && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  abrirRegra(undefined, prof.id);
+                                }}
+                                className="text-xs py-1 px-2.5 h-7 rounded border font-semibold flex items-center gap-1 shadow-xs"
+                              >
+                                <Plus size={13} />
+                                <span className="hidden sm:inline">Adicionar Serviço</span>
+                              </Button>
+                            )}
 
                             <div className="w-7 h-7 rounded-md flex items-center justify-center text-foreground/40 hover:text-foreground transition-transform">
                               {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -1942,15 +2127,17 @@ export default function ComissoesPage() {
                                 <p className="text-[11px] text-foreground/40 mt-0.5">
                                   Atendimentos deste profissional utilizam a comissão padrão ({prof.comissao_padrao ?? 40}%).
                                 </p>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => abrirRegra(undefined, prof.id)}
-                                  className="mt-3 text-xs py-1 px-3"
-                                >
-                                  <Plus size={13} className="mr-1" /> Configurar Primeiro Procedimento
-                                </Button>
+                                {!isRestrictedProfissional && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="primary"
+                                    onClick={() => abrirRegra(undefined, prof.id)}
+                                    className="mt-3 text-xs py-1 px-3"
+                                  >
+                                    <Plus size={13} className="mr-1" /> Configurar Primeiro Procedimento
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <div className="space-y-2">
@@ -1962,7 +2149,7 @@ export default function ComissoesPage() {
                                         <th className="py-2 px-3">Preço Base</th>
                                         <th className="py-2 px-3">Comissão</th>
                                         <th className="py-2 px-3">Repasse Estimado</th>
-                                        <th className="py-2 px-3 text-right">Ações</th>
+                                        {!isRestrictedProfissional && <th className="py-2 px-3 text-right">Ações</th>}
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -1990,26 +2177,28 @@ export default function ComissoesPage() {
                                             <td className="py-2 px-3 font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
                                               {precoBase > 0 ? fmt(repasseEstimado) : '—'}
                                             </td>
-                                            <td className="py-2 px-3 text-right">
-                                              <div className="inline-flex items-center gap-1">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => abrirRegra(r)}
-                                                  title="Editar comissão deste serviço"
-                                                  className="p-1.5 rounded hover:bg-gold/10 text-foreground/60 hover:text-gold transition-colors"
-                                                >
-                                                  <Edit size={13} />
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => excluirRegra(r.id)}
-                                                  title="Remover regra deste serviço"
-                                                  className="p-1.5 rounded hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
-                                              </div>
-                                            </td>
+                                            {!isRestrictedProfissional && (
+                                              <td className="py-2 px-3 text-right">
+                                                <div className="inline-flex items-center gap-1">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => abrirRegra(r)}
+                                                    title="Editar comissão deste serviço"
+                                                    className="p-1.5 rounded hover:bg-gold/10 text-foreground/60 hover:text-gold transition-colors"
+                                                  >
+                                                    <Edit size={13} />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => excluirRegra(r.id)}
+                                                    title="Remover regra deste serviço"
+                                                    className="p-1.5 rounded hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"
+                                                  >
+                                                    <Trash2 size={13} />
+                                                  </button>
+                                                </div>
+                                              </td>
+                                            )}
                                           </tr>
                                         );
                                       })}
@@ -2555,7 +2744,7 @@ export default function ComissoesPage() {
               </div>
 
               <div className="flex gap-2 w-full sm:w-auto">
-                {reciboModalData.statusFechamento === 'PENDENTE' && (
+                {reciboModalData.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && (
                   <Button
                     variant="primary"
                     size="sm"

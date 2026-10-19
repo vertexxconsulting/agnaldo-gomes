@@ -589,6 +589,32 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.24 Isolamento Estrito de Faturamento e Comissões por Profissional (`/admin/comissoes`)
+
+- **Privacidade Absoluta e Sigilo de Equipe**:
+  - Quando um profissional da equipe acessa a aba de comissões (`/admin/comissoes`) com seu usuário:
+    - O sistema identifica automaticamente o profissional vinculado via `user_metadata.professional_id`, perfil ou e-mail/nome.
+    - Se o usuário não for gestor administrador (`isRestrictedProfissional`), os dados carregados na memória (`comissoes`, `parcelas`, `profissionais` e `regras`) são **estritamente filtrados pelo ID do profissional logado**.
+    - Nenhum dado de faturamento, procedimento, comissão ou repasse de outros membros da equipe é renderizado ou trafegado para o cliente.
+- **Adaptação da Interface para o Profissional**:
+  - **Banner de Identificação**: Exibe *"Painel Financeiro Individual · [Nome do Profissional]"* com badge *"Acesso Individual"*.
+  - **KPIs Individuais**:
+    - *Meu Faturamento Bruto (Mês)*: Faturamento gerado exclusivamente pelos atendimentos do profissional no mês.
+    - *Minhas Comissões a Liberar*: Saldo em aberto a receber do profissional.
+    - *Já Recebido (Mês Atual)*: Total de repasses quitados do profissional no mês corrente.
+    - *Meus Atendimentos (Mês)*: Volume de atendimentos realizados pelo profissional.
+  - **Bloqueio de Controles Coletivos**:
+    - Substituição dos dropdowns de seleção de equipe por badges fixos individuais em todas as abas (Fechamento Semanal, Recebíveis, Parcelas, Histórico e Regras por Serviço).
+    - Botões administrativos (*"Fechar Caixa Geral"*, *"Dar Baixa"*, *"Marcar como Pago"*, *"Nova Regra de Serviço"*, edição/exclusão de regras) são ocultados para o profissional comum.
+    - No modal de extrato/recibo, o botão de quitação bancária é oculto, preservando os botões de conferência, impressão/PDF e envio para WhatsApp.
+  - **Ocultação de Informações Confidenciais do Salão**:
+    - A aba **"Taxas e Maquininhas"** é completamente oculta para profissionais (sigilo sobre contratos e taxas de adquirentes do salão).
+    - A coluna **"Líquido Salão"** na tabela de recebíveis é oculta para o profissional.
+  - **Acesso de Administradores & Gestores**:
+    - Administradores gerais (ex: Agnaldo Gomes, donos e gestores autorizados) mantêm acesso irrestrito a todos os membros da equipe, relatórios consolidados, taxas e fechamento financeiro em lote.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
