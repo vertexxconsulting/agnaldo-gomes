@@ -615,6 +615,26 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.25 Roteamento Unificado e Resolução de Links da Academy e Loja (`Header` e `Footer`)
+
+- **Eliminação de Subdomínios Inexistentes**:
+  - Anteriormente, o componente `components/Header.tsx` continha um efeito colateral (`useEffect`) que reconstruía URLs absolutas forçando subdomínios (`academy.[dominio]`, `loja.[dominio]`, `agenda.[dominio]`). Como esses subdomínios não possuem entradas DNS apontadas nem certificados SSL isolados, os cliques em "Academy" e "Loja" resultavam em falha de conexão (`DNS_PROBE_FINISHED_NXDOMAIN`).
+  - **Correção Definitiva**: Todas as rotas do Header e da aplicação agora utilizam o roteamento interno nativo do Next.js via App Router:
+    - Início: `/`
+    - Studio: `/studio`
+    - Academy: `/academy`
+    - Loja: `/loja`
+    - Sobre: `/sobre`
+    - Agendamento: `/agendamento`
+    - Área do Aluno: `/academy/login` (ou `/aluno`)
+- **Navegação Bidirecional na Loja (`app/(shop)/layout.tsx`)**:
+  - A topbar da loja virtual agora conta com atalhos diretos e elegantes para o ecossistema principal: `← Início`, `Studio`, `Academy (Cursos)` e `Agendamento`.
+  - O menu gaveta mobile da loja inclui a seção "Navegação Principal" para permitir ao cliente transitar facilmente entre os módulos.
+- **Inclusão da Loja no Footer (`components/Footer.tsx`)**:
+  - A coluna de "Navegação" do rodapé foi atualizada para incluir a `Loja Oficial` (`/loja`) ao lado do Studio e da Academy.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

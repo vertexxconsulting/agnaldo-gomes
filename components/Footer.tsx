@@ -54,10 +54,11 @@ export function Footer() {
         <div>
           <h4 className="font-semibold mb-6 uppercase tracking-widest text-sm">Navegação</h4>
           <ul className="flex flex-col gap-3 text-sm">
-            <li><Link href="/" className="hover:text-primary transition-colors">Home</Link></li>
-            <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre Agnaldo</Link></li>
-            <li><Link href="/academy" className="hover:text-primary transition-colors">Academy</Link></li>
+            <li><Link href="/" className="hover:text-primary transition-colors">Início</Link></li>
             <li><Link href="/studio" className="hover:text-primary transition-colors">Studio de Beleza</Link></li>
+            <li><Link href="/academy" className="hover:text-primary transition-colors">Academy (Cursos)</Link></li>
+            <li><Link href="/loja" className="hover:text-primary transition-colors">Loja Oficial</Link></li>
+            <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre Agnaldo</Link></li>
             <li><Link href="/aluno" className="hover:text-primary transition-colors">Área do Aluno</Link></li>
           </ul>
         </div>

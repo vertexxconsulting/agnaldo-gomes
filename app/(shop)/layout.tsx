@@ -29,13 +29,23 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-amber-200">
       
-      {/* Topbar / Aviso - Escuro elegante no lugar do verde */}
-      {settings?.frete_gratis && (
-        <div className="bg-[#1A1A1A] text-white text-[11px] md:text-xs uppercase tracking-widest text-center py-2 font-medium flex items-center justify-center gap-4">
-          <span>FRETE GRÁTIS NAS COMPRAS ACIMA DE R$ {settings.frete_gratis_acima_de}</span>
-          <Link href="/loja" className="border border-white/40 px-3 py-0.5 hover:bg-white hover:text-black transition-colors text-[10px]">Saiba Mais</Link>
+      {/* Topbar / Navegação Global do Studio e Aviso */}
+      <div className="bg-[#1A1A1A] text-white text-[11px] md:text-xs py-2 px-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10">
+        <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider font-medium">
+          <Link href="/" className="text-white/70 hover:text-amber-400 transition-colors">← Início</Link>
+          <span className="text-white/20">|</span>
+          <Link href="/studio" className="text-white/70 hover:text-amber-400 transition-colors">Studio</Link>
+          <span className="text-white/20">|</span>
+          <Link href="/academy" className="text-white/70 hover:text-amber-400 transition-colors">Academy</Link>
+          <span className="text-white/20">|</span>
+          <Link href="/agendamento" className="text-amber-400 hover:text-amber-300 transition-colors">Agendamento</Link>
         </div>
-      )}
+        <div className="flex items-center gap-4 text-[11px] uppercase tracking-widest font-medium ml-auto">
+          {settings?.frete_gratis && (
+            <span className="text-amber-200">FRETE GRÁTIS ACIMA DE R$ {settings.frete_gratis_acima_de}</span>
+          )}
+        </div>
+      </div>
 
       {/* Header E-commerce - Tom Bege/Areia */}
       <header className="bg-[#F4F1EA] border-b border-[#E5E0D8] sticky top-0 z-50 shadow-sm">
@@ -145,7 +155,15 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
                 <span className="font-medium text-sm uppercase tracking-widest text-slate-900">Menu</span>
                 <button onClick={() => setIsMenuOpen(false)} className="text-slate-500"><X size={20}/></button>
               </div>
-              <div className="p-4 flex flex-col gap-4 text-slate-700 text-sm font-medium tracking-wide">
+              <div className="p-4 flex flex-col gap-3 text-slate-700 text-sm font-medium tracking-wide">
+                <div className="flex flex-col gap-2 pb-3 mb-2 border-b border-slate-100 text-xs font-semibold uppercase text-slate-500">
+                  <span>Navegação Principal</span>
+                  <Link href="/" onClick={() => setIsMenuOpen(false)} className="text-slate-900 font-bold hover:text-amber-600 transition-colors">← Início (Site)</Link>
+                  <Link href="/studio" onClick={() => setIsMenuOpen(false)} className="text-slate-900 font-bold hover:text-amber-600 transition-colors">Studio de Beleza</Link>
+                  <Link href="/academy" onClick={() => setIsMenuOpen(false)} className="text-slate-900 font-bold hover:text-amber-600 transition-colors">Academy (Cursos)</Link>
+                  <Link href="/agendamento" onClick={() => setIsMenuOpen(false)} className="text-amber-600 font-bold hover:text-amber-700 transition-colors">Agendar Horário</Link>
+                </div>
+                <span className="text-xs font-semibold uppercase text-slate-500 mt-1">Categorias da Loja</span>
                 <Link href="/loja/categoria/mais-vendidos" onClick={() => setIsMenuOpen(false)}>Mais Vendidos</Link>
                 <Link href="/loja/categoria/kits-promocionais" onClick={() => setIsMenuOpen(false)}>Kits Promocionais</Link>
                 <Link href="/loja/categoria/tratamento" onClick={() => setIsMenuOpen(false)}>Tratamento</Link>
