@@ -20,15 +20,99 @@ import { supabase } from '@/lib/supabase';
 import { ROLES, getUserRole, isOwner } from '@/lib/auth';
 
 /**
- * Paleta de destaque por cliente na agenda. Propositalmente apenas 2 cores bem
- * contrastantes (azul x laranja — também distinguíveis por daltônicos), alternadas
- * por ordem de horário em cada coluna, para que clientes intercalados nunca
- * fiquem com a mesma cor lado a lado.
+ * Cores por segmento de fluxo da Agenda (definidas por processo):
+ * - Agendado (pendente): Fundo branco clean com borda neutra suave
+ * - Pra ser atendido (confirmado): Amarelo pastel suave com texto de alto contraste
+ * - Em atendimento (em_atendimento): Verde menta pastel suave com texto nítido
+ * - Finalizou e vai para pagamento (concluido): Azul pastel suave com texto nítido
  */
-const CORES_CLIENTE_AGENDA = [
-  { bar: '#3b82f6', bg: 'rgba(59,130,246,0.10)', bgOngoing: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.40)' },
-  { bar: '#f97316', bg: 'rgba(249,115,22,0.10)', bgOngoing: 'rgba(249,115,22,0.06)', border: 'rgba(249,115,22,0.40)' },
-] as const;
+export interface EstiloProcessoAgenda {
+  label: string;
+  barColor: string;
+  dotColor: string;
+  cardClass: string;
+  ongoingClass: string;
+  badgeClass: string;
+  servicoClass: string;
+  textCliente: string;
+  textHora: string;
+}
+
+export const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
+  pendente: {
+    label: 'Agendado',
+    barColor: '#94a3b8',
+    dotColor: '#64748b',
+    cardClass: 'bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 shadow-xs',
+    ongoingClass: 'bg-slate-50/90 dark:bg-zinc-900/60 border-slate-300 dark:border-zinc-800',
+    badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700',
+    servicoClass: 'text-slate-600 dark:text-slate-400',
+    textCliente: 'text-slate-900 dark:text-slate-100',
+    textHora: 'text-slate-500 dark:text-slate-400',
+  },
+  confirmado: {
+    label: 'Pra Atender',
+    barColor: '#eab308',
+    dotColor: '#ca8a04',
+    cardClass: 'bg-[#fefce8] dark:bg-amber-950/25 border-amber-300/80 dark:border-amber-600/40 shadow-xs',
+    ongoingClass: 'bg-[#fefce8]/70 dark:bg-amber-950/15 border-amber-300/60 dark:border-amber-700/30',
+    badgeClass: 'bg-amber-100 dark:bg-amber-900/50 text-amber-950 dark:text-amber-200 border-amber-300/80 dark:border-amber-600/50',
+    servicoClass: 'text-amber-800 dark:text-amber-300',
+    textCliente: 'text-slate-900 dark:text-slate-100',
+    textHora: 'text-amber-800/80 dark:text-amber-300/80',
+  },
+  em_atendimento: {
+    label: 'Em Atendimento',
+    barColor: '#10b981',
+    dotColor: '#059669',
+    cardClass: 'bg-[#f0fdf4] dark:bg-emerald-950/25 border-emerald-300/80 dark:border-emerald-600/40 shadow-xs',
+    ongoingClass: 'bg-[#f0fdf4]/70 dark:bg-emerald-950/15 border-emerald-300/60 dark:border-emerald-700/30',
+    badgeClass: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-950 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-600/50',
+    servicoClass: 'text-emerald-800 dark:text-emerald-300',
+    textCliente: 'text-slate-900 dark:text-slate-100',
+    textHora: 'text-emerald-800/80 dark:text-emerald-300/80',
+  },
+  concluido: {
+    label: 'Pagamento',
+    barColor: '#3b82f6',
+    dotColor: '#2563eb',
+    cardClass: 'bg-[#eff6ff] dark:bg-blue-950/25 border-blue-300/80 dark:border-blue-600/40 shadow-xs',
+    ongoingClass: 'bg-[#eff6ff]/70 dark:bg-blue-950/15 border-blue-300/60 dark:border-blue-700/30',
+    badgeClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-950 dark:text-blue-200 border-blue-300/80 dark:border-blue-600/50',
+    servicoClass: 'text-blue-800 dark:text-blue-300',
+    textCliente: 'text-slate-900 dark:text-slate-100',
+    textHora: 'text-blue-800/80 dark:text-blue-300/80',
+  },
+  cancelado: {
+    label: 'Cancelado',
+    barColor: '#ef4444',
+    dotColor: '#dc2626',
+    cardClass: 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30 opacity-75',
+    ongoingClass: 'bg-red-50/30 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 opacity-60',
+    badgeClass: 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800',
+    servicoClass: 'text-red-700/80 dark:text-red-400',
+    textCliente: 'text-slate-500 line-through',
+    textHora: 'text-slate-400 font-mono',
+  },
+  no_show: {
+    label: 'No-Show',
+    barColor: '#a855f7',
+    dotColor: '#9333ea',
+    cardClass: 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/30 opacity-75',
+    ongoingClass: 'bg-purple-50/30 dark:bg-purple-950/10 border-purple-200/50 dark:border-purple-900/20 opacity-60',
+    badgeClass: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800',
+    servicoClass: 'text-purple-700/80 dark:text-purple-400',
+    textCliente: 'text-slate-500 line-through',
+    textHora: 'text-slate-400 font-mono',
+  },
+};
+
+export function getEstiloProcesso(status?: StatusAgendamento): EstiloProcessoAgenda {
+  if (status && CORES_PROCESSO_AGENDA[status]) {
+    return CORES_PROCESSO_AGENDA[status];
+  }
+  return CORES_PROCESSO_AGENDA.pendente;
+}
 
 /**
  * Container com rolagem horizontal por "clicar, segurar e arrastar".
@@ -1690,6 +1774,33 @@ function AgendaContent() {
             </div>
           )}
 
+          {/* Legenda de Fluxo por Cores da Agenda */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3.5 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl shadow-xs text-xs mb-1">
+            <span className="font-bold text-foreground/60 uppercase tracking-wider text-[10px] flex items-center gap-1.5 mr-1">
+              <Sparkles size={13} className="text-gold" /> Fluxo da Agenda:
+            </span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-300 border border-slate-400"></span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">Agendado</span>
+              <span className="text-[10px] text-foreground/40 font-mono hidden md:inline">(Fundo Branco)</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#fefce8] dark:bg-amber-950/25 border border-amber-300/80 dark:border-amber-600/40 shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <span className="font-bold text-amber-950 dark:text-amber-200 text-[11px]">Pra Atender</span>
+              <span className="text-[10px] text-amber-700/60 dark:text-amber-300/60 font-mono hidden md:inline">(Amarelo)</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f0fdf4] dark:bg-emerald-950/25 border border-emerald-300/80 dark:border-emerald-600/40 shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span className="font-bold text-emerald-950 dark:text-emerald-200 text-[11px]">Em Atendimento</span>
+              <span className="text-[10px] text-emerald-700/60 dark:text-emerald-300/60 font-mono hidden md:inline">(Verde)</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eff6ff] dark:bg-blue-950/25 border border-blue-300/80 dark:border-blue-600/40 shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              <span className="font-bold text-blue-950 dark:text-blue-200 text-[11px]">Pagamento / Caixa</span>
+              <span className="text-[10px] text-blue-700/60 dark:text-blue-300/60 font-mono hidden md:inline">(Azul)</span>
+            </div>
+          </div>
+
           {/* Agenda Kanban (Colunas por Profissional) */}
           <DragScrollX className="w-full min-w-0 border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] shadow-sm">
             {profissionaisVisiveisNaAgenda.length === 0 ? (
@@ -1769,13 +1880,6 @@ function AgendaContent() {
                     slots.push(`${hStr}:${minStr}`);
                   }
                 }
-
-                // Cor de destaque por agendamento (alterna entre 2 cores pela ordem de início)
-                const corPorAgendamento = new Map<string, typeof CORES_CLIENTE_AGENDA[number]>();
-                agendamentosFiltrados
-                  .filter(a => a.status !== 'cancelado' && (a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id))))
-                  .sort((x, y) => timeToMinutes(x.hora_inicio) - timeToMinutes(y.hora_inicio) || String(x.id).localeCompare(String(y.id)))
-                  .forEach((a, i) => corPorAgendamento.set(a.id, CORES_CLIENTE_AGENDA[i % CORES_CLIENTE_AGENDA.length]));
 
                 return (
                   <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
@@ -1858,18 +1962,18 @@ function AgendaContent() {
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
-                                    const cor = corPorAgendamento.get(a.id) ?? CORES_CLIENTE_AGENDA[0];
+                                    const estilo = getEstiloProcesso(a.status);
 
                                     return (
                                       <div 
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border rounded p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all shadow-sm relative overflow-hidden h-full flex flex-col justify-center ${
-                                          isAuxiliarNeste ? 'bg-gold/10 dark:bg-gold/5 border-gold/40' : ''
-                                        }`}
-                                        style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bg, borderColor: cor.border }}
+                                        className={`text-xs border rounded-lg p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center ${estilo.cardClass}`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : cor.bar }}></div>
+                                        <div 
+                                          className="absolute left-0 top-0 bottom-0 w-1.5" 
+                                          style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
+                                        />
                                         <div className="pl-2">
                                           {isAuxiliarNeste && (
                                             <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit">
@@ -1878,7 +1982,9 @@ function AgendaContent() {
                                             </div>
                                           )}
                                           <div className="flex items-center justify-between gap-1">
-                                            <span className="font-bold truncate text-foreground/90 leading-tight" title={cliente}>{cliente}</span>
+                                            <span className={`font-bold truncate leading-tight ${estilo.textCliente}`} title={cliente}>
+                                              {cliente}
+                                            </span>
                                             <div className="flex items-center gap-1 shrink-0">
                                               {a.allow_overlap && (
                                                 <button
@@ -1888,20 +1994,24 @@ function AgendaContent() {
                                                     e.stopPropagation();
                                                     abrirFormNovo(time, prof.id, true);
                                                   }}
-                                                  className="px-1.5 py-0.5 rounded bg-gold/20 hover:bg-gold text-gold hover:text-background font-bold text-[10px] flex items-center gap-0.5 transition-all border border-gold/40 shadow-xs cursor-pointer"
+                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer"
                                                 >
                                                   <Plus size={11} className="stroke-[2.5]" />
                                                   <span>Encaixe</span>
                                                 </button>
                                               )}
-                                              <span className="text-[9px] font-mono font-semibold text-foreground/50">{a.hora_inicio} - {horaFimDisplay}</span>
+                                              <span className={`text-[9px] font-mono font-semibold ${estilo.textHora}`}>{a.hora_inicio} - {horaFimDisplay}</span>
                                             </div>
                                           </div>
-                                          <div className="text-gold/80 truncate text-[10px] font-medium leading-tight mt-1" title={servico}>{servico}</div>
-                                          <div className="flex items-center justify-between mt-1 gap-1">
+                                          <div className={`truncate text-[10px] font-medium leading-tight mt-1 ${estilo.servicoClass}`} title={servico}>
+                                            {servico}
+                                          </div>
+                                          <div className="flex items-center justify-between mt-1.5 gap-1">
                                             <div className="flex items-center gap-1">
-                                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[a.status] }}></span>
-                                              <span className="text-[9px] text-foreground/60 uppercase font-semibold">{STATUS_LABELS[a.status]}</span>
+                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shadow-xs ${estilo.badgeClass}`}>
+                                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: estilo.dotColor }}></span>
+                                                <span>{estilo.label}</span>
+                                              </div>
                                               {a.allow_overlap && (
                                                 <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
                                                   Pausa liberada
@@ -1942,25 +2052,23 @@ function AgendaContent() {
                                     }
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
-                                    const cor = corPorAgendamento.get(a.id) ?? CORES_CLIENTE_AGENDA[0];
+                                    const estilo = getEstiloProcesso(a.status);
 
                                     return (
                                       <div 
                                         key={`ongoing-${a.id}-${time}`} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border border-dashed rounded p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${
-                                          isAuxiliarNeste 
-                                            ? 'bg-gold/10 dark:bg-gold/5 border-gold/40 hover:bg-gold/15' 
-                                            : ''
-                                        }`}
-                                        style={isAuxiliarNeste ? undefined : { backgroundColor: cor.bgOngoing, borderColor: cor.border }}
-                                        title={`Em atendimento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Clique para ver ou editar`}
+                                        className={`text-xs border border-dashed rounded-lg p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${estilo.ongoingClass}`}
+                                        title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
                                       >
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : cor.bar }}></div>
+                                        <div 
+                                          className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" 
+                                          style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
+                                        />
                                         <div className="pl-1.5">
                                           <div className="flex items-center justify-between gap-1">
-                                            <span className="font-semibold text-[11px] truncate text-foreground/80 leading-tight flex items-center gap-1">
-                                              <span className="text-[11px] font-bold" style={{ color: isAuxiliarNeste ? '#C5A059' : cor.bar }}>↳</span> {cliente}
+                                            <span className={`font-semibold text-[11px] truncate leading-tight flex items-center gap-1 ${estilo.textCliente}`}>
+                                              <span className="text-[11px] font-bold" style={{ color: estilo.barColor }}>↳</span> {cliente}
                                               {isAuxiliarNeste && (
                                                 <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30">Auxiliar</span>
                                               )}
@@ -1974,31 +2082,38 @@ function AgendaContent() {
                                                     e.stopPropagation();
                                                     abrirFormNovo(time, prof.id, true);
                                                   }}
-                                                  className="px-1.5 py-0.5 rounded bg-gold/20 hover:bg-gold text-gold hover:text-background font-bold text-[10px] flex items-center gap-0.5 transition-all border border-gold/40 shadow-xs cursor-pointer"
+                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer"
                                                 >
                                                   <Plus size={11} className="stroke-[2.5]" />
                                                   <span>Encaixe</span>
                                                 </button>
                                               )}
-                                              <span className="text-[9px] font-mono text-foreground/50">{a.hora_inicio} às {horaFimDisplay}</span>
+                                              <span className={`text-[9px] font-mono font-semibold ${estilo.textHora}`}>{a.hora_inicio} às {horaFimDisplay}</span>
                                             </div>
                                           </div>
                                           <div className="flex items-center justify-between gap-1 mt-0.5">
-                                            <div className="text-foreground/50 truncate text-[9px] font-medium">{servico}</div>
-                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
-                                              <button
-                                                type="button"
-                                                title="Lançar produtos aplicados nesta etapa em tempo real"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  abrirLancarInsumoTempoReal(a);
-                                                }}
-                                                className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                                            <div className={`truncate text-[9px] font-medium ${estilo.servicoClass}`}>{servico}</div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                              <span 
+                                                className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded border ${estilo.badgeClass}`}
                                               >
-                                                <Beaker size={9} className="text-white" />
-                                                <span>+ Insumo</span>
-                                              </button>
-                                            )}
+                                                {estilo.label}
+                                              </span>
+                                              {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
+                                                <button
+                                                  type="button"
+                                                  title="Lançar produtos aplicados nesta etapa em tempo real"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    abrirLancarInsumoTempoReal(a);
+                                                  }}
+                                                  className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                                                >
+                                                  <Beaker size={9} className="text-white" />
+                                                  <span>+ Insumo</span>
+                                                </button>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
@@ -2061,7 +2176,18 @@ function AgendaContent() {
                   </div>
                 </div>
               )}
-              <p><strong>Status Atual:</strong> {STATUS_LABELS[selectedAppt.status]}</p>
+              <div className="flex items-center gap-2">
+                <strong>Status Atual:</strong>
+                {(() => {
+                  const est = getEstiloProcesso(selectedAppt.status);
+                  return (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold border shadow-xs ${est.badgeClass}`}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: est.dotColor }}></span>
+                      <span>{est.label}</span>
+                    </span>
+                  );
+                })()}
+              </div>
               {selectedAppt.allow_overlap && (
                 <div className="text-gold font-medium flex items-center gap-1.5 text-xs bg-gold/10 p-2 rounded-lg border border-gold/20">
                   <Sparkles size={14} className="shrink-0" />

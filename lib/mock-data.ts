@@ -210,21 +210,21 @@ export const MOCK_BLOQUEIOS: BloqueioAgenda[] = [];
 // HELPERS
 // ────────────────────────────────────────────
 export const STATUS_LABELS: Record<StatusAgendamento, string> = {
-  pendente: 'Pendente',
-  confirmado: 'Confirmado',
+  pendente: 'Agendado',
+  confirmado: 'Pra Atender',
   em_atendimento: 'Em Atendimento',
-  concluido: 'Concluído',
+  concluido: 'Pagamento',
   cancelado: 'Cancelado',
   no_show: 'No-Show',
 };
 
 export const STATUS_COLORS: Record<StatusAgendamento, string> = {
-  pendente: '#F59E0B',
-  confirmado: '#10B981',
-  em_atendimento: '#3B82F6',
-  concluido: '#0ea5e9',
-  cancelado: '#EF4444',
-  no_show: '#9333EA',
+  pendente: '#94a3b8',       // Agendado (fundo branco / barra neutra)
+  confirmado: '#eab308',     // Pra ser atendido (amarelo)
+  em_atendimento: '#10b981', // Em atendimento (verde)
+  concluido: '#3b82f6',      // Finalizou / Pagamento (azul)
+  cancelado: '#ef4444',      // Cancelado
+  no_show: '#a855f7',        // No-Show
 };
 
 export function getClienteNome(id: string, customList?: Cliente[]): string {

@@ -576,6 +576,17 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
   - `createAdminUser` e `updateUserRole` atualizados para aceitar `avatar_url` e `professional_id`.
   - Atualiza automaticamente `salon_professionals.user_id = user.id` no Supabase, garantindo integridade e consistência entre as contas de autenticação e os registros do salão.
 
+### 🎨 Sistema de Cores por Fluxo de Processo da Agenda (`/admin/agenda`)
+- **Segmentação por Etapa de Atendimento**: Substituição da antiga diferenciação alternada por cliente por uma paleta funcional padronizada orientada a processos.
+- **Tabela de Cores & Contrastes**:
+  - `⚪ Agendado` (`pendente`): Fundo branco (`bg-white` / escuro `bg-zinc-900`), borda neutra suave, texto escuro de alto contraste (`text-slate-900`).
+  - `🟡 Pra Atender` (`confirmado`): Fundo amarelo pastel suave (`bg-[#fefce8]` / escuro `bg-amber-950/25`), borda âmbar suave, texto nítido (`text-slate-900` e `text-amber-800`).
+  - `🟢 Em Atendimento` (`em_atendimento`): Fundo verde menta suave (`bg-[#f0fdf4]` / escuro `bg-emerald-950/25`), borda esmeralda suave, texto nítido (`text-slate-900` e `text-emerald-800`).
+  - `🔵 Pagamento / Caixa` (`concluido`): Fundo azul pastel suave (`bg-[#eff6ff]` / escuro `bg-blue-950/25`), borda azul suave, texto nítido (`text-slate-900` e `text-blue-800`).
+  - `🔴 Cancelado` / `🟣 No-Show`: Tons discretos com texto riscado e opacidade reduzida.
+- **Legenda Visual Fixa**: Barra de status no topo da grade Kanban com indicadores visuais de cada etapa.
+- **Suporte a Auxiliares**: Co-participantes mantêm destaque com barra vertical dourada (`#C5A059`) e tag identificadora de apoio ao titular.
+
 ---
 
 ## 9. Comandos Úteis de Desenvolvimento
