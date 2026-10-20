@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, MinusCircle } from 'lucide-react';
 import { obterIAConfig, DEFAULT_IA_CONFIG } from '@/lib/ia-config';
+import { responderDuvidaComTutorial } from '@/lib/knowledge-base';
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,15 +55,20 @@ export function FloatingAssistant() {
       
       const data = await res.json();
       
-      if (res.status === 503 && data.missingApiKey) {
-        setChat(prev => [...prev, { remetente: 'ia', texto: 'Desculpe, a chave da IA (OpenAI) ainda não está configurada no servidor pela equipe técnica.' }]);
-      } else if (!res.ok) {
-        throw new Error(data.error || 'Erro na resposta');
-      } else {
+      if (data.resposta) {
         setChat(prev => [...prev, { remetente: 'ia', texto: data.resposta }]);
+      } else if (res.status === 503 && data.missingApiKey) {
+        const fallbackTutorial = responderDuvidaComTutorial(texto);
+        setChat(prev => [...prev, { remetente: 'ia', texto: fallbackTutorial }]);
+      } else if (!res.ok) {
+        const fallbackTutorial = responderDuvidaComTutorial(texto);
+        setChat(prev => [...prev, { remetente: 'ia', texto: fallbackTutorial }]);
+      } else {
+        setChat(prev => [...prev, { remetente: 'ia', texto: data.resposta || responderDuvidaComTutorial(texto) }]);
       }
     } catch (error: any) {
-      setChat(prev => [...prev, { remetente: 'ia', texto: `Erro: ${error.message}` }]);
+      const fallbackTutorial = responderDuvidaComTutorial(texto);
+      setChat(prev => [...prev, { remetente: 'ia', texto: fallbackTutorial }]);
     } finally {
       setPensando(false);
     }

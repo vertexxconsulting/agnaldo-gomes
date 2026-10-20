@@ -10,6 +10,7 @@ import {
   RefreshCw, Smartphone, HelpCircle, Save, Sliders, Play, Clock
 } from 'lucide-react';
 import { IAConfig, DEFAULT_IA_CONFIG, DEFAULT_HORARIOS_SALAO, obterIAConfig, salvarIAConfig } from '@/lib/ia-config';
+import { responderDuvidaComTutorial } from '@/lib/knowledge-base';
 
 type TabAtiva = 'diretrizes' | 'relatorios' | 'atendente' | 'modulos' | 'tutorial' | 'playground';
 
@@ -121,24 +122,11 @@ export default function IAAssistentePage() {
 
       const data = await res.json();
 
-      if (res.status === 503 && data.missingApiKey) {
-        // Fallback local se a chave da API não estiver configurada
-        let respostaLocal = '';
-        const pLower = pergunta.toLowerCase();
-        
-        if (pLower.includes('relat') || pLower.includes('fatur')) {
-          respostaLocal = `📊 *RESUMO EXECUTIVO (MOCK LOCAL)*\n\n[API NÃO CONFIGURADA] Prezado Agnaldo, segue o balanço consolidado:\n• Faturamento estimado: R$ 60,00+\n• Serviços em destaque: Corte Masculino, Mechas e Ozonioterapia.\n• Regra de Noivas: 50% de sinal garantido.`;
-        } else if (pLower.includes('recep') || pLower.includes('atendente') || pLower.includes('cheg')) {
-          respostaLocal = `🛎️ *Script para Atendente Física (MOCK LOCAL):*\n"${config.atendenteFisica.scriptBoasVindas}"`;
-        } else {
-          respostaLocal = `🤖 *Aviso de Integração:* Entendi sua mensagem, mas a chave da OpenAI (OPENAI_API_KEY) ainda não foi inserida nas variáveis de ambiente da Vercel.\n\nPara a IA real responder dinamicamente usando suas diretrizes, adicione a chave na hospedagem.`;
-        }
-        setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: respostaLocal }]);
-      } else if (!res.ok) {
-        throw new Error(data.error || 'Erro ao conectar com a IA');
-      } else {
-        // Resposta Real da IA
+      if (data.resposta) {
         setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: data.resposta }]);
+      } else {
+        const fallbackTutorial = responderDuvidaComTutorial(pergunta);
+        setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: fallbackTutorial }]);
       }
     } catch (err: any) {
       setHistoricoChat(prev => [...prev, { remetente: 'ia', texto: `❌ Erro: ${err.message}` }]);

@@ -115,22 +115,24 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-card/30 border border-white/10 p-6 rounded-2xl">
-              <h4 className="font-bold text-lg mb-4 text-gold">1. Fluxo de Agendamento Online</h4>
-              <ol className="list-decimal list-inside space-y-4 text-sm text-foreground/80">
-                <li className="pl-2">O cliente agenda pelo site. O status entra como <span className="text-orange-400 font-bold">Pendente</span>.</li>
-                <li className="pl-2">A secretária vê na aba <strong className="text-white">Agenda</strong> e entra em contato via WhatsApp para confirmar.</li>
-                <li className="pl-2">Após confirmação, clique no agendamento e mude para <span className="text-green-400 font-bold">Confirmado</span>.</li>
-                <li className="pl-2">Se o cliente cancelar, mude para <span className="text-red-400 font-bold">Cancelado</span> para liberar a vaga.</li>
+              <h4 className="font-bold text-lg mb-4 text-gold">1. Fluxo de Agendamento e Atendimento</h4>
+              <ol className="list-decimal list-inside space-y-3 text-sm text-foreground/80">
+                <li className="pl-2">O cliente pede pelo site ou WhatsApp. Entra na <strong>Agenda</strong> como <span className="text-amber-400 font-bold">Pendente</span>.</li>
+                <li className="pl-2">A secretária negocia o horário e confirma. O status muda para <span className="text-amber-500 font-bold">Confirmado</span>.</li>
+                <li className="pl-2">O profissional inicia o procedimento no <strong>Meu Painel</strong>. O status muda para <span className="text-emerald-400 font-bold">Em Atendimento</span>.</li>
+                <li className="pl-2">Na cadeira, o profissional lança insumos por grama (com busca inteligente) e faz upsell de produtos de balcão.</li>
+                <li className="pl-2">Ao terminar, clica em "Encerrar Atendimento" e o agendamento vai para <span className="text-blue-400 font-bold">Finalizou (Pagamento)</span>.</li>
               </ol>
             </div>
 
             <div className="bg-card/30 border border-white/10 p-6 rounded-2xl">
-              <h4 className="font-bold text-lg mb-4 text-gold">2. Atendimento e Pagamento (Comandas)</h4>
-              <ol className="list-decimal list-inside space-y-4 text-sm text-foreground/80">
-                <li className="pl-2">Quando o cliente chega, o agendamento pode ser marcado como <span className="text-blue-400 font-bold">Em Atendimento</span>.</li>
-                <li className="pl-2">Ao finalizar, vá em <strong className="text-white">Comandas</strong> e gere uma nova vinculada ao cliente.</li>
-                <li className="pl-2">Adicione os serviços e produtos extras consumidos. O sistema calcula a comissão.</li>
-                <li className="pl-2">Registre a forma de pagamento (Pix, Cartão, Dinheiro) e <strong className="text-white">Finalize a Comanda</strong>.</li>
+              <h4 className="font-bold text-lg mb-4 text-gold">2. Fechamento e Auditoria Financeira</h4>
+              <ol className="list-decimal list-inside space-y-3 text-sm text-foreground/80">
+                <li className="pl-2"><strong>Secretária no Balcão:</strong> Abre o checkout resumido, confere serviços, insumos e produtos de balcão levados pela cliente.</li>
+                <li className="pl-2"><strong>Privacidade Total:</strong> A secretária NÃO visualiza comissões da equipe nem margem líquida.</li>
+                <li className="pl-2"><strong>Liberação:</strong> Registra a forma de pagamento e clica em <strong className="text-gold">Liberar Cliente (Enviar p/ Gestão)</strong>.</li>
+                <li className="pl-2"><strong>Auditoria da Gestora:</strong> A Gestora do Salão ou Admin acessa <strong className="text-gold">Financeiro e Caixa (/admin/pagamentos)</strong>.</li>
+                <li className="pl-2">Confere o Demonstrativo Discriminado Completo com comissões, fundo de produtos retido e taxa de maquininha, consolidando o fechamento definitivo.</li>
               </ol>
             </div>
           </div>

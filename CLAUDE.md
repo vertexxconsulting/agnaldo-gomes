@@ -697,6 +697,22 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.29 Base de Conhecimento Central & IA Assistente com Motor do Tutorial
+
+- **Base de Conhecimento do Sistema (`lib/knowledge-base.ts`)**:
+  - Consolida todas as regras de negócio, fluxos operacionais e respostas para os 8 módulos centrais do Studio (Perfis e Acessos, Agenda e Fluxo, Estoque e Insumos por Grama, Financeiro e Auditoria de Comissões, Dia da Noiva, Academy, Loja e Automações de WhatsApp).
+  - Inclui a função de busca e resposta inteligente `responderDuvidaComTutorial(pergunta)` com normalização de acentos e extração contextual.
+- **Aba de Tutorial Renovada (`app/admin/tutorial/page.tsx`)**:
+  - Manual interativo e detalhado com barra de pesquisa instantânea de tópicos.
+  - Abas por módulo com passo a passo operacional numerado, dicas práticas e matriz visual de confidencialidade (o que cada perfil acessa).
+  - Seções de FAQ expansíveis com perguntas e respostas diretas.
+  - Simulador de dúvidas com a IA integrado no próprio cabeçalho.
+- **IA Assistente Autônoma sem API Key (`app/api/chat/route.ts` & `components/FloatingAssistant.tsx`)**:
+  - Quando a variável de ambiente `OPENAI_API_KEY` não estiver preenchida (ou em caso de instabilidade na OpenAI), a IA **não trava nem retorna erro**: ela consulta a Base de Conhecimento Oficial do Tutorial e responde de forma elegante, didática e precisa, esclarecendo todas as dúvidas da secretária, recepcionista ou profissionais.
+  - Quando a `OPENAI_API_KEY` estiver ativa, o contexto do manual é injetado no prompt do sistema para garantir alinhamento absoluto com os processos do salão.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash
