@@ -17,12 +17,12 @@ interface UserProfile {
 
 // Fallback vazio
 const DEFAULT_PROFILE: UserProfile = {
-  nome: 'Carregando...',
+  nome: '',
   email: '',
   telefone: '',
   pontos: 0,
   nivel: 'Iniciante',
-  streak: 0,
+  streak: 1,
   medalhas: [],
 };
 
@@ -30,6 +30,7 @@ export default function PerfilAlunoPage() {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -40,61 +41,146 @@ export default function PerfilAlunoPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          // O layout de servidor já bloqueia acesso não logado, 
-          // mas por segurança mantemos.
           return;
         }
 
-        const { data: perfilData, error: perfisError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name, avatar_url, role, phone')
-          .eq('id', user.id)
-          .single();
+        // Busca dados de 'profiles' sem requisitar a coluna 'phone' (inexistente na tabela)
+        let perfilData: { id?: string; email?: string; full_name?: string; avatar_url?: string; role?: string } | null = null;
+        try {
+          const { data, error: perfisError } = await supabase
+            .from('profiles')
+            .select('id, email, full_name, avatar_url, role')
+            .eq('id', user.id)
+            .maybeSingle();
 
-        if (perfilData) {
-          const nomeDb = perfilData.full_name || 'Aluno(a)';
-          const emailDb = perfilData.email || user.email || '';
-          const telefoneDb = perfilData.phone || '';
-          
-          setProfile({
-            nome: nomeDb,
-            email: emailDb,
-            telefone: telefoneDb,
-            pontos: 0,
-            nivel: 'Iniciante',
-            streak: 0,
-            medalhas: [],
-          });
-          setNome(nomeDb);
-          setEmail(emailDb);
-          setTelefone(telefoneDb);
+          if (!perfisError && data) {
+            perfilData = data;
+          }
+        } catch (e) {
+          console.warn('Erro ao consultar profiles:', e);
         }
+
+        // Obter nome com fallbacks (profiles -> user_metadata)
+        const nomeDb =
+          perfilData?.full_name ||
+          (user.user_metadata?.full_name as string) ||
+          (user.user_metadata?.name as string) ||
+          (user.user_metadata?.nome as string) ||
+          '';
+
+        // Obter email com fallbacks (auth user -> profiles)
+        const emailDb = user.email || perfilData?.email || '';
+
+        // Obter telefone com fallbacks (auth user -> user_metadata)
+        const telefoneDb =
+          (user.phone as string) ||
+          (user.user_metadata?.phone as string) ||
+          (user.user_metadata?.telefone as string) ||
+          '';
+
+        // Buscar dados reais de cursos e certificados para cálculo de pontuação
+        let totalCursos = 0;
+        let totalCerts = 0;
+        try {
+          const [enrollmentsRes, certsRes] = await Promise.all([
+            supabase.from('course_enrollments').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+            supabase.from('certificates').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          ]);
+          totalCursos = enrollmentsRes.count || 0;
+          totalCerts = certsRes.count || 0;
+        } catch {
+          // não bloqueante
+        }
+
+        const pontosCalculados = (totalCursos * 100) + (totalCerts * 500);
+        let nivelCalculado = 'Iniciante';
+        if (pontosCalculados >= 1000) nivelCalculado = 'Diamante';
+        else if (pontosCalculados >= 500) nivelCalculado = 'Ouro';
+        else if (pontosCalculados >= 200) nivelCalculado = 'Prata';
+        else if (pontosCalculados >= 100) nivelCalculado = 'Bronze';
+
+        const medalhasCalculadas: { nome: string; cor: string }[] = [];
+        if (totalCursos > 0) medalhasCalculadas.push({ nome: 'Primeiro Curso', cor: 'yellow' });
+        if (totalCerts > 0) medalhasCalculadas.push({ nome: 'Certificado', cor: 'emerald' });
+        if (pontosCalculados >= 300) medalhasCalculadas.push({ nome: 'Dedicado', cor: 'blue' });
+
+        setProfile({
+          nome: nomeDb || 'Aluno(a)',
+          email: emailDb,
+          telefone: telefoneDb,
+          pontos: pontosCalculados,
+          nivel: nivelCalculado,
+          streak: 1,
+          medalhas: medalhasCalculadas,
+        });
+
+        setNome(nomeDb);
+        setEmail(emailDb);
+        setTelefone(telefoneDb);
       } catch (err) {
-        console.error('Erro ao carregar perfil');
+        console.error('Erro ao carregar perfil:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+
     carregarPerfil();
   }, []);
 
   const handleSalvar = async () => {
     setSaving(true);
+    setFeedback(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Salva nome e telefone na tabela profiles
-        const { error } = await supabase
-          .from('profiles')
-          .update({ full_name: nome, phone: telefone })
-          .eq('id', user.id);
-        if (error) throw error;
+      if (!user) {
+        setFeedback({ type: 'error', message: 'Sessão expirada. Faça login novamente.' });
+        setSaving(false);
+        return;
       }
-      setProfile(prev => ({ ...prev, nome, email, telefone }));
-      alert('Dados salvos!');
-    } catch {
-      alert('Erro ao salvar. Tente novamente.');
+
+      // 1. Salva na tabela profiles apenas colunas válidas existentes (full_name, email)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: nome.trim(),
+          email: user.email || email.trim(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.warn('Aviso ao sincronizar profiles:', profileError);
+      }
+
+      // 2. Salva nome e telefone no user_metadata do Supabase Auth
+      const updatePayload: { data: Record<string, any> } = {
+        data: {
+          full_name: nome.trim(),
+          name: nome.trim(),
+          phone: telefone.trim(),
+          telefone: telefone.trim(),
+        },
+      };
+
+      const { error: authError } = await supabase.auth.updateUser(updatePayload);
+      if (authError) {
+        console.warn('Aviso ao atualizar user_metadata:', authError);
+      }
+
+      setProfile(prev => ({
+        ...prev,
+        nome: nome.trim() || prev.nome,
+        telefone: telefone.trim(),
+      }));
+
+      setFeedback({ type: 'success', message: 'Dados salvos com sucesso!' });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err) {
+      console.error('Erro ao salvar dados do perfil:', err);
+      setFeedback({ type: 'error', message: 'Erro ao salvar alterações. Tente novamente.' });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (loading) {
@@ -135,6 +221,18 @@ export default function PerfilAlunoPage() {
             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
               <h2 className="text-xl font-bold text-foreground mb-6">Dados Pessoais</h2>
 
+              {feedback && (
+                <div
+                  className={`mb-5 p-3.5 rounded-lg text-sm border flex items-center gap-2.5 transition-all ${
+                    feedback.type === 'success'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  }`}
+                >
+                  <span>{feedback.message}</span>
+                </div>
+              )}
+
               <div className="flex flex-col gap-4">
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1">Nome Completo</label>
@@ -146,7 +244,8 @@ export default function PerfilAlunoPage() {
                       type="text"
                       value={nome}
                       onChange={e => setNome(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
+                      placeholder="Seu nome completo"
+                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground placeholder:text-white/20 focus:outline-none focus:border-gold transition-colors"
                     />
                   </div>
                 </div>
@@ -161,14 +260,17 @@ export default function PerfilAlunoPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
+                        readOnly
+                        title="E-mail de acesso vinculado à sua conta"
+                        placeholder="seu@email.com"
+                        className="w-full bg-black/30 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white/60 cursor-not-allowed focus:outline-none"
                       />
                     </div>
+                    <span className="text-[11px] text-white/40 mt-1 block">E-mail cadastrado da sua conta</span>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-1">Telefone</label>
+                    <label className="block text-sm font-medium text-white/70 mb-1">Telefone / WhatsApp</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Phone size={18} className="text-white/40" />
@@ -177,7 +279,8 @@ export default function PerfilAlunoPage() {
                         type="tel"
                         value={telefone}
                         onChange={e => setTelefone(e.target.value)}
-                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground focus:outline-none focus:border-gold transition-colors"
+                        placeholder="(00) 00000-0000"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-foreground placeholder:text-white/20 focus:outline-none focus:border-gold transition-colors"
                       />
                     </div>
                   </div>
