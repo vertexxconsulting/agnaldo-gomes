@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Info, Award, Flame, ChevronRight, Lock } from 'lucide-react';
+import { Play, Info, Award, ChevronRight, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
@@ -89,7 +89,6 @@ export default function AlunoDashboardPage() {
   }) : null;
   // Estatísticas do aluno no ecossistema
   const aulasConcluidas = progressoAluno.filter(p => p.concluida).length;
-  const streakDias = 7;
   // Progressão da última aula assistida
   const progressPercent = aulaParou && aulaAtualInfo ? Math.round((aulaParou.assistidoSegundos / (aulaAtualInfo.duracaoMinutos * 60)) * 100) : 0;
   // Função helper para acesso
@@ -179,10 +178,6 @@ export default function AlunoDashboardPage() {
       <div className="flex flex-col gap-7 px-4 sm:px-6 lg:px-14 relative z-10 mt-8">
         {/* Barra de status do aluno no ecossistema */}
         <section className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gold/10 border border-gold/20">
-            <Flame size={18} className="text-red-500" />
-            <span className="text-sm text-foreground"><strong>{streakDias}</strong> dias de sequência</span>
-          </div>
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gold/10 border border-gold/20">
             <Play size={18} className="text-gold" />
             <span className="text-sm text-foreground"><strong>{aulasConcluidas}</strong> aulas concluídas</span>
