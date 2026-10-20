@@ -327,8 +327,8 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
             <div className="flex items-center gap-2 text-xs text-foreground/50">
               <Shield className="w-4 h-4 text-gold shrink-0" />
               {country === 'BR' 
-                ? 'Pagamento 100% seguro via Asaas — Pix, Boleto e Cartão.'
-                : 'Pagamento 100% seguro via Stripe — Cartão de Crédito Internacional.'}
+                ? 'Pagamento 100% seguro com criptografia — Pix e Cartão de Crédito.'
+                : 'Pagamento 100% seguro com criptografia — Cartão de Crédito Internacional.'}
             </div>
 
             {/* Action buttons */}
@@ -350,7 +350,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                 disabled={!pedidoValido || step !== 'info'}
               >
                 {stepIcon}
-                {country === 'BR' ? `Pagar Seguramente ${checkoutLabel}` : `Pay with Stripe ${checkoutLabel}`}
+                {country === 'BR' ? `Pagar Seguramente ${checkoutLabel}` : `Pagar Seguramente ${checkoutLabel}`}
               </button>
             </div>
           </div>

@@ -80,15 +80,15 @@ export default function CatalogPage() {
     <div className="flex flex-col min-h-screen bg-background px-4 sm:px-8 lg:px-16 pt-10 pb-20">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-foreground mb-2">Catálogo de Cursos</h1>
-        <p className="text-foreground/60 max-w-2xl">
-          Cursos com acesso por Stripe (Pix + Cartão de Crédito). Adquira e desbloqueie imediatamente.
+        <p className="text-foreground/70 max-w-2xl text-sm leading-relaxed">
+          Conheça nossos cursos e especializações exclusivas do Método AG. Adquira e desbloqueie seu acesso imediatamente a todas as aulas e certificados.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {cursos.map((curso) => {
           const isEnrolled = enrolledIds.has(curso.id);
-          const hasStripeLink = Boolean(curso.stripe_payment_link);
+          const hasPaymentOption = Boolean(curso.stripe_payment_link) || Boolean(curso.current_price) || Boolean(curso.price);
           const locked = !isEnrolled;
 
           return (
@@ -96,7 +96,7 @@ export default function CatalogPage() {
               key={curso.id}
               curso={curso}
               isEnrolled={isEnrolled}
-              isPurchasable={locked && hasStripeLink}
+              isPurchasable={locked && hasPaymentOption}
             />
           );
         })}
