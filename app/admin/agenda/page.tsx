@@ -7,7 +7,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento, editarInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
@@ -338,6 +338,8 @@ function AgendaContent() {
   const [liveInsumoProdId, setLiveInsumoProdId] = useState<string>('');
   const [liveInsumoQtd, setLiveInsumoQtd] = useState<string>('');
   const [liveInsumoLoading, setLiveInsumoLoading] = useState<boolean>(false);
+  const [editingInsumoIndex, setEditingInsumoIndex] = useState<number | null>(null);
+  const [isGestoraOuAdmin, setIsGestoraOuAdmin] = useState<boolean>(false);
 
   // Rateio / Split de comissões da equipe
   const [splitComissaoCustom, setSplitComissaoCustom] = useState<Record<string, number>>({});
@@ -562,6 +564,13 @@ function AgendaContent() {
             effectiveRole === ROLES.STUDIO_SECRETARIA ||
             userMeta?.role === 'admin' ||
             userMeta?.isOwner === true;
+
+          const isGestoraOrAdminUser = owner ||
+            effectiveRole === ROLES.ADMIN ||
+            effectiveRole === ROLES.STUDIO_ADMIN ||
+            userMeta?.role === 'admin' ||
+            userMeta?.isOwner === true;
+          setIsGestoraOuAdmin(Boolean(isGestoraOrAdminUser));
 
           if (!isFullAdmin) {
             const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
@@ -810,6 +819,7 @@ function AgendaContent() {
 
   const abrirLancarInsumoTempoReal = async (appt: Agendamento) => {
     setLiveInsumoAppt(appt);
+    setEditingInsumoIndex(null);
     setLiveInsumoEtapa('Etapa 1 - Descoloração / Mechas');
     setLiveInsumoEtapaCustom('');
     setLiveInsumoProfId(appt.profissional_id);
@@ -824,6 +834,36 @@ function AgendaContent() {
         console.warn('Erro ao carregar estoque para insumos:', e);
       }
     }
+  };
+
+  const handleEditarInsumoTempoReal = (index: number) => {
+    if (!liveInsumoAppt || !liveInsumoAppt.insumos_detalhes?.[index]) return;
+    const item = liveInsumoAppt.insumos_detalhes[index];
+    setEditingInsumoIndex(index);
+    const etapasPadrao = [
+      'Etapa 1 - Descoloração / Mechas',
+      'Etapa 2 - Tonalização / Matização',
+      'Etapa 3 - Lavatório / Tratamento',
+      'Etapa 4 - Escova / Modelagem',
+      'Etapa 5 - Finalização / Óleos'
+    ];
+    if (item.etapa && etapasPadrao.includes(item.etapa)) {
+      setLiveInsumoEtapa(item.etapa);
+      setLiveInsumoEtapaCustom('');
+    } else {
+      setLiveInsumoEtapa('Outra');
+      setLiveInsumoEtapaCustom(item.etapa || '');
+    }
+    setLiveInsumoProfId(item.profissional_id || liveInsumoAppt.profissional_id);
+    setLiveInsumoProdId(item.inventory_id);
+    setLiveInsumoQtd(String(item.qty_used));
+  };
+
+  const handleCancelarEdicaoInsumo = () => {
+    setEditingInsumoIndex(null);
+    setLiveInsumoProdId('');
+    setLiveInsumoQtd('');
+    setLiveInsumoEtapaCustom('');
   };
 
   const handleRegistrarInsumoTempoReal = async () => {
@@ -850,6 +890,10 @@ function AgendaContent() {
     const profNome = getProfissionalNome(profId, profissionais);
     const cliNome = getClienteNome(liveInsumoAppt.cliente_id, clientes);
 
+    const itemEditando = (editingInsumoIndex !== null && liveInsumoAppt.insumos_detalhes)
+      ? liveInsumoAppt.insumos_detalhes[editingInsumoIndex]
+      : null;
+
     const novoItem: InsumoAtendimento = {
       inventory_id: prod.id,
       name: prod.name,
@@ -860,39 +904,88 @@ function AgendaContent() {
       custo_total: custoTot,
       etapa: etapaFinal,
       profissional_id: profId,
-      horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      horario: itemEditando?.horario || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
 
     setLiveInsumoLoading(true);
     try {
-      const res = await salvarInsumoTempoRealProcedimento({
-        appointmentId: liveInsumoAppt.id,
-        insumo: novoItem,
-        nomeProfissional: profNome,
-        nomeCliente: cliNome,
-      });
+      if (editingInsumoIndex !== null && itemEditando) {
+        // Modo Edição
+        const res = await editarInsumoTempoRealProcedimento({
+          appointmentId: liveInsumoAppt.id,
+          index: editingInsumoIndex,
+          novoInsumo: novoItem,
+          nomeProfissional: profNome,
+          nomeCliente: cliNome,
+        });
 
-      if (res.ok) {
-        const updatedAppt: Agendamento = {
-          ...liveInsumoAppt,
-          insumos_detalhes: res.insumosAtualizados,
-          product_cost: res.productCost,
-        };
-        setLiveInsumoAppt(updatedAppt);
-        setAgendamentos(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
+        if (res.ok) {
+          const updatedAppt: Agendamento = {
+            ...liveInsumoAppt,
+            insumos_detalhes: res.insumosAtualizados,
+            product_cost: res.productCost,
+          };
+          setLiveInsumoAppt(updatedAppt);
+          setAgendamentos(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
 
-        // Decrementa o saldo no estoque local para atualização imediata na tela
-        setEstoque(prev => prev.map(p => {
-          if (p.id === prod.id) {
-            return { ...p, stock_qty: Math.max(0, (p.stock_qty || 0) - qtdNum) };
+          // Ajuste de saldo no estoque local
+          if (itemEditando.inventory_id !== prod.id) {
+            setEstoque(prev => prev.map(p => {
+              if (p.id === itemEditando.inventory_id) {
+                return { ...p, stock_qty: (p.stock_qty || 0) + itemEditando.qty_used };
+              }
+              if (p.id === prod.id) {
+                return { ...p, stock_qty: Math.max(0, (p.stock_qty || 0) - qtdNum) };
+              }
+              return p;
+            }));
+          } else {
+            const diff = qtdNum - itemEditando.qty_used;
+            setEstoque(prev => prev.map(p => {
+              if (p.id === prod.id) {
+                return { ...p, stock_qty: Math.max(0, (p.stock_qty || 0) - diff) };
+              }
+              return p;
+            }));
           }
-          return p;
-        }));
 
-        setLiveInsumoProdId('');
-        setLiveInsumoQtd('');
+          setEditingInsumoIndex(null);
+          setLiveInsumoProdId('');
+          setLiveInsumoQtd('');
+        } else {
+          alert('Erro ao atualizar insumo: ' + (res.error || 'Tente novamente'));
+        }
       } else {
-        alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+        // Modo Novo Insumo
+        const res = await salvarInsumoTempoRealProcedimento({
+          appointmentId: liveInsumoAppt.id,
+          insumo: novoItem,
+          nomeProfissional: profNome,
+          nomeCliente: cliNome,
+        });
+
+        if (res.ok) {
+          const updatedAppt: Agendamento = {
+            ...liveInsumoAppt,
+            insumos_detalhes: res.insumosAtualizados,
+            product_cost: res.productCost,
+          };
+          setLiveInsumoAppt(updatedAppt);
+          setAgendamentos(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
+
+          // Decrementa o saldo no estoque local para atualização imediata na tela
+          setEstoque(prev => prev.map(p => {
+            if (p.id === prod.id) {
+              return { ...p, stock_qty: Math.max(0, (p.stock_qty || 0) - qtdNum) };
+            }
+            return p;
+          }));
+
+          setLiveInsumoProdId('');
+          setLiveInsumoQtd('');
+        } else {
+          alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+        }
       }
     } catch (err: any) {
       alert('Erro ao registrar aplicação: ' + (err?.message || 'Erro inesperado'));
@@ -934,6 +1027,12 @@ function AgendaContent() {
           }
           return p;
         }));
+
+        if (editingInsumoIndex === index) {
+          setEditingInsumoIndex(null);
+          setLiveInsumoProdId('');
+          setLiveInsumoQtd('');
+        }
       } else {
         alert('Erro ao estornar insumo: ' + (res.error || 'Tente novamente'));
       }
@@ -2339,11 +2438,36 @@ function AgendaContent() {
               </div>
             </div>
 
-            {/* Formulário de Nova Aplicação */}
-            <div className="bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4 mb-5 space-y-4">
-              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
-                <Plus size={14} className="text-gold stroke-[2.5]" /> Registrar Nova Aplicação no Procedimento
-              </h4>
+            {/* Formulário de Nova Aplicação ou Edição */}
+            <div className={`border rounded-xl p-4 mb-5 space-y-4 transition-all ${
+              editingInsumoIndex !== null 
+                ? 'bg-gold/10 border-gold/40 shadow-sm' 
+                : 'bg-foreground/[0.02] border-[var(--border-subtle)]'
+            }`}>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                  {editingInsumoIndex !== null ? (
+                    <>
+                      <Pencil size={14} className="text-gold stroke-[2.5]" />
+                      <span>Editando Insumo #{editingInsumoIndex + 1}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={14} className="text-gold stroke-[2.5]" />
+                      <span>Registrar Nova Aplicação no Procedimento</span>
+                    </>
+                  )}
+                </h4>
+                {editingInsumoIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={handleCancelarEdicaoInsumo}
+                    className="text-[11px] text-foreground/60 hover:text-foreground font-semibold px-2 py-0.5 rounded hover:bg-foreground/5 transition-colors"
+                  >
+                    Cancelar Edição
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* 1. Etapa */}
@@ -2445,13 +2569,23 @@ function AgendaContent() {
                       value={liveInsumoQtd}
                       onChange={e => setLiveInsumoQtd(e.target.value)}
                     />
+                    {editingInsumoIndex !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-xs px-2.5 shrink-0 border border-[var(--border-subtle)]"
+                        onClick={handleCancelarEdicaoInsumo}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
                     <Button
                       variant="primary"
-                      className="bg-gold hover:bg-gold-dim text-white shrink-0 px-5 text-xs font-bold shadow-sm"
+                      className="bg-gold hover:bg-gold-dim text-white shrink-0 px-4 text-xs font-bold shadow-sm"
                       onClick={handleRegistrarInsumoTempoReal}
                       disabled={liveInsumoLoading || !liveInsumoProdId || !liveInsumoQtd}
                     >
-                      {liveInsumoLoading ? 'Salvando...' : '+ Aplicar'}
+                      {liveInsumoLoading ? 'Salvando...' : (editingInsumoIndex !== null ? 'Salvar Edição' : '+ Aplicar')}
                     </Button>
                   </div>
                 </div>
@@ -2492,9 +2626,14 @@ function AgendaContent() {
                   {liveInsumoAppt.insumos_detalhes.map((ins, idx) => {
                     const profNome = getProfissionalNome(ins.profissional_id || liveInsumoAppt.profissional_id, profissionais);
                     const isTitular = (ins.profissional_id || liveInsumoAppt.profissional_id) === liveInsumoAppt.profissional_id;
+                    const isBeingEdited = editingInsumoIndex === idx;
 
                     return (
-                      <div key={idx} className="p-3 bg-foreground/[0.015] hover:bg-foreground/[0.03] transition-colors flex items-center justify-between gap-3 text-xs">
+                      <div key={idx} className={`p-3 transition-colors flex items-center justify-between gap-3 text-xs ${
+                        isBeingEdited 
+                          ? 'bg-gold/15 border-l-4 border-l-gold' 
+                          : 'bg-foreground/[0.015] hover:bg-foreground/[0.03]'
+                      }`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="px-2 py-0.5 rounded bg-foreground/5 text-foreground font-semibold text-[10px] border border-[var(--border-subtle)]">
@@ -2511,6 +2650,11 @@ function AgendaContent() {
                                 <Clock size={10} /> {ins.horario}
                               </span>
                             )}
+                            {isBeingEdited && (
+                              <span className="text-[10px] font-bold text-gold uppercase tracking-wider bg-gold/20 px-2 py-0.5 rounded">
+                                Em edição
+                              </span>
+                            )}
                           </div>
                           <div className="font-bold text-foreground text-sm flex items-center gap-2">
                             <span>{ins.name}</span>
@@ -2520,7 +2664,7 @@ function AgendaContent() {
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0 flex items-center gap-3">
+                        <div className="text-right shrink-0 flex items-center gap-2 sm:gap-3">
                           <div>
                             <div className="font-mono font-bold text-foreground text-sm">
                               R$ {Number(ins.custo_total || 0).toFixed(2)}
@@ -2530,15 +2674,30 @@ function AgendaContent() {
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            title="Remover e estornar ao estoque"
-                            onClick={() => handleRemoverInsumoTempoReal(idx)}
-                            disabled={liveInsumoLoading}
-                            className="p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              title="Editar este insumo"
+                              onClick={() => handleEditarInsumoTempoReal(idx)}
+                              disabled={liveInsumoLoading}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isBeingEdited 
+                                  ? 'text-gold bg-gold/25' 
+                                  : 'text-foreground/50 hover:text-gold hover:bg-gold/10'
+                              }`}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Remover e estornar ao estoque"
+                              onClick={() => handleRemoverInsumoTempoReal(idx)}
+                              disabled={liveInsumoLoading}
+                              className="p-1.5 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -3330,158 +3489,175 @@ function AgendaContent() {
                       </div>
                     </div>
 
-                    {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO */}
-                    <div className="p-4 bg-gradient-to-br from-gold/10 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <Sparkles size={18} className="text-gold" />
-                          <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
-                            Demonstrativo Discriminado para a Gestora do Salão
-                          </h4>
+                    {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO (Aparece SOMENTE para Gestora / Admin; 100% oculto para Secretária) */}
+                    {isGestoraOuAdmin && (
+                      <div className="p-4 bg-gradient-to-br from-gold/10 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Sparkles size={18} className="text-gold" />
+                            <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
+                              Demonstrativo Discriminado para a Gestora do Salão
+                            </h4>
+                          </div>
+                          <span className="text-[11px] text-gold font-bold px-2.5 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
+                            {Object.keys(porProfissional).length} {Object.keys(porProfissional).length === 1 ? 'Profissional' : 'Profissionais Envolvidos'}
+                          </span>
                         </div>
-                        <span className="text-[11px] text-gold font-bold px-2.5 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
-                          {Object.keys(porProfissional).length} {Object.keys(porProfissional).length === 1 ? 'Profissional' : 'Profissionais Envolvidos'}
-                        </span>
-                      </div>
 
-                      {/* Lista de Procedimentos e Comissões por Profissional */}
-                      <div className="space-y-2">
-                        {Object.entries(porProfissional).map(([pid, dados]) => {
-                          const pNome = getProfissionalNome(pid, profissionais);
-                          return (
-                            <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
-                              <div className="flex items-center justify-between border-b border-border-subtle/50 pb-1.5">
-                                <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                                  👤 {pNome}
-                                </span>
-                                <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)]">
-                                  Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
-                                </span>
-                              </div>
-                              
-                              {/* Procedimentos deste profissional */}
-                              <div className="space-y-1 text-foreground/80">
-                                {dados.procedimentos.map(proc => (
-                                  <div key={proc.id} className="flex justify-between items-center text-[11px]">
-                                    <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
-                                    <span className="font-mono whitespace-nowrap">
-                                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
-                                      {proc.desconto_valor > 0 && (
-                                        <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
-                                          (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)})
-                                        </span>
-                                      )}
-                                      {' = '}
-                                      <strong className="text-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}</strong>
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Insumos deste profissional */}
-                              {dados.insumosCusto > 0 && (
-                                <div className="flex justify-between items-center text-[11px] text-amber-800 pt-1 border-t border-border-subtle/30 font-bold">
-                                  <span>Produtos/Insumos aplicados por {pNome}:</span>
-                                  <span className="font-mono">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
+                        {/* Lista de Procedimentos e Comissões por Profissional */}
+                        <div className="space-y-2">
+                          {Object.entries(porProfissional).map(([pid, dados]) => {
+                            const pNome = getProfissionalNome(pid, profissionais);
+                            return (
+                              <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
+                                <div className="flex flex-wrap items-center justify-between border-b border-border-subtle/50 pb-1.5 gap-2">
+                                  <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                    👤 {pNome}
+                                  </span>
+                                  <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)] whitespace-nowrap">
+                                    Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
+                                  </span>
                                 </div>
-                              )}
+                                
+                                {/* Procedimentos deste profissional */}
+                                <div className="space-y-1 text-foreground/80">
+                                  {dados.procedimentos.map(proc => (
+                                    <div key={proc.id} className="flex flex-wrap justify-between items-center text-[11px] gap-1">
+                                      <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
+                                      <span className="font-mono whitespace-nowrap">
+                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
+                                        {proc.desconto_valor > 0 && (
+                                          <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
+                                            (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)})
+                                          </span>
+                                        )}
+                                        {' = '}
+                                        <strong className="text-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}</strong>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Insumos deste profissional */}
+                                {dados.insumosCusto > 0 && (
+                                  <div className="flex flex-wrap justify-between items-center text-[11px] text-amber-800 dark:text-amber-400 pt-1 border-t border-border-subtle/30 font-bold gap-1">
+                                    <span>Produtos/Insumos aplicados por {pNome}:</span>
+                                    <span className="font-mono whitespace-nowrap">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                          <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
+                            <div className="flex items-center justify-between text-amber-800 dark:text-amber-400 text-[11px] font-bold uppercase">
+                              <span><Beaker size={12} className="inline mr-1 text-amber-700"/> Fundo Produtos</span>
+                              <span className="text-[10px] font-mono">Reserva</span>
                             </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-amber-800 text-[11px] font-bold uppercase">
-                            <span><Beaker size={12} className="inline mr-1 text-amber-700"/> Fundo Produtos</span>
-                            <span className="text-[10px] font-mono">Reserva</span>
+                            <p className="text-base font-black font-mono text-amber-800 dark:text-amber-300">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
+                            </p>
+                            <p className="text-[9px] text-foreground/60 font-medium">Custo de estoque consumido no serviço.</p>
                           </div>
-                          <p className="text-base font-black font-mono text-amber-800">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
-                          </p>
-                          <p className="text-[9px] text-foreground/60 font-medium">Custo de estoque por grama consumido no serviço.</p>
-                        </div>
 
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-foreground/80 text-[11px] font-bold uppercase">
-                            <span><Users size={12} className="inline mr-1 text-gold"/> Total Comissões</span>
-                            <span className="text-[10px] font-mono">Equipe</span>
+                          <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
+                            <div className="flex items-center justify-between text-foreground/80 text-[11px] font-bold uppercase">
+                              <span><Users size={12} className="inline mr-1 text-gold"/> Total Comissões</span>
+                              <span className="text-[10px] font-mono">Equipe</span>
+                            </div>
+                            <p className="text-base font-black font-mono text-foreground">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
+                            </p>
+                            <p className="text-[9px] text-foreground/60 font-medium">Sobre o procedimento de cada profissional.</p>
                           </div>
-                          <p className="text-base font-black font-mono text-foreground">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
-                          </p>
-                          <p className="text-[9px] text-foreground/60 font-medium">Calculada diretamente sobre o procedimento de cada profissional.</p>
-                        </div>
 
-                        <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
-                          <div className="flex items-center justify-between text-emerald-800 text-[11px] font-bold uppercase">
-                            <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
-                            <span className="text-[10px] font-mono">Receita</span>
+                          <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
+                            <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
+                              <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
+                              <span className="text-[10px] font-mono">Receita</span>
+                            </div>
+                            <p className="text-base font-black font-mono text-emerald-800 dark:text-emerald-300">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
+                            </p>
+                            <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
                           </div>
-                          <p className="text-base font-black font-mono text-emerald-800">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
-                          </p>
-                          <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Breakdown Financeiro Final da Comanda */}
-                    <div className="space-y-1.5 text-sm bg-foreground/[0.02] p-3.5 rounded-xl border border-[var(--border-subtle)]">
-                      <div className="flex justify-between text-foreground/80 font-medium">
+                    {/* Breakdown Financeiro da Comanda (Visão Resumida e Completa para Liberação da Cliente) */}
+                    <div className="space-y-2 text-sm bg-foreground/[0.02] p-4 rounded-xl border border-[var(--border-subtle)]">
+                      <div className="flex justify-between items-center text-foreground/80 font-medium">
                         <span>Subtotal dos Procedimentos (Tabela)</span>
-                        <span className="font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
+                        <span className="font-mono font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
                       </div>
                       {totalDescontosProcedimentos > 0 && (
-                        <div className="flex justify-between text-emerald-800 font-bold">
+                        <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
                           <span>Descontos Concedidos pelos Profissionais</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
                         </div>
                       )}
                       {valorDescontoGeral > 0 && (
-                        <div className="flex justify-between text-emerald-800 font-bold">
+                        <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
                           <span>Desconto Adicional da Recepção</span>
                           <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
                         </div>
                       )}
                       {totalProdutos > 0 && (
-                        <div className="flex justify-between text-gold font-bold">
+                        <div className="flex justify-between items-center text-gold font-bold">
                           <span>Produtos de Salão (Venda / Balcão)</span>
                           <span className="font-mono">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
                         </div>
                       )}
-                      {taxaMaq.valorTaxa > 0 && (
-                        <div className="flex justify-between text-amber-800 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
+                      {taxaMaq.valorTaxa > 0 && isGestoraOuAdmin && (
+                        <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
                           <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
-                          <span>- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
+                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
                         </div>
                       )}
                       {totalInsumos > 0 && (
-                        <div className="flex justify-between text-amber-800 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Produtos Utilizados no Procedimento ({checkoutInsumos.length} itens)</span>
+                        <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                          <span>Insumos Utilizados no Atendimento ({checkoutInsumos.length} itens)</span>
                           <span className="font-mono">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
                         </div>
                       )}
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
-                      <div>
-                        <p className="text-xs text-foreground/70 mb-0.5 uppercase tracking-wider font-bold">Valor Total a Pagar pela Cliente</p>
-                        <p className="text-3xl font-bold font-serif text-gold">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}
-                        </p>
-                        {numParcelas > 1 && (
-                          <p className="text-xs text-amber-800 font-bold mt-0.5">
-                            {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
+                    {/* Card de Valor Total e Ações Finais: Total Destaque + Botões 100% Visíveis */}
+                    <div className="space-y-3 pt-1">
+                      <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] text-foreground/60 uppercase tracking-wider font-bold">Valor Total a Pagar pela Cliente</p>
+                          {numParcelas > 1 && (
+                            <p className="text-xs text-amber-800 dark:text-amber-400 font-bold mt-0.5">
+                              {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl sm:text-3xl font-extrabold font-serif text-gold">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}
                           </p>
-                        )}
+                        </div>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <Button variant="ghost" className="flex-1 sm:flex-none" onClick={fecharCheckout}>
+
+                      <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="sm:w-32 py-3 text-xs sm:text-sm font-semibold text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 justify-center" 
+                          onClick={fecharCheckout}
+                        >
                           Cancelar
                         </Button>
-                        <Button variant="primary" className="flex-1 sm:flex-none font-bold" onClick={async () => {
+                        <Button 
+                          type="button" 
+                          variant="primary" 
+                          className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold bg-gold hover:bg-gold-dim text-white shadow-md justify-center text-center whitespace-normal leading-snug" 
+                          onClick={async () => {
                           const nomeCliente = getClienteNome(checkoutAppt.cliente_id, clientes);
                           
                           // Objeto completo da comanda unificada para persistência
@@ -3595,9 +3771,10 @@ function AgendaContent() {
                           
                           fecharCheckout();
                           fetchAgendamentos().then(setAgendamentos);
-                          alert(`Comanda Multi-Profissional Fechada com Sucesso!\n\nCliente liberada na recepção.\nCliente: ${nomeCliente}\nTotal Cobrado da Cliente: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\nProfissionais Envolvidos: ${Object.keys(porProfissional).length}\nProcedimentos Realizados: ${checkoutProcedimentos.length}\n\nO atendimento foi enviado para a Gestão do Salão na aba "Financeiro e Caixa" para conferência e confirmação final.`);
+                          alert(`Comanda Fechada com Sucesso!\n\nCliente liberada no caixa da recepção.\nCliente: ${nomeCliente}\nTotal Cobrado: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\n\nO atendimento foi enviado para a Gestora do Studio fechar e auditar o financeiro na aba "Financeiro e Caixa".`);
                         }}>
-                          Registrar Fechamento da Comanda (Liberar Cliente)
+                          <CheckCircle2 size={16} className="inline mr-1.5 shrink-0" />
+                          Liberar Cliente (Enviar p/ Gestão)
                         </Button>
                       </div>
                     </div>

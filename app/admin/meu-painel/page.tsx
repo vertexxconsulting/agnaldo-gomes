@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2
+  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -19,6 +19,7 @@ import {
   atualizarStatusAgendamento,
   salvarInsumoTempoRealProcedimento,
   removerInsumoTempoRealProcedimento,
+  editarInsumoTempoRealProcedimento,
   atualizarPeriodoRecebimentoProfissional
 } from '@/lib/supabase-queries';
 import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao } from '@/lib/gestao-types';
@@ -47,6 +48,7 @@ export default function MeuPainelPage() {
   const [insumoEtapa, setInsumoEtapa] = useState('Etapa 1 - Descoloração / Mechas');
   const [insumoProfId, setInsumoProfId] = useState('');
   const [insumoLoading, setInsumoLoading] = useState(false);
+  const [editingInsumoIndex, setEditingInsumoIndex] = useState<number | null>(null);
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [produtoQty, setProdutoQty] = useState('1');
   const [produtoDescPct, setProdutoDescPct] = useState('');
@@ -124,6 +126,7 @@ export default function MeuPainelPage() {
 
   const abrirModalInsumos = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
+    setEditingInsumoIndex(null);
     setInsumoEtapa('Etapa 1 - Descoloração / Mechas');
     setInsumoProfId(selectedProfId || ag.profissional_id);
     setInsumoSelecionado('');
@@ -138,6 +141,22 @@ export default function MeuPainelPage() {
     const itens = await fetchItensComanda(ag.id);
     setComandaAtual(itens);
     setUpsellModalOpen(true);
+  };
+
+  const handleEditarInsumo = (index: number) => {
+    if (!activeAgendamento || !activeAgendamento.insumos_detalhes?.[index]) return;
+    const item = activeAgendamento.insumos_detalhes[index];
+    setEditingInsumoIndex(index);
+    setInsumoEtapa(item.etapa || 'Etapa 1 - Descoloração / Mechas');
+    setInsumoProfId(item.profissional_id || activeAgendamento.profissional_id);
+    setInsumoSelecionado(item.inventory_id);
+    setInsumoQty(String(item.qty_used));
+  };
+
+  const handleCancelarEdicaoInsumo = () => {
+    setEditingInsumoIndex(null);
+    setInsumoSelecionado('');
+    setInsumoQty('');
   };
 
   const handleSalvarInsumo = async () => {
@@ -157,6 +176,10 @@ export default function MeuPainelPage() {
     const profNome = profissionais.find(p => p.id === profId)?.nome || 'Profissional';
     const cliNome = getClienteNome(activeAgendamento.cliente_id);
 
+    const itemEditando = (editingInsumoIndex !== null && activeAgendamento.insumos_detalhes)
+      ? activeAgendamento.insumos_detalhes[editingInsumoIndex]
+      : null;
+
     const novoItem: InsumoAtendimento = {
       inventory_id: prod.id,
       name: prod.name,
@@ -167,32 +190,61 @@ export default function MeuPainelPage() {
       custo_total: Number((custoUn * qtyNum).toFixed(2)),
       etapa: insumoEtapa,
       profissional_id: profId,
-      horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      horario: itemEditando?.horario || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
 
     setInsumoLoading(true);
     try {
-      const res = await salvarInsumoTempoRealProcedimento({
-        appointmentId: activeAgendamento.id,
-        insumo: novoItem,
-        nomeProfissional: profNome,
-        nomeCliente: cliNome,
-      });
+      if (editingInsumoIndex !== null && itemEditando) {
+        // Modo Edição
+        const res = await editarInsumoTempoRealProcedimento({
+          appointmentId: activeAgendamento.id,
+          index: editingInsumoIndex,
+          novoInsumo: novoItem,
+          nomeProfissional: profNome,
+          nomeCliente: cliNome,
+        });
 
-      if (res.ok) {
-        const updatedAg: Agendamento = {
-          ...activeAgendamento,
-          insumos_detalhes: res.insumosAtualizados,
-          product_cost: res.productCost,
-        };
-        setActiveAgendamento(updatedAg);
-        setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
-        const itens = await fetchItensComanda(activeAgendamento.id);
-        setComandaAtual(itens);
-        setInsumoSelecionado('');
-        setInsumoQty('');
+        if (res.ok) {
+          const updatedAg: Agendamento = {
+            ...activeAgendamento,
+            insumos_detalhes: res.insumosAtualizados,
+            product_cost: res.productCost,
+          };
+          setActiveAgendamento(updatedAg);
+          setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
+          const itens = await fetchItensComanda(activeAgendamento.id);
+          setComandaAtual(itens);
+          setEditingInsumoIndex(null);
+          setInsumoSelecionado('');
+          setInsumoQty('');
+        } else {
+          alert('Erro ao atualizar insumo: ' + (res.error || 'Tente novamente'));
+        }
       } else {
-        alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+        // Modo Novo Insumo
+        const res = await salvarInsumoTempoRealProcedimento({
+          appointmentId: activeAgendamento.id,
+          insumo: novoItem,
+          nomeProfissional: profNome,
+          nomeCliente: cliNome,
+        });
+
+        if (res.ok) {
+          const updatedAg: Agendamento = {
+            ...activeAgendamento,
+            insumos_detalhes: res.insumosAtualizados,
+            product_cost: res.productCost,
+          };
+          setActiveAgendamento(updatedAg);
+          setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
+          const itens = await fetchItensComanda(activeAgendamento.id);
+          setComandaAtual(itens);
+          setInsumoSelecionado('');
+          setInsumoQty('');
+        } else {
+          alert('Erro ao registrar aplicação: ' + (res.error || 'Tente novamente'));
+        }
       }
     } catch (err: any) {
       alert('Erro ao registrar aplicação: ' + err?.message);
@@ -223,6 +275,12 @@ export default function MeuPainelPage() {
         setAgendamentos(prev => prev.map(a => a.id === updatedAg.id ? updatedAg : a));
         const itens = await fetchItensComanda(activeAgendamento.id);
         setComandaAtual(itens);
+
+        if (editingInsumoIndex === index) {
+          setEditingInsumoIndex(null);
+          setInsumoSelecionado('');
+          setInsumoQty('');
+        }
       }
     } catch (err: any) {
       alert('Erro ao remover: ' + err?.message);
@@ -601,7 +659,33 @@ export default function MeuPainelPage() {
               </div>
             </div>
             
-            <div className="space-y-3.5 mb-6 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-xl p-4">
+            <div className={`border rounded-xl p-4 mb-6 space-y-3.5 transition-all ${
+              editingInsumoIndex !== null 
+                ? 'bg-gold/10 border-gold/40 shadow-sm' 
+                : 'bg-foreground/[0.02] border-[var(--border-subtle)]'
+            }`}>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                  {editingInsumoIndex !== null ? (
+                    <>
+                      <Pencil size={13} className="text-gold stroke-[2.5]" />
+                      <span>Editando Insumo #{editingInsumoIndex + 1}</span>
+                    </>
+                  ) : (
+                    <span>Registrar Insumo da Etapa</span>
+                  )}
+                </h4>
+                {editingInsumoIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={handleCancelarEdicaoInsumo}
+                    className="text-[11px] text-foreground/60 hover:text-foreground font-semibold px-2 py-0.5 rounded hover:bg-foreground/5 transition-colors"
+                  >
+                    Cancelar Edição
+                  </button>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* 1. Etapa */}
                 <div>
@@ -674,13 +758,23 @@ export default function MeuPainelPage() {
                       value={insumoQty}
                       onChange={e => setInsumoQty(e.target.value)}
                     />
+                    {editingInsumoIndex !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-xs px-2 shrink-0 border border-[var(--border-subtle)]"
+                        onClick={handleCancelarEdicaoInsumo}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
                     <Button 
                       variant="primary" 
                       className="bg-gold hover:bg-gold-dim text-white shrink-0 px-3 text-xs font-bold shadow-sm"
                       onClick={handleSalvarInsumo}
                       disabled={insumoLoading || !insumoSelecionado || !insumoQty}
                     >
-                      {insumoLoading ? '...' : '+ Lançar'}
+                      {insumoLoading ? '...' : (editingInsumoIndex !== null ? 'Salvar Edição' : '+ Lançar')}
                     </Button>
                   </div>
                 </div>
@@ -716,8 +810,12 @@ export default function MeuPainelPage() {
                 <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden divide-y divide-[var(--border-subtle)] max-h-48 overflow-y-auto">
                   {activeAgendamento.insumos_detalhes.map((item, idx) => {
                     const pNome = profissionais.find(p => p.id === item.profissional_id)?.nome || 'Equipe';
+                    const isBeingEdited = editingInsumoIndex === idx;
+
                     return (
-                      <div key={idx} className="p-2.5 text-xs flex justify-between items-center gap-2">
+                      <div key={idx} className={`p-2.5 text-xs flex justify-between items-center gap-2 transition-colors ${
+                        isBeingEdited ? 'bg-gold/15 border-l-4 border-l-gold' : 'hover:bg-foreground/[0.02]'
+                      }`}>
                         <div>
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <span className="px-1.5 py-0.5 rounded bg-foreground/5 text-foreground text-[9px] font-bold border border-[var(--border-subtle)]">
@@ -726,12 +824,28 @@ export default function MeuPainelPage() {
                             <span className="text-[10px] text-foreground/50">
                               Por: {pNome}
                             </span>
+                            {isBeingEdited && (
+                              <span className="text-[9px] font-bold text-gold uppercase bg-gold/20 px-1.5 py-0.2 rounded">
+                                Em edição
+                              </span>
+                            )}
                           </div>
                           <span className="font-bold text-foreground">{item.name}</span>
                           <span className="font-mono text-foreground/70 ml-2">({item.qty_used}{item.unit})</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-foreground">R$ {Number(item.custo_total || 0).toFixed(2)}</span>
+                          <button
+                            type="button"
+                            title="Editar este insumo"
+                            onClick={() => handleEditarInsumo(idx)}
+                            disabled={insumoLoading}
+                            className={`p-1 rounded transition-colors ${
+                              isBeingEdited ? 'text-gold bg-gold/25' : 'text-foreground/50 hover:text-gold'
+                            }`}
+                          >
+                            <Pencil size={13} />
+                          </button>
                           <button
                             type="button"
                             title="Remover e estornar ao estoque"

@@ -650,6 +650,27 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.27 Fluxo de Insumos em Tempo Real e Fechamento Prévio da Secretária
+
+- **Edição de Insumos em Tempo Real (`lib/supabase-queries.ts` -> `editarInsumoTempoRealProcedimento`)**:
+  - Tanto na **Agenda do Studio** (`app/admin/agenda/page.tsx`) quanto no **Painel do Profissional** (`app/admin/meu-painel/page.tsx`), foi adicionada a opção de editar qualquer insumo lançado (etapa, profissional executor, produto e dosagem em g/ml).
+  - **Ajuste Inteligente de Estoque**:
+    - Se a quantidade for alterada para mais, debita apenas o acréscimo (`diff > 0`).
+    - Se a quantidade for alterada para menos, estorna a sobra para o estoque (`diff < 0`).
+    - Se o produto for trocado, estorna o produto original e debita a dosagem do novo item.
+    - O custo total de insumos absorvidos no serviço (`product_cost`) e os itens da comanda (`appointment_items`) são recalculados e sincronizados atomicamente.
+- **Segregação de Papéis no Fechamento do Caixa (`isGestoraOuAdmin`)**:
+  - O perfil da Secretária do Studio (`ROLES.STUDIO_SECRETARIA`) agora acessa uma interface de **Fechamento Prévio Resumida**:
+    - **O que a Secretária visualiza**: Dados da cliente, procedimentos realizados e executores (com descontos aplicados), insumos utilizados (resumo de itens e custo absorvido), produtos de balcão/home care levados, forma de pagamento, parcelamento e **Valor Total a Pagar**.
+    - **Confidencialidade Rigorosa**: O card *"Demonstrativo Discriminado para a Gestora do Salão"* (comissões detalhadas por profissional, retenção de fundo de produtos e faturamento líquido do salão) é **estritamente ocultado** da Secretária.
+    - Essa visão discriminada completa é exclusiva da **Gestora do Studio** (`ROLES.STUDIO_ADMIN`) e do **Administrador Geral** (`ROLES.ADMIN` / Dono).
+- **Ajuste Visual dos Cards e Botões de Checkout**:
+  - Eliminação de truncamentos de texto e quebras de linha anômalas (ex: "Gomes:" isolado ou corte no botão de liberação).
+  - O botão de ação final da secretária foi reformulado para **"Liberar Cliente (Enviar p/ Gestão)"**, com largura total responsiva e texto visível integralmente.
+  - Ao registrar, o atendimento é concluído com status `financial_status: 'PENDING_CONFIRMATION'` e enviado para a Gestora/Admin realizar o fechamento e a auditoria financeira definitiva em `/admin/pagamentos`.
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

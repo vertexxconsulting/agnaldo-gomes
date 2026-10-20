@@ -2535,6 +2535,186 @@ export async function removerInsumoTempoRealProcedimento(params: {
   }
 }
 
+/**
+ * Edita um insumo já lançado em tempo real no procedimento (quantidade, etapa, produto ou profissional),
+ * recalcula o custo e ajusta o estoque (estorno ou débito da diferença).
+ */
+export async function editarInsumoTempoRealProcedimento(params: {
+  appointmentId: string;
+  index: number;
+  novoInsumo: InsumoAtendimento;
+  nomeProfissional?: string;
+  nomeCliente?: string;
+}): Promise<{ ok: boolean; insumosAtualizados: InsumoAtendimento[]; productCost: number; error?: string }> {
+  try {
+    const { data: current } = await supabase
+      .from(TBL.agendamentos)
+      .select('sub_services, product_cost')
+      .eq('id', params.appointmentId)
+      .maybeSingle();
+
+    const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+    const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+    const curList: InsumoAtendimento[] = Array.isArray(metaObj.insumos_procedimento) 
+      ? metaObj.insumos_procedimento 
+      : [];
+
+    if (params.index < 0 || params.index >= curList.length) {
+      return { ok: false, insumosAtualizados: curList, productCost: Number(metaObj.product_cost || 0), error: 'Índice de insumo inválido' };
+    }
+
+    const itemAntigo = curList[params.index];
+    const itemAtualizado: InsumoAtendimento = {
+      ...itemAntigo,
+      ...params.novoInsumo,
+      horario: itemAntigo.horario || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const updatedList = [...curList];
+    updatedList[params.index] = itemAtualizado;
+
+    const totalCost = Number(
+      updatedList.reduce((acc, it) => acc + (Number(it.custo_total) || 0), 0).toFixed(2)
+    );
+
+    metaObj.insumos_procedimento = updatedList;
+    metaObj.product_cost = totalCost;
+
+    const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+    cleanSubs.push(metaObj);
+
+    const patch: any = {
+      sub_services: cleanSubs,
+      product_cost: totalCost,
+    };
+
+    const { error: updErr } = await supabase
+      .from(TBL.agendamentos)
+      .update(patch)
+      .eq('id', params.appointmentId);
+
+    if (updErr) {
+      if (updErr.message?.includes('product_cost')) {
+        delete patch.product_cost;
+        await supabase.from(TBL.agendamentos).update(patch).eq('id', params.appointmentId);
+      } else {
+        logSupabaseError('[editarInsumoTempoRealProcedimento agendamento update]', updErr);
+        return { ok: false, insumosAtualizados: curList, productCost: totalCost, error: updErr.message };
+      }
+    }
+
+    // Ajuste de Estoque
+    if (itemAntigo.inventory_id !== itemAtualizado.inventory_id) {
+      // Mudou o produto: estorna integralmente o anterior e debita o novo
+      try {
+        await registrarMovimentacao(
+          itemAntigo.inventory_id,
+          'IN',
+          itemAntigo.qty_used,
+          {
+            appointmentId: params.appointmentId,
+            notes: `Estorno por alteração de insumo no procedimento (${itemAntigo.name})`,
+            createdBy: params.nomeProfissional,
+          }
+        );
+        await registrarMovimentacao(
+          itemAtualizado.inventory_id,
+          'OUT_PROCEDURE',
+          itemAtualizado.qty_used,
+          {
+            appointmentId: params.appointmentId,
+            notes: `Aplicação por alteração de insumo no procedimento (${itemAtualizado.name})`,
+            createdBy: params.nomeProfissional,
+          }
+        );
+      } catch (movErr) {
+        console.warn('[editarInsumoTempoRealProcedimento] Falha ao ajustar estoque de produtos trocados:', movErr);
+      }
+    } else {
+      // Mesmo produto: calcular diferença
+      const diff = Number(itemAtualizado.qty_used) - Number(itemAntigo.qty_used);
+      if (diff > 0) {
+        // Consumiu mais: debita a diferença
+        try {
+          await registrarMovimentacao(
+            itemAtualizado.inventory_id,
+            'OUT_PROCEDURE',
+            diff,
+            {
+              appointmentId: params.appointmentId,
+              notes: `Acréscimo de consumo de insumo (${itemAtualizado.name} +${diff}${itemAtualizado.unit})`,
+              createdBy: params.nomeProfissional,
+            }
+          );
+        } catch (movErr) {
+          console.warn('[editarInsumoTempoRealProcedimento] Falha ao debitar acréscimo de estoque:', movErr);
+        }
+      } else if (diff < 0) {
+        // Consumiu menos: estorna a diferença
+        try {
+          await registrarMovimentacao(
+            itemAtualizado.inventory_id,
+            'IN',
+            Math.abs(diff),
+            {
+              appointmentId: params.appointmentId,
+              notes: `Estorno de insumo por edição (${itemAtualizado.name} -${Math.abs(diff)}${itemAtualizado.unit})`,
+              createdBy: params.nomeProfissional,
+            }
+          );
+        } catch (movErr) {
+          console.warn('[editarInsumoTempoRealProcedimento] Falha ao estornar decréscimo de estoque:', movErr);
+        }
+      }
+    }
+
+    // Sincronizar comanda de itens
+    try {
+      if (itemAntigo.inventory_id !== itemAtualizado.inventory_id) {
+        const remainingOldQty = updatedList
+          .filter(i => i.inventory_id === itemAntigo.inventory_id)
+          .reduce((sum, i) => sum + i.qty_used, 0);
+
+        if (remainingOldQty > 0) {
+          await salvarItemComanda(params.appointmentId, {
+            inventory_id: itemAntigo.inventory_id,
+            type: 'INSUMO',
+            qty: remainingOldQty,
+            price: 0,
+          });
+        } else {
+          await supabase
+            .from(TBL.appointment_items)
+            .delete()
+            .eq('appointment_id', params.appointmentId)
+            .eq('inventory_id', itemAntigo.inventory_id)
+            .eq('type', 'INSUMO');
+        }
+      }
+
+      const remainingNewQty = updatedList
+        .filter(i => i.inventory_id === itemAtualizado.inventory_id)
+        .reduce((sum, i) => sum + i.qty_used, 0);
+
+      if (remainingNewQty > 0) {
+        await salvarItemComanda(params.appointmentId, {
+          inventory_id: itemAtualizado.inventory_id,
+          type: 'INSUMO',
+          qty: remainingNewQty,
+          price: 0,
+        });
+      }
+    } catch (comandaErr) {
+      console.warn('[editarInsumoTempoRealProcedimento] Falha ao sincronizar comanda:', comandaErr);
+    }
+
+    return { ok: true, insumosAtualizados: updatedList, productCost: totalCost };
+  } catch (err: any) {
+    logSupabaseError('[editarInsumoTempoRealProcedimento]', err);
+    return { ok: false, insumosAtualizados: [], productCost: 0, error: err?.message || 'Erro inesperado' };
+  }
+}
+
 // --------------------------------------------------------------------------------
 // CONFIGURAÇÕES DO SISTEMA
 // --------------------------------------------------------------------------------
