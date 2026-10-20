@@ -128,9 +128,8 @@ export default function AlunoDashboardPage() {
   // Progressão da última aula assistida
   const progressPercent = aulaParou && aulaAtualInfo ? Math.round((aulaParou.assistidoSegundos / (aulaAtualInfo.duracaoMinutos * 60)) * 100) : 0;
 
-  // Função helper para acesso (estritamente baseada em matrícula confirmada ou role de admin)
+  // Função helper para acesso (estritamente baseada em matrícula confirmada)
   const hasAccess = (cursoId: string) => {
-    if (isAdmin) return true;
     return Boolean(cursosAprovados[cursoId]);
   };
 
@@ -189,7 +188,7 @@ export default function AlunoDashboardPage() {
                   {featuredCourse?.descricao || featuredCourse?.description || 'Explore nossos cursos e especializações exclusivas.'}
                 </p>
                 <div className="flex items-center gap-4">
-                  {featuredCourse && hasAccess(featuredCourse.id) ? (
+                  {featuredCourse && featuredCourse.status === 'PUBLISHED' && hasAccess(featuredCourse.id) ? (
                     <Link
                       href={`/aluno/cursos/${featuredCourse.id}`}
                       className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold shadow-md"
@@ -197,7 +196,7 @@ export default function AlunoDashboardPage() {
                       <Play size={18} className="fill-black" />
                       Acessar Curso
                     </Link>
-                  ) : (
+                  ) : featuredCourse && featuredCourse.status === 'PUBLISHED' ? (
                     <Link
                       href={`/aluno/cursos/${featuredCourse?.id || ''}`}
                       className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold shadow-md"
@@ -205,6 +204,11 @@ export default function AlunoDashboardPage() {
                       <Lock size={18} />
                       Ver Detalhes do Curso
                     </Link>
+                  ) : (
+                    <span className="bg-white/10 text-white/70 border border-white/20 flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold backdrop-blur-sm">
+                      <Lock size={18} />
+                      Em Breve
+                    </span>
                   )}
                   <Link
                     href="/aluno/catalogo"
@@ -235,8 +239,8 @@ export default function AlunoDashboardPage() {
           </Link>
         </section>
 
-        {/* Continue Assistindo (somente se tiver matrícula ativa) */}
-        {aulaAtualInfo && cursoAtualInfo && hasAccess(cursoAtualInfo.id) && (
+        {/* Continue Assistindo (somente se tiver matrícula ativa e curso publicado) */}
+        {aulaAtualInfo && cursoAtualInfo && cursoAtualInfo.status === 'PUBLISHED' && hasAccess(cursoAtualInfo.id) && (
           <section>
             <h2 className="text-xl font-bold text-foreground mb-4">Continue Assistindo</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

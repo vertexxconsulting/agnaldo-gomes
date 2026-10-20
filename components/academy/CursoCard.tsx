@@ -36,7 +36,7 @@ const formatPrice = (val?: number | string) => {
 };
 
 export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, onVipSelect }: CardProps) {
-  // O curso só é considerado publicado se o status for explicitamente PUBLISHED ou is_published for true (e não DRAFT)
+  // O curso só é considerado publicado/pronto se o status for explicitamente PUBLISHED ou is_published for true (e não DRAFT)
   const isPublished = curso.status
     ? curso.status === 'PUBLISHED'
     : (curso.is_published ?? (curso.status !== 'DRAFT'));
@@ -46,11 +46,12 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
     ? displayPrice
     : (typeof displayPrice === 'string' ? parseFloat(displayPrice.replace(/[^\d.,]/g, '').replace(',', '.')) : 0);
 
-  // SÓ mostrar valor se o aluno NÃO estiver matriculado, o curso estiver PUBLICADO e com valor > 0
-  const shouldShowPrice = !isEnrolled && isPublished && numPrice > 0;
-
-  // Botão de compra só fica ativo quando o curso estiver publicado e com preço válido
-  const canBuy = !isEnrolled && isPublished && isPurchasable && numPrice > 0;
+  // Se o curso NÃO foi publicado / não está pronto:
+  // NUNCA está liberado (não pode acessar nem ver liberado), NUNCA mostra preço e NUNCA mostra botão de compra.
+  // Fica estritamente como "Em breve" com cadeado.
+  const hasAccess = isPublished && isEnrolled;
+  const canBuy = isPublished && !isEnrolled && isPurchasable && numPrice > 0;
+  const shouldShowPrice = canBuy;
 
   const hasDiscount =
     shouldShowPrice &&
@@ -91,7 +92,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
             Sem capa
           </div>
         )}
-        {!isEnrolled && (
+        {!hasAccess && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100 backdrop-blur-[2px]">
             <span className="px-3 py-1.5 rounded-full bg-gold text-black text-xs font-bold shadow-lg flex items-center gap-1">
               {canBuy ? <><Lock size={12} /> Matricular-se</> : 'Em Breve'}
@@ -129,7 +130,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
 
         {/* Status badge com alto contraste e legibilidade */}
         <div className="flex items-center gap-2 mb-4 text-xs">
-          {isEnrolled ? (
+          {hasAccess ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-500/25">
               <Check className="w-3.5 h-3.5 shrink-0" />
               <span>Acesso liberado</span>
@@ -150,7 +151,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
 
       {/* Action button — bottom-aligned */}
       <div className="p-4 sm:p-5 pt-0">
-        {isEnrolled ? (
+        {hasAccess ? (
           <Link
             href={`/aluno/cursos/${curso.id}`}
             className="flex w-full py-2.5 rounded-xl bg-gold hover:bg-gold-dim text-black font-bold text-sm shadow-md items-center justify-center gap-2 transition-all duration-300"
