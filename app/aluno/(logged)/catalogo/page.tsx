@@ -88,7 +88,9 @@ export default function CatalogPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {cursos.map((curso) => {
           const isEnrolled = enrolledIds.has(curso.id);
-          const hasPaymentOption = Boolean(curso.stripe_payment_link) || Boolean(curso.current_price) || Boolean(curso.price);
+          const isPublished = curso.status ? curso.status === 'PUBLISHED' : (curso.is_published ?? (curso.status !== 'DRAFT'));
+          const numPrice = typeof curso.price === 'number' ? curso.price : parseFloat(String(curso.price || '0'));
+          const hasPaymentOption = Boolean(curso.stripe_payment_link) || numPrice > 0;
           const locked = !isEnrolled;
 
           return (
@@ -96,7 +98,7 @@ export default function CatalogPage() {
               key={curso.id}
               curso={curso}
               isEnrolled={isEnrolled}
-              isPurchasable={locked && hasPaymentOption}
+              isPurchasable={locked && isPublished && hasPaymentOption}
             />
           );
         })}

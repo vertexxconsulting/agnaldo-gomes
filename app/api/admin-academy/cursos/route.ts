@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requireAcademyAuth } from '@/lib/api-auth';
+import { requireAcademyAuth, requireAlunoAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const auth = await requireAcademyAuth();
+  const auth = await requireAlunoAuth();
   if (auth.error) return auth.error;
 
   try {

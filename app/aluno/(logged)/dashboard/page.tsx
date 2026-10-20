@@ -6,11 +6,12 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCursos, getModulos, getAulas, getProgressoAluno } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase';
-import type { Curso, Aula, Modulo, Progresso } from '@/lib/mock-data';
+import type { Aula, Modulo, Progresso } from '@/lib/mock-data';
 import { LessonPlayer } from '@/components/LessonPlayer';
+import { CursoCard, CursoCardProps } from '@/components/academy/CursoCard';
 
 export default function AlunoDashboardPage() {
-  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [cursos, setCursos] = useState<any[]>([]);
   const [progressoAluno, setProgressoAluno] = useState<Progresso[]>([]);
   const [cursosAprovados, setCursosAprovados] = useState<Record<string, boolean>>({});
   const [welcomeVideoUrl, setWelcomeVideoUrl] = useState<string>('');
@@ -21,39 +22,73 @@ export default function AlunoDashboardPage() {
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      const [cursosData, progressoData, configData] = await Promise.all([
-        getCursos(),
-        getProgressoAluno(),
-        supabase.from('academy_settings').select('welcome_video_url').eq('id', 1).single()
-      ]);
-
-      // Buscar cursos liberados para o usuário
-      const { data: { user } } = await supabase.auth.getUser();
-      let aprovados: Record<string, boolean> = {};
-      let userIsAdmin = false;
-
-      if (user) {
-        const [enrollmentsRes, profileRes] = await Promise.all([
-          supabase.from('course_enrollments').select('course_id').eq('user_id', user.id),
-          supabase.from('profiles').select('role').eq('id', user.id).single()
+      try {
+        const [coursesRes, progressoData, configData] = await Promise.all([
+          supabase.from('courses').select('*').order('created_at', { ascending: false }),
+          getProgressoAluno(),
+          supabase.from('academy_settings').select('welcome_video_url').eq('id', 1).single()
         ]);
 
-        if (enrollmentsRes.data) {
-          enrollmentsRes.data.forEach((e: { course_id: string }) => { aprovados[e.course_id] = true; });
+        // Buscar cursos liberados para o usuário
+        const { data: { user } } = await supabase.auth.getUser();
+        let aprovados: Record<string, boolean> = {};
+        let userIsAdmin = false;
+
+        if (user) {
+          const [enrollmentsRes, profileRes] = await Promise.all([
+            supabase.from('course_enrollments').select('course_id').eq('user_id', user.id),
+            supabase.from('profiles').select('role').eq('id', user.id).single()
+          ]);
+
+          if (enrollmentsRes.data) {
+            enrollmentsRes.data.forEach((e: { course_id: string }) => { aprovados[e.course_id] = true; });
+          }
+
+          const role = profileRes.data?.role;
+          if (role === 'ADMIN' || role === 'academy_admin' || role === 'studio_admin') {
+            userIsAdmin = true;
+          }
         }
 
-        const role = profileRes.data?.role;
-        if (role === 'ADMIN' || role === 'academy_admin' || role === 'studio_admin') {
-          userIsAdmin = true;
+        let listaFinal: any[] = [];
+        if (coursesRes.data && coursesRes.data.length > 0) {
+          listaFinal = coursesRes.data.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            titulo: c.title,
+            description: c.description,
+            descricao: c.description,
+            thumbnail_url: c.thumbnail_url,
+            capaUrl: c.thumbnail_url,
+            price: c.price,
+            original_price: c.original_price,
+            current_price: c.current_price,
+            status: c.status,
+            is_published: c.is_published,
+            stripe_payment_link: c.stripe_payment_link,
+            duracaoHoras: c.duration_hours || 0,
+            totalAulas: 0,
+            nivel: c.level || 'Iniciante',
+            professor: 'Agnaldo Gomes',
+          }));
+        } else {
+          const fallback = await getCursos();
+          listaFinal = fallback.map(c => ({
+            ...c,
+            status: 'PUBLISHED',
+          }));
         }
+
+        setCursos(listaFinal);
+        setProgressoAluno(progressoData);
+        setCursosAprovados(aprovados);
+        setIsAdmin(userIsAdmin);
+        if (configData.data?.welcome_video_url) setWelcomeVideoUrl(configData.data.welcome_video_url);
+      } catch (err) {
+        console.error('Erro ao carregar dashboard do aluno:', err);
+      } finally {
+        setLoading(false);
       }
-
-      setCursos(cursosData);
-      setProgressoAluno(progressoData);
-      setCursosAprovados(aprovados);
-      setIsAdmin(userIsAdmin);
-      if (configData.data?.welcome_video_url) setWelcomeVideoUrl(configData.data.welcome_video_url);
-      setLoading(false);
     };
     carregarDados();
   }, []);
@@ -87,15 +122,16 @@ export default function AlunoDashboardPage() {
     const mod = modulosMap[aulaAtualInfo.modulo_id];
     return mod ? c.id === mod.curso_id : false;
   }) : null;
+
   // Estatísticas do aluno no ecossistema
   const aulasConcluidas = progressoAluno.filter(p => p.concluida).length;
   // Progressão da última aula assistida
   const progressPercent = aulaParou && aulaAtualInfo ? Math.round((aulaParou.assistidoSegundos / (aulaAtualInfo.duracaoMinutos * 60)) * 100) : 0;
-  // Função helper para acesso
+
+  // Função helper para acesso (estritamente baseada em matrícula confirmada ou role de admin)
   const hasAccess = (cursoId: string) => {
     if (isAdmin) return true;
-    if (cursosAprovados[cursoId]) return true;
-    return cursoId === 'course_1'; // fallback mock se necessário
+    return Boolean(cursosAprovados[cursoId]);
   };
 
   if (loading) {
@@ -127,55 +163,65 @@ export default function AlunoDashboardPage() {
         </div>
       ) : (
         <div className="relative w-full h-[65vh] sm:h-[80vh] bg-black">
-        {/* Imagem de Fundo Estática */}
-        <div
-          className="absolute inset-0 bg-cover bg-[center_20%] opacity-80"
-          style={{ backgroundImage: `url('/agnaldohero.webp')` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/30 to-transparent" />
+          {/* Imagem de Fundo Estática */}
+          <div
+            className="absolute inset-0 bg-cover bg-[center_20%] opacity-80"
+            style={{ backgroundImage: `url('/agnaldohero.webp')` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/30 to-transparent" />
 
-        {/* Conteúdo do Banner */}
-        <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col justify-end overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={featuredCourse?.id || 'empty'}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.5 }}
-              className="max-w-2xl"
-            >
-              <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 drop-shadow-lg">
-                {featuredCourse?.titulo|| 'Bem-vindo à Academy'}
-              </h1>
-              <p className="text-white/80 text-sm sm:text-base max-w-xl mb-6 drop-shadow-md line-clamp-3">
-                {featuredCourse?.descricao|| 'Explore nossos cursos disponíveis.'}
-              </p>
-              <div className="flex items-center gap-4">
-                <Link
-                  href={`/aluno/cursos/${featuredCourse?.id|| ''}/aulas/${aulaParou?.aula_id|| 'aula_1'}`}
-                  className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold"
-                >
-                  <Play size={18} className="fill-black" />
-                  Assistir Agora
-                </Link>
-                <Link
-                  href={`/aluno/cursos/${featuredCourse?.id|| ''}`}
-                  className="bg-white/10 text-white hover:bg-white/20 border border-white/20 flex items-center gap-2 px-5 py-2 rounded text-sm font-bold transition-colors shadow-sm"
-                >
-                  <Info size={18} />
-                  Mais Informações
-                </Link>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+          {/* Conteúdo do Banner */}
+          <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col justify-end overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={featuredCourse?.id || 'empty'}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-2xl"
+              >
+                <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 drop-shadow-lg">
+                  {featuredCourse?.titulo || featuredCourse?.title || 'Bem-vindo à Academy'}
+                </h1>
+                <p className="text-white/80 text-sm sm:text-base max-w-xl mb-6 drop-shadow-md line-clamp-3">
+                  {featuredCourse?.descricao || featuredCourse?.description || 'Explore nossos cursos e especializações exclusivas.'}
+                </p>
+                <div className="flex items-center gap-4">
+                  {featuredCourse && hasAccess(featuredCourse.id) ? (
+                    <Link
+                      href={`/aluno/cursos/${featuredCourse.id}`}
+                      className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold shadow-md"
+                    >
+                      <Play size={18} className="fill-black" />
+                      Acessar Curso
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/aluno/cursos/${featuredCourse?.id || ''}`}
+                      className="bg-gold text-black hover:bg-gold-dim flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold shadow-md"
+                    >
+                      <Lock size={18} />
+                      Ver Detalhes do Curso
+                    </Link>
+                  )}
+                  <Link
+                    href="/aluno/catalogo"
+                    className="bg-white/10 text-white hover:bg-white/20 border border-white/20 flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm backdrop-blur-sm"
+                  >
+                    <Info size={18} />
+                    Catálogo
+                  </Link>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
       )}
 
-      {/* Trilhas / Carrosséis */}
-      <div className="flex flex-col gap-7 px-4 sm:px-6 lg:px-14 relative z-10 mt-8">
+      {/* Trilhas / Grid de Cursos */}
+      <div className="flex flex-col gap-8 px-4 sm:px-6 lg:px-14 relative z-10 mt-8">
         {/* Barra de status do aluno no ecossistema */}
         <section className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gold/10 border border-gold/20">
@@ -189,8 +235,8 @@ export default function AlunoDashboardPage() {
           </Link>
         </section>
 
-        {/* Continue Assistindo */}
-        {aulaAtualInfo&& cursoAtualInfo && (
+        {/* Continue Assistindo (somente se tiver matrícula ativa) */}
+        {aulaAtualInfo && cursoAtualInfo && hasAccess(cursoAtualInfo.id) && (
           <section>
             <h2 className="text-xl font-bold text-foreground mb-4">Continue Assistindo</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -218,87 +264,83 @@ export default function AlunoDashboardPage() {
           </section>
         )}
 
-        {/* Cursos Disponíveis (carrossel Netflix-style) */}
+        {/* Cursos Disponíveis — no mesmo padrão visual do catálogo, com cadeado caso o aluno não tenha o curso */}
         <section>
-          <h2 className="text-xl font-bold text-foreground mb-4">Cursos Disponíveis</h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
-            {cursos.map((curso) => {
-              const unlocked = hasAccess(curso.id);
-              return (
-                <Link
-                  key={curso.id}
-                  href={`/aluno/cursos/${curso.id}`}
-                  className="flex-none w-[280px] sm:w-[320px] group relative rounded-md overflow-hidden snap-start hover:scale-105 transition-transform duration-300 shadow-sm border border-gold/20 hover:border-gold/40"
-                >
-                  <div className="aspect-video relative bg-black">
-                    <div className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity" style={{ backgroundImage: `url(${curso.capaUrl})` }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                    {!unlocked && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2">
-                        <div className="bg-gold/20 rounded-full p-3 border border-gold/30">
-                          <Lock size={24} className="text-gold" />
-                        </div>
-                      </div>
-                    )}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Cursos Disponíveis</h2>
+              <p className="text-xs text-foreground/60">Cursos disponíveis na plataforma Academy</p>
+            </div>
+            <Link href="/aluno/catalogo" className="text-xs font-semibold text-gold hover:underline flex items-center gap-1">
+              Ver catálogo completo <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {cursos.map((c: any) => {
+              const enrolled = hasAccess(c.id);
+              const isPublished = c.status ? c.status === 'PUBLISHED' : (c.is_published ?? (c.status !== 'DRAFT'));
+              const numPrice = typeof c.price === 'number' ? c.price : parseFloat(String(c.price || '0'));
+              const hasPaymentOption = Boolean(c.stripe_payment_link) || numPrice > 0;
+              const purchasable = !enrolled && isPublished && hasPaymentOption;
 
-                    <div className="absolute top-2 left-2 z-10">
-                      <span className="text-[10px] font-bold text-black mb-1 uppercase tracking-wider bg-gold px-2 py-0.5 rounded shadow-md">{curso.nivel}</span>
-                    </div>
-                    <div className="absolute bottom-0 left-0 p-4 w-full z-10">
-                      <h3 className="font-bold text-sm sm:text-base text-white line-clamp-1 drop-shadow-md">{curso.titulo}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-white border border-white/10">{curso.duracaoHoras}h</span>
-                        <span className="text-[10px] font-bold bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-white border border-white/10">{curso.totalAulas} aulas</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+              return (
+                <CursoCard
+                  key={c.id}
+                  curso={{
+                    id: c.id,
+                    title: c.title || c.titulo || '',
+                    description: c.description || c.descricao || '',
+                    thumbnail_url: c.thumbnail_url || c.capaUrl || null,
+                    price: c.price,
+                    original_price: c.original_price,
+                    current_price: c.current_price,
+                    stripe_payment_link: c.stripe_payment_link,
+                    status: c.status,
+                    is_published: c.is_published,
+                  }}
+                  isEnrolled={enrolled}
+                  isPurchasable={purchasable}
+                />
               );
             })}
           </div>
         </section>
 
-        {/* Recomendados para Você */}
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-foreground mb-4">Recomendados para Você</h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
-            {cursos.slice().reverse().map((curso) => {
-              const unlocked = hasAccess(curso.id);
-              return (
-                <Link
-                  key={curso.id + '_rec'}
-                  href={`/aluno/cursos/${curso.id}`}
-                  className="flex-none w-[280px] sm:w-[320px] group relative rounded-md overflow-hidden snap-start hover:scale-105 transition-transform duration-300 shadow-sm border border-gold/20 hover:border-gold/40"
-                >
-                  <div className="aspect-video relative bg-black">
-                    <div className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity" style={{ backgroundImage: `url(${curso.capaUrl})` }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                    {!unlocked && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2">
-                        <div className="bg-gold/20 rounded-full p-3 border border-gold/30">
-                          <Lock size={24} className="text-gold" />
-                        </div>
-                      </div>
-                    )}
+        {/* Recomendados para Você — mesmos cards consistentes com o catálogo */}
+        {cursos.length > 1 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-bold text-foreground mb-4">Recomendados para Você</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {cursos.slice().reverse().map((c: any) => {
+                const enrolled = hasAccess(c.id);
+                const isPublished = c.status ? c.status === 'PUBLISHED' : (c.is_published ?? (c.status !== 'DRAFT'));
+                const numPrice = typeof c.price === 'number' ? c.price : parseFloat(String(c.price || '0'));
+                const hasPaymentOption = Boolean(c.stripe_payment_link) || numPrice > 0;
+                const purchasable = !enrolled && isPublished && hasPaymentOption;
 
-                    <div className="absolute top-2 left-2 z-10">
-                      <span className="text-[10px] font-bold text-black mb-1 uppercase tracking-wider bg-gold px-2 py-0.5 rounded shadow-md">{curso.nivel}</span>
-                    </div>
-                    <div className="absolute bottom-0 left-0 p-4 w-full flex items-center justify-between z-10">
-                      <div>
-                        <h3 className="font-bold text-sm sm:text-base text-white line-clamp-1 drop-shadow-md">{curso.titulo}</h3>
-                        <div className="text-xs text-white/70 line-clamp-1 drop-shadow-md">{curso.professor}</div>
-                      </div>
-                      {!unlocked && (
-                        <Lock size={16} className="text-gold shrink-0 drop-shadow-md" />
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+                return (
+                  <CursoCard
+                    key={c.id + '_rec'}
+                    curso={{
+                      id: c.id,
+                      title: c.title || c.titulo || '',
+                      description: c.description || c.descricao || '',
+                      thumbnail_url: c.thumbnail_url || c.capaUrl || null,
+                      price: c.price,
+                      original_price: c.original_price,
+                      current_price: c.current_price,
+                      stripe_payment_link: c.stripe_payment_link,
+                      status: c.status,
+                      is_published: c.is_published,
+                    }}
+                    isEnrolled={enrolled}
+                    isPurchasable={purchasable}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
 
       </div>
     </div>

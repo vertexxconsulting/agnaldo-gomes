@@ -16,6 +16,8 @@ export type CursoCardProps = {
   hotmart_link?: string;
   isVip?: boolean;
   schedules?: any;
+  status?: string;
+  is_published?: boolean;
 };
 
 interface CardProps {
@@ -34,8 +36,24 @@ const formatPrice = (val?: number | string) => {
 };
 
 export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, onVipSelect }: CardProps) {
+  // O curso só é considerado publicado se o status for explicitamente PUBLISHED ou is_published for true (e não DRAFT)
+  const isPublished = curso.status
+    ? curso.status === 'PUBLISHED'
+    : (curso.is_published ?? (curso.status !== 'DRAFT'));
+
   const displayPrice = curso.current_price ?? curso.price;
+  const numPrice = typeof displayPrice === 'number'
+    ? displayPrice
+    : (typeof displayPrice === 'string' ? parseFloat(displayPrice.replace(/[^\d.,]/g, '').replace(',', '.')) : 0);
+
+  // SÓ mostrar valor se o aluno NÃO estiver matriculado, o curso estiver PUBLICADO e com valor > 0
+  const shouldShowPrice = !isEnrolled && isPublished && numPrice > 0;
+
+  // Botão de compra só fica ativo quando o curso estiver publicado e com preço válido
+  const canBuy = !isEnrolled && isPublished && isPurchasable && numPrice > 0;
+
   const hasDiscount =
+    shouldShowPrice &&
     curso.original_price &&
     typeof curso.original_price === 'number' &&
     typeof displayPrice === 'number' &&
@@ -75,8 +93,8 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
         )}
         {!isEnrolled && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100 backdrop-blur-[2px]">
-            <span className="px-3 py-1.5 rounded-full bg-gold text-black text-xs font-bold shadow-lg">
-              {isPurchasable ? 'Ver Detalhes' : 'Em Breve'}
+            <span className="px-3 py-1.5 rounded-full bg-gold text-black text-xs font-bold shadow-lg flex items-center gap-1">
+              {canBuy ? <><Lock size={12} /> Matricular-se</> : 'Em Breve'}
             </span>
           </div>
         )}
@@ -95,8 +113,8 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
           {curso.description || 'Aprenda técnicas exclusivas com o mestre Agnaldo Gomes.'}
         </p>
 
-        {/* Preço (se aplicável e se não estiver matriculado) */}
-        {!isEnrolled && displayPrice != null && (
+        {/* Preço (só exibe se publicado e com valor maior que 0) */}
+        {shouldShowPrice && (
           <div className="flex items-baseline gap-2 mb-3">
             {hasDiscount && (
               <span className="text-xs text-foreground/40 line-through">
@@ -116,7 +134,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
               <Check className="w-3.5 h-3.5 shrink-0" />
               <span>Acesso liberado</span>
             </span>
-          ) : isPurchasable ? (
+          ) : canBuy ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/15 text-gold font-bold border border-gold/30">
               <Lock className="w-3.5 h-3.5 shrink-0" />
               <span>Disponível para matrícula</span>
@@ -124,7 +142,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-foreground/5 text-foreground/60 font-medium border border-[var(--border-subtle)]">
               <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span>Inscrições em breve</span>
+              <span>Em breve</span>
             </span>
           )}
         </div>
@@ -140,7 +158,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
             <PlayCircle size={16} />
             <span>Acessar curso</span>
           </Link>
-        ) : isPurchasable ? (
+        ) : canBuy ? (
           <button
             type="button"
             onClick={handleStripeBuy}
@@ -156,7 +174,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
             className="flex w-full py-2.5 rounded-xl bg-foreground/5 text-foreground/40 font-semibold text-xs border border-[var(--border-subtle)] items-center justify-center gap-1.5 cursor-not-allowed"
           >
             <Lock size={14} />
-            <span>Aguardando novas vagas</span>
+            <span>Em breve</span>
           </button>
         )}
       </div>
