@@ -103,38 +103,38 @@ export default function EpisodioPage({
       <div className="relative z-10 flex flex-col flex-1">
         
         {/* Header Voltar */}
-        <div className="flex items-center p-6 sm:px-12 sm:py-8 gap-4">
-          <Link href={`/aluno/cursos/${curso?.id}`} className="flex items-center gap-3 text-white/70 hover:text-white transition-colors group">
-            <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center bg-black/40 group-hover:bg-white/10 backdrop-blur-md">
-              <ArrowLeft size={20} />
+        <div className="flex items-center p-4 sm:px-8 sm:py-6 gap-3">
+          <Link href={`/aluno/cursos/${curso?.id}`} className="flex items-center gap-2.5 text-white/70 hover:text-white transition-colors group">
+            <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center bg-black/40 group-hover:bg-white/10 backdrop-blur-md">
+              <ArrowLeft size={16} />
             </div>
-            <span className="font-bold text-sm tracking-wide uppercase hidden sm:block">Voltar para a série</span>
+            <span className="font-semibold text-xs tracking-wider uppercase hidden sm:block">Voltar para a série</span>
           </Link>
         </div>
 
         {/* Hero e Main Content */}
-        <div className="flex flex-col lg:flex-row flex-1 px-6 sm:px-12 gap-12 pb-20">
+        <div className="flex flex-col lg:flex-row flex-1 px-4 sm:px-8 gap-8 pb-16">
           
           {/* Lado Esquerdo - Hero (Título, Player, Botões, Descrição) */}
-          <div className="flex-1 flex flex-col gap-6 max-w-5xl">
+          <div className="flex-1 flex flex-col gap-4 max-w-5xl">
             
             {/* Título do vídeo na Hero */}
-            <div className="flex flex-col gap-2">
-              <h1 className="text-4xl sm:text-6xl font-black text-white drop-shadow-2xl leading-tight">
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight leading-snug">
                 {aula.title}
               </h1>
-              <div className="flex flex-wrap items-center gap-3 text-white/70 text-sm sm:text-base font-medium">
-                <span className="text-green-500 font-bold">Novo</span>
+              <div className="flex flex-wrap items-center gap-2.5 text-white/70 text-xs sm:text-sm font-medium">
+                <span className="text-green-400 font-semibold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20 text-xs">Novo</span>
                 <span>Módulo {modulo?.order_index}: {modulo?.title}</span>
-                <span>•</span>
+                <span className="text-white/30">•</span>
                 <span>Episódio {aula.order_index}</span>
-                <span>•</span>
+                <span className="text-white/30">•</span>
                 <span>{aula.duration_minutes} min</span>
               </div>
             </div>
 
             {/* Player de Vídeo */}
-            <div className="w-full aspect-video bg-black rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden relative z-20 mt-4">
+            <div className="w-full aspect-video bg-black rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-white/10 overflow-hidden relative z-20 mt-1">
               <LessonPlayer
                 videoUrl={aula.video_url ?? ''}
                 poster={curso?.thumbnail_url ?? undefined}
@@ -143,92 +143,92 @@ export default function EpisodioPage({
               />
             </div>
 
-            {/* Botões Grandes e Quadrados */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
+            {/* Botões de Ação */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
               <button
                 onClick={handleMarcarConcluida}
-                className={`flex-1 w-full sm:flex-none flex items-center justify-center gap-3 px-10 py-4 font-bold text-lg rounded-sm transition-all duration-300 ${
+                className={`flex-1 w-full sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 font-semibold text-sm rounded-lg transition-all duration-300 ${
                   concluidaLocal 
-                    ? 'bg-green-500 text-black hover:bg-green-400 shadow-[0_0_20px_rgba(34,197,94,0.3)]' 
-                    : 'bg-white text-black hover:bg-white/90 shadow-lg'
+                    ? 'bg-green-500 text-black hover:bg-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]' 
+                    : 'bg-white text-black hover:bg-white/90 shadow-md'
                 }`}
               >
-                <CheckCircle2 size={24} className={concluidaLocal ? "text-black" : "text-black"} />
+                <CheckCircle2 size={18} className="text-black" />
                 {concluidaLocal ? 'Concluída' : 'Marcar Concluída'}
               </button>
 
               {proximaAula && (
                 <Link
                   href={`/aluno/cursos/${curso?.id}/aulas/${proximaAula.id}`}
-                  className="flex-1 w-full sm:flex-none flex items-center justify-center gap-3 px-10 py-4 bg-white/10 text-white hover:bg-white/20 border border-white/20 font-bold text-lg rounded-sm transition-colors backdrop-blur-sm"
+                  className="flex-1 w-full sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white/10 text-white hover:bg-white/20 border border-white/20 font-semibold text-sm rounded-lg transition-colors backdrop-blur-sm"
                 >
-                  Próximo Episódio <ChevronRight size={24} />
+                  Próximo Episódio <ChevronRight size={18} />
                 </Link>
               )}
             </div>
 
             {/* Abas e Detalhes */}
-            <div className="flex flex-col mt-8">
-              <div className="flex border-b border-white/10 gap-8">
+            <div className="flex flex-col mt-6">
+              <div className="flex border-b border-white/10 gap-6">
                 <button
                   onClick={() => setActiveTab('desc')}
-                  className={`pb-4 text-base font-bold transition-all border-b-4 ${activeTab === 'desc' ? 'border-red-600 text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
+                  className={`pb-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'desc' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
                   Visão Geral
                 </button>
                 <button
                   onClick={() => setActiveTab('mat')}
-                  className={`pb-4 text-base font-bold transition-all border-b-4 flex items-center gap-2 ${activeTab === 'mat' ? 'border-red-600 text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
+                  className={`pb-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 ${activeTab === 'mat' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
                   Materiais
                   {aula.materiais && aula.materiais.length > 0 && (
-                    <span className="bg-white/10 text-white text-[10px] px-2 py-0.5 rounded-sm">{aula.materiais.length}</span>
+                    <span className="bg-white/10 text-white text-[11px] px-2 py-0.5 rounded-full font-medium">{aula.materiais.length}</span>
                   )}
                 </button>
                 <button
                   onClick={() => setActiveTab('anot')}
-                  className={`pb-4 text-base font-bold transition-all border-b-4 ${activeTab === 'anot' ? 'border-red-600 text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
+                  className={`pb-3 text-sm font-semibold transition-all border-b-2 ${activeTab === 'anot' ? 'border-primary text-white' : 'border-transparent text-white/50 hover:text-white/80'}`}
                 >
                   Anotações
                 </button>
               </div>
 
-              <div className="pt-8">
+              <div className="pt-5">
                 {activeTab === 'desc' && (
-                  <p className="text-white/80 text-lg leading-relaxed max-w-4xl font-light">
+                  <p className="text-white/80 text-sm leading-relaxed max-w-3xl">
                     {aula.description || 'Nenhuma descrição fornecida para esta aula. Aproveite o conteúdo em vídeo!'}
                   </p>
                 )}
 
                 {activeTab === 'mat' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
                     {aula.materiais && aula.materiais.length > 0 ? (
                       aula.materiais.map((mat, i) => (
-                        <a key={i} href={mat.url} className="flex items-center justify-between p-5 rounded-sm border border-white/10 bg-white/5 hover:bg-white/10 transition-colors group backdrop-blur-md">
-                          <div className="flex items-center gap-4 text-white">
-                            <FileText size={24} className="text-white/60 group-hover:text-white transition-colors" />
-                            <span className="font-bold text-base">{mat.titulo}</span>
+                        <a key={i} href={mat.url} className="flex items-center justify-between p-3.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors group backdrop-blur-md">
+                          <div className="flex items-center gap-3 text-white">
+                            <FileText size={18} className="text-white/60 group-hover:text-white transition-colors" />
+                            <span className="font-medium text-sm">{mat.titulo}</span>
                           </div>
-                          <Download size={20} className="text-white/30 group-hover:text-white transition-colors" />
+                          <Download size={16} className="text-white/40 group-hover:text-white transition-colors" />
                         </a>
                       ))
                     ) : (
-                      <p className="text-white/50 text-lg">Nenhum material complementar disponível.</p>
+                      <p className="text-white/50 text-sm">Nenhum material complementar disponível.</p>
                     )}
                   </div>
                 )}
 
                 {activeTab === 'anot' && (
-                  <div className="flex flex-col gap-4 max-w-4xl">
+                  <div className="flex flex-col gap-3 max-w-3xl">
                     <textarea
-                      className="w-full h-40 bg-white/5 border border-white/10 rounded-sm p-5 text-base text-white focus:outline-none focus:border-white/40 resize-none placeholder:text-white/30 backdrop-blur-md"
+                      className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-3.5 text-sm text-white focus:outline-none focus:border-white/40 resize-none placeholder:text-white/30 backdrop-blur-md"
                       placeholder="Faça suas anotações pessoais aqui. Elas ficam salvas automaticamente neste episódio..."
                       value={notaAlunoLocal}
                       onChange={(e) => setNotaAlunoLocal(e.target.value)}
                     ></textarea>
                     <div className="flex justify-end">
                       <button 
-                        className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold px-8 py-3 rounded-sm transition-colors backdrop-blur-sm"
+                        className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold px-5 py-2 text-sm rounded-lg transition-colors backdrop-blur-sm"
                         onClick={handleSalvarAnotacao}
                       >
                         Salvar Anotação
@@ -241,11 +241,11 @@ export default function EpisodioPage({
           </div>
 
           {/* Lado Direito - Sidebar de Episódios */}
-          <div className="w-full lg:w-[400px] xl:w-[450px] flex flex-col gap-4">
-            <h3 className="text-2xl font-black text-white mb-4 flex items-center gap-3">
-              <ListVideo className="text-white/50" /> Episódios
+          <div className="w-full lg:w-[360px] xl:w-[400px] flex flex-col gap-3">
+            <h3 className="text-base sm:text-lg font-bold text-white mb-1 flex items-center gap-2">
+              <ListVideo size={20} className="text-white/60" /> Episódios
             </h3>
-            <div className="flex flex-col gap-3 max-h-[800px] overflow-y-auto custom-scrollbar pr-2">
+            <div className="flex flex-col gap-2.5 max-h-[700px] overflow-y-auto custom-scrollbar pr-2">
               {aulasDoModulo.map(aulaItem => {
                 const isActive = aulaItem.id === aula.id;
                 const aulaConcluida = isDone(aulaItem.id) || (isActive && concluidaLocal);
@@ -254,35 +254,35 @@ export default function EpisodioPage({
                   <Link
                     key={aulaItem.id}
                     href={`/aluno/cursos/${curso?.id}/aulas/${aulaItem.id}`}
-                    className={`flex items-center gap-4 p-4 rounded-sm transition-all border ${
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-all border ${
                       isActive 
-                        ? 'bg-white/10 border-white/30 shadow-lg scale-[1.02]' 
+                        ? 'bg-white/10 border-white/30 shadow-md' 
                         : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/20'
                     } backdrop-blur-md`}
                   >
-                    <div className="text-3xl font-black text-white/20 w-12 text-center">
+                    <div className="text-base font-bold text-white/30 w-7 text-center flex-shrink-0">
                       {aulaItem.order_index}
                     </div>
                     
-                    <div className="relative w-32 aspect-video bg-black/50 rounded-sm overflow-hidden flex-shrink-0 border border-white/10">
+                    <div className="relative w-24 aspect-video bg-black/50 rounded overflow-hidden flex-shrink-0 border border-white/10">
                        <div 
                          className="absolute inset-0 bg-cover bg-center opacity-60"
                          style={{ backgroundImage: `url(${curso?.thumbnail_url || ''})` }}
                        />
                        {isActive && (
                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                           <Video size={24} className="text-white" />
+                           <Video size={18} className="text-white" />
                          </div>
                        )}
                     </div>
 
-                    <div className="flex flex-col flex-1 py-1">
-                      <span className={`text-base font-bold line-clamp-2 leading-tight ${isActive ? 'text-white' : 'text-white/70'}`}>
+                    <div className="flex flex-col flex-1 py-0.5 min-w-0">
+                      <span className={`text-xs sm:text-sm font-semibold line-clamp-2 leading-snug ${isActive ? 'text-white' : 'text-white/80'}`}>
                         {aulaItem.title}
                       </span>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-white/50 font-medium">{aulaItem.duration_minutes} min</span>
-                        {aulaConcluida && <CheckCircle2 size={14} className="text-green-500" />}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] text-white/50 font-medium">{aulaItem.duration_minutes} min</span>
+                        {aulaConcluida && <CheckCircle2 size={12} className="text-green-500" />}
                       </div>
                     </div>
                   </Link>
