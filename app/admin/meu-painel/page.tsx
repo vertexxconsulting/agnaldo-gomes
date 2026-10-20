@@ -8,6 +8,7 @@ import {
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
+import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import { 
   fetchClientes, 
   fetchAgendamentos, 
@@ -727,23 +728,13 @@ export default function MeuPainelPage() {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                 <div className="md:col-span-8">
                   <label className="text-xs font-semibold text-foreground/70 mb-1 block">Produto (Estoque):</label>
-                  <select 
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold text-foreground"
+                  <ProductSearchSelect
+                    mode="procedure"
+                    products={insumosDoEstoque}
                     value={insumoSelecionado}
-                    onChange={e => setInsumoSelecionado(e.target.value)}
-                  >
-                    <option value="">Selecione o Insumo...</option>
-                    {insumosDoEstoque.map(p => {
-                      const custo = (p.price_per_gram && p.price_per_gram > 0)
-                        ? p.price_per_gram
-                        : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.stock_qty ?? 0}{p.unit}) — R$ {custo.toFixed(2)}/{p.unit}
-                        </option>
-                      );
-                    })}
-                  </select>
+                    onChange={(id) => setInsumoSelecionado(id)}
+                    placeholder="Digitar nome do insumo do estoque..."
+                  />
                 </div>
 
                 <div className="md:col-span-4">
@@ -885,11 +876,11 @@ export default function MeuPainelPage() {
             <div className="space-y-4 mb-6">
               <div className="space-y-3 p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg">
                 <div className="flex gap-2">
-                  <select 
-                    className="flex-1 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
+                  <ProductSearchSelect
+                    mode="sale"
+                    products={produtosLoja.filter(p => (Number(p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0)) > 0)}
                     value={produtoSelecionado}
-                    onChange={e => {
-                      const pid = e.target.value;
+                    onChange={(pid) => {
                       setProdutoSelecionado(pid);
                       if (produtoDescPct) {
                         const p = produtosLoja.find(x => x.id === pid);
@@ -899,12 +890,9 @@ export default function MeuPainelPage() {
                         setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
                       }
                     }}
-                  >
-                    <option value="">Selecione o Produto...</option>
-                    {produtosLoja.filter(p => (Number(p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0)) > 0).map(p => (
-                      <option key={p.id} value={p.id}>{p.name} — R$ {p.price} ({p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0} un)</option>
-                    ))}
-                  </select>
+                    placeholder="Digitar nome do produto..."
+                    className="flex-1"
+                  />
                   <input 
                     type="number"
                     placeholder="Qtd"

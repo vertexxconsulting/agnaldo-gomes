@@ -12,6 +12,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
+import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import {
   fetchEstoque, salvarProdutoEstoque, registrarMovimentacao,
   fetchMovimentacoes, fetchClientes, fetchProfissionais, criarComissao,
@@ -1375,18 +1376,13 @@ export default function EstoquePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                   <div className="sm:col-span-6">
-                    <select
+                    <ProductSearchSelect
+                      mode="sale"
+                      products={produtos.filter(p => p.active && p.allow_sale && (p.stock_qty ?? 0) > 0)}
                       value={addProdSelectId}
-                      onChange={(e) => handleSelectAddProd(e.target.value)}
-                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                    >
-                      <option value="">Selecione o produto...</option>
-                      {produtos.filter(p => p.active && p.allow_sale && (p.stock_qty ?? 0) > 0).map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} {p.brand ? `(${p.brand})` : ''} — {fmt(p.sale_price || 0)} [{fmtQty(p.stock_qty, p.unit)}]
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(pid) => handleSelectAddProd(pid)}
+                      placeholder="Digitar nome do produto para venda..."
+                    />
                   </div>
 
                   <div className="sm:col-span-2">

@@ -671,6 +671,32 @@ Todas as rotas de cron utilizam execução assíncrona com `Promise.all` e retor
 
 ---
 
+## 8.28 Campo de Busca Textual para Seleção de Produtos do Estoque (`ProductSearchSelect`)
+
+- **Componente Reutilizável (`components/ProductSearchSelect.tsx`)**:
+  - Substitui os selects tradicionais e estáticos por um seletor inteligente com campo de busca em tempo real (combobox autocomplete).
+  - **Busca Rápida Sem Acentos**: Permite que a secretária, recepcionista ou profissional digitem qualquer parte do nome, marca ou categoria (ex: "keune", "shampoo", "ox", "5", etc.) com normalização de acentos (`normalize('NFD')`).
+  - **Suporte aos Modos `procedure` e `sale`**:
+    - No modo `procedure` (insumos): Exibe estoque em gramas/ml (`g/ml`) e custo por grama (`R$ X,XX/g`).
+    - No modo `sale` (venda/balcão): Exibe quantidade disponível em unidades (`un`) e preço de venda (`R$ XX,XX`).
+  - **Navegação por Teclado e Limpeza Ágil**: Suporte a setas (`ArrowUp`/`ArrowDown`), tecla `Enter` para selecionar, `Escape` para fechar e botão dedicado de limpeza rápida (`X`) para trocar de produto instantaneamente.
+- **Telas Integradas**:
+  1. **Agenda do Studio (`app/admin/agenda/page.tsx`)**:
+     - Modal de Insumos em Tempo Real (`liveInsumoProdId`).
+     - Fechamento da Comanda: Insumos do Atendimento (`insumoNovoProdutoId`).
+     - Fechamento da Comanda: Produtos do Salão Venda / Balcão (`checkoutNovoProdId`).
+  2. **Meu Painel do Profissional (`app/admin/meu-painel/page.tsx`)**:
+     - Lançamento de Insumos de Procedimento (`insumoSelecionado`).
+     - Venda de Produtos Upsell (`produtoSelecionado`).
+  3. **Estoque / PDV Caixa Rápido (`app/admin/estoque/page.tsx`)**:
+     - Adicionar produto à venda rápida no PDV (`addProdSelectId`).
+  4. **Loja Balcão (`app/admin/loja/page.tsx`)**:
+     - Registrar venda de balcão (`selectedProduto`).
+  5. **Modal Geral de Checkout (`components/CheckoutModal.tsx`)**:
+     - Adicionar produto da prateleira ao atendimento (`checkoutNovoProdId`).
+
+---
+
 ## 9. Comandos Úteis de Desenvolvimento
 
 ```bash

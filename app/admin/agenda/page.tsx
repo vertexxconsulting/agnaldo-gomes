@@ -7,6 +7,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
+import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento, editarInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
@@ -2526,25 +2527,13 @@ function AgendaContent() {
                   <label className="text-xs font-semibold text-foreground/70 mb-1.5 block">
                     Produto Utilizado (Estoque de Insumos):
                   </label>
-                  <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:border-gold"
+                  <ProductSearchSelect
+                    mode="procedure"
+                    products={estoque.filter(p => p.allow_procedure_use && (p.stock_qty ?? 0) > 0)}
                     value={liveInsumoProdId}
-                    onChange={e => setLiveInsumoProdId(e.target.value)}
-                  >
-                    <option value="">Selecione o produto do estoque...</option>
-                    {estoque
-                      .filter(p => p.allow_procedure_use && (p.stock_qty ?? 0) > 0)
-                      .map(p => {
-                        const precoG = (p.price_per_gram && p.price_per_gram > 0)
-                          ? p.price_per_gram
-                          : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.stock_qty ?? 0}{p.unit || 'g'} em estoque) — R$ {precoG.toFixed(2)}/{p.unit || 'g'}
-                          </option>
-                        );
-                      })}
-                  </select>
+                    onChange={(id) => setLiveInsumoProdId(id)}
+                    placeholder="Digitar nome do produto do estoque..."
+                  />
                 </div>
 
                 <div className="md:col-span-5">
@@ -3035,23 +3024,13 @@ function AgendaContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-[var(--border-subtle)]">
                     <div className="sm:col-span-7">
                       <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Produto do Estoque</label>
-                      <select
+                      <ProductSearchSelect
+                        mode="procedure"
+                        products={estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale) && (p.stock_qty ?? 0) > 0)}
                         value={insumoNovoProdutoId}
-                        onChange={e => setInsumoNovoProdutoId(e.target.value)}
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-400"
-                      >
-                        <option value="">Selecione o produto utilizado...</option>
-                        {estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale) && (p.stock_qty ?? 0) > 0).map(p => {
-                          const ppg = (p.price_per_gram && p.price_per_gram > 0)
-                            ? p.price_per_gram
-                            : ((p.cost_price && p.cost_price > 0) ? p.cost_price / 500 : 0.10);
-                          return (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.unit}) — R$ {ppg.toFixed(4)}/{p.unit} [{p.stock_qty} {p.unit} em estoque]
-                            </option>
-                          );
-                        })}
-                      </select>
+                        onChange={(id) => setInsumoNovoProdutoId(id)}
+                        placeholder="Digitar nome do produto utilizado..."
+                      />
                     </div>
 
                     <div className="sm:col-span-3">
@@ -3210,10 +3189,11 @@ function AgendaContent() {
                   <p className="text-xs font-semibold text-foreground/70">Adicionar produto ao atendimento:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                     <div className="sm:col-span-8">
-                      <select
+                      <ProductSearchSelect
+                        mode="sale"
+                        products={estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0)}
                         value={checkoutNovoProdId}
-                        onChange={(e) => {
-                          const pid = e.target.value;
+                        onChange={(pid) => {
                           setCheckoutNovoProdId(pid);
                           if (checkoutNovoProdDescPct) {
                             const p = estoque.find(x => x.id === pid);
@@ -3223,15 +3203,8 @@ function AgendaContent() {
                             setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
                           }
                         }}
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                      >
-                        <option value="">Selecione o produto...</option>
-                        {estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0).map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.sale_price || 0)} ({p.stock_qty} em estoque)
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Digitar nome do produto para venda..."
+                      />
                     </div>
                     <div className="sm:col-span-4">
                       <div className="flex items-center gap-1.5">

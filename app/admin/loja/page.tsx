@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { ShoppingCart, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import { supabase } from '@/lib/supabase';
 import { fetchProfissionais, fetchEstoque, registrarMovimentacao, validarSenhaProfissional } from '@/lib/supabase-queries';
 import type { Profissional, ProdutoEstoque } from '@/lib/gestao-types';
@@ -175,19 +176,13 @@ export default function LojaPage() {
               {/* Seleção de Produto */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground/80">Produto *</label>
-                <select
-                  required
+                <ProductSearchSelect
+                  mode="sale"
+                  products={produtos}
                   value={selectedProduto}
-                  onChange={e => setSelectedProduto(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-sm focus:border-gold outline-none"
-                >
-                  <option value="">Selecione o produto...</option>
-                  {produtos.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} - R$ {p.sale_price?.toFixed(2)} (Estoque: {p.stock_qty})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(pid) => setSelectedProduto(pid)}
+                  placeholder="Digitar nome do produto..."
+                />
               </div>
 
               {/* Quantidade */}

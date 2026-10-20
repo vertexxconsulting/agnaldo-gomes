@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
+import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import type { 
   Agendamento, Servico, Profissional, Cliente, ProdutoEstoque, 
   ServicoProduto, FormaPagamento, PaymentFee 
@@ -572,18 +573,13 @@ export function CheckoutModal({
               {/* Inserir novo produto */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
                 <div className="sm:col-span-8">
-                  <select
+                  <ProductSearchSelect
+                    mode="sale"
+                    products={estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0)}
                     value={checkoutNovoProdId}
-                    onChange={(e) => setCheckoutNovoProdId(e.target.value)}
-                    className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                  >
-                    <option value="">Adicionar produto da prateleira...</option>
-                    {estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0).map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.sale_price || 0)} ({p.stock_qty} un)
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(pid) => setCheckoutNovoProdId(pid)}
+                    placeholder="Digitar produto da prateleira..."
+                  />
                 </div>
                 <div className="sm:col-span-2">
                   <input
