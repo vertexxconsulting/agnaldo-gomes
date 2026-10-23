@@ -41,6 +41,7 @@ export default function AdminFinanceiro() {
   const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'PENDING_CONFIRMATION' | 'CONFIRMED'>('TODOS');
   const [editingApptGestao, setEditingApptGestao] = useState<Agendamento | null>(null);
   const [extratoComandaAppt, setExtratoComandaAppt] = useState<Agendamento | null>(null);
+  const [valorFinalEditado, setValorFinalEditado] = useState<string>('');
   const [modalMetodo, setModalMetodo] = useState<string>('DINHEIRO');
   const [modalValor, setModalValor] = useState<string>('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -1027,7 +1028,7 @@ export default function AdminFinanceiro() {
                               {isPendingConfirmation ? (
                                 <>
                                   <button
-                                    onClick={() => handleConfirmarGestao(ag)}
+                      onClick={() => handleConfirmarGestao(ag, undefined, valorFinalEditado ? parseFloat(valorFinalEditado.replace(',', '.')) : undefined)}
                                     disabled={actionLoadingId === ag.id}
                                     className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
                                     title="Confirmar conferência e contabilizar oficialmente no financeiro"
@@ -1106,9 +1107,11 @@ export default function AdminFinanceiro() {
         const produtosComprados = comanda?.produtos_comprados || [];
         const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario || prod.preco || 0) * Number(prod.quantidade || prod.qty || 1)), 0);
         const totalInsumos = procedimentos.reduce((acc: number, p: any) => acc + (Number(p.insumos_custo) || 0), 0) + (Number(ag.product_cost) || 0);
-        const valorFinalCliente = (ag.total_amount != null && Number(ag.total_amount) > 0)
-          ? Number(ag.total_amount)
-          : (subtotalServicos - totalDescontos + totalProdutos);
+        const valorFinalCliente = valorFinalEditado !== ''
+          ? (parseFloat(valorFinalEditado.replace(',', '.')) || 0)
+          : ((ag.total_amount != null && Number(ag.total_amount) > 0)
+            ? Number(ag.total_amount)
+            : (subtotalServicos - totalDescontos + totalProdutos));
 
         // Agrupamento por profissional para o demonstrativo da gestora
         const profIds = Array.from(new Set(procedimentos.map(p => p.profissional_id)));
@@ -1362,9 +1365,16 @@ export default function AdminFinanceiro() {
                     <span className="text-xs text-foreground/60 font-semibold uppercase tracking-wider block">
                       Valor Total a Pagar pela Cliente
                     </span>
-                    <span className="text-2xl font-black text-gold font-mono tracking-tight">
-                      R$ {valorFinalCliente.toFixed(2)}
-                    </span>
+                     <span className="text-2xl font-black text-gold font-mono tracking-tight">
+                       <input
+                         type="number"
+                         step="0.01"
+                         min="0"
+                         value={valorFinalEditado || valorFinalCliente.toFixed(2)}
+                         onChange={(e) => setValorFinalEditado(e.target.value)}
+                         className="w-36 text-right bg-[#121214] border border-gold/40 rounded-lg px-2 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold"
+                       />
+                     </span>
                   </div>
                 </div>
 

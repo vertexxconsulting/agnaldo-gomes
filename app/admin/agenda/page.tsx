@@ -363,6 +363,7 @@ function AgendaContent() {
   // Desconto no Atendimento (com ajuste sincronizado entre % e R$)
   const [checkoutDescontoPct, setCheckoutDescontoPct] = useState<string>('');
   const [checkoutDescontoValor, setCheckoutDescontoValor] = useState<string>('');
+  const [checkoutValorFinalManual, setCheckoutValorFinalManual] = useState<string>('');
   const [checkoutDescontoMotivo, setCheckoutDescontoMotivo] = useState<string>('');
 
   // Adicionar Produto de Salão no Checkout
@@ -3362,7 +3363,9 @@ function AgendaContent() {
                 
                 // Desconto global adicional (opcional, caso a gerência queira arredondar ou conceder extra)
                 const valorDescontoGeral = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
-                const totalCobradoClienteFinal = Math.max(0, subtotalCobradoCliente - valorDescontoGeral);
+                const totalCobradoClienteFinal = checkoutValorFinalManual !== ''
+    ? Math.max(0, parseFloat(checkoutValorFinalManual.replace(',', '.')) || 0)
+    : Math.max(0, subtotalCobradoCliente - valorDescontoGeral);
                 const totalDescontosGerais = totalDescontosProcedimentos + valorDescontoGeral;
                 
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
@@ -3610,11 +3613,16 @@ function AgendaContent() {
                             </p>
                           )}
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl sm:text-3xl font-extrabold font-serif text-gold">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}
-                          </p>
-                        </div>
+                         <div className="text-right">
+                           <input
+                             type="number"
+                             step="0.01"
+                             min="0"
+                             value={checkoutValorFinalManual || totalCobradoClienteFinal}
+                             onChange={(e) => setCheckoutValorFinalManual(e.target.value)}
+                             className="w-40 text-right text-2xl sm:text-3xl font-extrabold font-serif text-gold bg-[var(--background)] border border-gold/40 rounded-lg px-2 py-1 focus:outline-none focus:border-gold"
+                           />
+                         </div>
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
