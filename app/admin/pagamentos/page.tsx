@@ -1143,26 +1143,26 @@ export default function AdminFinanceiro() {
 
         return (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-[#121214] border border-gold/40 rounded-2xl w-full max-w-2xl my-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="dark bg-[#121214] text-stone-100 border border-gold/40 rounded-2xl w-full max-w-2xl my-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               
               {/* Header do Extrato */}
-              <div className="flex items-center justify-between p-5 border-b border-white/10 bg-gradient-to-r from-gold/10 via-transparent to-transparent">
+              <div className="flex items-center justify-between p-5 border-b border-white/10 bg-gradient-to-r from-gold/15 via-gold/5 to-transparent">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-sm">
                     <Receipt size={22} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-stone-100 flex items-center gap-2">
                       Extrato Discriminado do Atendimento
                     </h3>
-                    <p className="text-xs text-foreground/60">
+                    <p className="text-xs text-stone-400">
                       {isMulti ? 'Comanda Multi-Profissional Consolidada' : 'Atendimento Individual do Salão'}
                     </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setExtratoComandaAppt(null)}
-                  className="text-foreground/50 hover:text-foreground p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                  className="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -1172,24 +1172,24 @@ export default function AdminFinanceiro() {
               <div className="p-5 space-y-5 overflow-y-auto flex-1 text-sm custom-scrollbar">
                 
                 {/* Cartão de Identificação da Cliente e Atendimento */}
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-foreground/50 font-medium">Cliente</p>
-                    <p className="font-bold text-base text-foreground mt-0.5">{cli?.nome || 'Cliente'}</p>
-                    <p className="text-foreground/60 font-mono mt-0.5">
+                    <p className="text-stone-400 text-[11px] uppercase font-bold tracking-wider">Cliente</p>
+                    <p className="font-bold text-base text-stone-100 mt-0.5">{cli?.nome || 'Cliente'}</p>
+                    <p className="text-stone-400 font-mono mt-0.5">
                       {cli?.cpf ? `CPF: ${cli.cpf}` : 'Sem CPF informado'} {cli?.telefone ? `• ${cli.telefone}` : ''}
                     </p>
                   </div>
                   <div className="sm:text-right">
-                    <p className="text-foreground/50 font-medium">Data e Horário</p>
-                    <p className="font-bold text-foreground mt-0.5">
+                    <p className="text-stone-400 text-[11px] uppercase font-bold tracking-wider">Data e Horário</p>
+                    <p className="font-bold text-stone-100 mt-0.5">
                       {ag.data ? new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR') : 'Hoje'} às {ag.hora_inicio || '—'}
                     </p>
                     <div className="mt-1 flex items-center sm:justify-end gap-1.5">
-                      <span className="text-foreground/50">Forma:</span>
+                      <span className="text-stone-400">Forma:</span>
                       <span className="font-semibold text-gold uppercase">{ag.payment_method || 'Não definida'}</span>
-                      <span className="text-foreground/30">•</span>
-                      <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-700' : 'text-amber-800'}`}>
+                      <span className="text-stone-600">•</span>
+                      <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}`}>
                         {ag.financial_status === 'CONFIRMED' ? 'Contabilizado' : 'Aguardando Gestão'}
                       </span>
                     </div>
@@ -1199,19 +1199,19 @@ export default function AdminFinanceiro() {
                 {/* TABELA DE PROCEDIMENTOS DISCRIMINADOS E PROFISSIONAIS EXECUTORES */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-stone-200 uppercase tracking-wider flex items-center gap-1.5">
                       <Scissors size={14} className="text-gold" />
                       Procedimentos Realizados ({procedimentos.length})
                     </h4>
-                    <span className="text-[11px] text-foreground/70 font-medium">
+                    <span className="text-[11px] text-stone-400 font-medium">
                       Discriminado por profissional com descontos aplicados
                     </span>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 overflow-hidden bg-black/20">
+                  <div className="rounded-xl border border-white/10 overflow-hidden bg-black/40">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-white/5 border-b border-white/10 text-foreground/70 font-bold">
+                        <tr className="bg-white/[0.06] border-b border-white/10 text-stone-300 font-semibold">
                           <th className="p-3">Procedimento</th>
                           <th className="p-3">Profissional</th>
                           <th className="p-3 text-right">Tabela</th>
@@ -1223,31 +1223,31 @@ export default function AdminFinanceiro() {
                         {procedimentos.map((p, idx) => {
                           const liquido = p.preco_tabela - p.desconto_valor;
                           return (
-                            <tr key={idx} className="hover:bg-white/[0.02]">
+                            <tr key={idx} className="hover:bg-white/[0.03]">
                               <td className="p-3">
-                                <p className="font-bold text-foreground">{p.servico_nome}</p>
+                                <p className="font-bold text-stone-100">{p.servico_nome}</p>
                                 {p.desconto_motivo && (
-                                  <p className="text-[10px] text-amber-800 font-semibold italic mt-0.5">
+                                  <p className="text-[10px] text-amber-400 font-medium italic mt-0.5">
                                     Motivo desconto: "{p.desconto_motivo}"
                                   </p>
                                 )}
                               </td>
                               <td className="p-3">
-                                <span className="font-medium text-foreground/90">{p.profissional_nome}</span>
+                                <span className="font-medium text-stone-300">{p.profissional_nome}</span>
                               </td>
-                              <td className="p-3 text-right font-mono text-foreground/70">
+                              <td className="p-3 text-right font-mono text-stone-400">
                                 R$ {p.preco_tabela.toFixed(2)}
                               </td>
                               <td className="p-3 text-right">
                                 {p.desconto_valor > 0 ? (
-                                  <span className="font-bold text-amber-800 font-mono">
+                                  <span className="font-bold text-amber-400 font-mono">
                                     -R$ {p.desconto_valor.toFixed(2)} ({p.desconto_pct}%)
                                   </span>
                                 ) : (
-                                  <span className="text-foreground/30 font-mono">—</span>
+                                  <span className="text-stone-500 font-mono">—</span>
                                 )}
                               </td>
-                              <td className="p-3 text-right font-bold text-foreground font-mono">
+                              <td className="p-3 text-right font-bold text-stone-100 font-mono">
                                 R$ {liquido.toFixed(2)}
                               </td>
                             </tr>
@@ -1264,13 +1264,13 @@ export default function AdminFinanceiro() {
                     {/* Produtos Insumos Usados */}
                     {totalInsumos > 0 && (
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                          <Beaker size={14} className="text-amber-700" /> Fundo de Reserva de Insumos / Produtos
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                          <Beaker size={14} className="text-amber-400" /> Fundo de Reserva de Insumos / Produtos
                         </div>
-                        <p className="text-[11px] text-foreground/70 leading-relaxed font-medium">
+                        <p className="text-[11px] text-stone-300 leading-relaxed font-medium">
                           Produtos utilizados durante a execução dos serviços (coloração, oxigenada, pós, ampolas).
                         </p>
-                        <p className="font-mono font-bold text-amber-900 text-sm pt-1">
+                        <p className="font-mono font-bold text-amber-300 text-sm pt-1">
                           R$ {totalInsumos.toFixed(2)}
                         </p>
                       </div>
@@ -1279,14 +1279,14 @@ export default function AdminFinanceiro() {
                     {/* Produtos Home Care Comprados */}
                     {produtosComprados.length > 0 && (
                       <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900">
-                          <ShoppingBag size={14} className="text-teal-700" /> Produtos Comprados (Home Care)
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                          <ShoppingBag size={14} className="text-teal-400" /> Produtos Comprados (Home Care)
                         </div>
                         <div className="space-y-1 pt-1">
                           {produtosComprados.map((prod: any, pIdx: number) => (
                             <div key={pIdx} className="flex items-center justify-between text-xs">
-                              <span className="text-foreground/80 font-medium">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
-                              <span className="font-mono text-teal-800 font-bold">
+                              <span className="text-stone-200 font-medium">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
+                              <span className="font-mono text-teal-300 font-bold">
                                 R$ {((Number(prod.preco_unitario || prod.preco || 0)) * (Number(prod.quantidade || prod.qty || 1))).toFixed(2)}
                               </span>
                             </div>
@@ -1304,35 +1304,37 @@ export default function AdminFinanceiro() {
                       <ShieldCheck size={14} className="text-gold" />
                       Demonstrativo Discriminado da Gestora do Salão
                     </h4>
-                    <span className="text-[10px] text-foreground/50 font-mono font-semibold">
+                    <span className="text-[10px] text-stone-400 font-mono font-semibold">
                       Auditoria de Comissões e Repartição
                     </span>
                   </div>
 
                   <div className="space-y-2.5">
                     {discriminadoProfissionais.map((dp, dIdx) => (
-                      <div key={dIdx} className="p-3 rounded-lg bg-black/40 border border-white/5 space-y-1.5">
+                      <div key={dIdx} className="p-3 rounded-lg bg-black/50 border border-white/10 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                          <span className="font-bold text-sm text-stone-100 flex items-center gap-1.5">
                             👑 {dp.profissional_nome}
-                            <span className="text-[11px] text-foreground/50 font-normal">({dp.especialidade})</span>
+                            <span className="text-[11px] text-stone-400 font-normal">({dp.especialidade})</span>
                           </span>
-                          <span className="text-xs font-mono font-bold text-emerald-600">
+                          <span className="text-xs font-mono font-bold text-emerald-400">
                             Comissão Estimada: R$ {dp.valorComissao.toFixed(2)} ({dp.pctComissao}%)
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-foreground/70 pt-0.5">
+                        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-stone-300 pt-0.5">
                           <div>
-                            <span className="text-foreground/50 block">Tabela Bruta:</span>
-                            R$ {dp.somaTabela.toFixed(2)}
+                            <span className="text-stone-400 block text-[10px] uppercase font-semibold">Tabela Bruta:</span>
+                            <span className="text-stone-200 font-bold">R$ {dp.somaTabela.toFixed(2)}</span>
                           </div>
                           <div>
-                            <span className="text-foreground/50 block">Desconto Próprio:</span>
-                            {dp.somaDesconto > 0 ? `-R$ ${dp.somaDesconto.toFixed(2)}` : 'R$ 0,00'}
+                            <span className="text-stone-400 block text-[10px] uppercase font-semibold">Desconto Próprio:</span>
+                            <span className={dp.somaDesconto > 0 ? 'text-amber-400 font-bold' : 'text-stone-400'}>
+                              {dp.somaDesconto > 0 ? `-R$ ${dp.somaDesconto.toFixed(2)}` : 'R$ 0,00'}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-foreground/50 block">Base Líquida:</span>
-                            R$ {dp.liquidoBase.toFixed(2)}
+                            <span className="text-stone-400 block text-[10px] uppercase font-semibold">Base Líquida:</span>
+                            <span className="text-stone-100 font-bold">R$ {dp.liquidoBase.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -1341,20 +1343,20 @@ export default function AdminFinanceiro() {
                 </div>
 
                 {/* RESUMO TOTALIZADOR DO FECHAMENTO */}
-                <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1 text-xs text-foreground/80 w-full sm:w-auto">
+                <div className="p-4 rounded-xl bg-gold/15 border border-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1 text-xs text-stone-300 w-full sm:w-auto">
                     <div className="flex justify-between sm:justify-start sm:gap-6">
-                      <span>Subtotal Procedimentos:</span>
-                      <span className="font-mono font-bold">R$ {subtotalServicos.toFixed(2)}</span>
+                      <span className="text-stone-300">Subtotal Procedimentos:</span>
+                      <span className="font-mono font-bold text-stone-100">R$ {subtotalServicos.toFixed(2)}</span>
                     </div>
                     {totalDescontos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-800 font-bold">
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-400 font-bold">
                         <span>(-) Total Descontos dos Profissionais:</span>
                         <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
                       </div>
                     )}
                     {totalProdutos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-800 font-bold">
+                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-300 font-bold">
                         <span>(+) Produtos Adicionais:</span>
                         <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
                       </div>
@@ -1362,7 +1364,7 @@ export default function AdminFinanceiro() {
                   </div>
 
                   <div className="text-center sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-white/10 pt-2 sm:pt-0">
-                    <span className="text-xs text-foreground/60 font-semibold uppercase tracking-wider block">
+                    <span className="text-xs text-stone-300 font-semibold uppercase tracking-wider block">
                       Valor Total a Pagar pela Cliente
                     </span>
                      <span className="text-2xl font-black text-gold font-mono tracking-tight">
@@ -1372,7 +1374,7 @@ export default function AdminFinanceiro() {
                          min="0"
                          value={valorFinalEditado || valorFinalCliente.toFixed(2)}
                          onChange={(e) => setValorFinalEditado(e.target.value)}
-                         className="w-36 text-right bg-[#121214] border border-gold/40 rounded-lg px-2 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold"
+                         className="w-36 text-right bg-black/60 border border-gold/50 rounded-lg px-2.5 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/50 shadow-inner"
                        />
                      </span>
                   </div>
@@ -1381,12 +1383,12 @@ export default function AdminFinanceiro() {
               </div>
 
               {/* Footer com Ações */}
-              <div className="p-4 border-t border-white/10 bg-black/40 flex flex-wrap items-center justify-between gap-2">
+              <div className="p-4 border-t border-white/10 bg-black/60 flex flex-wrap items-center justify-between gap-2">
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => window.print()}
-                  className="gap-1.5 text-xs text-foreground/70 hover:text-foreground"
+                  className="gap-1.5 text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
                 >
                   <Printer size={15} /> Imprimir Comprovante
                 </Button>
@@ -1396,6 +1398,7 @@ export default function AdminFinanceiro() {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setExtratoComandaAppt(null)}
+                    className="text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
                   >
                     Fechar
                   </Button>
@@ -1422,61 +1425,61 @@ export default function AdminFinanceiro() {
 
       {/* MODAL DE AJUSTE E CONFERÊNCIA DA GESTÃO */}
       {editingApptGestao && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121214] border border-gold/40 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="dark bg-[#121214] text-stone-100 border border-gold/40 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <h3 className="font-bold text-lg text-stone-100 flex items-center gap-2">
                 <ShieldCheck size={20} className="text-gold" />
                 Conferência & Ajuste da Gestão
               </h3>
               <button 
                 onClick={() => setEditingApptGestao(null)}
-                className="text-foreground/50 hover:text-foreground p-1"
+                className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-3 text-sm">
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-2">
+              <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2.5">
                 <div>
-                  <p className="text-xs text-foreground/50">Cliente</p>
-                  <p className="font-bold text-foreground">
+                  <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Cliente</p>
+                  <p className="font-bold text-base text-stone-100 mt-0.5">
                     {clientes.find(c => c.id === editingApptGestao.cliente_id)?.nome || 'Cliente'}
                   </p>
                 </div>
 
                 {editingApptGestao.comanda_unificada ? (
                   <div>
-                    <p className="text-xs text-foreground/50">Comanda Multi-Profissional</p>
+                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-1">Comanda Multi-Profissional</p>
                     <div className="mt-1 space-y-1">
                       {editingApptGestao.comanda_unificada.procedimentos.map((p, pIdx) => (
-                        <div key={pIdx} className="flex justify-between text-xs bg-white/5 p-1.5 rounded">
-                          <span>{p.servico_nome} ({p.profissional_nome})</span>
-                          <span className="font-bold font-mono">R$ {(p.preco_tabela - p.desconto_valor).toFixed(2)}</span>
+                        <div key={pIdx} className="flex justify-between items-center text-xs bg-black/40 border border-white/5 p-2 rounded-lg">
+                          <span className="text-stone-200">{p.servico_nome} <span className="text-stone-400">({p.profissional_nome})</span></span>
+                          <span className="font-bold font-mono text-gold">R$ {(p.preco_tabela - p.desconto_valor).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-xs text-foreground/50">Procedimento Realizado</p>
-                    <p className="font-medium text-foreground">
+                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Procedimento Realizado</p>
+                    <p className="font-semibold text-stone-100 mt-0.5">
                       {getServicoNome(editingApptGestao.servico_id, servicos)}
                     </p>
                   </div>
                 )}
 
                 <div>
-                  <p className="text-xs text-foreground/50">Equipe de Profissionais</p>
-                  <p className="font-semibold text-gold text-xs">
+                  <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Equipe de Profissionais</p>
+                  <p className="font-semibold text-gold text-xs mt-0.5">
                     👑 Titular: {getProfissionalNome(editingApptGestao.profissional_id, profissionais)}
                   </p>
                   {editingApptGestao.auxiliares_ids && editingApptGestao.auxiliares_ids.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {editingApptGestao.auxiliares_ids.map(aid => (
-                        <span key={aid} className="text-[11px] px-2.5 py-0.5 rounded bg-purple-100 text-purple-950 font-bold border border-purple-300 flex items-center gap-1 shadow-xs">
-                          <Users size={11} className="text-purple-800" /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                        <span key={aid} className="text-[11px] px-2.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30 flex items-center gap-1">
+                          <Users size={11} className="text-purple-300" /> {getProfissionalNome(aid, profissionais)} (Auxiliar)
                         </span>
                       ))}
                     </div>
@@ -1486,49 +1489,54 @@ export default function AdminFinanceiro() {
                 {/* Resumo da Repartição do Salão (Fundo Produtos + Comissões + Líquido) */}
                 {editingApptGestao.product_cost != null && Number(editingApptGestao.product_cost) > 0 && (
                   <div className="pt-2 border-t border-white/10 space-y-1">
-                    <p className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
+                    <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
                       <Beaker size={12} /> Fundo de Reserva de Produtos: R$ {Number(editingApptGestao.product_cost).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-foreground/60 font-medium">
+                    <p className="text-[10px] text-stone-400 font-medium">
                       Custo total dos produtos por grama reservado para recompra de estoque.
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-foreground/70 font-medium">Forma de Pagamento Conferida</label>
+              <div className="space-y-1.5">
+                <label className="text-xs text-stone-300 font-semibold">Forma de Pagamento Conferida</label>
                 <select
                   value={modalMetodo}
                   onChange={e => setModalMetodo(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:border-gold outline-none"
+                  className="w-full bg-[#18181b] border border-white/15 rounded-lg px-3 py-2.5 text-sm text-stone-100 focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none transition-all"
                 >
-                  <option value="DINHEIRO">Dinheiro (Espécie)</option>
-                  <option value="PIX">PIX</option>
-                  <option value="CARTAO_CREDITO">Cartão de Crédito</option>
-                  <option value="CARTAO_DEBITO">Cartão de Débito</option>
-                  <option value="OUTRO">Outro</option>
+                  <option value="DINHEIRO" className="bg-[#18181b] text-stone-100">Dinheiro (Espécie)</option>
+                  <option value="PIX" className="bg-[#18181b] text-stone-100">PIX</option>
+                  <option value="CARTAO_CREDITO" className="bg-[#18181b] text-stone-100">Cartão de Crédito</option>
+                  <option value="CARTAO_DEBITO" className="bg-[#18181b] text-stone-100">Cartão de Débito</option>
+                  <option value="OUTRO" className="bg-[#18181b] text-stone-100">Outro</option>
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-foreground/70 font-medium">Valor Total Final (R$)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs text-stone-300 font-semibold">Valor Total Final (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={modalValor}
                   onChange={e => setModalValor(e.target.value)}
-                  className="w-full bg-background border border-border-subtle rounded-lg px-3 py-2 text-sm text-foreground focus:border-gold outline-none font-bold text-emerald-500"
+                  className="w-full bg-[#18181b] border border-white/15 rounded-lg px-3 py-2.5 text-base text-emerald-400 focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none font-bold font-mono transition-all"
                   placeholder="0.00"
                 />
-                <p className="text-[11px] text-foreground/40">
+                <p className="text-[11px] text-stone-400">
                   Ajuste caso tenha havido diferença de cobrança na recepção.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-              <Button variant="ghost" size="sm" onClick={() => setEditingApptGestao(null)}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setEditingApptGestao(null)}
+                className="text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
+              >
                 Cancelar
               </Button>
               <Button
@@ -1536,7 +1544,7 @@ export default function AdminFinanceiro() {
                 size="sm"
                 disabled={actionLoadingId === editingApptGestao.id}
                 onClick={handleSalvarAjusteGestao}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30"
               >
                 <CheckCircle2 size={16} />
                 {actionLoadingId === editingApptGestao.id ? 'Confirmando...' : 'Salvar & Contabilizar'}
