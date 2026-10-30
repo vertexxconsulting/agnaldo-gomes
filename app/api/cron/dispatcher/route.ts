@@ -98,6 +98,14 @@ export async function GET(req: Request) {
       };
     }
 
+    // 5. REGRAS PERSONALIZADAS (sempre processa — cada regra tem sua própria trava)
+    try {
+      const res = await fetch(`${baseUrl}/api/cron/marketing-rules?execute=true${force ? '&force=true' : ''}`);
+      relatorio.sessões.regras_personalizadas = await res.json();
+    } catch (err: any) {
+      relatorio.sessões.regras_personalizadas = { error: err.message };
+    }
+
     return NextResponse.json({ ok: true, relatorio });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

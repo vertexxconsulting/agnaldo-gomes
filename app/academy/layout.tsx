@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { PWAManifestSwitch } from '@/components/PWAManifestSwitch';
 
 export default function AcademyLayout({
   children,
@@ -34,6 +35,7 @@ export default function AcademyLayout({
   if (pathname === '/login' || pathname?.startsWith('/academy/login') || pathname?.startsWith('/academy/checkout')) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans">
+        <PWAManifestSwitch manifest="/manifest-academy.json" />
         {children}
       </div>
     );
@@ -41,6 +43,7 @@ export default function AcademyLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
+      <PWAManifestSwitch manifest="/manifest-academy.json" />
       {/* O Header já é position: fixed no CSS dele, por isso só chamamos aqui */}
       <Header />
       <main className="flex-1">

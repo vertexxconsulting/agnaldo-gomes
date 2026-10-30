@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const selectAg = `
       id, date, start_time,
       cliente:salon_customers(id, name, phone),
-      servico:salon_services(id, name),
+      servico:salon_services(id, name, category),
       profissional:salon_professionals(name)
     `;
 
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       date: string;
       start_time: string;
       cliente?: { id?: string; name?: string; phone?: string } | { id?: string; name?: string; phone?: string }[] | null;
-      servico?: { id?: string; name?: string } | { id?: string; name?: string }[] | null;
+      servico?: { id?: string; name?: string; category?: string } | { id?: string; name?: string; category?: string }[] | null;
       profissional?: { name?: string } | { name?: string }[] | null;
     };
 
@@ -72,9 +72,32 @@ export async function GET(req: Request) {
       return Array.isArray(a.servico) ? a.servico[0] : a.servico;
     };
 
+    // FILTRO DE TIPOS DE SERVIÇO:
+    // Se o filtro estiver configurado para 'selecionados', respeita os serviços e categorias permitidos
+    const servicosPermitidos = config.feedback.servicos_permitidos ?? [];
+    const categoriasPermitidas = config.feedback.categorias_permitidas ?? [];
+    const filtrarPorServico = config.feedback.tipo_filtro === 'selecionados';
+
+    const agendamentoElegivel = (a: AgendamentoJoin): boolean => {
+      if (!filtrarPorServico) return true;
+      const s = getServico(a);
+      if (!s) return false;
+
+      // Se nenhum serviço nem categoria estiver marcada no modo selecionados, não gera feedback
+      if (servicosPermitidos.length === 0 && categoriasPermitidas.length === 0) {
+        return false;
+      }
+
+      if (s.id && servicosPermitidos.includes(s.id)) return true;
+      if (s.category && categoriasPermitidas.includes(s.category)) return true;
+
+      return false;
+    };
+
     // DEDUPLICAÇÃO POR CLIENTE: Garante que cada cliente receba NO MÁXIMO 1 pedido de feedback
     const agendamentoMaisRecentePorCliente = new Map<string, AgendamentoJoin>();
     for (const a of (concluidos ?? []) as unknown as AgendamentoJoin[]) {
+      if (!agendamentoElegivel(a)) continue;
       const cliente = getCliente(a);
       const chaveCliente = cliente?.id || cliente?.phone || a.id;
       if (!agendamentoMaisRecentePorCliente.has(chaveCliente)) {

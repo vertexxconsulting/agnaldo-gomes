@@ -45,6 +45,9 @@ export async function getMarketingConfig(): Promise<MarketingAutomacaoConfig> {
         feedback: {
           ativo: Boolean(parsed.feedback?.ativo),
           horario: parsed.feedback?.horario || '16:00',
+          tipo_filtro: parsed.feedback?.tipo_filtro === 'selecionados' ? 'selecionados' : 'todos',
+          servicos_permitidos: Array.isArray(parsed.feedback?.servicos_permitidos) ? parsed.feedback.servicos_permitidos : [],
+          categorias_permitidas: Array.isArray(parsed.feedback?.categorias_permitidas) ? parsed.feedback.categorias_permitidas : [],
         },
         reativacao: {
           ativo: Boolean(parsed.reativacao?.ativo),
@@ -84,6 +87,9 @@ export async function saveMarketingConfig(
       feedback: {
         ativo: Boolean(config.feedback?.ativo),
         horario: config.feedback?.horario || '16:00',
+        tipo_filtro: config.feedback?.tipo_filtro === 'selecionados' ? 'selecionados' : 'todos',
+        servicos_permitidos: Array.isArray(config.feedback?.servicos_permitidos) ? config.feedback.servicos_permitidos : [],
+        categorias_permitidas: Array.isArray(config.feedback?.categorias_permitidas) ? config.feedback.categorias_permitidas : [],
       },
       reativacao: {
         ativo: Boolean(config.reativacao?.ativo),

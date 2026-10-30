@@ -170,6 +170,39 @@ export default function MarketingPage() {
     }
   };
 
+  const dispararLembretesHoje = async () => {
+    if (!waStatus.conectado) {
+      toast.error('O WhatsApp está desconectado! Acesse "Conectar WhatsApp" para ler o QR Code antes de disparar.');
+      return;
+    }
+
+    if (!confirm('Deseja disparar agora os lembretes de horário via WhatsApp para os clientes com agendamento HOJE?\n\n• As mensagens serão disparadas imediatamente, mesmo que antes do horário padrão configurado.\n• Clientes que já receberam mensagem hoje não receberão novamente (proteção anti-duplicação).\n• Intervalo seguro anti-ban de 1 min entre envios.')) {
+      return;
+    }
+    setDisparando(true);
+    toast.info('Ciclo de disparos de lembretes do dia iniciado!');
+    try {
+      const res = await fetch('/api/cron/agenda?execute=true&force=true&tipo=lembrete_hoje');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (data.enviados_automaticos > 0) {
+          toast.success(`${data.enviados_automaticos} lembrete(s) de hoje enviado(s) com sucesso!`);
+        } else if ((data.itens?.length ?? 0) === 0) {
+          toast.info('Nenhum agendamento ativo encontrado para o dia de hoje.');
+        } else {
+          toast.info('Todos os lembretes de hoje já haviam sido enviados anteriormente (anti-duplicação).');
+        }
+      } else {
+        toast.error(data.error || 'Erro ao processar disparos de lembretes.');
+      }
+      await carregarTudo();
+    } catch (e: any) {
+      toast.error(`Falha no processamento: ${e.message}`);
+    } finally {
+      setDisparando(false);
+    }
+  };
+
   return (
     <div className="py-2 space-y-6">
       <SectionHeader
@@ -250,6 +283,19 @@ export default function MarketingPage() {
                 data={agenda} 
                 icon={<CalendarCheck size={16} />}
                 typeLabel={(i) => i.tipo === 'confirmacao_vespera' ? 'Véspera' : i.tipo === 'lembrete_hoje' ? 'Hoje' : 'Feedback'}
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={disparando}
+                    onClick={dispararLembretesHoje}
+                    className="text-[11px] h-7 px-2.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold"
+                    title="Disparar lembretes dos agendamentos de hoje pelo WhatsApp agora"
+                  >
+                    <Clock3 size={12} className="mr-1" />
+                    Disparar Lembretes de Hoje
+                  </Button>
+                }
               />
 
               <MarketingWidget 
@@ -342,16 +388,26 @@ function MarketingWidget({
   data, 
   icon, 
   typeLabel, 
-  isFeedback 
+  isFeedback,
+  action,
 }: { 
   title: string, 
   data: RespostaCron | null, 
   icon: React.ReactNode, 
   typeLabel?: (i: any) => string, 
-  isFeedback?: boolean 
+  isFeedback?: boolean,
+  action?: React.ReactNode,
 }) {
   return (
-    <Panel title={title} action={data?.error ? <span className="text-xs text-danger">{data.error}</span> : undefined}>
+    <Panel 
+      title={title} 
+      action={
+        <div className="flex items-center gap-2">
+          {action}
+          {data?.error ? <span className="text-xs text-danger">{data.error}</span> : null}
+        </div>
+      }
+    >
       {(data?.itens?.length ?? 0) === 0 ? (
         <p className="text-sm text-foreground/50 py-3">Nenhum item encontrado para hoje.</p>
       ) : (

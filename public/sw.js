@@ -1,13 +1,13 @@
 /**
  * Service Worker — Studio Agnaldo Gomes
  * Estratégia:
- *  - Cache-First  → assets estáticos (_next/static/, imagens, fontes, ícones)
+ *  - Cache-First  → assets estáticos (_next/static/, imagens, fontes, ícones, manifests)
  *  - SWR           → páginas HTML (serve cache e revalida em background)
  *  - Network-Only  → rotas de API (/api/)
  *  - Offline page  → /offline  (fallback quando rede e cache falham)
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE  = `static-${CACHE_VERSION}`;
 const PAGES_CACHE   = `pages-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `images-${CACHE_VERSION}`;
@@ -17,7 +17,11 @@ const PRECACHE_URLS = [
   '/',
   '/offline',
   '/agendamento',
+  '/admin',
+  '/academy/login',
   '/manifest.webmanifest',
+  '/manifest-admin.json',
+  '/manifest-academy.json',
   '/theme-init.js',
   '/icon-192x192.png',
   '/icon-512x512.png',
@@ -52,6 +56,7 @@ function isStaticAsset(url) {
   return url.pathname.startsWith('/_next/static/') ||
          url.pathname.match(/\.(woff2?|ttf|otf|eot)(\?.*)?$/) ||
          url.pathname === '/theme-init.js' ||
+         url.pathname.includes('manifest') ||
          url.pathname.match(/\/(icon-|logo|favicon)/);
 }
 

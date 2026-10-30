@@ -1,0 +1,52 @@
+{
+  "name": "AG Studio — Admin",
+  "short_name": "AG Admin",
+  "description": "Painel administrativo do Studio Agnaldo Gomes",
+  "start_url": "/admin",
+  "id": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#0d0d0d",
+  "theme_color": "#D4AF37",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Ver agenda do dia",
+      "url": "/admin/agenda",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "CRM de clientes",
+      "url": "/admin/clientes",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Marketing",
+      "short_name": "Marketing",
+      "description": "Marketing e mensagens",
+      "url": "/admin/marketing",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "96x96" }]
+    }
+  ]
+}
+

@@ -60,6 +60,7 @@ export function Footer() {
             <li><Link href="/loja" className="hover:text-primary transition-colors">Loja Oficial</Link></li>
             <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre Agnaldo</Link></li>
             <li><Link href="/aluno" className="hover:text-primary transition-colors">Área do Aluno</Link></li>
+            <li><Link href="/admin" className="hover:text-primary transition-colors">Painel Admin</Link></li>
           </ul>
         </div>
 

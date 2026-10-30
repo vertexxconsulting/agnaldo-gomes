@@ -45,6 +45,7 @@ export async function GET(req: Request) {
   const isVercelCron = Boolean(req.headers.get('x-vercel-cron'));
   const isExecute = url.searchParams.get('execute') === 'true' || isVercelCron;
   const force = url.searchParams.get('force') === 'true';
+  const tipoFiltro = url.searchParams.get('tipo'); // ex: 'lembrete_hoje' ou 'confirmacao_vespera'
 
   const hoje = hojeBRT();
   const amanha = adicionarDias(hoje, 1);
@@ -90,67 +91,71 @@ export async function GET(req: Request) {
     const itens: ItemMsg[] = [];
 
     // Véspera (Deduplica por cliente para não enviar 2 mensagens caso a cliente tenha mais de 1 agendamento amanhã)
-    const vesperaPorCliente = new Map<string, AgendamentoJoin>();
-    for (const a of (vesperaRes.data ?? []) as unknown as AgendamentoJoin[]) {
-      const chaveCliente = a.cliente?.id || a.cliente?.phone || a.id;
-      if (!vesperaPorCliente.has(chaveCliente)) {
-        vesperaPorCliente.set(chaveCliente, a);
+    if (!tipoFiltro || tipoFiltro === 'confirmacao_vespera') {
+      const vesperaPorCliente = new Map<string, AgendamentoJoin>();
+      for (const a of (vesperaRes.data ?? []) as unknown as AgendamentoJoin[]) {
+        const chaveCliente = a.cliente?.id || a.cliente?.phone || a.id;
+        if (!vesperaPorCliente.has(chaveCliente)) {
+          vesperaPorCliente.set(chaveCliente, a);
+        }
       }
-    }
 
-    for (const a of Array.from(vesperaPorCliente.values())) {
-      const telefone = normalizarTelefone(a.cliente?.phone ?? '');
-      const chaveUnica = `confirmacao:${a.cliente?.id || a.id}`;
-      const msg = await msgConfirmacaoVespera({
-        nome: a.cliente?.name ?? '',
-        data: a.date,
-        hora: (a.start_time ?? '').slice(0, 5),
-        servico: a.servico?.name ?? 'seu atendimento',
-        profissional: a.profissional?.name ?? 'nossa equipe',
-      });
+      for (const a of Array.from(vesperaPorCliente.values())) {
+        const telefone = normalizarTelefone(a.cliente?.phone ?? '');
+        const chaveUnica = `confirmacao:${a.cliente?.id || a.id}`;
+        const msg = await msgConfirmacaoVespera({
+          nome: a.cliente?.name ?? '',
+          data: a.date,
+          hora: (a.start_time ?? '').slice(0, 5),
+          servico: a.servico?.name ?? 'seu atendimento',
+          profissional: a.profissional?.name ?? 'nossa equipe',
+        });
 
-      itens.push({
-        id: a.id,
-        tipo: 'confirmacao_vespera',
-        chaveUnica,
-        nome: a.cliente?.name ?? null,
-        telefone,
-        mensagem: msg,
-        wa_link: telefone ? waMeLink(telefone, msg) : '',
-        ja_enviado_hoje: disparosHoje.has(chaveUnica),
-        enviada_via_api: disparosHoje.has(chaveUnica),
-      });
+        itens.push({
+          id: a.id,
+          tipo: 'confirmacao_vespera',
+          chaveUnica,
+          nome: a.cliente?.name ?? null,
+          telefone,
+          mensagem: msg,
+          wa_link: telefone ? waMeLink(telefone, msg) : '',
+          ja_enviado_hoje: disparosHoje.has(chaveUnica),
+          enviada_via_api: disparosHoje.has(chaveUnica),
+        });
+      }
     }
 
     // Mesmo dia (Deduplica por cliente)
-    const hojePorCliente = new Map<string, AgendamentoJoin>();
-    for (const a of (hojeRes.data ?? []) as unknown as AgendamentoJoin[]) {
-      const chaveCliente = a.cliente?.id || a.cliente?.phone || a.id;
-      if (!hojePorCliente.has(chaveCliente)) {
-        hojePorCliente.set(chaveCliente, a);
+    if (!tipoFiltro || tipoFiltro === 'lembrete_hoje') {
+      const hojePorCliente = new Map<string, AgendamentoJoin>();
+      for (const a of (hojeRes.data ?? []) as unknown as AgendamentoJoin[]) {
+        const chaveCliente = a.cliente?.id || a.cliente?.phone || a.id;
+        if (!hojePorCliente.has(chaveCliente)) {
+          hojePorCliente.set(chaveCliente, a);
+        }
       }
-    }
 
-    for (const a of Array.from(hojePorCliente.values())) {
-      const telefone = normalizarTelefone(a.cliente?.phone ?? '');
-      const chaveUnica = `lembrete:${a.cliente?.id || a.id}`;
-      const msg = await msgLembreteMesmoDia({
-        nome: a.cliente?.name ?? '',
-        hora: (a.start_time ?? '').slice(0, 5),
-        servico: a.servico?.name ?? 'seu atendimento',
-      });
+      for (const a of Array.from(hojePorCliente.values())) {
+        const telefone = normalizarTelefone(a.cliente?.phone ?? '');
+        const chaveUnica = `lembrete:${a.cliente?.id || a.id}`;
+        const msg = await msgLembreteMesmoDia({
+          nome: a.cliente?.name ?? '',
+          hora: (a.start_time ?? '').slice(0, 5),
+          servico: a.servico?.name ?? 'seu atendimento',
+        });
 
-      itens.push({
-        id: a.id,
-        tipo: 'lembrete_hoje',
-        chaveUnica,
-        nome: a.cliente?.name ?? null,
-        telefone,
-        mensagem: msg,
-        wa_link: telefone ? waMeLink(telefone, msg) : '',
-        ja_enviado_hoje: disparosHoje.has(chaveUnica),
-        enviada_via_api: disparosHoje.has(chaveUnica),
-      });
+        itens.push({
+          id: a.id,
+          tipo: 'lembrete_hoje',
+          chaveUnica,
+          nome: a.cliente?.name ?? null,
+          telefone,
+          mensagem: msg,
+          wa_link: telefone ? waMeLink(telefone, msg) : '',
+          ja_enviado_hoje: disparosHoje.has(chaveUnica),
+          enviada_via_api: disparosHoje.has(chaveUnica),
+        });
+      }
     }
 
     // SE FOR APENAS VISUALIZAÇÃO / PREVIEW, RETORNA IMEDIATAMENTE SEM DISPARAR
@@ -221,8 +226,8 @@ export async function GET(req: Request) {
       liberarLockDisparo();
     }
 
-    // Se feedback pós-atendimento estiver ativo, processa junto ao cron diário
-    if (config.feedback.ativo && (force || horaAtual >= config.feedback.horario)) {
+    // Se feedback pós-atendimento estiver ativo, processa junto ao cron diário (apenas se não estiver filtrando tipo específico)
+    if (!tipoFiltro && config.feedback.ativo && (force || horaAtual >= config.feedback.horario)) {
       try {
         const baseUrl = url.origin;
         await fetch(`${baseUrl}/api/cron/feedback?execute=true${force ? '&force=true' : ''}`);
@@ -245,4 +250,8 @@ export async function GET(req: Request) {
     console.error('[cron/agenda]', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+export async function POST(req: Request) {
+  return GET(req);
 }

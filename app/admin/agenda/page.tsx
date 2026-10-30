@@ -15,7 +15,8 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao, ProcedimentoComanda, ComandaMultiProfissional } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign } from 'lucide-react';
+import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell } from 'lucide-react';
+import { toast } from 'sonner';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { supabase } from '@/lib/supabase';
 import { ROLES, getUserRole, isOwner } from '@/lib/auth';
@@ -298,6 +299,7 @@ function AgendaContent() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<string>('dia');
   const [showForm, setShowForm] = useState(false);
+  const [disparandoLembretes, setDisparandoLembretes] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
   const [editingApptId, setEditingApptId] = useState<string | null>(null);
 
@@ -1448,6 +1450,33 @@ function AgendaContent() {
     setCheckoutNovoProdDescValor('');
   };
 
+  const handleDispararLembretesHoje = async () => {
+    if (!confirm('Deseja iniciar agora o disparo manual dos lembretes de horário via WhatsApp para os clientes com agendamento HOJE?\n\n• As mensagens serão disparadas imediatamente, mesmo que antes do horário padrão configurado.\n• Clientes que já foram notificados hoje não receberão novamente (anti-duplicação).\n• Intervalo seguro anti-ban de 1 min entre envios.')) {
+      return;
+    }
+    setDisparandoLembretes(true);
+    toast.info('Iniciando ciclo de disparos de lembretes do dia...');
+    try {
+      const res = await fetch('/api/cron/agenda?execute=true&force=true&tipo=lembrete_hoje');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (data.enviados_automaticos > 0) {
+          toast.success(`${data.enviados_automaticos} lembrete(s) de hoje enviado(s) com sucesso!`);
+        } else if ((data.itens?.length ?? 0) === 0) {
+          toast.info('Nenhum agendamento ativo encontrado para o dia de hoje.');
+        } else {
+          toast.info('Todos os lembretes de hoje já haviam sido enviados anteriormente (anti-duplicação).');
+        }
+      } else {
+        toast.error(data.error || 'Erro ao processar disparos de lembrete.');
+      }
+    } catch (err: any) {
+      toast.error(`Falha no envio: ${err.message}`);
+    } finally {
+      setDisparandoLembretes(false);
+    }
+  };
+
   const abrirFormNovo = (hora?: string, profId = '', isEncaixe = false) => {
     const finalProfId = profId || (isRestrictedProfissional && meuProfissional ? meuProfissional.id : '');
     setEditingApptId(null);
@@ -1823,6 +1852,16 @@ function AgendaContent() {
             selectedId={viewMode} 
             onChange={setViewMode} 
           />
+          <Button 
+            variant="outline"
+            onClick={handleDispararLembretesHoje}
+            disabled={disparandoLembretes}
+            className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 flex items-center gap-1.5 text-xs font-bold"
+            title="Dispara mensagens de lembrete pelo WhatsApp para todos os clientes agendados para hoje"
+          >
+            <Bell size={14} className={disparandoLembretes ? 'animate-bounce' : 'text-amber-400'} />
+            <span className="hidden sm:inline">{disparandoLembretes ? 'Disparando...' : 'Lembretes de Hoje'}</span>
+          </Button>
           <Button 
             variant="primary" 
             onClick={() => {

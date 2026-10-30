@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Shield } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
@@ -79,6 +79,19 @@ export function Header() {
           >
             Área do Aluno
           </Link>
+          <Link 
+            href="/admin" 
+            className={cn(
+              "text-[12px] font-medium transition-colors flex items-center gap-1.5 py-1 px-2.5 rounded-md border",
+              isDarkHeader 
+                ? "text-white/85 border-white/20 hover:text-white hover:border-gold/60 bg-white/5" 
+                : "text-foreground/80 border-[var(--border-subtle)] hover:text-primary hover:border-primary/60 bg-black/5"
+            )}
+            title="Acesso Administrativo"
+          >
+            <Shield size={13} className="text-gold" />
+            <span>Admin</span>
+          </Link>
         </nav>
 
         {/* Mobile Toggle */}
@@ -115,13 +128,23 @@ export function Header() {
               Agendar meu Horário
             </Button>
           </Link>
-          <Link 
-            href="/academy/login" 
-            onClick={() => setMobileMenuOpen(false)} 
-            className="text-base font-medium text-white/70 hover:text-gold transition-colors pt-2 border-t border-white/10"
-          >
-            Área do Aluno
-          </Link>
+          <div className="flex flex-col gap-3 pt-3 border-t border-white/10">
+            <Link 
+              href="/academy/login" 
+              onClick={() => setMobileMenuOpen(false)} 
+              className="text-base font-medium text-white/70 hover:text-gold transition-colors"
+            >
+              Área do Aluno
+            </Link>
+            <Link 
+              href="/admin" 
+              onClick={() => setMobileMenuOpen(false)} 
+              className="text-base font-medium text-white/90 hover:text-gold transition-colors flex items-center gap-2"
+            >
+              <Shield size={18} className="text-gold" />
+              <span>Painel Admin</span>
+            </Link>
+          </div>
         </div>
       )}
     </header>

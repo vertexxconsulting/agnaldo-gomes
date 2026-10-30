@@ -5,15 +5,46 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import {
   Clock, ShieldCheck, CheckCircle2, AlertTriangle,
-  Cake, CalendarCheck, Star, HeartHandshake, BellRing, Save, RefreshCw
+  Cake, CalendarCheck, Star, HeartHandshake, BellRing, Save, RefreshCw, SlidersHorizontal, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MarketingAutomacaoConfig, CONFIG_PADRAO_MARKETING } from '@/lib/marketing-types';
+import { ModalServicosFeedback } from './ModalServicosFeedback';
 
 export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () => void }) {
   const [config, setConfig] = useState<MarketingAutomacaoConfig>(CONFIG_PADRAO_MARKETING);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [modalFeedbackAberto, setModalFeedbackAberto] = useState(false);
+  const [disparandoLembrete, setDisparandoLembrete] = useState(false);
+
+  const handleDispararLembreteHoje = async () => {
+    if (!confirm('Deseja iniciar agora o disparo manual dos lembretes de horário para os agendamentos de HOJE?\n\n• As mensagens serão disparadas imediatamente, mesmo que antes do horário padrão configurado.\n• Clientes que já receberam mensagem hoje não receberão novamente (proteção anti-duplicação).\n• Intervalo seguro anti-ban de 1 min entre cada envio.')) {
+      return;
+    }
+    setDisparandoLembrete(true);
+    toast.info('Iniciando disparos de lembretes do dia...');
+    try {
+      const res = await fetch('/api/cron/agenda?execute=true&force=true&tipo=lembrete_hoje');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (data.enviados_automaticos > 0) {
+          toast.success(`${data.enviados_automaticos} lembrete(s) de hoje enviado(s) com sucesso!`);
+        } else if ((data.itens?.length ?? 0) === 0) {
+          toast.info('Nenhum agendamento ativo encontrado para o dia de hoje.');
+        } else {
+          toast.info('Todos os lembretes do dia já haviam sido enviados anteriormente (anti-duplicação).');
+        }
+        if (onConfigSaved) onConfigSaved();
+      } else {
+        toast.error(data.error || 'Erro ao processar disparos de lembrete.');
+      }
+    } catch (err: any) {
+      toast.error(`Falha na requisição: ${err.message}`);
+    } finally {
+      setDisparandoLembrete(false);
+    }
+  };
 
   useEffect(() => {
     carregarConfig();
@@ -47,6 +78,44 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
 
       if (res.ok) {
         toast.success('Horários e travas de disparo salvos com sucesso!');
+        onConfigSaved?.();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Erro ao salvar configurações.');
+      }
+    } catch (e: any) {
+      toast.error(`Falha ao salvar: ${e.message}`);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleConfirmarFiltroFeedback = async (dados: {
+    tipo_filtro: 'todos' | 'selecionados';
+    servicos_permitidos: string[];
+    categorias_permitidas: string[];
+  }) => {
+    const novaConfig: MarketingAutomacaoConfig = {
+      ...config,
+      feedback: {
+        ...config.feedback,
+        tipo_filtro: dados.tipo_filtro,
+        servicos_permitidos: dados.servicos_permitidos,
+        categorias_permitidas: dados.categorias_permitidas,
+      },
+    };
+    setConfig(novaConfig);
+
+    setSalvando(true);
+    try {
+      const res = await fetch('/api/admin/marketing/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novaConfig),
+      });
+
+      if (res.ok) {
+        toast.success('Tipos de serviço para feedback atualizados com sucesso!');
         onConfigSaved?.();
       } else {
         const err = await res.json();
@@ -211,6 +280,45 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
                   }`}
                 />
               </div>
+
+              {/* Botão de Disparo Imediato para Lembrete de Horário do Dia */}
+              {s.key === 'agenda_lembrete' && (
+                <div className="pt-2 mt-2 border-t border-[var(--border-subtle)]">
+                  <button
+                    type="button"
+                    disabled={disparandoLembrete}
+                    onClick={handleDispararLembreteHoje}
+                    className="w-full flex items-center justify-center gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/20 text-amber-400 font-bold text-xs transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                    title="Dispara agora os lembretes de horário do dia via WhatsApp sem esperar o horário padrão"
+                  >
+                    <Send size={13} className={disparandoLembrete ? 'animate-pulse' : ''} />
+                    <span>{disparandoLembrete ? 'Disparando Lembretes...' : 'Disparar Lembretes de Hoje Agora'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Botão de Filtro de Tipos de Serviço exclusivo para Feedback */}
+              {s.key === 'feedback' && (
+                <div className="pt-2 mt-2 border-t border-[var(--border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => setModalFeedbackAberto(true)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg bg-foreground/[0.03] border border-gold/30 hover:border-gold hover:bg-gold/[0.06] transition-all text-left"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <SlidersHorizontal size={13} className="text-gold shrink-0" />
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        Tipos de Serviço
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-gold shrink-0">
+                      {config.feedback.tipo_filtro === 'selecionados'
+                        ? `${config.feedback.servicos_permitidos?.length || 0} selecionado(s)`
+                        : 'Todos os serviços'}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
@@ -248,6 +356,16 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
           </select>
         </div>
       </div>
+
+      {/* MODAL DE SELEÇÃO DE SERVIÇOS PARA FEEDBACK */}
+      <ModalServicosFeedback
+        isOpen={modalFeedbackAberto}
+        onClose={() => setModalFeedbackAberto(false)}
+        tipoFiltro={config.feedback.tipo_filtro || 'todos'}
+        servicosSelecionados={config.feedback.servicos_permitidos || []}
+        categoriasSelecionadas={config.feedback.categorias_permitidas || []}
+        onConfirmar={handleConfirmarFiltroFeedback}
+      />
     </CardGlass>
   );
 }

@@ -1,0 +1,38 @@
+{
+  "name": "AG Academy",
+  "short_name": "AG Academy",
+  "description": "Academy de cursos e treinamentos — Agnaldo Gomes",
+  "start_url": "/academy/login",
+  "id": "/academy",
+  "scope": "/academy",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#0d0d0d",
+  "theme_color": "#D4AF37",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Meus Cursos",
+      "short_name": "Cursos",
+      "description": "Acessar meus cursos",
+      "url": "/aluno",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "96x96" }]
+    }
+  ]
+}
+

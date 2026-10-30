@@ -131,11 +131,19 @@ export async function msgReativacao(nomeCompleto: string, diasDesdeUltima: numbe
 
 /** Normaliza telefone brasileiro para formato wa.me/Evolution (55 + DDD + número) */
 export function normalizarTelefone(telefone: string): string {
-  const d = (telefone || '').replace(/\D/g, '');
+  let d = (telefone || '').replace(/\D/g, '');
   if (!d) return '';
-  if (d.startsWith('55')) return d;
-  if (d.length >= 10 && d.length <= 11) return `55${d}`;
-  return d;
+  // Remove zeros à esquerda
+  if (d.startsWith('0')) d = d.replace(/^0+/, '');
+  if (!d) return '';
+  // Se já tiver DDI 55 (55 + 10 ou 11 dígitos = 12 ou 13 caracteres)
+  if (d.startsWith('55')) {
+    if (d.length === 12 || d.length === 13) return d;
+    return '';
+  }
+  // Se tiver 10 (fixo) ou 11 (celular) dígitos com DDD
+  if (d.length === 10 || d.length === 11) return `55${d}`;
+  return '';
 }
 
 /** Link wa.me para envio manual (fallback quando Evolution não está conectada) */

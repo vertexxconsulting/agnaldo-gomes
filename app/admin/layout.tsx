@@ -11,6 +11,7 @@ import { canAccess, UserPermissions } from '@/lib/permissions';
 import { getUserRole, ROLES } from '@/lib/auth';
 import { Toaster } from 'sonner';
 import { FloatingAssistant } from '@/components/FloatingAssistant';
+import { PWAManifestSwitch } from '@/components/PWAManifestSwitch';
 
 const links = [
   { href: '/hub', label: 'Command Center', icon: Command, hub: true, adminOnly: true, id: 'hub' },
@@ -94,7 +95,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname, router]);
 
   if (pathname.startsWith('/admin/login') || pathname === '/admin-secretaria/login') {
-    return <>{children}</>;
+    return (
+      <>
+        <PWAManifestSwitch manifest="/manifest-admin.json" />
+        {children}
+      </>
+    );
   }
 
 
@@ -119,6 +125,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen bg-[var(--color-background)] overflow-hidden font-body antialiased">
+      <PWAManifestSwitch manifest="/manifest-admin.json" />
       {sidebar}
       <main className="flex-1 overflow-y-auto relative">
         <div className="pt-14 md:pt-2 px-3 sm:px-5 lg:px-6 pb-10 w-full max-w-none">

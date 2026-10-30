@@ -1,12 +1,17 @@
 import { MetadataRoute } from 'next';
 
+/**
+ * Manifest principal — para clientes que acessam a home, agendamento, loja.
+ * start_url aponta para /agendamento que é a página mais usada por clientes.
+ */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Agnaldo Gomes Studio',
     short_name: 'AG Studio',
-    description: 'Studio de Beleza Agnaldo Gomes — Agendamento, Academy e Loja. Mais de 30 anos transformando vidas pela beleza.',
-    start_url: '/',
-    id: '/',
+    description: 'Studio de Beleza Agnaldo Gomes — Agende seu horário, Academy e Loja.',
+    start_url: '/agendamento',
+    id: '/agendamento',
+    scope: '/',
     display: 'standalone',
     display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
     background_color: '#faf8f3',
