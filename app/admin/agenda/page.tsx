@@ -298,7 +298,7 @@ function AgendaContent() {
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<string>('dia');
-  const [densidade, setDensidade] = useState<'compacta' | 'expandida'>('compacta');
+  const [densidade, setDensidade] = useState<'compacta' | 'expandida'>('expandida');
 
   useEffect(() => {
     try {
@@ -1998,20 +1998,7 @@ function AgendaContent() {
         {/* Controles de Visualização: Densidade (Quadrado vs Largo) e Modo (Dia vs Semana) */}
         <div className="sm:ml-auto flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Seletor de Densidade dos Cards dos Profissionais */}
-          <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg gap-1 shadow-xs" title="Ajuste o formato dos cards dos profissionais">
-            <button
-              type="button"
-              onClick={() => handleMudarDensidade('compacta')}
-              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
-                densidade === 'compacta'
-                  ? 'bg-gold text-background shadow-xs font-extrabold'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
-              }`}
-              title="Cards mais quadrados: formato compacto que ocupa menos espaço horizontal e exibe mais profissionais na tela"
-            >
-              <LayoutGrid size={13} />
-              <span>Cards Quadrados</span>
-            </button>
+          <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg gap-1 shadow-xs" title="Ajuste a largura dos cards dos profissionais">
             <button
               type="button"
               onClick={() => handleMudarDensidade('expandida')}
@@ -2020,10 +2007,23 @@ function AgendaContent() {
                   ? 'bg-gold text-background shadow-xs font-extrabold'
                   : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
               }`}
-              title="Cards mais largos (retangulares tradicionais)"
+              title="Cards mais largos: espaço confortável para ver opções, insumos e clientes sem espremer"
             >
               <Columns3 size={13} />
-              <span className="hidden md:inline">Larga</span>
+              <span>Cards Largos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMudarDensidade('compacta')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                densidade === 'compacta'
+                  ? 'bg-gold text-background shadow-xs font-extrabold'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
+              }`}
+              title="Cards médios: formato equilibrado para ver mais colunas"
+            >
+              <LayoutGrid size={13} />
+              <span>Cards Médios</span>
             </button>
           </div>
 
@@ -2209,14 +2209,14 @@ function AgendaContent() {
                     key={prof.id} 
                     className={`flex-1 ${
                       densidade === 'compacta' 
-                        ? 'min-w-[195px] sm:min-w-[210px] md:min-w-[215px] max-w-[245px]' 
-                        : 'min-w-[280px]'
+                        ? 'min-w-[290px] sm:min-w-[310px] md:min-w-[330px]' 
+                        : 'min-w-[350px] sm:min-w-[390px] md:min-w-[430px]'
                     } border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5 transition-all`}
                   >
                     {/* Cabeçalho do Profissional (Card do Profissional) */}
                     <div className={`border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)] transition-all ${
                       densidade === 'compacta'
-                        ? 'p-2.5 flex flex-col items-center text-center gap-1.5'
+                        ? 'p-2.5 flex items-center gap-2.5'
                         : 'p-3 flex items-center gap-3'
                     }`}>
                       <div className="relative shrink-0 inline-block">
@@ -2243,16 +2243,14 @@ function AgendaContent() {
                         </span>
                       </div>
 
-                      <div className={`w-full min-w-0 ${densidade === 'compacta' ? 'text-center' : 'text-left'}`}>
-                        <div className={`flex items-center gap-1 min-w-0 ${densidade === 'compacta' ? 'justify-center' : 'flex-wrap'}`}>
+                      <div className="w-full min-w-0 text-left">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           <span className="font-bold text-foreground text-xs uppercase tracking-tight truncate leading-tight" title={prof.nome}>
                             {prof.nome}
                           </span>
-                          {densidade !== 'compacta' && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold">
-                              {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
-                            </span>
-                          )}
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold shrink-0">
+                            {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
+                          </span>
                         </div>
                         <div className="text-[9px] text-foreground/50 mt-0.5 truncate font-medium">
                           {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
@@ -2293,11 +2291,11 @@ function AgendaContent() {
                         
                         return (
                           <div key={time} className={`flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm ${
-                            densidade === 'compacta' ? 'min-h-[58px]' : 'min-h-[65px]'
+                            densidade === 'compacta' ? 'min-h-[64px]' : 'min-h-[74px]'
                           } group relative overflow-hidden transition-colors hover:border-gold/30`}>
                             {/* Left Time label */}
                             <div className={`${
-                              densidade === 'compacta' ? 'w-11 text-[11px]' : 'w-14 text-[12px]'
+                              densidade === 'compacta' ? 'w-11 text-[11px]' : 'w-13 text-[12px]'
                             } bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center font-mono font-bold text-foreground/70 shrink-0`}>
                               {time}
                             </div>
@@ -2328,7 +2326,7 @@ function AgendaContent() {
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border rounded-lg ${
-                                          densidade === 'compacta' ? 'p-1.5' : 'p-2'
+                                          densidade === 'compacta' ? 'p-2' : 'p-2.5'
                                         } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass}`}
                                       >
                                         <div 
@@ -2337,13 +2335,13 @@ function AgendaContent() {
                                         />
                                         <div className="pl-2">
                                           {isAuxiliarNeste && (
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit">
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit shrink-0 whitespace-nowrap">
                                               <Users size={10} className="text-gold" />
                                               <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
                                             </div>
                                           )}
-                                          <div className="flex items-center justify-between gap-1">
-                                            <span className={`font-bold truncate leading-tight ${estilo.textCliente}`} title={cliente}>
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <span className={`font-bold truncate leading-tight text-xs ${estilo.textCliente}`} title={cliente}>
                                               {cliente}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -2355,26 +2353,26 @@ function AgendaContent() {
                                                     e.stopPropagation();
                                                     abrirFormNovo(time, prof.id, true);
                                                   }}
-                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer"
+                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                                                 >
                                                   <Plus size={11} className="stroke-[2.5]" />
                                                   <span>Encaixe</span>
                                                 </button>
                                               )}
-                                              <span className={`text-[9px] font-mono font-semibold ${estilo.textHora}`}>{a.hora_inicio} - {horaFimDisplay}</span>
+                                              <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} - {horaFimDisplay}</span>
                                             </div>
                                           </div>
                                           <div className={`truncate text-[10px] font-medium leading-tight mt-1 ${estilo.servicoClass}`} title={servico}>
                                             {servico}
                                           </div>
-                                          <div className="flex items-center justify-between mt-1.5 gap-1">
-                                            <div className="flex items-center gap-1">
-                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shadow-xs ${estilo.badgeClass}`}>
+                                          <div className="flex items-center justify-between mt-1.5 gap-1.5 flex-wrap">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shadow-xs whitespace-nowrap shrink-0 ${estilo.badgeClass}`}>
                                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: estilo.dotColor }}></span>
-                                                <span>{estilo.label}</span>
+                                                <span className="whitespace-nowrap">{estilo.label}</span>
                                               </div>
                                               {a.allow_overlap && (
-                                                <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1 py-0.2 rounded border border-gold/20">
+                                                <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1.5 py-0.5 rounded border border-gold/20 whitespace-nowrap shrink-0">
                                                   Pausa liberada
                                                 </span>
                                               )}
@@ -2387,12 +2385,12 @@ function AgendaContent() {
                                                   e.stopPropagation();
                                                   abrirLancarInsumoTempoReal(a);
                                                 }}
-                                                className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                                                className="px-2 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                                               >
-                                                <Beaker size={10} className="text-white" />
+                                                <Beaker size={10} className="text-white shrink-0" />
                                                 <span>+ Insumo</span>
                                                 {a.insumos_detalhes && a.insumos_detalhes.length > 0 && (
-                                                  <span className="bg-black/30 text-white px-1 rounded-full text-[8px] font-mono font-bold">
+                                                  <span className="bg-black/30 text-white px-1 rounded-full text-[8px] font-mono font-bold shrink-0">
                                                     {a.insumos_detalhes.length}
                                                   </span>
                                                 )}
@@ -2420,7 +2418,7 @@ function AgendaContent() {
                                         key={`ongoing-${a.id}-${time}`} 
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border border-dashed rounded-lg ${
-                                          densidade === 'compacta' ? 'p-1' : 'p-1.5'
+                                          densidade === 'compacta' ? 'p-1.5' : 'p-2'
                                         } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass}`}
                                         title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
                                       >
@@ -2428,12 +2426,12 @@ function AgendaContent() {
                                           className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" 
                                           style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
                                         />
-                                        <div className="pl-1.5">
-                                          <div className="flex items-center justify-between gap-1">
-                                            <span className={`font-semibold text-[11px] truncate leading-tight flex items-center gap-1 ${estilo.textCliente}`}>
-                                              <span className="text-[11px] font-bold" style={{ color: estilo.barColor }}>↳</span> {cliente}
+                                        <div className="pl-2">
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <span className={`font-semibold text-xs truncate leading-tight flex items-center gap-1 ${estilo.textCliente}`}>
+                                              <span className="text-xs font-bold shrink-0" style={{ color: estilo.barColor }}>↳</span> <span className="truncate">{cliente}</span>
                                               {isAuxiliarNeste && (
-                                                <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30">Auxiliar</span>
+                                                <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30 shrink-0">Auxiliar</span>
                                               )}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -2445,20 +2443,20 @@ function AgendaContent() {
                                                     e.stopPropagation();
                                                     abrirFormNovo(time, prof.id, true);
                                                   }}
-                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer"
+                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                                                 >
                                                   <Plus size={11} className="stroke-[2.5]" />
                                                   <span>Encaixe</span>
                                                 </button>
                                               )}
-                                              <span className={`text-[9px] font-mono font-semibold ${estilo.textHora}`}>{a.hora_inicio} às {horaFimDisplay}</span>
+                                              <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} às {horaFimDisplay}</span>
                                             </div>
                                           </div>
-                                          <div className="flex items-center justify-between gap-1 mt-0.5">
-                                            <div className={`truncate text-[9px] font-medium ${estilo.servicoClass}`}>{servico}</div>
-                                            <div className="flex items-center gap-1 shrink-0">
+                                          <div className="flex items-center justify-between gap-1.5 mt-1 flex-wrap">
+                                            <div className={`truncate text-[10px] font-medium ${estilo.servicoClass}`}>{servico}</div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                               <span 
-                                                className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded border ${estilo.badgeClass}`}
+                                                className={`text-[8px] font-bold uppercase px-1.5 py-0.2 rounded border whitespace-nowrap shrink-0 ${estilo.badgeClass}`}
                                               >
                                                 {estilo.label}
                                               </span>
@@ -2470,9 +2468,9 @@ function AgendaContent() {
                                                     e.stopPropagation();
                                                     abrirLancarInsumoTempoReal(a);
                                                   }}
-                                                  className="px-1.5 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0"
+                                                  className="px-2 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
                                                 >
-                                                  <Beaker size={9} className="text-white" />
+                                                  <Beaker size={9} className="text-white shrink-0" />
                                                   <span>+ Insumo</span>
                                                 </button>
                                               )}
