@@ -221,6 +221,16 @@ export async function GET(req: Request) {
       liberarLockDisparo();
     }
 
+    // Se feedback pós-atendimento estiver ativo, processa junto ao cron diário
+    if (config.feedback.ativo && (force || horaAtual >= config.feedback.horario)) {
+      try {
+        const baseUrl = url.origin;
+        await fetch(`${baseUrl}/api/cron/feedback?execute=true${force ? '&force=true' : ''}`);
+      } catch (err: any) {
+        console.error('[cron/agenda] Erro ao invocar feedback:', err.message);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       modo: 'execute',
