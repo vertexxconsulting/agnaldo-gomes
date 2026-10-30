@@ -189,7 +189,12 @@ export default function HubCentralPage() {
 
       if (meta && typeof meta.role === 'string') {
         const roleStr = meta.role === 'admin' ? 'ADMIN' : meta.role;
-        setRole((Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null);
+        const matchedRole = (Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null;
+        if (matchedRole === ROLES.STUDIO_PROFISSIONAL) {
+          router.replace('/admin/meu-painel');
+          return;
+        }
+        setRole(matchedRole);
       } else {
         setRole(null);
       }

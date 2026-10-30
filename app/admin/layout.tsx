@@ -67,6 +67,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           router.replace('/');
           return;
         }
+        if (role === ROLES.STUDIO_PROFISSIONAL && (pathname === '/admin' || pathname === '/admin/')) {
+          router.replace('/admin/meu-painel');
+          return;
+        }
 
         setUserRole(role);
         setUserPermissions(user.user_metadata?.permissions);
@@ -105,8 +109,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 
   const filteredLinks = links.filter(link => {
+    // Para profissionais do salão, ocultar painel geral da recepção (dashboard) e focar em 'Meu Painel'
+    if (userRole === 'studio_profissional') {
+      if (link.id === 'dashboard') return false;
+      if (link.id === 'meu-painel') return true;
+    }
+
     // Sempre mostrar os básicos
-    if (link.id === 'hub' || link.id === 'dashboard' || link.id === 'ia-assistente' || link.id === 'api' || link.id === 'sistema' || link.id === 'tutorial' || link.id === 'noivas') {
+    if (link.id === 'hub' || link.id === 'dashboard' || link.id === 'meu-painel' || link.id === 'ia-assistente' || link.id === 'api' || link.id === 'sistema' || link.id === 'tutorial' || link.id === 'noivas') {
       if (link.adminOnly && userRole !== 'ADMIN' && userRole !== 'studio_admin') return false;
       return true;
     }

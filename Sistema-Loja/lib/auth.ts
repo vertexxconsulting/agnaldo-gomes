@@ -35,6 +35,7 @@ export const AREA_LABELS: Record<Role, string> = {
 
 /** Rotas de área e o papel exigido para acessá-las */
 export const AREA_ROLES: Record<string, Role> = {
+  '/admin/meu-painel': ROLES.STUDIO_PROFISSIONAL,
   '/admin': ROLES.STUDIO_ADMIN,
   '/hub': ROLES.STUDIO_SECRETARIA,
   '/admin-academy': ROLES.ACADEMY_ADMIN,

@@ -95,7 +95,13 @@ export function SplitLogin({
             ? (allowedRoles.includes(role as Role) || role === ROLES.ADMIN)
             : false);
       if (roleAllowed) {
-        router.replace(redirectTo);
+        let dest = redirectTo;
+        if (role === ROLES.STUDIO_PROFISSIONAL && (dest === '/admin' || dest === '/hub' || dest === '/')) {
+          dest = '/admin/meu-painel';
+        } else if (role === ROLES.STUDIO_SECRETARIA && (dest === '/hub' || dest === '/')) {
+          dest = '/admin';
+        }
+        router.replace(dest);
       } else if (role) {
         supabase.auth.signOut();
       }
@@ -198,6 +204,9 @@ export function SplitLogin({
       let finalRedirectTo = redirectTo;
       if (role === ROLES.STUDIO_SECRETARIA && (finalRedirectTo === '/hub' || finalRedirectTo === '/')) {
         finalRedirectTo = '/admin';
+      }
+      if (role === ROLES.STUDIO_PROFISSIONAL && (finalRedirectTo === '/admin' || finalRedirectTo === '/hub' || finalRedirectTo === '/')) {
+        finalRedirectTo = '/admin/meu-painel';
       }
 
       localStorage.setItem('ag-sessao', JSON.stringify({ email: emailToAuth, sistema: finalRedirectTo, em: new Date().toISOString() }));

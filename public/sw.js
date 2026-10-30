@@ -7,7 +7,7 @@
  *  - Offline page  → /offline  (fallback quando rede e cache falham)
  */
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE  = `static-${CACHE_VERSION}`;
 const PAGES_CACHE   = `pages-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `images-${CACHE_VERSION}`;
@@ -61,6 +61,13 @@ function isApiRequest(url) {
   return url.pathname.startsWith('/api/');
 }
 
+function isAdminOrAuthRequest(url) {
+  return url.pathname.startsWith('/admin') ||
+         url.pathname.startsWith('/hub') ||
+         url.pathname.startsWith('/login') ||
+         url.pathname.startsWith('/aluno');
+}
+
 function isHTMLRequest(request) {
   return request.headers.get('Accept')?.includes('text/html');
 }
@@ -71,6 +78,20 @@ self.addEventListener('fetch', (event) => {
 
   // Apenas requisições do mesmo origin (ignora analytics, supabase, etc.)
   if (url.origin !== self.location.origin) return;
+
+  // Rotas autenticadas e de gestão — Network-First / Network-Only (evita telas offline falsas)
+  if (isAdminOrAuthRequest(url)) {
+    event.respondWith(
+      fetch(event.request).catch(async (err) => {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          const offlinePage = await caches.match('/offline');
+          if (offlinePage) return offlinePage;
+        }
+        throw err;
+      })
+    );
+    return;
+  }
 
   // API — Network-Only (nunca cacheia dados dinâmicos)
   if (isApiRequest(url)) {
@@ -140,9 +161,13 @@ self.addEventListener('fetch', (event) => {
         const response = await networkFetch;
         if (response) return response;
 
-        // Fallback: página /offline
-        const offlinePage = await caches.match('/offline');
-        return offlinePage || new Response('<h1>Sem conexão</h1>', { headers: { 'Content-Type': 'text/html' } });
+        // Fallback: página /offline apenas se o navegador estiver desconectado
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          const offlinePage = await caches.match('/offline');
+          if (offlinePage) return offlinePage;
+        }
+
+        return fetch(event.request);
       })
     );
     return;

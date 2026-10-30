@@ -85,8 +85,19 @@ export default function MeuPainelPage() {
       setServicos(srvs);
       setEstoque(est);
       setProfissionais(profs || []);
+      const { data: { user } } = await supabase.auth.getUser();
+      const userMeta = user?.user_metadata;
+      const profIdFromPerm = userMeta?.permissions?.professional_id || userMeta?.professional_id;
+
       if (profs && profs.length > 0) {
-        setSelectedProfId(prev => prev || profs[0].id);
+        const matched = profs.find(p =>
+          (profIdFromPerm && p.id === profIdFromPerm) ||
+          (p.user_id && user?.id && p.user_id === user.id) ||
+          (p.email && user?.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
+          (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase())
+        );
+        const targetId = matched ? matched.id : profs[0].id;
+        setSelectedProfId(prev => prev || targetId);
       }
       setProdutosLoja(prods || []);
       setLoading(false);
