@@ -52,8 +52,8 @@ export async function GET(request: Request) {
 
     let qrcodeBase64 = null;
 
-    // Se estiver conectando e aguardando ler QR code, podemos tentar pegar o QR code
-    if (state === 'connecting') {
+    // Se estiver conectando ou fechado aguardando ler QR code, busca o QR code
+    if (state === 'connecting' || state === 'close') {
       try {
         const qrResponse = await fetch(`${API_URL}/instance/connect/${instanceName}`, {
           method: 'GET',
@@ -64,7 +64,11 @@ export async function GET(request: Request) {
         
         if (qrResponse.ok) {
           const qrData = await qrResponse.json();
-          qrcodeBase64 = qrData.base64 || null;
+          let b64 = qrData.base64 || qrData.qrcode?.base64 || null;
+          if (b64 && !b64.startsWith('data:image')) {
+            b64 = `data:image/png;base64,${b64}`;
+          }
+          qrcodeBase64 = b64;
         }
       } catch (e) {
         console.error('Erro ao buscar QR code:', e);

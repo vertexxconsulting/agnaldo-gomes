@@ -15,7 +15,7 @@ import { Button } from '@/components/Button';
 import {
   fetchRegrasComissao, salvarRegraComissao, excluirRegraComissao,
   fetchComissoes, fetchParcelasPendentes, pagarParcela, pagarLoteParcelas,
-  fetchProfissionais, fetchServicos,
+  fetchProfissionais, fetchServicos, atualizarProfissional,
   fetchTaxasPagamento, salvarTaxaPagamento, excluirTaxaPagamento,
   salvarConfigTaxas, alternarStatusTaxa, calcularTaxaMaquininha
 } from '@/lib/supabase-queries';
@@ -2082,8 +2082,12 @@ export default function ComissoesPage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-foreground/50 truncate flex items-center gap-2 mt-0.5">
+                              <p className="text-[11px] text-foreground/50 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                                 <span>Comissão geral: <strong className="text-foreground/70">{prof.comissao_padrao ?? 40}%</strong></span>
+                                <span>•</span>
+                                <span>Produtos: <strong className="text-foreground/70">{prof.product_commission_pct ?? 0}%</strong></span>
+                                <span>•</span>
+                                <span>Fechamento: <strong className="text-foreground/70">{prof.periodo_recebimento === 'quinzenal' ? 'Quinzenal' : prof.periodo_recebimento === 'mensal' ? 'Mensal' : 'Semanal'}</strong></span>
                                 <span>•</span>
                                 <span className={regrasDoProf.length > 0 ? 'text-gold font-medium' : 'text-foreground/40'}>
                                   {regrasDoProf.length} {regrasDoProf.length === 1 ? 'regra de serviço' : 'regras de serviço'}
@@ -2118,7 +2122,67 @@ export default function ComissoesPage() {
 
                         {/* Conteúdo Expandido: Tabela de Serviços e Comissões */}
                         {isExpanded && (
-                          <div className="p-3 sm:p-4 bg-background/50 animate-in fade-in duration-200">
+                          <div className="p-3 sm:p-4 bg-background/50 animate-in fade-in duration-200 space-y-3">
+                            {!isRestrictedProfissional && (
+                              <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--color-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
+                                    <Calendar size={13} className="text-gold" />
+                                    Período de Recebimento:
+                                  </span>
+                                  {(['semanal', 'quinzenal', 'mensal'] as PeriodoRecebimentoComissao[]).map(per => {
+                                    const atual = (prof.periodo_recebimento || 'semanal') === per;
+                                    const label = per === 'quinzenal' ? '🌓 Quinzenal' : per === 'mensal' ? '📅 Mensal' : '🗓️ Semanal';
+                                    return (
+                                      <button
+                                        key={per}
+                                        type="button"
+                                        onClick={async () => {
+                                          const res = await atualizarProfissional(prof.id, { periodo_recebimento: per });
+                                          if (res.ok) {
+                                            setProfissionais(prev => prev.map(p => p.id === prof.id ? { ...p, periodo_recebimento: per } : p));
+                                            setTodosProfissionais(prev => prev.map(p => p.id === prof.id ? { ...p, periodo_recebimento: per } : p));
+                                          }
+                                        }}
+                                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all ${
+                                          atual
+                                            ? 'bg-gold/15 border-gold text-foreground'
+                                            : 'bg-background border-[var(--border-subtle)] text-foreground/60 hover:border-gold/40'
+                                        }`}
+                                      >
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs font-bold text-foreground/80 whitespace-nowrap">
+                                    Comissão Prod. (%):
+                                  </label>
+                                  <div className="relative w-24">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      defaultValue={prof.product_commission_pct ?? 0}
+                                      onBlur={async (e) => {
+                                        const novoPct = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                        if (novoPct === (prof.product_commission_pct ?? 0)) return;
+                                        const res = await atualizarProfissional(prof.id, { product_commission_pct: novoPct });
+                                        if (res.ok) {
+                                          setProfissionais(prev => prev.map(p => p.id === prof.id ? { ...p, product_commission_pct: novoPct } : p));
+                                          setTodosProfissionais(prev => prev.map(p => p.id === prof.id ? { ...p, product_commission_pct: novoPct } : p));
+                                        }
+                                      }}
+                                      className="w-full bg-background border border-[var(--border-subtle)] rounded-md py-1 pl-2 pr-6 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-foreground/50 font-bold">%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                             {regrasDoProf.length === 0 ? (
                               <div className="py-6 px-4 text-center border border-dashed border-[var(--border-subtle)] rounded-lg">
                                 <p className="text-xs text-foreground/50 font-medium">

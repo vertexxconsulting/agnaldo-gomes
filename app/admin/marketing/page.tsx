@@ -1,19 +1,28 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, ExternalLink, RotateCcw, Star, Activity, AlertCircle, MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+import { 
+  Cake, CalendarCheck, MessageCircleHeart, Clock3, Send, 
+  ExternalLink, RotateCcw, Star, Activity, AlertCircle, MessageCircle, QrCode, Play
+} from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/Button';
 import { CardGlass } from '@/components/CardGlass';
 import { RegrasMarketing } from './RegrasMarketing';
+import { ConfiguracaoAutomacao } from './ConfiguracaoAutomacao';
+import { toast } from 'sonner';
 
 type ItemMsg = {
+  id?: string;
   tipo: string;
+  chaveUnica?: string;
   nome: string | null;
   telefone: string;
   mensagem: string;
   wa_link: string;
   enviada_via_api: boolean;
+  ja_enviado_hoje?: boolean;
   diasDesdeUltima?: number | null;
 };
 
@@ -41,7 +50,11 @@ export default function MarketingPage() {
   const [reativacao, setReativacao] = useState<RespostaCron | null>(null);
   const [feedback, setFeedback] = useState<RespostaCron | null>(null);
   const [inativos, setInativos] = useState<ClienteInativo[]>([]);
-  const [evolutionOk, setEvolutionOk] = useState<boolean>(false);
+  const [waStatus, setWaStatus] = useState<{
+    online: boolean;
+    conectado: boolean;
+    state: string;
+  }>({ online: false, conectado: false, state: 'loading' });
   const [loading, setLoading] = useState(true);
   const [disparando, setDisparando] = useState(false);
 
@@ -60,7 +73,7 @@ export default function MarketingPage() {
       const { supabase } = await import('@/lib/supabase');
       const [clientesRes, agsRes] = await Promise.all([
         supabase.from('salon_customers').select('id, name, phone'),
-        supabase.from('salon_appointments').select('customer_id, date').order('date', { ascending: false }),
+        supabase.from('salon_appointments').select('customer_id, date, status').in('status', ['COMPLETED', 'CONFIRMED']).order('date', { ascending: false }),
       ]);
       const clientes = clientesRes.data ?? [];
       const ultimaPorCliente = new Map<string, string>();
@@ -73,10 +86,10 @@ export default function MarketingPage() {
       const lista: ClienteInativo[] = [];
       for (const c of clientes) {
         const ultima = ultimaPorCliente.get(c.id);
-        let dias: number | null;
-        if (!ultima) dias = null;
-        else dias = Math.floor((agora - new Date(`${ultima}T12:00:00`).getTime()) / (24 * 3600 * 1000));
-        if (dias === null || dias >= DIAS_INATIVO) {
+        // IMPORTANTE: Só é considerado inativo quem REALMENTE já frequentou o salão e passou de 60 dias sem voltar.
+        if (!ultima) continue;
+        const dias = Math.floor((agora - new Date(`${ultima}T12:00:00`).getTime()) / (24 * 3600 * 1000));
+        if (dias >= DIAS_INATIVO) {
           lista.push({
             id: c.id,
             nome: c.name ?? '',
@@ -85,7 +98,7 @@ export default function MarketingPage() {
           });
         }
       }
-      lista.sort((a, b) => (b.diasDesdeUltima ?? 9999) - (a.diasDesdeUltima ?? 9999));
+      lista.sort((a, b) => (b.diasDesdeUltima ?? 0) - (a.diasDesdeUltima ?? 0));
       setInativos(lista.slice(0, 30));
     } catch {
       setInativos([]);
@@ -96,45 +109,62 @@ export default function MarketingPage() {
     try {
       const res = await fetch('/api/env-status');
       const data = await res.json();
-      setEvolutionOk(Boolean(data?.evolutionApi));
+      setWaStatus({
+        online: Boolean(data?.evolutionApi),
+        conectado: Boolean(data?.whatsappConnected),
+        state: data?.whatsappState || 'close',
+      });
     } catch {
-      setEvolutionOk(false);
+      setWaStatus({ online: false, conectado: false, state: 'offline' });
     }
   };
+
+  const carregarTudo = useCallback(async () => {
+    await checkApiStatus();
+    // NOTA: Chamadas com ?preview=true JAMAIS disparam mensagens na abertura da tela!
+    const [ani, ag, reat, fb] = await Promise.all([
+      carregarCron('/api/cron/aniversarios?preview=true'),
+      carregarCron('/api/cron/agenda?preview=true'),
+      carregarCron('/api/cron/reativacao?preview=true'),
+      carregarCron('/api/cron/feedback?preview=true'),
+    ]);
+    setAniversarios(ani);
+    setAgenda(ag);
+    setReativacao(reat);
+    setFeedback(fb);
+    await carregarInativos();
+  }, [carregarCron, carregarInativos]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await checkApiStatus();
-      const [ani, ag, reat, fb] = await Promise.all([
-        carregarCron('/api/cron/aniversarios'),
-        carregarCron('/api/cron/agenda'),
-        carregarCron('/api/cron/reativacao'),
-        carregarCron('/api/cron/feedback'),
-      ]);
-      setAniversarios(ani);
-      setAgenda(ag);
-      setReativacao(reat);
-      setFeedback(fb);
-      await carregarInativos();
+      await carregarTudo();
       setLoading(false);
     })();
-  }, [carregarCron, carregarInativos]);
+  }, [carregarTudo]);
 
-  const reenviarTudo = async () => {
+  const dispararFilaAtiva = async () => {
+    if (!waStatus.conectado) {
+      toast.error('O WhatsApp está desconectado! Acesse "Conectar WhatsApp" para ler o QR Code antes de disparar.');
+      return;
+    }
+
+    if (!confirm('Atenção: O sistema irá disparar as mensagens das sessões que estiverem marcadas como "ATIVO", aplicando intervalo de segurança de pelo menos 1 minuto entre cada mensagem para proteger seu WhatsApp contra ban.\n\nDeseja iniciar?')) {
+      return;
+    }
     setDisparando(true);
+    toast.info('Ciclo de disparos iniciado em segundo plano com intervalo seguro de 1 minuto!');
     try {
-      const [ani, ag, reat, fb] = await Promise.all([
-        carregarCron('/api/cron/aniversarios'),
-        carregarCron('/api/cron/agenda'),
-        carregarCron('/api/cron/reativacao'),
-        carregarCron('/api/cron/feedback'),
-      ]);
-      setAniversarios(ani);
-      setAgenda(ag);
-      setReativacao(reat);
-      setFeedback(fb);
-      await checkApiStatus();
+      const res = await fetch('/api/cron/dispatcher?force=true');
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Disparos finalizados com sucesso!');
+      } else {
+        toast.error(data.error || 'Erro ao processar disparos.');
+      }
+      await carregarTudo();
+    } catch (e: any) {
+      toast.error(`Falha no processamento: ${e.message}`);
     } finally {
       setDisparando(false);
     }
@@ -147,138 +177,179 @@ export default function MarketingPage() {
         title="Marketing & Mensagens"
         action={
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/5 text-xs font-medium transition-all">
-              {evolutionOk ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="text-success">Evolution API Online</span>
-                </>
-              ) : (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-                  <span className="text-danger">Evolution API Offline</span>
-                </>
-              )}
-            </div>
-            <Button variant="outline" size="sm" onClick={reenviarTudo} disabled={disparando}>
-              <Send size={14} className="mr-1" /> {disparando ? 'Processando...' : 'Rodar Agora'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => carregarCron('/api/cron/reativacao').then(setReativacao)} disabled={disparando} className="hidden sm:flex">
-              <RotateCcw size={14} className="mr-1" /> Reativação 90d
+            <Link href="/admin/api">
+              <Button variant="outline" size="sm" className="border-gold/40 text-gold hover:bg-gold/10">
+                <QrCode size={14} className="mr-1.5" /> Conectar WhatsApp
+              </Button>
+            </Link>
+            <Link href="/admin/api" title="Clique para gerenciar conexão do WhatsApp">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer hover:opacity-85 ${
+                waStatus.conectado
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : waStatus.state === 'connecting'
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  : 'border-red-500/30 bg-red-500/10 text-red-400'
+              }`}>
+                {waStatus.conectado ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="font-bold">WhatsApp Conectado</span>
+                  </>
+                ) : waStatus.state === 'connecting' ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    <span className="font-bold">Aguardando QR Code</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-red-400" />
+                    <span className="font-bold">WhatsApp Desconectado</span>
+                  </>
+                )}
+              </div>
+            </Link>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={dispararFilaAtiva}
+              disabled={disparando}
+              className="font-bold shadow-md shadow-gold/10"
+            >
+              <Send size={14} className="mr-1.5" />
+              {disparando ? 'Disparando (1 min/msg)...' : 'Disparar Fila Ativa'}
             </Button>
           </div>
         }
       />
 
-      <p className="text-sm text-foreground/60 -mt-3">
-        Disparo diário às <strong className="text-foreground">08h</strong> (aniversários) e <strong className="text-foreground">09h</strong> (confirmações e feedback).<br/>
-        <span className="opacity-70">Se a API estiver Online, as mensagens são disparadas automaticamente. Caso contrário, use os links de envio manual.</span>
-      </p>
-
       {loading && <div className="text-center py-10 text-foreground/50">Carregando painel de marketing...</div>}
 
       {!loading && (
         <div className="space-y-6">
-          {/* REGRAS PERSONALIZADAS NO TOPO */}
+          {/* TRAVAS DE DISPARO E HORÁRIOS POR SESSÃO */}
+          <ConfiguracaoAutomacao onConfigSaved={carregarTudo} />
+
+          {/* REGRAS PERSONALIZADAS E TEMPLATES */}
           <RegrasMarketing />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* COLUNA 1: OPERAÇÕES DIÁRIAS */}
             <div className="space-y-6">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 px-2 flex items-center gap-2">
-              <Activity size={14} /> Operações Diárias
-            </h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 px-2 flex items-center gap-2">
+                <Activity size={14} /> Operações Diárias
+              </h3>
 
-            <MarketingWidget 
-              title={`🎂 Aniversariantes (${aniversarios?.total ?? 0})`}
-              data={aniversarios} 
-              icon={<Cake size={16} />}
-            />
+              <MarketingWidget 
+                title={`🎂 Aniversariantes (${aniversarios?.total ?? 0})`}
+                data={aniversarios} 
+                icon={<Cake size={16} />}
+              />
 
-            <MarketingWidget 
-              title={`📅 Agenda & Confirmações (${agenda?.total ?? 0})`}
-              data={agenda} 
-              icon={<CalendarCheck size={16} />}
-              typeLabel={(i) => i.tipo === 'confirmacao_vespera' ? 'Véspera' : i.tipo === 'lembrete_hoje' ? 'Hoje' : 'Feedback'}
-            />
+              <MarketingWidget 
+                title={`📅 Agenda & Confirmações (${agenda?.total ?? 0})`}
+                data={agenda} 
+                icon={<CalendarCheck size={16} />}
+                typeLabel={(i) => i.tipo === 'confirmacao_vespera' ? 'Véspera' : i.tipo === 'lembrete_hoje' ? 'Hoje' : 'Feedback'}
+              />
 
-            <MarketingWidget 
-              title={`⭐ Feedbacks (${feedback?.total ?? 0})`}
-              data={feedback} 
-              icon={<Star size={16} />}
-              isFeedback
-            />
+              <MarketingWidget 
+                title={`⭐ Feedbacks (${feedback?.total ?? 0})`}
+                data={feedback} 
+                icon={<Star size={16} />}
+                isFeedback
+              />
+            </div>
+
+            {/* COLUNA 2: RECUPERAÇÃO E RETENÇÃO */}
+            <div className="space-y-6">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 px-2 flex items-center gap-2">
+                <RotateCcw size={14} /> Recuperação & Retenção
+              </h3>
+
+              <Panel 
+                title={`🔄 Reengajamento 90+ dias (${reativacao?.total ?? 0})`}
+                action={reativacao?.error ? <span className="text-xs text-danger">{reativacao.error}</span> : undefined}
+              >
+                {(reativacao?.itens?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-foreground/50 py-3">Nenhuma cliente para reengajar no momento.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {reativacao!.itens!.map((i, idx) => (
+                      <li key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{i.nome || 'Sem nome'}</p>
+                          <p className="text-xs text-foreground/50 truncate">
+                            {i.diasDesdeUltima === null ? 'Nunca frequentou' : `Última visita há ${i.diasDesdeUltima} dias`}
+                            {' · '}
+                            {i.telefone || 'sem telefone'}
+                          </p>
+                        </div>
+                        {i.ja_enviado_hoje || i.enviada_via_api ? (
+                          <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+                            ENVIADA HOJE
+                          </span>
+                        ) : i.wa_link ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30">
+                              PENDENTE
+                            </span>
+                            <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+                              <MessageCircleHeart size={13} /> Chamar
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-foreground/40">—</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+
+              <Panel title={`💤 Inativas há ${DIAS_INATIVO}+ dias (${inativos.length})`}>
+                {inativos.length === 0 ? (
+                  <p className="text-sm text-foreground/50 py-3">Nenhuma cliente inativa no momento. 🎉</p>
+                ) : (
+                  <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {inativos.map(c => (
+                      <li key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
+                        <Clock3 size={16} className="text-foreground/40 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{c.nome || 'Sem nome'}</p>
+                          <p className="text-xs text-foreground/50">
+                            {c.diasDesdeUltima === null ? 'Nunca frequentou' : `Última visita há ${c.diasDesdeUltima} dias`}
+                            {' · '}
+                            {c.telefone || 'sem telefone'}
+                          </p>
+                        </div>
+                        <BotaoReativar nome={c.nome} telefone={c.telefone} dias={c.diasDesdeUltima} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Panel>
+            </div>
           </div>
-
-          {/* COLUNA 2: RECUPERAÇÃO E RETENÇÃO */}
-          <div className="space-y-6">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 px-2 flex items-center gap-2">
-              <RotateCcw size={14} /> Recuperação & Retenção
-            </h3>
-
-            <Panel title={`🔄 Reengajamento 90+ dias (${reativacao?.total ?? 0})`}
-              action={reativacao?.error ? <span className="text-xs text-danger">{reativacao.error}</span> : undefined}>
-              {(reativacao?.itens?.length ?? 0) === 0 ? (
-                <p className="text-sm text-foreground/50 py-3">Nenhuma cliente para reengajar no momento.</p>
-              ) : (
-                <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {reativacao!.itens!.map((i, idx) => (
-                    <li key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{i.nome || 'Sem nome'}</p>
-                        <p className="text-xs text-foreground/50 truncate">
-                          {i.diasDesdeUltima === null ? 'Nunca frequentou' : `Última visita há ${i.diasDesdeUltima} dias`}
-                          {' · '}
-                          {i.telefone || 'sem telefone'}
-                        </p>
-                      </div>
-                      {i.enviada_via_api ? (
-                        <span className="text-[10px] font-bold bg-success/10 text-success px-2 py-1 rounded-full border border-success/25">ENVIADA AUTO</span>
-                      ) : i.wa_link ? (
-                        <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
-                          <MessageCircleHeart size={13} /> Reativar
-                        </a>
-                      ) : (
-                        <span className="text-[10px] text-foreground/40">—</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-
-            <Panel title={`💤 Inativas há ${DIAS_INATIVO}+ dias (${inativos.length})`}>
-              {inativos.length === 0 ? (
-                <p className="text-sm text-foreground/50 py-3">Nenhuma cliente inativa no momento. 🎉</p>
-              ) : (
-                <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {inativos.map(c => (
-                    <li key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]">
-                      <Clock3 size={16} className="text-foreground/40 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{c.nome || 'Sem nome'}</p>
-                        <p className="text-xs text-foreground/50">
-                          {c.diasDesdeUltima === null ? 'Nunca frequentou' : `Última visita há ${c.diasDesdeUltima} dias`}
-                          {' · '}
-                          {c.telefone || 'sem telefone'}
-                        </p>
-                      </div>
-                      <BotaoReativar nome={c.nome} telefone={c.telefone} dias={c.diasDesdeUltima} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
-          </div>
-        </div>
         </div>
       )}
     </div>
   );
 }
 
-function MarketingWidget({ title, data, icon, typeLabel, isFeedback }: { title: string, data: RespostaCron | null, icon: React.ReactNode, typeLabel?: (i: any) => string, isFeedback?: boolean }) {
+function MarketingWidget({ 
+  title, 
+  data, 
+  icon, 
+  typeLabel, 
+  isFeedback 
+}: { 
+  title: string, 
+  data: RespostaCron | null, 
+  icon: React.ReactNode, 
+  typeLabel?: (i: any) => string, 
+  isFeedback?: boolean 
+}) {
   return (
     <Panel title={title} action={data?.error ? <span className="text-xs text-danger">{data.error}</span> : undefined}>
       {(data?.itens?.length ?? 0) === 0 ? (
@@ -297,13 +368,20 @@ function MarketingWidget({ title, data, icon, typeLabel, isFeedback }: { title: 
                   </p>
                 </div>
               </div>
-              {i.enviada_via_api ? (
-                <span className="text-[10px] font-bold bg-success/10 text-success px-2 py-1 rounded-full border border-success/25">AUTO</span>
+              {i.ja_enviado_hoje || i.enviada_via_api ? (
+                <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+                  ENVIADA HOJE
+                </span>
               ) : i.wa_link ? (
-                <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-success/30 text-success hover:bg-success/10 transition-colors">
-                  <ExternalLink size={13} /> Enviar
-                </a>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 whitespace-nowrap">
+                    AGUARDANDO
+                  </span>
+                  <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+                    <ExternalLink size={12} /> Enviar
+                  </a>
+                </div>
               ) : (
                 <span className="text-[10px] text-foreground/40">—</span>
               )}
@@ -330,7 +408,7 @@ function BotaoReativar({ nome, telefone, dias }: { nome: string; telefone: strin
   if (!url) return <span className="text-[10px] text-foreground/40">—</span>;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-success/30 text-success hover:bg-success/10 transition-colors">
+      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
       <MessageCircle size={13} /> Chamar
     </a>
   );

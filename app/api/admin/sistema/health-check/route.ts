@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/loja-settings'; // reusing the admin client
 import { getVimeoSettings } from '@/lib/vimeo-settings';
+import { verificarStatusWhatsApp } from '@/lib/evolution';
 
 export async function GET() {
   const results: Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> = {
@@ -14,13 +15,24 @@ export async function GET() {
   };
 
   try {
-    // 1. Check Evolution (Simulated/Internal check since we don't have a generic Evolution lib here)
-    // In a real scenario, we'd call the Evolution API. For now, we check if config exists.
     const supabase = await getSupabaseAdmin();
-    const { data: evoConfig } = await supabase.from('loja_settings').select('envio_automatico').single();
-    results.evolution = evoConfig?.envio_automatico 
-      ? { status: 'ok', msg: 'Configurado' } 
-      : { status: 'error', msg: 'Não configurado' };
+
+    // 1. Check Evolution
+    try {
+      const wa = await verificarStatusWhatsApp();
+      if (wa.conectado) {
+        results.evolution = { status: 'ok', msg: 'WhatsApp Conectado e Ativo' };
+      } else if (wa.online) {
+        results.evolution = { 
+          status: 'warning', 
+          msg: wa.state === 'connecting' ? 'Aguardando leitura do QR Code' : 'Instância desconectada' 
+        };
+      } else {
+        results.evolution = { status: 'error', msg: 'Servidor Evolution Offline' };
+      }
+    } catch {
+      results.evolution = { status: 'error', msg: 'Falha ao consultar Evolution API' };
+    }
 
     // 2. Check Asaas
     const asaasKey = process.env.ASAAS_API_KEY;

@@ -1,31 +1,187 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { Link as LinkIcon, Activity, AlertTriangle, CheckCircle2, RefreshCw, Globe } from 'lucide-react';
+import { 
+  Link as LinkIcon, Activity, AlertTriangle, CheckCircle2, RefreshCw, 
+  Globe, QrCode, Smartphone, Send, Power, ShieldCheck 
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SistemaApiPage() {
-  const [instance, setInstance] = useState('');
-  const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [instance, setInstance] = useState('agnaldo');
+  const [waState, setWaState] = useState<'open' | 'connecting' | 'close' | 'not_found' | 'loading'>('loading');
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
+  const [loadingQr, setLoadingQr] = useState(false);
+  const [numeroTeste, setNumeroTeste] = useState('');
+  const [mensagemTeste, setMensagemTeste] = useState(
+    '✨ *Studio Agnaldo Gomes* ✨\n\nOlá! Esta é uma mensagem de confirmação do sistema.\nA sua conexão com o WhatsApp está operando com 100% de sucesso! 🚀\n\n📲 *Status:* Conectado e ativo\n⏰ *Lembretes de agendamento:* Habilitados'
+  );
+  const [enviandoTeste, setEnviandoTeste] = useState(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Carregar configurações iniciais e status do WhatsApp
   useEffect(() => {
-    const carregarConfig = async () => {
-      try {
-        const res = await fetch('/api/admin/sistema/config');
-        if (res.ok) {
-          const data = await res.json();
-          setInstance(data.instance || '');
-        }
-      } catch (e) {
-        console.error('Erro ao carregar config da Evolution:', e);
-      }
-    };
     carregarConfig();
+    verificarStatusWhatsApp('agnaldo');
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, []);
+
+  const carregarConfig = async () => {
+    try {
+      const res = await fetch('/api/admin/sistema/config');
+      if (res.ok) {
+        const data = await res.json();
+        const inst = data.instance || 'agnaldo';
+        setInstance(inst);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar config:', e);
+    }
+  };
+
+  const verificarStatusWhatsApp = async (instName?: string) => {
+    const nomeInstancia = instName || instance || 'agnaldo';
+    try {
+      const res = await fetch(`/api/whatsapp/status?instanceName=${encodeURIComponent(nomeInstancia)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setWaState(data.state || 'close');
+        if (data.qrcodeBase64) {
+          setQrCode(data.qrcodeBase64);
+        } else if (data.state === 'open') {
+          setQrCode(null);
+        }
+
+        // Se estiver aguardando leitura do QR Code, ativa polling contínuo para detectar conexão automaticamente
+        if (data.state === 'connecting' && !pollingRef.current) {
+          pollingRef.current = setInterval(async () => {
+            const st = await fetch(`/api/whatsapp/status?instanceName=${encodeURIComponent(nomeInstancia)}`);
+            if (st.ok) {
+              const d = await st.json();
+              if (d.state === 'open') {
+                if (pollingRef.current) clearInterval(pollingRef.current);
+                pollingRef.current = null;
+                setWaState('open');
+                setQrCode(null);
+                toast.success('🎉 WhatsApp conectado com sucesso!');
+              } else if (d.qrcodeBase64) {
+                setQrCode(d.qrcodeBase64);
+              }
+            }
+          }, 3500);
+        }
+
+        return data.state;
+      }
+    } catch (e) {
+      console.error('Erro ao verificar status do WhatsApp:', e);
+      setWaState('close');
+    }
+    return 'close';
+  };
+
+  const iniciarConexaoWhatsApp = async () => {
+    setLoadingQr(true);
+    setQrCode(null);
+    try {
+      // 1. Tentar criar/iniciar a instância se necessário
+      const resCreate = await fetch('/api/whatsapp/instance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName: instance || 'agnaldo' })
+      });
+
+      const dataCreate = await resCreate.json();
+      
+      let base64Code = dataCreate?.qrcode?.base64;
+      if (base64Code) {
+        if (!base64Code.startsWith('data:image')) {
+          base64Code = `data:image/png;base64,${base64Code}`;
+        }
+        setQrCode(base64Code);
+        setWaState('connecting');
+      } else {
+        // Buscar via rota de status
+        await verificarStatusWhatsApp(instance);
+      }
+
+      toast.info('QR Code gerado! Aponte o WhatsApp do seu celular.');
+
+      // Iniciar polling a cada 3 segundos para detectar quando conectar
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      pollingRef.current = setInterval(async () => {
+        const estado = await verificarStatusWhatsApp(instance);
+        if (estado === 'open') {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setQrCode(null);
+          toast.success('🎉 WhatsApp conectado com sucesso!');
+        }
+      }, 3500);
+
+    } catch (err: any) {
+      toast.error(`Erro ao gerar QR Code: ${err.message}`);
+    } finally {
+      setLoadingQr(false);
+    }
+  };
+
+  const desconectarWhatsApp = async () => {
+    if (!confirm('Deseja realmente desconectar esta sessão do WhatsApp?')) return;
+    try {
+      const res = await fetch(`/api/whatsapp/instance?instanceName=${encodeURIComponent(instance || 'agnaldo')}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        setWaState('close');
+        setQrCode(null);
+        toast.success('Instância desconectada com sucesso.');
+      } else {
+        toast.error('Erro ao desconectar instância.');
+      }
+    } catch (e: any) {
+      toast.error(`Erro: ${e.message}`);
+    }
+  };
+
+  const enviarMensagemTeste = async () => {
+    if (!numeroTeste.trim()) {
+      toast.warning('Digite o número com DDD (ex: 42999999999)');
+      return;
+    }
+    setEnviandoTeste(true);
+    try {
+      const res = await fetch('/api/whatsapp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numero: numeroTeste.trim(),
+          texto: mensagemTeste.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Mensagem de teste enviada com sucesso!');
+      } else {
+        toast.error(data.error || 'Erro ao enviar mensagem.');
+      }
+    } catch (e: any) {
+      toast.error(`Falha no envio: ${e.message}`);
+    } finally {
+      setEnviandoTeste(false);
+    }
+  };
 
   const checkAllSystems = async () => {
     setCheckingHealth(true);
@@ -42,59 +198,208 @@ export default function SistemaApiPage() {
     }
   };
 
-  const testEvolutionConnection = async () => {
-    if (!instance) {
-      setEvoStatus('error');
-      return;
-    }
-
-    setEvoStatus('loading');
-    try {
-      const res = await fetch('/api/admin/sistema/evolution/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instance })
-      });
-
-      if (res.ok) {
-        setEvoStatus('success');
-      } else {
-        setEvoStatus('error');
-      }
-    } catch (err) {
-      setEvoStatus('error');
-    }
-  };
-
-  const saveConfig = async () => {
-    try {
-      const res = await fetch('/api/admin/sistema/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instance })
-      });
-      if (res.ok) {
-        alert('Configurações salvas com sucesso!');
-      } else {
-        alert('Erro ao salvar configurações.');
-      }
-    } catch (e) {
-      alert('Erro ao conectar com o servidor.');
-    }
-  };
-
   return (
     <div className="py-4 space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col">
         <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground flex items-center gap-2">
           <Globe className="text-gold" size={32} />
-          Sistema API
+          Sistema API & Conexões
         </h1>
         <p className="text-sm text-foreground/60 mt-1">
-          Centralização de conexões com serviços externos (WhatsApp, Mercado Pago, Melhor Envio, etc).
+          Gerenciamento e monitoramento da Evolution API (WhatsApp), gateways de pagamento e integrações.
         </p>
       </div>
 
+      {/* PAINEL DE CONEXÃO DO WHATSAPP COM QR CODE AO VIVO */}
+      <CardGlass className="p-6 border-l-4 border-l-gold shadow-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-[var(--border-subtle)] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+              <Smartphone size={28} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-xl text-foreground">Conexão WhatsApp (Evolution API)</h3>
+                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                  waState === 'open' 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                    : waState === 'connecting'
+                    ? 'bg-amber-500/20 text-foreground border border-amber-500/30'
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                }`}>
+                  {waState === 'open' ? '🟢 Conectado' : waState === 'connecting' ? '🟡 Aguardando QR Code' : '🔴 Desconectado'}
+                </span>
+              </div>
+              <p className="text-xs text-foreground/60 mt-0.5">
+                Servidor: <strong className="text-foreground">https://evolution-agnaldo.onrender.com</strong> • Instância: <strong className="text-gold">{instance}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => verificarStatusWhatsApp(instance)}
+              className="text-xs"
+            >
+              <RefreshCw size={13} className="mr-1.5" /> Atualizar Status
+            </Button>
+            {waState === 'open' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={desconectarWhatsApp}
+                className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+              >
+                <Power size={13} className="mr-1.5" /> Desconectar
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* CENÁRIO 1: WHATSAPP JÁ CONECTADO */}
+        {waState === 'open' && (
+          <div className="space-y-6 animate-in fade-in">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 size={32} className="text-emerald-400 shrink-0" />
+                <div>
+                  <h4 className="font-bold text-foreground text-sm">WhatsApp Vinculado e Ativo!</h4>
+                  <p className="text-xs text-foreground/70 mt-0.5">
+                    O sistema está pronto para enviar lembretes de agenda, aniversários e mensagens automáticas de marketing.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-400 px-3 py-1 bg-emerald-500/15 rounded-lg border border-emerald-500/30 whitespace-nowrap">
+                Instância: {instance}
+              </span>
+            </div>
+
+            {/* Teste de Disparo Rápido */}
+            <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-foreground/[0.02] space-y-4">
+              <div>
+                <h5 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <Send size={14} className="text-gold" /> Testar Envio de Mensagem
+                </h5>
+                <p className="text-xs text-foreground/60 mt-0.5">
+                  Envie uma mensagem de teste para verificar a tipografia, formatação e acentuação no WhatsApp.
+                </p>
+              </div>
+
+              <div className="space-y-3 max-w-xl">
+                <div>
+                  <label className="text-xs font-medium text-foreground/70 mb-1 block">
+                    Número de Destino (com DDD):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="DDD + Número (ex: 41999999999)"
+                    value={numeroTeste}
+                    onChange={e => setNumeroTeste(e.target.value)}
+                    className="w-full bg-background border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-foreground/70 mb-1 block">
+                    Mensagem de Teste (suporta emojis e *negrito*):
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={mensagemTeste}
+                    onChange={e => setMensagemTeste(e.target.value)}
+                    className="w-full bg-background border border-[var(--border-subtle)] rounded-lg p-3 text-sm text-foreground focus:outline-none focus:border-gold leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-foreground/50">
+                    Codificação: UTF-8 com suporte nativo a acentos e emojis.
+                  </span>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={enviarMensagemTeste}
+                    disabled={enviandoTeste}
+                  >
+                    {enviandoTeste ? 'Enviando...' : 'Enviar Teste'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CENÁRIO 2: DESCONECTADO OU AGUARDANDO LEITURA DO QR CODE */}
+        {waState !== 'open' && (
+          <div className="flex flex-col md:flex-row items-center gap-8 py-4 animate-in fade-in">
+            {/* Box do QR Code */}
+            <div className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-xl border border-gold/30 shrink-0">
+              {qrCode ? (
+                <div className="space-y-3 text-center">
+                  <img
+                    src={qrCode}
+                    alt="QR Code WhatsApp"
+                    className="w-64 h-64 object-contain rounded-lg shadow-sm"
+                  />
+                  <p className="text-black text-xs font-bold animate-pulse">
+                    Aguardando leitura pelo WhatsApp...
+                  </p>
+                </div>
+              ) : (
+                <div className="w-64 h-64 flex flex-col items-center justify-center text-center p-4 text-black/50 space-y-2">
+                  <QrCode size={56} className="text-gold opacity-60" />
+                  <p className="text-xs font-semibold text-black/70">
+                    Clique no botão ao lado para gerar o QR Code de conexão.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Instruções passo a passo */}
+            <div className="flex-1 space-y-4">
+              <div>
+                <h4 className="text-lg font-bold text-foreground">Como conectar o WhatsApp do Salão:</h4>
+                <p className="text-xs text-foreground/60 mt-1">
+                  Siga os 4 passos rápidos abaixo no aparelho celular:
+                </p>
+              </div>
+
+              <ol className="space-y-2.5 text-xs text-foreground/80 list-decimal list-inside leading-relaxed bg-foreground/[0.02] p-4 rounded-xl border border-[var(--border-subtle)]">
+                <li>Abra o aplicativo do <strong>WhatsApp</strong> no celular do salão.</li>
+                <li>Toque no menu de <strong>Configurações</strong> (ou três pontinhos no Android).</li>
+                <li>Toque em <strong>Aparelhos Conectados</strong> e depois em <strong>Conectar um Aparelho</strong>.</li>
+                <li>Aponte a câmera do celular para o <strong>QR Code</strong> exibido ao lado.</li>
+              </ol>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={iniciarConexaoWhatsApp}
+                  disabled={loadingQr}
+                  className="font-bold flex items-center gap-2 shadow-md shadow-gold/10"
+                >
+                  <QrCode size={18} />
+                  {loadingQr ? 'Gerando QR Code...' : qrCode ? 'Atualizar QR Code' : 'Conectar WhatsApp / Gerar QR Code'}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => verificarStatusWhatsApp(instance)}
+                  className="text-xs"
+                >
+                  <RefreshCw size={14} className="mr-1.5" /> Verificar Conexão
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardGlass>
+
+      {/* PAINEL DE SAÚDE DAS DEMAIS APIS */}
       <CardGlass className="p-6 border-l-4 border-l-primary">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -140,52 +445,6 @@ export default function SistemaApiPage() {
             Clique em "Sincronizar Status" para validar as conexões.
           </div>
         )}
-      </CardGlass>
-
-      <CardGlass className="p-6 border-l-4 border-l-primary">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 bg-gold/10 text-gold rounded-lg">
-            <LinkIcon size={24} />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-lg text-foreground">Conexão WhatsApp (Evolution API)</h3>
-            <p className="text-sm text-foreground/60">Configurações de segurança movidas para a Vercel. Defina apenas a instância.</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
-          <div className="flex-1 flex flex-col gap-1">
-            <label className="text-xs font-bold text-foreground/60 uppercase ml-1">Instância do WhatsApp</label>
-            <input
-              value={instance}
-              onChange={e => setInstance(e.target.value)}
-              placeholder="Ex: StudioAgnaldo"
-              className="bg-background border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={testEvolutionConnection} variant="outline" disabled={evoStatus === 'loading'}>
-              {evoStatus === 'loading' ? 'Testando...' : 'Testar Conexão'}
-            </Button>
-            <Button onClick={saveConfig} variant="primary">
-              Salvar Configuração
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 p-3 rounded-xl bg-foreground/5 border border-[var(--border-subtle)]">
-          <div className="flex-1 flex items-center gap-2 text-sm">
-            <Activity size={16} className="text-foreground/40" />
-            <span className="text-foreground/60">Status da conexão: </span>
-            {evoStatus === 'success' ? (
-              <span className="text-success font-bold flex items-center gap-1"><CheckCircle2 size={14} /> Ativa e Sincronizada</span>
-            ) : evoStatus === 'error' ? (
-              <span className="text-danger font-bold flex items-center gap-1"><AlertTriangle size={14} /> Offline ou Inválida</span>
-            ) : (
-              <span className="text-foreground/40 italic">Aguardando teste...</span>
-            )}
-          </div>
-        </div>
       </CardGlass>
     </div>
   );

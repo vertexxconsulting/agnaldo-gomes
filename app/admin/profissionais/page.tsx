@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, DollarSign, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Clock, User2, CheckCircle2, Calendar, ChevronDown, Lock } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+
 import { toast } from 'sonner';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
@@ -177,9 +177,9 @@ export default function ProfissionaisPage() {
       especialidades: especialidadesSelecionadas,
       ativo: true,
       jornada_semanal: jornada,
-      product_commission_pct: Number(form.get('product_commission_pct')) || 0,
+      product_commission_pct: editando?.product_commission_pct ?? 0,
       stock_pin: pinDigitado,
-      periodo_recebimento: periodoRecebimento,
+      periodo_recebimento: editando?.periodo_recebimento ?? periodoRecebimento,
     };
 
     let profissionalId: string;
@@ -299,7 +299,7 @@ export default function ProfissionaisPage() {
 
   return (
     <div className="py-4 w-full">
-      <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Comissão · Agenda" align="left" />
+      <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Agenda" align="left" />
 
         {/* Barra de ações */}
         <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
@@ -322,11 +322,7 @@ export default function ProfissionaisPage() {
             className="hidden sm:flex self-center"
           />
 
-          <Link href="/admin/comissoes">
-            <Button variant="outline" size="md" className="border-gold/40 text-gold hover:bg-gold/10">
-              <DollarSign size={18} className="mr-1.5" /> Regras de Comissão
-            </Button>
-          </Link>
+
 
           <Button variant="primary" size="md" onClick={() => abrirForm()}>
             <Plus size={18} className="mr-2" /> Novo Profissional
@@ -356,7 +352,7 @@ export default function ProfissionaisPage() {
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-6">
                   <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
@@ -404,14 +400,7 @@ export default function ProfissionaisPage() {
                     )}
                   </div>
                 </div>
-                <div className="sm:col-span-3">
-                  <label className="block text-xs text-foreground/60 mb-1">Comissão Prod. (%)</label>
-                  <div className="relative">
-                    <input name="product_commission_pct" type="number" min="0" max="100" step="0.5" defaultValue={editando?.product_commission_pct ?? 0} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 pr-8 text-foreground text-sm focus:outline-none focus:border-gold" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/50 font-bold text-xs">%</span>
-                  </div>
-                </div>
-                <div className="sm:col-span-4">
+                <div className="sm:col-span-6">
                   <label className="block text-xs text-foreground/60 mb-1 flex items-center gap-1">
                     <Lock size={12} className="text-gold" /> Senha / PIN Estoque *
                   </label>
@@ -426,45 +415,6 @@ export default function ProfissionaisPage() {
                     />
                   </div>
                   <p className="text-[10px] text-foreground/40 mt-1">Senha pessoal para dar entrada/baixa no estoque.</p>
-                </div>
-
-                {/* Período de Recebimento de Comissões */}
-                <div className="sm:col-span-12 p-3.5 rounded-xl border border-[var(--border-subtle)] bg-foreground/5 space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <label className="block text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gold" />
-                      Período de Recebimento de Comissões
-                    </label>
-                    <span className="text-[11px] text-foreground/50">Frequência com que o profissional prefere receber o fechamento</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                    {[
-                      { id: 'semanal', label: 'Semanal', desc: 'A cada 7 dias (Padrão)', icon: '🗓️' },
-                      { id: 'quinzenal', label: 'Quinzenal', desc: 'A cada 15 dias', icon: '🌓' },
-                      { id: 'mensal', label: 'Mensal', desc: 'A cada mês fechado', icon: '📅' },
-                    ].map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setPeriodoRecebimento(item.id as PeriodoRecebimentoComissao)}
-                        className={`p-2.5 rounded-lg border text-left transition-all ${
-                          periodoRecebimento === item.id
-                            ? 'bg-gold/15 border-gold text-foreground shadow-sm'
-                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold flex items-center gap-1.5">
-                            <span>{item.icon}</span> {item.label}
-                          </span>
-                          {periodoRecebimento === item.id && (
-                            <CheckCircle2 size={14} className="text-gold" />
-                          )}
-                        </div>
-                        <p className="text-[10px] text-foreground/50 mt-0.5">{item.desc}</p>
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="sm:col-span-7">
@@ -494,7 +444,7 @@ export default function ProfissionaisPage() {
                   </div>
                   <p className="text-[10px] text-foreground/40 mt-2">Você pode clicar para adicionar manualmente, ou selecionar os serviços abaixo para adicionar automaticamente.</p>
                 </div>
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-6">
                   <label className="block text-xs text-foreground/60 mb-1">Foto <span className="text-foreground/30">(opcional)</span></label>
                   <div className="flex items-center gap-3">
                     {fotoLocal && (
@@ -793,24 +743,12 @@ export default function ProfissionaisPage() {
                       </div>
                     )}
 
-                    {/* Stats e Comissões */}
+                    {/* Stats */}
                     <div className="flex flex-wrap gap-4 text-xs text-foreground/70 mt-2 font-medium">
                       <span className="flex items-center gap-1"><Calendar size={12} /> {stats.totalServicos} serviços</span>
                       <span className="flex items-center gap-1" title="Valor total de serviços executados"><CheckCircle2 size={12} className="text-emerald-700" /> R$ {stats.totalValor.toFixed(2)}</span>
-                      {prof.product_commission_pct !== undefined && prof.product_commission_pct > 0 && (
-                        <span className="flex items-center gap-1"><DollarSign size={12} className="text-amber-700" /> {prof.product_commission_pct}% em produtos</span>
-                      )}
                       <span className="flex items-center gap-1 text-gold-dim font-bold" title="PIN individual para autorizar entradas e baixas de estoque">
                         <Lock size={12} className="text-gold-dim" /> PIN Estoque: <span className="font-mono bg-gold/15 px-1.5 py-0.5 rounded text-gold-dim">{prof.stock_pin || '1234'}</span>
-                      </span>
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        prof.periodo_recebimento === 'quinzenal'
-                          ? 'bg-purple-100 text-purple-950 border-purple-300'
-                          : prof.periodo_recebimento === 'mensal'
-                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                            : 'bg-blue-100 text-blue-900 border-blue-300'
-                      }`}>
-                        {prof.periodo_recebimento === 'quinzenal' ? '🌓 Fechamento Quinzenal' : prof.periodo_recebimento === 'mensal' ? '📅 Fechamento Mensal' : '🗓️ Fechamento Semanal'}
                       </span>
                     </div>
 
