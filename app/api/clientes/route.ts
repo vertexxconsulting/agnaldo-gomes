@@ -146,3 +146,32 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const { id, telefone } = await req.json();
+    if (!id || !telefone) {
+      return NextResponse.json({ error: 'ID e Telefone são obrigatórios.' }, { status: 400 });
+    }
+
+    const { getSupabaseServiceClient } = await import('@/lib/supabase/server');
+    const supabase = await getSupabaseServiceClient();
+
+    const { data, error } = await supabase
+      .from('salon_customers')
+      .update({ phone: telefone })
+      .eq('id', id)
+      .select('id, name, phone')
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, cliente: data });
+  } catch (err: any) {
+    console.error('[api/clientes PATCH]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

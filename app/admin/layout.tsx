@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign, Wallet } from 'lucide-react';
+import { Command, LayoutDashboard, CalendarDays, Users, Heart, ShieldCheck, Scissors, UserCircle, TrendingUp, Megaphone, MessageCircle, GitMerge, BookOpen, Bot, Moon, Gift, Globe, Receipt, Package, DollarSign, Wallet } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminUserButton } from '@/components/AdminUserButton';
@@ -33,7 +33,7 @@ const links = [
   // Gestão & Ferramentas
   { href: '/admin/relatorios', label: 'Relatórios', icon: TrendingUp, id: 'relatorios' },
   { href: '/admin/fidelidade', label: 'Prog. Fidelidade', icon: Gift, adminOnly: true, id: 'fidelidade' },
-  { href: '/admin/marketing', label: 'Marketing & Mensagens', icon: Megaphone, id: 'marketing' },
+  { href: '/admin/marketing', label: 'Mensagens WhatsApp', icon: MessageCircle, id: 'marketing' },
   { href: '/admin/ia-assistente', label: 'IA Assistente', icon: Bot, adminOnly: true, id: 'ia-assistente' },
   { href: '/admin/api', label: 'Sistema API', icon: Globe, adminOnly: true, id: 'api' },
   { href: '/admin/sistema', label: 'Gestão do Sistema', icon: ShieldCheck, adminOnly: true, id: 'sistema' },

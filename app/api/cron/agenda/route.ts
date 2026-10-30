@@ -69,8 +69,8 @@ export async function GET(req: Request) {
     };
 
     const [vesperaRes, hojeRes] = await Promise.all([
-      supabase.from('salon_appointments').select(selectAg).eq('date', amanha).in('status', ['PENDING', 'CONFIRMED']),
-      supabase.from('salon_appointments').select(selectAg).eq('date', hoje).in('status', ['PENDING', 'CONFIRMED']),
+      supabase.from('salon_appointments').select(selectAg).eq('date', amanha).in('status', ['PENDING', 'CONFIRMED']).order('start_time', { ascending: true }),
+      supabase.from('salon_appointments').select(selectAg).eq('date', hoje).in('status', ['PENDING', 'CONFIRMED']).order('start_time', { ascending: true }),
     ]);
 
     if (vesperaRes.error) throw vesperaRes.error;
@@ -78,10 +78,16 @@ export async function GET(req: Request) {
 
     type ItemMsg = {
       id: string;
+      cliente_id?: string | null;
       tipo: 'confirmacao_vespera' | 'lembrete_hoje';
       chaveUnica: string;
       nome: string | null;
       telefone: string;
+      telefone_original?: string | null;
+      hora?: string;
+      data?: string;
+      servico?: string | null;
+      profissional?: string | null;
       mensagem: string;
       wa_link: string;
       ja_enviado_hoje: boolean;
@@ -90,7 +96,7 @@ export async function GET(req: Request) {
 
     const itens: ItemMsg[] = [];
 
-    // Véspera (Deduplica por cliente para não enviar 2 mensagens caso a cliente tenha mais de 1 agendamento amanhã)
+    // Véspera (Deduplica por cliente mantendo o primeiro agendamento ordenado por horário)
     if (!tipoFiltro || tipoFiltro === 'confirmacao_vespera') {
       const vesperaPorCliente = new Map<string, AgendamentoJoin>();
       for (const a of (vesperaRes.data ?? []) as unknown as AgendamentoJoin[]) {
@@ -100,8 +106,13 @@ export async function GET(req: Request) {
         }
       }
 
-      for (const a of Array.from(vesperaPorCliente.values())) {
-        const telefone = normalizarTelefone(a.cliente?.phone ?? '');
+      const listaVespera = Array.from(vesperaPorCliente.values()).sort((a, b) => 
+        (a.start_time ?? '').localeCompare(b.start_time ?? '')
+      );
+
+      for (const a of listaVespera) {
+        const telefoneOriginal = a.cliente?.phone ?? '';
+        const telefone = normalizarTelefone(telefoneOriginal);
         const chaveUnica = `confirmacao:${a.cliente?.id || a.id}`;
         const msg = await msgConfirmacaoVespera({
           nome: a.cliente?.name ?? '',
@@ -113,10 +124,16 @@ export async function GET(req: Request) {
 
         itens.push({
           id: a.id,
+          cliente_id: a.cliente?.id || null,
           tipo: 'confirmacao_vespera',
           chaveUnica,
           nome: a.cliente?.name ?? null,
           telefone,
+          telefone_original: telefoneOriginal || null,
+          hora: (a.start_time ?? '').slice(0, 5),
+          data: a.date,
+          servico: a.servico?.name ?? 'Atendimento',
+          profissional: a.profissional?.name ?? 'Equipe',
           mensagem: msg,
           wa_link: telefone ? waMeLink(telefone, msg) : '',
           ja_enviado_hoje: disparosHoje.has(chaveUnica),
@@ -125,7 +142,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // Mesmo dia (Deduplica por cliente)
+    // Mesmo dia (Deduplica por cliente mantendo o primeiro agendamento ordenado por horário)
     if (!tipoFiltro || tipoFiltro === 'lembrete_hoje') {
       const hojePorCliente = new Map<string, AgendamentoJoin>();
       for (const a of (hojeRes.data ?? []) as unknown as AgendamentoJoin[]) {
@@ -135,8 +152,13 @@ export async function GET(req: Request) {
         }
       }
 
-      for (const a of Array.from(hojePorCliente.values())) {
-        const telefone = normalizarTelefone(a.cliente?.phone ?? '');
+      const listaHoje = Array.from(hojePorCliente.values()).sort((a, b) => 
+        (a.start_time ?? '').localeCompare(b.start_time ?? '')
+      );
+
+      for (const a of listaHoje) {
+        const telefoneOriginal = a.cliente?.phone ?? '';
+        const telefone = normalizarTelefone(telefoneOriginal);
         const chaveUnica = `lembrete:${a.cliente?.id || a.id}`;
         const msg = await msgLembreteMesmoDia({
           nome: a.cliente?.name ?? '',
@@ -146,10 +168,16 @@ export async function GET(req: Request) {
 
         itens.push({
           id: a.id,
+          cliente_id: a.cliente?.id || null,
           tipo: 'lembrete_hoje',
           chaveUnica,
           nome: a.cliente?.name ?? null,
           telefone,
+          telefone_original: telefoneOriginal || null,
+          hora: (a.start_time ?? '').slice(0, 5),
+          data: a.date,
+          servico: a.servico?.name ?? 'Atendimento',
+          profissional: a.profissional?.name ?? 'Equipe',
           mensagem: msg,
           wa_link: telefone ? waMeLink(telefone, msg) : '',
           ja_enviado_hoje: disparosHoje.has(chaveUnica),

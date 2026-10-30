@@ -7,7 +7,7 @@ export const STUDIO_MODULES = [
   { id: 'equipe', label: 'Gestão de Equipe' },
   { id: 'estoque', label: 'Estoque' },
   { id: 'fidelidade', label: 'Fidelidade' },
-  { id: 'marketing', label: 'Marketing' },
+  { id: 'marketing', label: 'Mensagens WhatsApp' },
   { id: 'notas-fiscais', label: 'Notas Fiscais' },
   { id: 'pagamentos', label: 'Pagamentos' },
   { id: 'profissionais', label: 'Profissionais' },
