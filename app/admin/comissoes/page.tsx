@@ -7,8 +7,10 @@ import {
   Banknote, Smartphone, RefreshCw, Filter, SlidersHorizontal,
   CalendarDays, Calendar, ChevronLeft, ChevronRight, Info,
   Check, Copy, Printer, Sparkles, Share2, Search, ArrowRight,
-  Calculator, ShieldCheck, CheckCircle, ChevronDown, ChevronUp
+  Calculator, ShieldCheck, CheckCircle, ChevronDown, ChevronUp,
+  ShieldAlert
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
@@ -227,6 +229,8 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
 }
 
 export default function ComissoesPage() {
+  const router = useRouter();
+  const [acessoNegado, setAcessoNegado] = useState(false);
   // Controle de Permissão e Identificação do Usuário Logado
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
@@ -349,9 +353,7 @@ export default function ComissoesPage() {
       fetchComissoes(), fetchParcelasPendentes(), fetchTaxasPagamento(),
     ]);
 
-    // Verificar se o usuário logado é um profissional do salão restrito
-    let profRestrito: Profissional | null = null;
-    let restrito = false;
+    // Verificar se o usuário logado possui permissão administrativa
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -375,53 +377,25 @@ export default function ComissoesPage() {
           userMeta?.role === 'admin' ||
           userMeta?.isOwner === true;
 
-        if (!isFullAdmin) {
-          const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
-          const ativos = profs.filter((p: Profissional) => p.ativo);
-          const matchedProf = ativos.find((p: Profissional) =>
-            (profIdFromPerm && p.id === profIdFromPerm) ||
-            (p.user_id && p.user_id === user.id) ||
-            (p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
-            (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase()) ||
-            (profProfile?.full_name && p.nome.toLowerCase() === profProfile.full_name.toLowerCase())
-          );
-
-          if (matchedProf) {
-            profRestrito = matchedProf;
-            restrito = true;
-            setMeuProfissional(matchedProf);
-            setIsRestrictedProfissional(true);
-            setProfFiltro(matchedProf.id);
-            setProfFiltroFechamento(matchedProf.id);
-            setProfFiltroRecebiveis(matchedProf.id);
-          }
+        // Profissionais não têm permissão para acessar a aba de comissões
+        if (!isFullAdmin || effectiveRole === ROLES.STUDIO_PROFISSIONAL || effectiveRole === 'PROFESSIONAL' || effectiveRole === 'studio_profissional') {
+          setAcessoNegado(true);
+          setLoading(false);
+          return;
         }
       }
     } catch (authErr) {
       console.warn('Erro ao verificar perfil do usuário em comissões:', authErr);
     }
 
-    if (restrito && profRestrito) {
-      // Isolamento estrito de dados: o profissional enxerga UNICAMENTE seu faturamento e comissões
-      setTodosProfissionais([profRestrito]);
-      setProfissionais([profRestrito]);
-      setServicos(svcs.filter(s => s.ativo));
-      setRegras(rgs.filter(r => r.professional_id === profRestrito!.id));
-      setComissoes(coms.filter(c => c.professional_id === profRestrito!.id));
-      setParcelas(parcs.filter((p: any) => p.professional_id === profRestrito!.id) as any);
-      setTaxas(taxasData.taxas);
-      setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
-      setAba(prev => prev === 'taxas' ? 'fechamento' : prev);
-    } else {
-      setTodosProfissionais(profs);
-      setProfissionais(profs.filter(p => p.ativo));
-      setServicos(svcs.filter(s => s.ativo));
-      setRegras(rgs);
-      setComissoes(coms);
-      setParcelas(parcs as any);
-      setTaxas(taxasData.taxas);
-      setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
-    }
+    setTodosProfissionais(profs);
+    setProfissionais(profs.filter(p => p.ativo));
+    setServicos(svcs.filter(s => s.ativo));
+    setRegras(rgs);
+    setComissoes(coms);
+    setParcelas(parcs as any);
+    setTaxas(taxasData.taxas);
+    setDescontarTaxaComissao(taxasData.config.descontarTaxaComissao);
 
     if (taxasData.taxas.length > 0) {
       const defaultCard = taxasData.taxas.find(t => t.payment_type === 'credito' && t.active) || taxasData.taxas[0];
@@ -862,6 +836,29 @@ export default function ComissoesPage() {
     { id: 'regras', label: isRestrictedProfissional ? 'Minhas Comissões (% Serviço)' : 'Regras de Comissão', icon: DollarSign, badge: regras.length },
     ...(!isRestrictedProfissional ? [{ id: 'taxas', label: 'Taxas e Maquininhas', icon: Banknote, badge: taxas.filter(t => t.active).length }] : []),
   ];
+
+  if (acessoNegado) {
+    return (
+      <div className="py-16 max-w-lg mx-auto text-center space-y-5 px-4 animate-in fade-in">
+        <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto border border-red-500/20 shadow-md">
+          <ShieldAlert size={36} />
+        </div>
+        <h2 className="text-2xl font-serif font-bold text-foreground">Acesso Restrito</h2>
+        <p className="text-sm text-foreground/70 leading-relaxed">
+          A aba de <strong>Comissões</strong> é de uso exclusivo da gestão e administração do salão. Profissionais não possuem permissão para acessar esta área.
+        </p>
+        <div className="p-4 rounded-xl bg-gold/10 border border-gold/20 text-xs text-foreground/80 space-y-1">
+          <p className="font-semibold text-gold">Quer consultar seus ganhos e comissões?</p>
+          <p>Acesse a aba <strong>Meu Painel</strong> para conferir a prévia completa dos valores a receber, fechamento do seu período e recebíveis de cartão (D+30).</p>
+        </div>
+        <div className="pt-2">
+          <Button onClick={() => router.push('/admin/meu-painel')} variant="primary" className="font-bold">
+            Ir para Meu Painel
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-4 w-full">

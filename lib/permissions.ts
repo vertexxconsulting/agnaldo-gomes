@@ -71,17 +71,32 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
 
 /** Verifica se o usuário tem permissão para acessar o módulo (read ou write) */
 export function canAccess(permissions: UserPermissions | undefined, moduleId: AdminModuleId, fallbackRole?: string): boolean {
+  // Profissionais do estúdio NUNCA têm acesso à aba global de comissões
+  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') {
+    if (moduleId === 'comissoes') return false;
+  }
   if (fallbackRole === 'ADMIN' || fallbackRole === 'studio_admin') {
     // Para STUDIO_ADMIN, liberar só os do Studio? Por enquanto vamos manter o admin gerenciar tudo
     if (fallbackRole === 'studio_admin' && (moduleId.startsWith('loja_') || moduleId.startsWith('academy_'))) return false;
     if (fallbackRole === 'ADMIN') return true;
   }
-  if (!permissions) return DEFAULT_PERMISSIONS[moduleId] !== 'none';
+  if (!permissions) {
+    if ((fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') && moduleId === 'comissoes') {
+      return false;
+    }
+    return DEFAULT_PERMISSIONS[moduleId] !== 'none';
+  }
+  if ((fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') && moduleId === 'comissoes') {
+    return false;
+  }
   return permissions[moduleId] === 'read' || permissions[moduleId] === 'write';
 }
 
 /** Verifica se o usuário tem permissão para editar no módulo */
 export function canEdit(permissions: UserPermissions | undefined, moduleId: AdminModuleId, fallbackRole?: string): boolean {
+  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') {
+    if (moduleId === 'comissoes') return false;
+  }
   if (fallbackRole === 'ADMIN' || fallbackRole === 'studio_admin') {
     if (fallbackRole === 'studio_admin' && (moduleId.startsWith('loja_') || moduleId.startsWith('academy_'))) return false;
     if (fallbackRole === 'ADMIN') return true;

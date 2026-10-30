@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil
+  Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil,
+  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -21,10 +22,29 @@ import {
   salvarInsumoTempoRealProcedimento,
   removerInsumoTempoRealProcedimento,
   editarInsumoTempoRealProcedimento,
-  atualizarPeriodoRecebimentoProfissional
+  atualizarPeriodoRecebimentoProfissional,
+  fetchComissoes,
+  fetchParcelasPendentes
 } from '@/lib/supabase-queries';
-import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao } from '@/lib/gestao-types';
+import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
+
+const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+const fmtDate = (d: string) => {
+  if (!d) return '—';
+  const clean = d.includes('T') ? d.slice(0, 10) : d;
+  const [ano, mes, dia] = clean.split('-');
+  if (!ano || !mes || !dia) return d;
+  return `${dia}/${mes}/${ano}`;
+};
+
+const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: any; cor: string; badge: string }> = {
+  DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-500', badge: 'Imediato' },
+  PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-500', badge: 'Imediato' },
+  DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-500', badge: 'Imediato' },
+  CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-500', badge: 'D+30' },
+  BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-500', badge: 'D+3' },
+};
 
 export default function MeuPainelPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
@@ -55,6 +75,10 @@ export default function MeuPainelPage() {
   const [produtoDescPct, setProdutoDescPct] = useState('');
   const [produtoDescValor, setProdutoDescValor] = useState('');
   const [salvandoPeriodo, setSalvandoPeriodo] = useState(false);
+  const [minhasComissoes, setMinhasComissoes] = useState<Comissao[]>([]);
+  const [minhasParcelasPendentes, setMinhasParcelasPendentes] = useState<any[]>([]);
+  const [loadingComissoes, setLoadingComissoes] = useState(false);
+  const [filtroExtrato, setFiltroExtrato] = useState<'todos' | 'liberados' | 'carencia' | 'pagos'>('liberados');
 
   const handleAlterarMeuPeriodo = async (novoPeriodo: PeriodoRecebimentoComissao) => {
     if (!selectedProfId) return;
@@ -67,6 +91,29 @@ export default function MeuPainelPage() {
     }
     setSalvandoPeriodo(false);
   };
+
+  const carregarComissoesProf = async (profId: string) => {
+    if (!profId) return;
+    setLoadingComissoes(true);
+    try {
+      const [coms, parcs] = await Promise.all([
+        fetchComissoes(profId),
+        fetchParcelasPendentes(profId)
+      ]);
+      setMinhasComissoes(coms || []);
+      setMinhasParcelasPendentes(parcs || []);
+    } catch (err) {
+      console.error('Erro ao carregar comissões do profissional:', err);
+    } finally {
+      setLoadingComissoes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProfId) {
+      carregarComissoesProf(selectedProfId);
+    }
+  }, [selectedProfId]);
 
   useEffect(() => {
     async function loadData() {
@@ -98,6 +145,7 @@ export default function MeuPainelPage() {
         );
         const targetId = matched ? matched.id : profs[0].id;
         setSelectedProfId(prev => prev || targetId);
+        carregarComissoesProf(targetId);
       }
       setProdutosLoja(prods || []);
       setLoading(false);
@@ -106,6 +154,147 @@ export default function MeuPainelPage() {
   }, []);
 
   const hoje = new Date().toISOString().split('T')[0];
+
+  const extratoComissoes = useMemo(() => {
+    const list: {
+      id: string;
+      data: string;
+      cliente: string;
+      servico: string;
+      valorServico: number;
+      comissaoPct: number;
+      valorComissao: number;
+      formaPagamento: FormaPagamento;
+      dueDate: string;
+      status: 'LIBERADO' | 'CARENCIA_D30' | 'PAGO';
+      labelStatus: string;
+      badgeCor: string;
+      diasRestantes?: number;
+    }[] = [];
+
+    minhasComissoes.forEach(c => {
+      const cliNome = (c as any).client_name || getClienteNome((c as any).client_id) || 'Cliente';
+      const srvNome = (c as any).service_name || getServicoNome((c as any).service_id) || 'Serviço';
+      const dataCriacao = c.created_at ? c.created_at.split('T')[0] : hoje;
+
+      if (c.parcelas && c.parcelas.length > 0) {
+        c.parcelas.forEach(p => {
+          let statusItem: 'LIBERADO' | 'CARENCIA_D30' | 'PAGO' = 'LIBERADO';
+          let label = 'Liberado no Período';
+          let cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+          let diasRestantes: number | undefined;
+
+          if (p.status === 'PAID') {
+            statusItem = 'PAGO';
+            label = 'Pago / Quitado';
+            cor = 'text-foreground/60 bg-foreground/5 border-foreground/20';
+          } else if (c.payment_method === 'CREDITO') {
+            if (p.due_date <= hoje) {
+              statusItem = 'LIBERADO';
+              label = 'Liberado (D+30 Cumprido)';
+              cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+            } else {
+              statusItem = 'CARENCIA_D30';
+              const diffMs = new Date(p.due_date + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime();
+              diasRestantes = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+              label = `Carência (${diasRestantes}d · ${fmtDate(p.due_date)})`;
+              cor = 'text-amber-500 bg-amber-500/10 border-amber-500/30';
+            }
+          }
+
+          list.push({
+            id: `${c.id}-p${p.installment_number}`,
+            data: dataCriacao,
+            cliente: cliNome,
+            servico: `${srvNome} (Parc. ${p.installment_number}/${c.installments || 1})`,
+            valorServico: c.total_amount,
+            comissaoPct: c.commission_pct,
+            valorComissao: p.amount,
+            formaPagamento: c.payment_method,
+            dueDate: p.due_date,
+            status: statusItem,
+            labelStatus: label,
+            badgeCor: cor,
+            diasRestantes,
+          });
+        });
+      } else {
+        let statusItem: 'LIBERADO' | 'CARENCIA_D30' | 'PAGO' = 'LIBERADO';
+        let label = 'Liberado no Período';
+        let cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+        let diasRestantes: number | undefined;
+        let dueDate = dataCriacao;
+
+        if (c.status === 'PAID') {
+          statusItem = 'PAGO';
+          label = 'Pago / Quitado';
+          cor = 'text-foreground/60 bg-foreground/5 border-foreground/20';
+        } else if (c.payment_method === 'CREDITO') {
+          const d = new Date(dataCriacao + 'T12:00:00');
+          d.setDate(d.getDate() + 30);
+          dueDate = d.toISOString().split('T')[0];
+          if (dueDate <= hoje) {
+            statusItem = 'LIBERADO';
+            label = 'Liberado (D+30 Cumprido)';
+            cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+          } else {
+            statusItem = 'CARENCIA_D30';
+            const diffMs = new Date(dueDate + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime();
+            diasRestantes = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+            label = `Carência (${diasRestantes}d · ${fmtDate(dueDate)})`;
+            cor = 'text-amber-500 bg-amber-500/10 border-amber-500/30';
+          }
+        }
+
+        list.push({
+          id: c.id,
+          data: dataCriacao,
+          cliente: cliNome,
+          servico: srvNome,
+          valorServico: c.total_amount,
+          comissaoPct: c.commission_pct,
+          valorComissao: c.total_commission,
+          formaPagamento: c.payment_method,
+          dueDate,
+          status: statusItem,
+          labelStatus: label,
+          badgeCor: cor,
+          diasRestantes,
+        });
+      }
+    });
+
+    return list.sort((a, b) => b.data.localeCompare(a.data));
+  }, [minhasComissoes, hoje, clientes, servicos]);
+
+  const totalLiberado = useMemo(() => {
+    return extratoComissoes
+      .filter(item => item.status === 'LIBERADO')
+      .reduce((acc, item) => acc + item.valorComissao, 0);
+  }, [extratoComissoes]);
+
+  const totalCarenciaD30 = useMemo(() => {
+    return extratoComissoes
+      .filter(item => item.status === 'CARENCIA_D30')
+      .reduce((acc, item) => acc + item.valorComissao, 0);
+  }, [extratoComissoes]);
+
+  const totalAReceber = useMemo(() => {
+    return totalLiberado + totalCarenciaD30;
+  }, [totalLiberado, totalCarenciaD30]);
+
+  const totalPago = useMemo(() => {
+    return extratoComissoes
+      .filter(item => item.status === 'PAGO')
+      .reduce((acc, item) => acc + item.valorComissao, 0);
+  }, [extratoComissoes]);
+
+  const itensFiltrados = useMemo(() => {
+    if (filtroExtrato === 'liberados') return extratoComissoes.filter(i => i.status === 'LIBERADO');
+    if (filtroExtrato === 'carencia') return extratoComissoes.filter(i => i.status === 'CARENCIA_D30');
+    if (filtroExtrato === 'pagos') return extratoComissoes.filter(i => i.status === 'PAGO');
+    return extratoComissoes;
+  }, [extratoComissoes, filtroExtrato]);
 
   const meusAgendamentosHoje = useMemo(() => {
     if (!selectedProfId) return [];
@@ -501,7 +690,7 @@ export default function MeuPainelPage() {
             <DollarSign className="text-gold" />
             Minhas Comissões & Fechamento
           </h2>
-          <CardGlass className="p-6 space-y-4">
+          <CardGlass className="p-6 space-y-5 shadow-sm">
             {/* Cabeçalho do Período */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
               <div>
@@ -514,12 +703,12 @@ export default function MeuPainelPage() {
                 const profAtivo = profissionais.find(p => p.id === selectedProfId);
                 const periodo = profAtivo?.periodo_recebimento || 'semanal';
                 return (
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 border ${
                     periodo === 'quinzenal'
-                      ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                      ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
                       : periodo === 'mensal'
-                        ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                        : 'bg-blue-100 text-blue-900 border border-blue-300'
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
                   }`}>
                     {periodo === 'quinzenal' ? '🌓 Quinzenal (15 dias)' : periodo === 'mensal' ? '📅 Mensal (Mês)' : '🗓️ Semanal (7 dias)'}
                   </span>
@@ -544,7 +733,7 @@ export default function MeuPainelPage() {
                       type="button"
                       disabled={salvandoPeriodo}
                       onClick={() => handleAlterarMeuPeriodo(item.id as PeriodoRecebimentoComissao)}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-gold/15 border-gold text-foreground shadow-sm ring-1 ring-gold/40'
                           : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/30 hover:bg-foreground/[0.05]'
@@ -563,28 +752,196 @@ export default function MeuPainelPage() {
               </div>
             </div>
 
-            <p className="text-xs text-foreground/60 pt-2 border-t border-[var(--border-subtle)]">
-              Consulte seus recebíveis, comissões liberadas no período e valores em carência de cartão de crédito (D+30).
-            </p>
+            {/* PRÉVIA DOS VALORES A RECEBER (CARDS DE RESUMO) */}
+            <div className="pt-2 border-t border-[var(--border-subtle)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <Sparkles size={16} className="text-gold" />
+                    Prévia dos Valores a Receber
+                  </h3>
+                  <p className="text-xs text-foreground/60">
+                    Valores apurados em tempo real das suas comissões e recebíveis do Studio.
+                  </p>
+                </div>
+                {loadingComissoes && (
+                  <span className="text-xs text-gold flex items-center gap-1 animate-pulse">
+                    <RefreshCw size={12} className="animate-spin" /> Atualizando...
+                  </span>
+                )}
+              </div>
 
-            <div className="flex flex-wrap gap-2 pt-1">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* 1. Liberado no Período */}
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
+                    <span>Liberado p/ Fechamento</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  </div>
+                  <div className="my-2">
+                    <span className="text-xl font-bold font-mono text-emerald-400 tracking-tight">
+                      {fmt(totalLiberado)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-foreground/50">
+                    {extratoComissoes.filter(i => i.status === 'LIBERADO').length} item(ns) liberados
+                  </span>
+                </div>
+
+                {/* 2. Em Carência D+30 */}
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-400">
+                    <span>Carência Cartão (D+30)</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  </div>
+                  <div className="my-2">
+                    <span className="text-xl font-bold font-mono text-amber-400 tracking-tight">
+                      {fmt(totalCarenciaD30)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-foreground/50">
+                    {extratoComissoes.filter(i => i.status === 'CARENCIA_D30').length} parcela(s) futuras
+                  </span>
+                </div>
+
+                {/* 3. Total a Receber */}
+                <div className="p-3.5 rounded-xl bg-gold/10 border border-gold/30 shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-gold">
+                    <span>Total a Receber</span>
+                    <DollarSign size={14} className="text-gold" />
+                  </div>
+                  <div className="my-2">
+                    <span className="text-xl font-bold font-mono text-foreground tracking-tight">
+                      {fmt(totalAReceber)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-foreground/50">
+                    Liberados + futuros de cartão
+                  </span>
+                </div>
+
+                {/* 4. Histórico Quitado */}
+                <div className="p-3.5 rounded-xl bg-foreground/[0.03] border border-[var(--border-subtle)] shadow-xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-foreground/60">
+                    <span>Já Pago (Histórico)</span>
+                    <CheckCircle2 size={13} className="text-foreground/40" />
+                  </div>
+                  <div className="my-2">
+                    <span className="text-xl font-bold font-mono text-foreground/70 tracking-tight">
+                      {fmt(totalPago)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-foreground/50">
+                    {extratoComissoes.filter(i => i.status === 'PAGO').length} pagamento(s) quitados
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* AÇÕES DE FILTRO RÁPIDO DO EXTRATO (SEM NAVEGAR PARA FORA) */}
+            <div className="pt-2 flex flex-wrap items-center gap-2">
               {(() => {
                 const profAtivo = profissionais.find(p => p.id === selectedProfId);
                 const periodo = profAtivo?.periodo_recebimento || 'semanal';
                 const labelFechamento = periodo === 'quinzenal' ? 'Fechamento Quinzenal' : periodo === 'mensal' ? 'Fechamento Mensal' : 'Fechamento Semanal';
                 return (
-                  <Link href={`/admin/comissoes?aba=fechamento&prof=${selectedProfId}&periodo=${periodo}`} className="flex-1">
-                    <Button variant="secondary" className="w-full text-xs">
-                      <CalendarDays size={15} /> {labelFechamento}
-                    </Button>
-                  </Link>
+                  <Button 
+                    type="button"
+                    variant={filtroExtrato === 'liberados' ? 'primary' : 'secondary'} 
+                    className="flex-1 text-xs font-bold"
+                    onClick={() => setFiltroExtrato('liberados')}
+                  >
+                    <CalendarDays size={15} />
+                    <span>{labelFechamento} ({fmt(totalLiberado)})</span>
+                  </Button>
                 );
               })()}
-              <Link href={`/admin/comissoes?aba=recebiveis&prof=${selectedProfId}`} className="flex-1">
-                <Button variant="primary" className="w-full text-xs">
-                  <DollarSign size={15} /> Consultar Recebíveis (D+30)
-                </Button>
-              </Link>
+              <Button 
+                type="button"
+                variant={filtroExtrato === 'carencia' ? 'primary' : 'outline'} 
+                className="flex-1 text-xs font-bold border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                onClick={() => setFiltroExtrato('carencia')}
+              >
+                <CreditCard size={15} />
+                <span>Consultar Recebíveis (D+30: {fmt(totalCarenciaD30)})</span>
+              </Button>
+              <Button 
+                type="button"
+                variant={filtroExtrato === 'todos' ? 'primary' : 'outline'} 
+                className="text-xs"
+                onClick={() => setFiltroExtrato('todos')}
+              >
+                Todos ({extratoComissoes.length})
+              </Button>
+            </div>
+
+            {/* EXTRATO DISCRIMINADO DA PRÉVIA */}
+            <div className="pt-3 border-t border-[var(--border-subtle)] space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  Extrato Discriminado · {
+                    filtroExtrato === 'liberados' ? 'Liberados para Fechamento' :
+                    filtroExtrato === 'carencia' ? 'Em Carência de Cartão (D+30)' :
+                    filtroExtrato === 'pagos' ? 'Histórico Quitado' : 'Todas as Comissões'
+                  }
+                </p>
+                <span className="text-[11px] text-foreground/50">
+                  {itensFiltrados.length} registro(s)
+                </span>
+              </div>
+
+              {itensFiltrados.length === 0 ? (
+                <div className="p-8 text-center rounded-xl bg-foreground/[0.02] border border-dashed border-[var(--border-subtle)]">
+                  <p className="text-xs text-foreground/50 font-medium">
+                    Nenhuma comissão encontrada para este filtro no momento.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                  {itensFiltrados.map((item) => {
+                    const cfgPgto = PAGAMENTO_CONFIG[item.formaPagamento] || PAGAMENTO_CONFIG.DINHEIRO;
+                    const IconPgto = cfgPgto.icon;
+                    return (
+                      <div 
+                        key={item.id}
+                        className="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--background)] hover:border-gold/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-foreground truncate">{item.cliente}</span>
+                            <span className="text-[10px] font-mono text-foreground/50">· {fmtDate(item.data)}</span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${item.badgeCor}`}>
+                              {item.labelStatus}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-foreground/70 truncate mt-0.5">{item.servico}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-foreground/50 flex-wrap">
+                            <span className="flex items-center gap-1 font-medium">
+                              <IconPgto size={12} className={cfgPgto.cor} />
+                              {cfgPgto.label} ({cfgPgto.badge})
+                            </span>
+                            <span>•</span>
+                            <span>Serviço: {fmt(item.valorServico)} ({item.comissaoPct}%)</span>
+                            {item.status === 'CARENCIA_D30' && item.diasRestantes && (
+                              <>
+                                <span>•</span>
+                                <span className="text-amber-500 font-medium">Liberação prevista: {fmtDate(item.dueDate)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-left sm:text-right shrink-0">
+                          <p className="text-[10px] uppercase font-bold text-foreground/50">Sua Comissão</p>
+                          <p className="text-base font-bold font-mono text-gold tracking-tight">
+                            {fmt(item.valorComissao)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </CardGlass>
         </div>

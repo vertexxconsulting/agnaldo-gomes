@@ -67,7 +67,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           router.replace('/');
           return;
         }
-        if (role === ROLES.STUDIO_PROFISSIONAL && (pathname === '/admin' || pathname === '/admin/')) {
+        const isProfissional = role === ROLES.STUDIO_PROFISSIONAL || (role as any) === 'PROFESSIONAL';
+        if (isProfissional && (pathname === '/admin' || pathname === '/admin/')) {
+          router.replace('/admin/meu-painel');
+          return;
+        }
+        if (isProfissional && pathname.startsWith('/admin/comissoes')) {
           router.replace('/admin/meu-painel');
           return;
         }
@@ -109,9 +114,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 
   const filteredLinks = links.filter(link => {
-    // Para profissionais do salão, ocultar painel geral da recepção (dashboard) e focar em 'Meu Painel'
-    if (userRole === 'studio_profissional') {
+    const isProfissional = userRole === ROLES.STUDIO_PROFISSIONAL || (userRole as any) === 'PROFESSIONAL';
+    // Para profissionais do salão, ocultar painel geral da recepção (dashboard) e aba de comissões
+    if (isProfissional) {
       if (link.id === 'dashboard') return false;
+      if (link.id === 'comissoes') return false;
       if (link.id === 'meu-painel') return true;
     }
 
