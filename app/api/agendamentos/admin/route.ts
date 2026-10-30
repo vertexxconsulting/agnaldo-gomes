@@ -9,15 +9,25 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const data = searchParams.get('data');
     const profissional_id = searchParams.get('profissional_id');
+    const cliente_id = searchParams.get('cliente_id');
+    const futuros_de = searchParams.get('futuros_de');
 
     let query = auth.supabase!
       .from('salon_appointments')
-      .select('*')
-      .order('date', { ascending: false })
-      .order('start_time');
+      .select('*');
+
+    if (futuros_de) {
+      query = query.order('date', { ascending: true }).order('start_time');
+    } else {
+      query = query.order('date', { ascending: false }).order('start_time');
+    }
 
     if (data) query = query.eq('date', data);
     if (profissional_id) query = query.eq('professional_id', profissional_id);
+    if (cliente_id) query = query.eq('customer_id', cliente_id);
+    if (futuros_de) {
+      query = query.gt('date', futuros_de).not('status', 'in', '("CANCELLED","COMPLETED")');
+    }
 
     const { data: agendamentos, error } = await query;
     if (error) {
@@ -566,5 +576,151 @@ export async function PUT(req: Request) {
     console.error('[api/agendamentos/admin] Erro no PUT:', err);
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  const auth = await requireStudioAuth();
+  if (auth.error) return auth.error;
+
+  try {
+    const url = new URL(req.url);
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      // fallback caso corpo seja vazio
+    }
+
+    const id = body.id || url.searchParams.get('id');
+    const modo = body.modo || url.searchParams.get('modo') || 'apenas_dia';
+    const excluirAtual = Boolean(body.excluir_atual);
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do agendamento é obrigatório' }, { status: 400 });
+    }
+
+    // 1. Obter os dados do agendamento atual
+    const { data: appt, error: errAppt } = await auth.supabase!
+      .from('salon_appointments')
+      .select('id, customer_id, date, status, professional_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (errAppt || !appt) {
+      return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 });
+    }
+
+    const agora = new Date().toISOString();
+    let cancelados = 0;
+    let excluidos = 0;
+    const idsParaBolten: string[] = [];
+
+    // Buscar agendamentos futuros do mesmo cliente se o modo afetar futuros
+    let futureAppts: Array<{ id: string; date: string }> = [];
+    if (appt.customer_id && appt.date && (modo === 'cancelar_futuros' || modo === 'excluir_futuros' || modo === 'excluir_tudo')) {
+      const { data: futs } = await auth.supabase!
+        .from('salon_appointments')
+        .select('id, date, status')
+        .eq('customer_id', appt.customer_id)
+        .gt('date', appt.date)
+        .not('status', 'in', '("COMPLETED")');
+
+      futureAppts = futs || [];
+    }
+
+    const futureIds = futureAppts.map(f => f.id);
+
+    if (modo === 'apenas_dia') {
+      if (excluirAtual) {
+        const { error: errDel } = await auth.supabase!
+          .from('salon_appointments')
+          .delete()
+          .eq('id', id);
+        if (errDel) throw errDel;
+        excluidos++;
+      } else {
+        const { error: errUp } = await auth.supabase!
+          .from('salon_appointments')
+          .update({ status: 'CANCELLED', cancelado_em: agora })
+          .eq('id', id);
+        if (errUp) throw errUp;
+        cancelados++;
+        idsParaBolten.push(id);
+      }
+    } else if (modo === 'cancelar_futuros') {
+      // 1. Atualizar agendamento atual
+      if (excluirAtual) {
+        await auth.supabase!.from('salon_appointments').delete().eq('id', id);
+        excluidos++;
+      } else {
+        await auth.supabase!.from('salon_appointments').update({ status: 'CANCELLED', cancelado_em: agora }).eq('id', id);
+        cancelados++;
+        idsParaBolten.push(id);
+      }
+
+      // 2. Cancelar agendamentos futuros
+      if (futureIds.length > 0) {
+        const { error: errFut } = await auth.supabase!
+          .from('salon_appointments')
+          .update({ status: 'CANCELLED', cancelado_em: agora })
+          .in('id', futureIds);
+        if (errFut) throw errFut;
+        cancelados += futureIds.length;
+        idsParaBolten.push(...futureIds);
+      }
+    } else if (modo === 'excluir_futuros') {
+      // 1. Atualizar agendamento atual (marcar como cancelado ou excluir)
+      if (excluirAtual) {
+        await auth.supabase!.from('salon_appointments').delete().eq('id', id);
+        excluidos++;
+      } else {
+        await auth.supabase!.from('salon_appointments').update({ status: 'CANCELLED', cancelado_em: agora }).eq('id', id);
+        cancelados++;
+        idsParaBolten.push(id);
+      }
+
+      // 2. Excluir da grade todos os agendamentos futuros
+      if (futureIds.length > 0) {
+        const { error: errDelFut } = await auth.supabase!
+          .from('salon_appointments')
+          .delete()
+          .in('id', futureIds);
+        if (errDelFut) throw errDelFut;
+        excluidos += futureIds.length;
+      }
+    } else if (modo === 'excluir_tudo') {
+      const allIds = [id, ...futureIds];
+      const { error: errDelAll } = await auth.supabase!
+        .from('salon_appointments')
+        .delete()
+        .in('id', allIds);
+      if (errDelAll) throw errDelAll;
+      excluidos += allIds.length;
+    }
+
+    // Sincronizar status cancelado com Bolten em background
+    if (idsParaBolten.length > 0) {
+      Promise.all(idsParaBolten.map(async (bId) => {
+        try {
+          await fetch(`${url.origin}/api/bolten/sync-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agendamentoId: bId, status: 'cancelado' }),
+          });
+        } catch {}
+      })).catch(() => {});
+    }
+
+    return NextResponse.json({
+      success: true,
+      modo,
+      cancelados,
+      excluidos,
+      future_count: futureIds.length,
+    });
+  } catch (err: any) {
+    console.error('[api/agendamentos/admin DELETE] Erro:', err);
+    return NextResponse.json({ error: err.message || 'Erro ao processar cancelamento/exclusão' }, { status: 500 });
   }
 }

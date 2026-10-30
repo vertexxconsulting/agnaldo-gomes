@@ -15,7 +15,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao, ProcedimentoComanda, ComandaMultiProfissional } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell, RefreshCw } from 'lucide-react';
+import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell, RefreshCw, Scissors } from 'lucide-react';
 import { toast } from 'sonner';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { supabase } from '@/lib/supabase';
@@ -301,6 +301,13 @@ function AgendaContent() {
   const [showForm, setShowForm] = useState(false);
   const [disparandoLembretes, setDisparandoLembretes] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
+
+  // Cancelamento com escopo (dia atual vs futuros / exclusao de futuros)
+  const [apptParaCancelar, setApptParaCancelar] = useState<Agendamento | null>(null);
+  const [futurosCliente, setFuturosCliente] = useState<{ loading: boolean; lista: any[] }>({ loading: false, lista: [] });
+  const [modoCancelamento, setModoCancelamento] = useState<'apenas_dia' | 'cancelar_futuros' | 'excluir_futuros'>('apenas_dia');
+  const [excluirDiaAtual, setExcluirDiaAtual] = useState(false);
+  const [processandoCancelamento, setProcessandoCancelamento] = useState(false);
   const [editingApptId, setEditingApptId] = useState<string | null>(null);
 
   const calcularDuracaoTotal = (servicoId: string, subServicos: any[]): number => {
@@ -821,6 +828,98 @@ function AgendaContent() {
       setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     }
   }
+
+  const abrirModalCancelar = async (appt: Agendamento) => {
+    setApptParaCancelar(appt);
+    setModoCancelamento('apenas_dia');
+    setExcluirDiaAtual(false);
+    setFuturosCliente({ loading: true, lista: [] });
+
+    try {
+      const res = await fetch(`/api/agendamentos/admin?cliente_id=${appt.cliente_id}&futuros_de=${appt.data}`);
+      if (res.ok) {
+        const dados = await res.json();
+        const lista = Array.isArray(dados) ? dados : [];
+        setFuturosCliente({ loading: false, lista });
+        // Se a cliente possui agendamentos futuros e for recorrente/fixo, sugerir por padrão exclusão de futuros
+        if (lista.length > 0 && appt.is_fixed) {
+          setModoCancelamento('excluir_futuros');
+        }
+      } else {
+        setFuturosCliente({ loading: false, lista: [] });
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar agendamentos futuros da cliente:', err);
+      setFuturosCliente({ loading: false, lista: [] });
+    }
+  };
+
+  const handleConfirmarCancelamento = async () => {
+    if (!apptParaCancelar) return;
+    setProcessandoCancelamento(true);
+
+    try {
+      const res = await fetch('/api/agendamentos/admin', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: apptParaCancelar.id,
+          modo: modoCancelamento,
+          excluir_atual: excluirDiaAtual,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao processar cancelamento.');
+      }
+
+      // Atualizar o estado local imediatamente
+      if (modoCancelamento === 'apenas_dia') {
+        if (excluirDiaAtual) {
+          setAgendamentos(prev => prev.filter(a => a.id !== apptParaCancelar.id));
+          toast.success('Atendimento excluído da agenda com sucesso!');
+        } else {
+          setAgendamentos(prev => prev.map(a => a.id === apptParaCancelar.id ? { ...a, status: 'cancelado' } : a));
+          toast.success('Atendimento marcado como cancelado!');
+        }
+      } else if (modoCancelamento === 'cancelar_futuros') {
+        setAgendamentos(prev => prev.map(a => {
+          if (a.id === apptParaCancelar.id) {
+            return excluirDiaAtual ? null : { ...a, status: 'cancelado' };
+          }
+          if (a.cliente_id === apptParaCancelar.cliente_id && a.data > apptParaCancelar.data && a.status !== 'concluido') {
+            return { ...a, status: 'cancelado' };
+          }
+          return a;
+        }).filter(Boolean) as Agendamento[]);
+
+        const total = (data.cancelados || 1);
+        toast.success(`Atendimento do dia e ${total - 1} agendamento(s) futuro(s) foram cancelados!`);
+      } else if (modoCancelamento === 'excluir_futuros') {
+        setAgendamentos(prev => prev.filter(a => {
+          if (a.id === apptParaCancelar.id) {
+            return !excluirDiaAtual;
+          }
+          if (a.cliente_id === apptParaCancelar.cliente_id && a.data > apptParaCancelar.data && a.status !== 'concluido') {
+            return false;
+          }
+          return true;
+        }).map(a => a.id === apptParaCancelar.id ? { ...a, status: 'cancelado' } : a));
+
+        const excluidos = data.excluidos || 0;
+        toast.success(`Atendimento do dia cancelado e ${excluidos} agendamento(s) futuro(s) excluídos da agenda!`);
+      }
+
+      setApptParaCancelar(null);
+      fetchAgendamentos().then(setAgendamentos).catch(() => {});
+    } catch (err: any) {
+      console.error('Erro ao cancelar agendamento:', err);
+      toast.error(err.message || 'Falha ao cancelar agendamento.');
+    } finally {
+      setProcessandoCancelamento(false);
+    }
+  };
 
   const abrirLancarInsumoTempoReal = async (appt: Agendamento) => {
     setLiveInsumoAppt(appt);
@@ -2447,15 +2546,260 @@ function AgendaContent() {
 
               {selectedAppt.status !== 'concluido' && selectedAppt.status !== 'cancelado' && selectedAppt.status !== 'no_show' && (
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <Button variant="outline" className="text-red-400 border-red-500/20 hover:bg-red-500/10" onClick={() => { mudarStatus(selectedAppt.id, 'cancelado'); setSelectedAppt(null); }}>
-                    Cancelar
+                  <Button
+                    variant="outline"
+                    className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      const appt = selectedAppt;
+                      setSelectedAppt(null);
+                      abrirModalCancelar(appt);
+                    }}
+                  >
+                    <Trash2 size={14} /> Cancelar
                   </Button>
                   <Button variant="outline" className="text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
                     Faltou
                   </Button>
                 </div>
               )}
+
+              {selectedAppt.status === 'cancelado' && (
+                <Button
+                  variant="outline"
+                  className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5 mt-1 text-xs"
+                  onClick={() => {
+                    const appt = selectedAppt;
+                    setSelectedAppt(null);
+                    abrirModalCancelar(appt);
+                  }}
+                >
+                  <Trash2 size={13} /> Opções de Cancelamento / Exclusão
+                </Button>
+              )}
             </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* Modal de Cancelamento de Agendamento (com opção para atendimentos futuros) */}
+      {apptParaCancelar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-lg p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto border border-red-500/20 shadow-2xl">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Cancelar Agendamento</h3>
+                  <p className="text-xs text-foreground/60">Selecione o escopo do cancelamento para a cliente</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApptParaCancelar(null)}
+                className="text-foreground/40 hover:text-foreground p-1 rounded-lg hover:bg-foreground/5 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Resumo do Atendimento */}
+            {(() => {
+              const cli = clientes.find(c => c.id === apptParaCancelar.cliente_id);
+              const serv = servicos.find(s => s.id === apptParaCancelar.servico_id);
+              const prof = profissionais.find(p => p.id === apptParaCancelar.profissional_id);
+              const dataFmt = apptParaCancelar.data.split('-').reverse().join('/');
+
+              return (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-foreground/[0.03] border border-[var(--border-subtle)] space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-sm text-foreground">{cli?.nome || 'Cliente'}</span>
+                      {apptParaCancelar.is_fixed && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gold/15 text-gold border border-gold/30">
+                          Recorrente / Fixo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-foreground/70 flex items-center gap-2">
+                      <CalendarDays size={13} className="text-foreground/40" />
+                      <span>{dataFmt} às {apptParaCancelar.hora_inicio}</span>
+                      <span>·</span>
+                      <Scissors size={13} className="text-foreground/40" />
+                      <span className="font-semibold text-foreground/90">{serv?.nome || 'Serviço'}</span>
+                    </p>
+                    {prof && (
+                      <p className="text-foreground/50 text-[11px]">
+                        Profissional: {prof.nome}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Informação sobre agendamentos futuros */}
+                  {futurosCliente.loading ? (
+                    <div className="py-4 text-center text-xs text-foreground/50 flex items-center justify-center gap-2">
+                      <RefreshCw size={14} className="animate-spin text-gold" />
+                      <span>Verificando agendamentos futuros da cliente...</span>
+                    </div>
+                  ) : futurosCliente.lista.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-xs">
+                          <AlertCircle size={15} className="shrink-0 text-amber-400" />
+                          <span>Atenção: Cliente possui {futurosCliente.lista.length} agendamento(s) futuro(s)</span>
+                        </div>
+                        <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                          Além do atendimento de {dataFmt}, encontramos {futurosCliente.lista.length} data(s) futura(s) agendada(s) para esta cliente:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-1">
+                          {futurosCliente.lista.map((fut: any, idx: number) => {
+                            const d = (fut.date || '').split('-').reverse().slice(0, 2).join('/');
+                            const h = (fut.start_time || '').slice(0, 5);
+                            return (
+                              <span key={fut.id || idx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/30 border border-amber-500/20 text-amber-200">
+                                {d} {h ? `às ${h}` : ''}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        <label className="text-xs font-bold text-foreground/80 block">
+                          O que você deseja fazer com a agenda desta cliente?
+                        </label>
+
+                        {/* Opção 1: Apenas o dia */}
+                        <label
+                          onClick={() => setModoCancelamento('apenas_dia')}
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            modoCancelamento === 'apenas_dia'
+                              ? 'bg-amber-500/10 border-amber-500/50 text-foreground'
+                              : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="modoCancelamento"
+                            checked={modoCancelamento === 'apenas_dia'}
+                            onChange={() => setModoCancelamento('apenas_dia')}
+                            className="mt-0.5 accent-gold"
+                          />
+                          <div className="text-xs space-y-0.5">
+                            <p className="font-bold text-foreground">Cancelar apenas o atendimento deste dia ({dataFmt})</p>
+                            <p className="text-[11px] text-foreground/55 leading-relaxed">
+                              Cancela somente o agendamento selecionado. Os demais {futurosCliente.lista.length} agendamento(s) futuros permanecem confirmados na grade.
+                            </p>
+                          </div>
+                        </label>
+
+                        {/* Opção 2: Cancelar futuros */}
+                        <label
+                          onClick={() => setModoCancelamento('cancelar_futuros')}
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            modoCancelamento === 'cancelar_futuros'
+                              ? 'bg-amber-500/10 border-amber-500/50 text-foreground'
+                              : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="modoCancelamento"
+                            checked={modoCancelamento === 'cancelar_futuros'}
+                            onChange={() => setModoCancelamento('cancelar_futuros')}
+                            className="mt-0.5 accent-gold"
+                          />
+                          <div className="text-xs space-y-0.5">
+                            <p className="font-bold text-foreground">Cancelar deste dia + cancelar atendimentos futuros</p>
+                            <p className="text-[11px] text-foreground/55 leading-relaxed">
+                              Altera o status deste dia e de todos os {futurosCliente.lista.length} agendamento(s) futuros para "Cancelado" no sistema.
+                            </p>
+                          </div>
+                        </label>
+
+                        {/* Opção 3: Excluir futuros da grade */}
+                        <label
+                          onClick={() => setModoCancelamento('excluir_futuros')}
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            modoCancelamento === 'excluir_futuros'
+                              ? 'bg-red-500/10 border-red-500/50 text-foreground'
+                              : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="modoCancelamento"
+                            checked={modoCancelamento === 'excluir_futuros'}
+                            onChange={() => setModoCancelamento('excluir_futuros')}
+                            className="mt-0.5 accent-red-500"
+                          />
+                          <div className="text-xs space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-red-400">Cancelar deste dia + EXCLUIR atendimentos futuros</p>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">
+                                Libera a agenda
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-foreground/55 leading-relaxed">
+                              Cancela o atendimento de hoje e apaga/remove permanentemente todos os {futurosCliente.lista.length} agendamentos futuros da grade, liberando os horários dos profissionais.
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] text-xs text-foreground/60 space-y-1">
+                      <p className="font-semibold text-foreground/80">Nenhum agendamento futuro encontrado</p>
+                      <p className="text-[11px]">Esta cliente não possui outros agendamentos cadastrados para datas posteriores.</p>
+                    </div>
+                  )}
+
+                  {/* Opção para excluir o dia atual também */}
+                  <label className="flex items-center gap-2 pt-2 border-t border-[var(--border-subtle)] text-xs text-foreground/75 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={excluirDiaAtual}
+                      onChange={e => setExcluirDiaAtual(e.target.checked)}
+                      className="rounded accent-red-500"
+                    />
+                    <span>Excluir também o atendimento de hoje da grade (ao invés de manter como "Cancelado")</span>
+                  </label>
+
+                  {/* Rodapé de Botões */}
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setApptParaCancelar(null)}
+                      disabled={processandoCancelamento}
+                    >
+                      Voltar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                      onClick={handleConfirmarCancelamento}
+                      disabled={processandoCancelamento}
+                    >
+                      {processandoCancelamento ? (
+                        <span className="flex items-center gap-2">
+                          <RefreshCw size={14} className="animate-spin" /> Processando...
+                        </span>
+                      ) : modoCancelamento === 'excluir_futuros' ? (
+                        'Confirmar e Excluir Futuros'
+                      ) : modoCancelamento === 'cancelar_futuros' ? (
+                        'Confirmar Cancelamento Geral'
+                      ) : (
+                        'Confirmar Cancelamento'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </CardGlass>
         </div>
       )}
@@ -4560,13 +4904,32 @@ function AgendaContent() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingApptId(null); }}>
-                  Cancelar
-                </Button>
-                <Button type="submit" variant="primary" className="font-bold">
-                  {editingApptId ? 'Salvar Alterações' : 'Salvar Agendamento'}
-                </Button>
+              <div className="flex justify-between items-center pt-4 border-t border-[var(--border-subtle)]">
+                {editingApptId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs flex items-center gap-1.5"
+                    onClick={() => {
+                      const appt = agendamentos.find(a => a.id === editingApptId);
+                      if (appt) {
+                        setShowForm(false);
+                        setEditingApptId(null);
+                        abrirModalCancelar(appt);
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} /> Cancelar / Excluir Atendimento
+                  </Button>
+                ) : <div />}
+                <div className="flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingApptId(null); }}>
+                    Voltar
+                  </Button>
+                  <Button type="submit" variant="primary" className="font-bold">
+                    {editingApptId ? 'Salvar Alterações' : 'Salvar Agendamento'}
+                  </Button>
+                </div>
               </div>
             </form>
           </CardGlass>
