@@ -60,12 +60,20 @@ export function getArea(pathname: string): string | null {
 }
 
 export function getUserRole(
-  user: { user_metadata?: Record<string, unknown> } | null | undefined
+  user: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } | null | undefined
 ): Role | null {
-  const metaRole = user?.user_metadata?.role;
+  const metaRole = (user?.user_metadata?.role || (user as any)?.app_metadata?.role);
   if (typeof metaRole !== 'string') return null;
-  const roleStr = metaRole === 'admin' ? 'ADMIN' : metaRole;
-  return (Object.values(ROLES) as string[]).includes(roleStr) ? (roleStr as Role) : null;
+  const lower = metaRole.toLowerCase();
+  if (lower === 'admin') return ROLES.ADMIN;
+  if (lower === 'studio_admin') return ROLES.STUDIO_ADMIN;
+  if (lower === 'studio_secretaria') return ROLES.STUDIO_SECRETARIA;
+  if (lower === 'studio_profissional') return ROLES.STUDIO_PROFISSIONAL;
+  if (lower === 'academy_admin') return ROLES.ACADEMY_ADMIN;
+  if (lower === 'loja_admin') return ROLES.LOJA_ADMIN;
+  if (lower === 'student' || lower === 'aluno') return ROLES.ALUNO;
+  if (lower === 'customer' || lower === 'cliente') return ROLES.CUSTOMER;
+  return (Object.values(ROLES) as string[]).includes(metaRole as any) ? (metaRole as Role) : null;
 }
 
 /** Se o usuário é o dono do salão (vê todos os módulos no hub) */

@@ -2742,7 +2742,21 @@ export async function updateSystemSetting(key: string, value: string): Promise<{
 // --------------------------------------------------------------------------------
 
 export async function fetchMarketingRules(): Promise<any[]> {
-  const { data, error } = await supabase.from('salon_marketing_rules').select('*, service:salon_services(name)').order('created_at', { ascending: false });
+  try {
+    const res = await fetch('/api/admin/marketing/rules');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.warn('[fetchMarketingRules] API error, tentando client fallback:', err);
+  }
+
+  const { data, error } = await supabase
+    .from('salon_marketing_rules')
+    .select('*, service:salon_services(name)')
+    .order('created_at', { ascending: false });
+
   if (error) {
     logSupabaseError('[fetchMarketingRules]', error);
     return [];
@@ -2751,6 +2765,19 @@ export async function fetchMarketingRules(): Promise<any[]> {
 }
 
 export async function createMarketingRule(payload: any): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/marketing/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (res.ok) return { ok: true };
+    return { ok: false, error: json.error || 'Erro ao criar regra' };
+  } catch (err: any) {
+    console.warn('[createMarketingRule] API error, tentando client fallback:', err);
+  }
+
   const { error } = await supabase.from('salon_marketing_rules').insert(payload);
   if (error) {
     logSupabaseError('[createMarketingRule]', error);
@@ -2760,6 +2787,19 @@ export async function createMarketingRule(payload: any): Promise<{ ok: boolean; 
 }
 
 export async function updateMarketingRule(id: string, payload: any): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/marketing/rules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    const json = await res.json();
+    if (res.ok) return { ok: true };
+    return { ok: false, error: json.error || 'Erro ao atualizar regra' };
+  } catch (err: any) {
+    console.warn('[updateMarketingRule] API error, tentando client fallback:', err);
+  }
+
   const { error } = await supabase.from('salon_marketing_rules').update(payload).eq('id', id);
   if (error) {
     logSupabaseError('[updateMarketingRule]', error);
@@ -2769,6 +2809,17 @@ export async function updateMarketingRule(id: string, payload: any): Promise<{ o
 }
 
 export async function deleteMarketingRule(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/admin/marketing/rules?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (res.ok) return { ok: true };
+    return { ok: false, error: json.error || 'Erro ao excluir regra' };
+  } catch (err: any) {
+    console.warn('[deleteMarketingRule] API error, tentando client fallback:', err);
+  }
+
   const { error } = await supabase.from('salon_marketing_rules').delete().eq('id', id);
   if (error) {
     logSupabaseError('[deleteMarketingRule]', error);
