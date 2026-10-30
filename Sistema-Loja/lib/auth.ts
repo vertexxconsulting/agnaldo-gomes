@@ -9,7 +9,7 @@ export const ROLES = {
   CUSTOMER: 'CUSTOMER',
 } as const;
 
-export type Role = (typeof ROLES)[keyof typeof ROLES];
+export type Role = (typeof ROLES)[keyof typeof ROLES] | 'PROFESSIONAL';
 
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Administrador Geral',
@@ -19,6 +19,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   STUDENT: 'Aluno',
   studio_secretaria: 'Secretária do Studio',
   studio_profissional: 'Profissional',
+  PROFESSIONAL: 'Profissional',
   CUSTOMER: 'Cliente/Comprador',
 };
 
@@ -30,8 +31,28 @@ export const AREA_LABELS: Record<Role, string> = {
   STUDENT: 'Aluno (área de cursos)',
   studio_secretaria: 'Secretaria (Studio)',
   studio_profissional: 'Profissional (Studio)',
+  PROFESSIONAL: 'Profissional (Studio)',
   CUSTOMER: 'Cliente/Comprador (Loja)',
 };
+
+/** Mapeia a role da aplicação para o enum 'user_role' do PostgreSQL (profiles.role) */
+export function toDbRole(role: string): string {
+  const r = (role || '').toLowerCase();
+  if (r === 'studio_profissional' || r === 'professional' || r === 'profissional') return 'PROFESSIONAL';
+  if (r === 'aluno' || r === 'student') return 'STUDENT';
+  if (r === 'cliente' || r === 'customer') return 'CUSTOMER';
+  if (r === 'admin') return 'ADMIN';
+  return role;
+}
+
+/** Mapeia o enum 'user_role' do PostgreSQL (profiles.role) de volta para a role padrão da aplicação */
+export function fromDbRole(role: string): Role {
+  const r = (role || '').toLowerCase();
+  if (r === 'professional' || r === 'profissional') return ROLES.STUDIO_PROFISSIONAL;
+  if (r === 'student' || r === 'aluno') return ROLES.ALUNO;
+  if (r === 'customer' || r === 'cliente') return ROLES.CUSTOMER;
+  return role as Role;
+}
 
 /** Rotas de área e o papel exigido para acessá-las */
 export const AREA_ROLES: Record<string, Role> = {

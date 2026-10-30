@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Role } from '@/lib/auth';
+import { Role, toDbRole, fromDbRole } from '@/lib/auth';
 
 export async function getAllProfiles(excludeRole?: Role) {
   const supabaseAdmin = createClient(
@@ -14,13 +14,13 @@ export async function getAllProfiles(excludeRole?: Role) {
     .order('full_name', { ascending: true });
 
   if (excludeRole) {
-    query = query.neq('role', excludeRole);
+    query = query.neq('role', toDbRole(excludeRole));
   }
 
   const { data, error } = await query;
 
   if (error) throw new Error(`Erro ao buscar perfis: ${error.message}`);
-  return data;
+  return (data || []).map(p => ({ ...p, role: fromDbRole(p.role) }));
 }
 
 export async function updateUserRole(userId: string, newRole: Role, permissions?: any) {
@@ -30,7 +30,7 @@ export async function updateUserRole(userId: string, newRole: Role, permissions?
   );
 
   // 1. Atualizar a tabela 'profiles' (DB)
-  const updateData: any = { role: newRole };
+  const updateData: any = { role: toDbRole(newRole) };
   if (permissions) {
     updateData.permissions = permissions;
   }
@@ -67,7 +67,7 @@ export async function createAdminUser(userData: { email: string; full_name: stri
     .from('profiles')
     .select('id')
     .eq('email', userData.email)
-    .single();
+    .maybeSingle();
 
   if (existingProfile && existingProfile.id) {
     // Atualiza a role do usuário existente
@@ -92,7 +92,7 @@ export async function createAdminUser(userData: { email: string; full_name: stri
       id: authUser.user.id,
       email: userData.email,
       full_name: userData.full_name,
-      role: userData.role,
+      role: toDbRole(userData.role),
       ...(userData.permissions && { permissions: userData.permissions })
     });
 

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Role } from '@/lib/auth';
+import { Role, toDbRole, fromDbRole } from '@/lib/auth';
 import { setUserNickname, normalizeNickname } from '@/lib/nicknames';
 
 export async function getAllProfiles(excludeRole?: Role) {
@@ -30,7 +30,7 @@ export async function getAllProfiles(excludeRole?: Role) {
 
     const enriched = (profiles || []).map(p => {
       const u = authUserMap.get(p.id) || authUsers.find(user => user.email?.toLowerCase() === p.email?.toLowerCase());
-      if (!u) return p;
+      if (!u) return { ...p, role: fromDbRole(p.role) };
 
       const userMeta = u.user_metadata || {};
       const fullName = (userMeta.full_name && typeof userMeta.full_name === 'string' && userMeta.full_name.trim())
@@ -57,6 +57,7 @@ export async function getAllProfiles(excludeRole?: Role) {
 
       return {
         ...p,
+        role: fromDbRole(p.role),
         full_name: fullName,
         phone,
         avatar_url: avatarUrl,
@@ -68,7 +69,7 @@ export async function getAllProfiles(excludeRole?: Role) {
     return enriched;
   } catch (authErr) {
     console.warn('[getAllProfiles] Falha ao enriquecer com Auth:', authErr);
-    return profiles;
+    return (profiles || []).map(p => ({ ...p, role: fromDbRole(p.role) }));
   }
 }
 
@@ -92,7 +93,7 @@ export async function updateUserRole(
     perms.nickname = normalizeNickname(extra.nickname);
   }
 
-  const updateData: any = { role: newRole, permissions: perms, updated_at: new Date().toISOString() };
+  const updateData: any = { role: toDbRole(newRole), permissions: perms, updated_at: new Date().toISOString() };
   if (extra?.avatar_url) {
     updateData.avatar_url = extra.avatar_url;
   }
@@ -112,8 +113,8 @@ export async function updateUserRole(
     try {
       const profUpdate: any = {};
       if (extra.professional_id) profUpdate.user_id = userId;
-      if (extra.full_name) profUpdate.nome = extra.full_name;
-      if (extra.avatar_url) profUpdate.foto = extra.avatar_url;
+      if (extra.full_name) profUpdate.name = extra.full_name;
+      if (extra.avatar_url) profUpdate.photo_url = extra.avatar_url;
 
       if (extra.professional_id) {
         await supabaseAdmin
@@ -190,15 +191,42 @@ export async function createAdminUser(userData: {
     .from('profiles')
     .select('id')
     .eq('email', userData.email)
-    .single();
+    .maybeSingle();
 
   if (existingProfile && existingProfile.id) {
+    if (userData.password) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(existingProfile.id, {
+          password: userData.password,
+        });
+      } catch (passErr) {
+        console.warn('Aviso ao atualizar senha de usuário existente:', passErr);
+      }
+    }
     // Atualiza a role e permissões do usuário existente
     await updateUserRole(existingProfile.id, userData.role, perms, {
       avatar_url: userData.avatar_url,
       professional_id: userData.professional_id,
+      full_name: userData.full_name,
     });
     return { success: true, user: { id: existingProfile.id } };
+  }
+
+  // Verifica se já existe conta no Auth (por exemplo criada antes mas com profile pendente)
+  const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
+  const existingAuthUser = authData?.users?.find(u => u.email?.toLowerCase() === userData.email.toLowerCase());
+  if (existingAuthUser) {
+    if (userData.password) {
+      await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
+        password: userData.password,
+      });
+    }
+    await updateUserRole(existingAuthUser.id, userData.role, perms, {
+      avatar_url: userData.avatar_url,
+      professional_id: userData.professional_id,
+      full_name: userData.full_name,
+    });
+    return { success: true, user: { id: existingAuthUser.id } };
   }
 
   // 2. Criar o usuário no Supabase Auth
@@ -224,7 +252,7 @@ export async function createAdminUser(userData: {
     id: authUser.user.id,
     email: userData.email,
     full_name: userData.full_name,
-    role: userData.role,
+    role: toDbRole(userData.role),
     permissions: perms,
   };
   if (userData.avatar_url) {
@@ -246,6 +274,15 @@ export async function createAdminUser(userData: {
         .eq('id', userData.professional_id);
     } catch (profErr) {
       console.warn('Aviso ao vincular usuário ao profissional:', profErr);
+    }
+  }
+
+  // 5. Se houver nickname, sincronizar com o mapa global
+  if (perms.nickname) {
+    try {
+      await setUserNickname(userData.email, perms.nickname);
+    } catch (nickErr) {
+      console.warn('Aviso ao sincronizar nickname global:', nickErr);
     }
   }
 
