@@ -30,29 +30,50 @@ export function AdminUserButton({
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
-      if (user) {
-        const email = user.email || 'admin@agnaldo.com';
-        const name = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.nome || '';
-        const role = getUserRole(user);
-        setUserEmail(email);
-        setUserName(name || email.split('@')[0]);
-        setUserRoleLabel(role ? (ROLE_LABELS[role] || role) : 'Usuário');
-        setUserAvatar(user.user_metadata?.avatar_url || null);
-        
-        // Calcular iniciais
-        if (name) {
-          const parts = name.split(' ');
-          if (parts.length >= 2) {
-            setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
-          } else {
-            setUserInitials(name.substring(0, 2).toUpperCase());
-          }
+    const updateUserFromAuth = (user: any) => {
+      if (!user) return;
+      const email = user.email || 'admin@agnaldo.com';
+      const name = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.nome || '';
+      const role = getUserRole(user);
+      setUserEmail(email);
+      setUserName(name || email.split('@')[0]);
+      setUserRoleLabel(role ? (ROLE_LABELS[role] || role) : 'Usuário');
+      setUserAvatar(user.user_metadata?.avatar_url || null);
+      
+      // Calcular iniciais
+      if (name) {
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+          setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
         } else {
-          setUserInitials(email.substring(0, 2).toUpperCase());
+          setUserInitials(name.substring(0, 2).toUpperCase());
         }
+      } else {
+        setUserInitials(email.substring(0, 2).toUpperCase());
+      }
+    };
+
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+      if (user) updateUserFromAuth(user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      if (session?.user) {
+        updateUserFromAuth(session.user);
       }
     });
+
+    const onProfileUpdated = () => {
+      supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+        if (user) updateUserFromAuth(user);
+      });
+    };
+    window.addEventListener('profileUpdated', onProfileUpdated);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('profileUpdated', onProfileUpdated);
+    };
   }, []);
 
   // Close when clicking outside

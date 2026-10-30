@@ -23,6 +23,35 @@ export default function AdminPerfilPage() {
     const loadUserData = async () => {
       setLoading(true);
       try {
+        // 1. Tenta carregar dados consolidados da rota de API segura
+        const res = await fetch('/api/admin/perfil');
+        if (res.ok) {
+          const { user } = await res.json();
+          if (user) {
+            const email = user.email || '';
+            const name = user.full_name || '';
+            setUserEmail(email);
+            setUserName(name);
+            setUserPhone(user.phone || '');
+            setUserNickname(user.nickname || '');
+            if (user.avatar_url) setUserAvatar(user.avatar_url);
+            if (user.role) setUserRole(user.role);
+
+            if (name && name !== 'Administrador') {
+              const parts = name.trim().split(' ');
+              if (parts.length >= 2) {
+                setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+              } else {
+                setUserInitials(name.substring(0, 2).toUpperCase());
+              }
+            } else if (email) {
+              setUserInitials(email.substring(0, 2).toUpperCase());
+            }
+            return;
+          }
+        }
+
+        // 2. Fallback caso a API não responda
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const email = user.email || '';
@@ -30,35 +59,9 @@ export default function AdminPerfilPage() {
           setUserEmail(email);
           setUserName(name);
           setUserPhone(user.user_metadata?.phone || '');
-          
-          if (user.user_metadata?.avatar_url) {
-            setUserAvatar(user.user_metadata.avatar_url);
-          }
-          
-          
-          // Buscar dados adicionais do profile (nickname, role)
-          const { data: profile } = await supabase.from('profiles').select('nickname, role').eq('id', user.id).single();
-          if (profile) {
-            if (profile.nickname) setUserNickname(profile.nickname);
-            if (profile.role) setUserRole(profile.role);
-          }
-
-          // Fallback: Buscar nickname global para garantir consistência
-          try {
-            const nickRes = await fetch('/api/admin/nicknames');
-            if (nickRes.ok) {
-              const { nicknames } = await nickRes.json();
-              // A API retorna objeto onde chave é o nickname e valor é o email
-              for (const [nick, mail] of Object.entries(nicknames)) {
-                if (typeof mail === 'string' && mail.toLowerCase() === email.toLowerCase()) {
-                  setUserNickname(nick);
-                  break;
-                }
-              }
-            }
-          } catch (e) {
-            console.warn('Falha ao buscar nicknames globais no perfil:', e);
-          }
+          setUserNickname(user.user_metadata?.nickname || '');
+          if (user.user_metadata?.avatar_url) setUserAvatar(user.user_metadata.avatar_url);
+          if (user.user_metadata?.role) setUserRole(user.user_metadata.role);
 
           if (name && name !== 'Administrador') {
             const parts = name.split(' ');
@@ -108,19 +111,26 @@ export default function AdminPerfilPage() {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Atualizar metadados do Auth
+      // Atualizar via rota de API com privilégios de serviço
+      const apiRes = await fetch('/api/admin/perfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: publicUrl }),
+      });
+
+      if (!apiRes.ok) {
+        const errJson = await apiRes.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao persistir avatar');
+      }
+
+      // Atualizar metadados do Auth no cliente
       await supabase.auth.updateUser({
         data: { avatar_url: publicUrl }
       });
 
-      // Atualizar tabela profiles
-      await supabase.from('profiles').upsert({
-        id: user.id,
-        avatar_url: publicUrl
-      });
-
       setUserAvatar(publicUrl);
       toast.success('Foto de perfil salva com sucesso no banco de dados!');
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (error: any) {
       toast.error(`Erro ao fazer upload da foto: ${error.message}`);
       // Reverter preview em caso de erro
@@ -131,43 +141,41 @@ export default function AdminPerfilPage() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const newName = formData.get('name') as string;
-    const newPhone = formData.get('phone') as string;
-    const newNickname = formData.get('nickname') as string;
+    const newName = (formData.get('name') as string || '').trim();
+    const newPhone = (formData.get('phone') as string || '').trim();
+    const newNickname = (formData.get('nickname') as string || '').trim();
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: newName, phone: newPhone }
-      });
-
-      if (error) throw error;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: user.id,
+      // 1. Atualizar via rota de API autenticada no servidor (ignora RLS via Service Role e sincroniza Auth, DB e salon_professionals)
+      const res = await fetch('/api/admin/perfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           full_name: newName,
           phone: newPhone,
           nickname: newNickname,
-        });
-        
-        if (profileError) {
-          console.warn('Não foi possível atualizar a tabela profiles (RLS provável):', profileError);
-        }
+        }),
+      });
 
-        if (newNickname.trim()) {
-          await fetch('/api/admin/nicknames', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: userEmail || user.email, nickname: newNickname.trim() }),
-          }).catch(err => console.warn('Aviso ao sincronizar nickname global:', err));
-        }
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData.error || 'Erro ao atualizar perfil no servidor');
       }
+
+      // 2. Atualizar metadados locais na sessão do Supabase Auth
+      await supabase.auth.updateUser({
+        data: {
+          full_name: newName,
+          phone: newPhone,
+          nickname: newNickname,
+        }
+      });
 
       setUserName(newName);
       setUserPhone(newPhone);
       setUserNickname(newNickname);
-      toast.success('Perfil atualizado com sucesso!');
+      toast.success('Perfil e apelido atualizados com sucesso!');
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (e: any) {
       toast.error(`Erro ao atualizar perfil: ${e.message}`);
     }

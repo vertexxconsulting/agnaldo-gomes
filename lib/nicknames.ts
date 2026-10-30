@@ -194,7 +194,12 @@ export async function setUserNickname(
     }
   }
 
-  // 3. Atualiza o mapa e salva em salon_system_settings
+  // 3. Remove qualquer nickname anterior vinculado a este mesmo e-mail e atualiza o mapa
+  for (const [existingNick, existingEmail] of Object.entries(map)) {
+    if (typeof existingEmail === 'string' && existingEmail.trim().toLowerCase() === cleanEmail) {
+      delete map[existingNick];
+    }
+  }
   map[cleanNick] = cleanEmail;
   const { error: saveError } = await supabase
     .from('salon_system_settings')

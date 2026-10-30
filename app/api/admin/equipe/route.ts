@@ -21,10 +21,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Se vier userId, é atualização de role / permissões
+    // Se vier userId, é atualização de role / permissões / perfil
     if (body.userId) {
-      const { userId, newRole, permissions, avatar_url, professional_id } = body;
-      await updateUserRole(userId, newRole, permissions, { avatar_url, professional_id });
+      const { userId, newRole, permissions, avatar_url, professional_id, full_name, nickname } = body;
+      await updateUserRole(userId, newRole, permissions, { avatar_url, professional_id, full_name, nickname });
       return NextResponse.json({ success: true });
     } 
     

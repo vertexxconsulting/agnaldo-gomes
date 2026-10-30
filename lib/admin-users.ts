@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Role } from '@/lib/auth';
+import { setUserNickname, normalizeNickname } from '@/lib/nicknames';
 
 export async function getAllProfiles(excludeRole?: Role) {
   const supabaseAdmin = createClient(
@@ -17,17 +18,65 @@ export async function getAllProfiles(excludeRole?: Role) {
     query = query.neq('role', excludeRole);
   }
 
-  const { data, error } = await query;
-
+  const { data: profiles, error } = await query;
   if (error) throw new Error(`Erro ao buscar perfis: ${error.message}`);
-  return data;
+
+  // Enriquecer com metadados do Supabase Auth para garantir que alterações recentes
+  // em full_name e nickname sejam imediatamente refletidas na gestão de equipe
+  try {
+    const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
+    const authUsers = authData?.users || [];
+    const authUserMap = new Map(authUsers.map(u => [u.id, u]));
+
+    const enriched = (profiles || []).map(p => {
+      const u = authUserMap.get(p.id) || authUsers.find(user => user.email?.toLowerCase() === p.email?.toLowerCase());
+      if (!u) return p;
+
+      const userMeta = u.user_metadata || {};
+      const fullName = (userMeta.full_name && typeof userMeta.full_name === 'string' && userMeta.full_name.trim())
+        ? userMeta.full_name.trim()
+        : p.full_name;
+      const nickname = (p.permissions as any)?.nickname || userMeta.nickname || '';
+      const phone = userMeta.phone || p.phone || '';
+      const avatarUrl = userMeta.avatar_url || p.avatar_url || null;
+
+      const perms = {
+        ...((p.permissions as any) || {}),
+        ...(nickname ? { nickname } : {}),
+      };
+
+      // Sincroniza profiles no banco de dados se houver discrepância
+      if (userMeta.full_name && p.full_name !== userMeta.full_name) {
+        Promise.resolve(
+          supabaseAdmin
+            .from('profiles')
+            .update({ full_name: userMeta.full_name, permissions: perms })
+            .eq('id', p.id)
+        ).catch((e: any) => console.warn('[getAllProfiles] Falha assíncrona ao sincronizar profile:', e));
+      }
+
+      return {
+        ...p,
+        full_name: fullName,
+        phone,
+        avatar_url: avatarUrl,
+        nickname,
+        permissions: perms,
+      };
+    });
+
+    return enriched;
+  } catch (authErr) {
+    console.warn('[getAllProfiles] Falha ao enriquecer com Auth:', authErr);
+    return profiles;
+  }
 }
 
 export async function updateUserRole(
   userId: string, 
   newRole: Role, 
   permissions?: any,
-  extra?: { avatar_url?: string; professional_id?: string }
+  extra?: { avatar_url?: string; professional_id?: string; full_name?: string; nickname?: string }
 ) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,10 +88,16 @@ export async function updateUserRole(
   if (extra?.professional_id) {
     perms.professional_id = extra.professional_id;
   }
+  if (extra?.nickname) {
+    perms.nickname = normalizeNickname(extra.nickname);
+  }
 
-  const updateData: any = { role: newRole, permissions: perms };
+  const updateData: any = { role: newRole, permissions: perms, updated_at: new Date().toISOString() };
   if (extra?.avatar_url) {
     updateData.avatar_url = extra.avatar_url;
+  }
+  if (extra?.full_name) {
+    updateData.full_name = extra.full_name;
   }
 
   const { error: profileError } = await supabaseAdmin
@@ -52,15 +107,27 @@ export async function updateUserRole(
 
   if (profileError) throw new Error(`Erro ao atualizar profile: ${profileError.message}`);
 
-  // 2. Vincular com salon_professionals se houver professional_id
-  if (extra?.professional_id) {
+  // 2. Vincular com salon_professionals se houver professional_id ou atualizar nome
+  if (extra?.professional_id || extra?.full_name) {
     try {
-      await supabaseAdmin
-        .from('salon_professionals')
-        .update({ user_id: userId })
-        .eq('id', extra.professional_id);
+      const profUpdate: any = {};
+      if (extra.professional_id) profUpdate.user_id = userId;
+      if (extra.full_name) profUpdate.nome = extra.full_name;
+      if (extra.avatar_url) profUpdate.foto = extra.avatar_url;
+
+      if (extra.professional_id) {
+        await supabaseAdmin
+          .from('salon_professionals')
+          .update(profUpdate)
+          .eq('id', extra.professional_id);
+      } else {
+        await supabaseAdmin
+          .from('salon_professionals')
+          .update(profUpdate)
+          .eq('user_id', userId);
+      }
     } catch (err) {
-      console.warn('Aviso ao vincular salon_professionals:', err);
+      console.warn('Aviso ao sincronizar salon_professionals:', err);
     }
   }
 
@@ -69,6 +136,8 @@ export async function updateUserRole(
     const authMeta: any = { role: newRole, permissions: perms };
     if (extra?.avatar_url) authMeta.avatar_url = extra.avatar_url;
     if (extra?.professional_id) authMeta.professional_id = extra.professional_id;
+    if (extra?.full_name) authMeta.full_name = extra.full_name;
+    if (perms.nickname) authMeta.nickname = perms.nickname;
 
     await supabaseAdmin.auth.admin.updateUserById(
       userId,
@@ -76,6 +145,22 @@ export async function updateUserRole(
     );
   } catch (authError: any) {
     console.warn(`Aviso: Metadados do Auth não atualizados para ${userId}: ${authError.message}`);
+  }
+
+  // 4. Se houver nickname, sincronizar com o mapa global
+  if (perms.nickname) {
+    try {
+      const { data: userProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle();
+      if (userProfile?.email) {
+        await setUserNickname(userProfile.email, perms.nickname);
+      }
+    } catch (nickErr) {
+      console.warn('Aviso ao sincronizar nickname global:', nickErr);
+    }
   }
 
   return { success: true };

@@ -76,10 +76,24 @@ export default function TeamManagementPage() {
   }
 
   const getNicknameDisplay = (profile: any) => {
-    for (const [nick, email] of Object.entries(nicknames)) {
-      if (email.toLowerCase() === profile.email?.toLowerCase()) return nick;
+    // 1. Nickname explícito no perfil (permissions ou retornado da API)
+    const directNick = (profile.permissions as any)?.nickname || profile.nickname;
+    if (directNick && typeof directNick === 'string' && directNick.trim()) {
+      return directNick.trim().toLowerCase();
     }
-    return (profile.permissions as any)?.nickname || profile.full_name?.split(' ')[0]?.toLowerCase() || 'sem-apelido';
+
+    // 2. Mapa global de nicknames cadastrados
+    if (profile.email) {
+      const emailLower = profile.email.toLowerCase().trim();
+      for (const [nick, email] of Object.entries(nicknames)) {
+        if (typeof email === 'string' && email.toLowerCase().trim() === emailLower) {
+          return nick.toLowerCase();
+        }
+      }
+    }
+
+    // 3. Fallback para primeiro nome ou sem-apelido
+    return profile.full_name?.split(' ')[0]?.toLowerCase() || 'sem-apelido';
   };
 
   useEffect(() => {
@@ -108,22 +122,28 @@ export default function TeamManagementPage() {
     setUpdatingId(editingProfile.id);
     try {
       const permsToSave = { ...editPermissions };
-      if (editingNickname.trim()) {
-        (permsToSave as any).nickname = editingNickname.trim().toLowerCase();
+      const nickToSave = editingNickname.trim().toLowerCase();
+      if (nickToSave) {
+        (permsToSave as any).nickname = nickToSave;
         await safeFetch('/api/admin/nicknames', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: editingProfile.email, nickname: editingNickname.trim() }),
+          body: JSON.stringify({ email: editingProfile.email, nickname: nickToSave }),
         }).catch(err => console.warn('Aviso ao salvar nickname:', err));
       }
 
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: editingProfile.id, newRole: editingProfile.role, permissions: permsToSave }),
+        body: JSON.stringify({ 
+          userId: editingProfile.id, 
+          newRole: editingProfile.role, 
+          permissions: permsToSave,
+          nickname: nickToSave || undefined,
+        }),
       });
       await loadProfiles();
-      alert('Permissões e nickname atualizados com sucesso!');
+      alert('Permissões e apelido atualizados com sucesso!');
       setEditingProfile(null);
     } catch (e: any) {
       alert(e.message);
