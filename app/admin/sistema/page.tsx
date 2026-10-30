@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
-import { Database, Download, Upload, AlertTriangle, FileJson, CheckCircle2, MessageSquare, Link as LinkIcon, Activity, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Database, Download, Upload, AlertTriangle, FileJson, CheckCircle2 } from 'lucide-react';
 import { getServicos, getProfissionais, getClientes, getAgendamentos, getBloqueios, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, Agendamento, BloqueioAgenda, ProfissionalServico } from '@/lib/gestao-types';
-import { updateSystemSetting } from '@/lib/supabase-queries';
 
 export default function SistemaPage() {
   const [importStatus, setImportStatus] = useState<{ tipo: 'idle' | 'sucesso' | 'erro', msg: string }>({ tipo: 'idle', msg: '' });
@@ -21,14 +20,8 @@ export default function SistemaPage() {
   } | null>(null);
 
 
-  const [instance, setInstance] = useState('');
-  const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [healthChecks, setHealthChecks] = useState<Record<string, { status: 'ok' | 'error' | 'warning' | 'idle', msg: string }> | null>(null);
-  const [checkingHealth, setCheckingHealth] = useState(false);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(true);
   const [agendamentoDireto, setAgendamentoDireto] = useState(false);
-  const [whatsappContato, setWhatsappContato] = useState('');
-  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
 
   useEffect(() => {
@@ -45,7 +38,6 @@ export default function SistemaPage() {
           const lojaData = await resLoja.json();
           setAgendamentoAtivo(lojaData.agendamento_ativo ?? true);
           setAgendamentoDireto(lojaData.agendamento_direto ?? false);
-          setWhatsappContato(lojaData.whatsapp_contato ?? '');
         }
       } catch (e) {
         console.error('Erro ao carregar loja_settings:', e);
@@ -92,52 +84,6 @@ export default function SistemaPage() {
     }
   };
 
-  const saveWhatsapp = async () => {
-    setSavingWhatsapp(true);
-    try {
-      const { normalizarTelefoneDestino } = await import('@/lib/whatsapp');
-      const formatado = normalizarTelefoneDestino(whatsappContato);
-
-      const res = await fetch('/api/admin/loja/settings');
-      const current = await res.json();
-      const payload = { ...current, whatsapp_contato: formatado };
-      const saveRes = await fetch('/api/admin/loja/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      // Salva também nas configurações gerais do salão (redundância)
-      await updateSystemSetting('whatsapp_contato', formatado);
-
-      if (saveRes.ok) {
-        setWhatsappContato(formatado);
-        alert(`WhatsApp do salão salvo com sucesso: ${formatado}`);
-      } else {
-        throw new Error('Falha ao salvar nas configurações da loja');
-      }
-    } catch (e: any) {
-      console.error('Erro ao salvar WhatsApp:', e);
-      alert(`Erro ao salvar WhatsApp: ${e.message}`);
-    } finally {
-      setSavingWhatsapp(false);
-    }
-  };
-
-  const checkAllSystems = async () => {
-    setCheckingHealth(true);
-    try {
-      const res = await fetch('/api/admin/sistema/health-check');
-      if (res.ok) {
-        const data = await res.json();
-        setHealthChecks(data);
-      }
-    } catch (e) {
-      console.error('Erro no health check:', e);
-    } finally {
-      setCheckingHealth(false);
-    }
-  };
 
   const handleExport = () => {
     const backupData = dadosReais || {
@@ -255,50 +201,6 @@ return (
         </div>
       </CardGlass>
 
-      {/* Configuração de WhatsApp */}
-      <CardGlass className="p-6">
-        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-          <div>
-            <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-              <MessageSquare size={20} className="text-emerald-500" />
-              WhatsApp de Atendimento do Salão
-            </h3>
-            <p className="text-sm text-foreground/60 mt-1">
-              Número que recebe as solicitações de agendamento feitas pelos clientes no site (com DDD, ex: 42 99827-1222 ou 5542998271222).
-            </p>
-            {whatsappContato && (
-              <p className="text-xs text-emerald-400 font-medium mt-1">
-                ✓ Destino configurado: <span className="font-mono">{whatsappContato}</span>
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap w-full md:w-auto items-center gap-2">
-            <input 
-              type="text" 
-              value={whatsappContato} 
-              onChange={(e) => setWhatsappContato(e.target.value)} 
-              placeholder="Ex: (42) 99827-1222" 
-              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg flex-1 min-w-[200px] text-foreground focus:outline-none focus:border-gold font-mono text-sm"
-            />
-            <Button onClick={saveWhatsapp} disabled={savingWhatsapp || loadingLojaSettings} variant="primary">
-              {savingWhatsapp ? 'Salvando...' : 'Salvar'}
-            </Button>
-            {whatsappContato && (
-              <Button 
-                variant="outline"
-                className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 text-xs"
-                onClick={() => {
-                  const limpo = whatsappContato.replace(/\D/g, '');
-                  const num = limpo.length === 10 || limpo.length === 11 ? `55${limpo}` : limpo;
-                  window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent('Olá! Teste de recepção de agendamentos do Studio Agnaldo Gomes.')}`, '_blank');
-                }}
-              >
-                Testar Link
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardGlass>
 
       {/* Exportar / Importar Backup */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

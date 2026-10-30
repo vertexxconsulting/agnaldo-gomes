@@ -6,9 +6,10 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { 
   Link as LinkIcon, Activity, AlertTriangle, CheckCircle2, RefreshCw, 
-  Globe, QrCode, Smartphone, Send, Power, ShieldCheck 
+  Globe, QrCode, Smartphone, Send, Power, ShieldCheck, MessageSquare 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { updateSystemSetting } from '@/lib/supabase-queries';
 
 export default function SistemaApiPage() {
   const [instance, setInstance] = useState('agnaldo');
@@ -22,6 +23,9 @@ export default function SistemaApiPage() {
     '✨ *Studio Agnaldo Gomes* ✨\n\nOlá! Esta é uma mensagem de confirmação do sistema.\nA sua conexão com o WhatsApp está operando com 100% de sucesso! 🚀\n\n📲 *Status:* Conectado e ativo\n⏰ *Lembretes de agendamento:* Habilitados'
   );
   const [enviandoTeste, setEnviandoTeste] = useState(false);
+  const [whatsappContato, setWhatsappContato] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [loadingLojaSettings, setLoadingLojaSettings] = useState(true);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Carregar configurações iniciais e status do WhatsApp
@@ -36,14 +40,57 @@ export default function SistemaApiPage() {
 
   const carregarConfig = async () => {
     try {
-      const res = await fetch('/api/admin/sistema/config');
-      if (res.ok) {
-        const data = await res.json();
+      const [resConfig, resLoja] = await Promise.all([
+        fetch('/api/admin/sistema/config'),
+        fetch('/api/admin/loja/settings')
+      ]);
+
+      if (resConfig.ok) {
+        const data = await resConfig.json();
         const inst = data.instance || 'agnaldo';
         setInstance(inst);
       }
+
+      if (resLoja.ok) {
+        const lojaData = await resLoja.json();
+        setWhatsappContato(lojaData.whatsapp_contato ?? '');
+      }
     } catch (e) {
       console.error('Erro ao carregar config:', e);
+    } finally {
+      setLoadingLojaSettings(false);
+    }
+  };
+
+  const saveWhatsapp = async () => {
+    setSavingWhatsapp(true);
+    try {
+      const { normalizarTelefoneDestino } = await import('@/lib/whatsapp');
+      const formatado = normalizarTelefoneDestino(whatsappContato);
+
+      const res = await fetch('/api/admin/loja/settings');
+      const current = await res.json();
+      const payload = { ...current, whatsapp_contato: formatado };
+      const saveRes = await fetch('/api/admin/loja/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      // Salva também nas configurações gerais do salão (redundância)
+      await updateSystemSetting('whatsapp_contato', formatado);
+
+      if (saveRes.ok) {
+        setWhatsappContato(formatado);
+        toast.success(`WhatsApp do salão salvo com sucesso: ${formatado}`);
+      } else {
+        throw new Error('Falha ao salvar nas configurações da loja');
+      }
+    } catch (e: any) {
+      console.error('Erro ao salvar WhatsApp:', e);
+      toast.error(`Erro ao salvar WhatsApp: ${e.message}`);
+    } finally {
+      setSavingWhatsapp(false);
     }
   };
 
@@ -209,6 +256,51 @@ export default function SistemaApiPage() {
           Gerenciamento e monitoramento da Evolution API (WhatsApp), gateways de pagamento e integrações.
         </p>
       </div>
+
+      {/* WHATSAPP DE ATENDIMENTO DO SALÃO */}
+      <CardGlass className="p-6 border-l-4 border-l-emerald-500 shadow-md">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <MessageSquare size={20} className="text-emerald-500" />
+              WhatsApp de Atendimento do Salão
+            </h3>
+            <p className="text-sm text-foreground/60 mt-1">
+              Número que recebe as solicitações de agendamento feitas pelos clientes no site (com DDD, ex: 42 99827-1222 ou 5542998271222).
+            </p>
+            {whatsappContato && (
+              <p className="text-xs text-emerald-500 font-medium mt-1.5 flex items-center gap-1">
+                <span>✓ Destino configurado:</span> <span className="font-mono font-bold">{whatsappContato}</span>
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap w-full md:w-auto items-center gap-2">
+            <input 
+              type="text" 
+              value={whatsappContato} 
+              onChange={(e) => setWhatsappContato(e.target.value)} 
+              placeholder="Ex: (42) 99827-1222" 
+              className="px-4 py-2 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg flex-1 min-w-[200px] text-foreground focus:outline-none focus:border-gold font-mono text-sm"
+            />
+            <Button onClick={saveWhatsapp} disabled={savingWhatsapp || loadingLojaSettings} variant="primary">
+              {savingWhatsapp ? 'Salvando...' : 'Salvar'}
+            </Button>
+            {whatsappContato && (
+              <Button 
+                variant="outline"
+                className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 text-xs"
+                onClick={() => {
+                  const limpo = whatsappContato.replace(/\D/g, '');
+                  const num = limpo.length === 10 || limpo.length === 11 ? `55${limpo}` : limpo;
+                  window.open(`https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent('Olá! Teste de recepção de agendamentos do Studio Agnaldo Gomes.')}`, '_blank');
+                }}
+              >
+                Testar Link
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardGlass>
 
       {/* PAINEL DE CONEXÃO DO WHATSAPP COM QR CODE AO VIVO */}
       <CardGlass className="p-6 border-l-4 border-l-gold shadow-lg">
