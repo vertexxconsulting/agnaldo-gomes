@@ -86,6 +86,9 @@ export interface Agendamento {
   servico_id: UUID;
   sub_servicos?: any[];
   auxiliares_ids?: UUID[];
+  is_fixed?: boolean;
+  recurrence_type?: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'CUSTOM' | string | null;
+  recurrence_custom_day?: number | null;
   data: string; // date YYYY-MM-DD
   hora_inicio: string; // "09:00"
   hora_fim: string;

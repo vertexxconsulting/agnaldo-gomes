@@ -15,7 +15,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao, ProcedimentoComanda, ComandaMultiProfissional } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell } from 'lucide-react';
+import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { supabase } from '@/lib/supabase';
@@ -387,6 +387,7 @@ function AgendaContent() {
     recurrence_type: 'WEEKLY',
     recurrence_custom_day: '',
     allow_overlap: false,
+    replicate_to_future: false,
   });
 
   // Busca e filtro de clientes no modal de agendamento
@@ -1493,6 +1494,7 @@ function AgendaContent() {
       recurrence_type: 'WEEKLY',
       recurrence_custom_day: '',
       allow_overlap: isEncaixe,
+      replicate_to_future: false,
     });
     setBuscaCliente(buscaClienteAgenda || '');
     setClienteDropdownAberto(Boolean(buscaClienteAgenda));
@@ -1522,10 +1524,11 @@ function AgendaContent() {
       data: appt.data,
       hora_inicio: appt.hora_inicio.slice(0, 5),
       duracao_min: String(duracaoMinFinal),
-      is_fixed: false,
-      recurrence_type: 'WEEKLY',
-      recurrence_custom_day: '',
+      is_fixed: Boolean(appt.is_fixed),
+      recurrence_type: appt.recurrence_type || 'WEEKLY',
+      recurrence_custom_day: appt.recurrence_custom_day ? String(appt.recurrence_custom_day) : '',
       allow_overlap: Boolean(appt.allow_overlap),
+      replicate_to_future: false,
     });
 
     const cli = clientes.find(c => c.id === appt.cliente_id);
@@ -1568,11 +1571,17 @@ function AgendaContent() {
             data: formData.data,
             hora_inicio: formData.hora_inicio,
             hora_fim: horaFim,
-            allow_overlap: formData.allow_overlap
+            allow_overlap: formData.allow_overlap,
+            is_fixed: formData.is_fixed,
+            recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
+            recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null,
+            replicate_to_future: formData.replicate_to_future,
           })
         });
         const resData = await res.json();
         if (!res.ok) throw new Error(resData.error || 'Erro ao atualizar agendamento');
+
+        const cleanSubs = formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== '');
 
         setAgendamentos(prev => prev.map(a => {
           if (a.id === editingApptId) {
@@ -1581,12 +1590,32 @@ function AgendaContent() {
               cliente_id: formData.cliente_id,
               profissional_id: formData.profissional_id,
               servico_id: formData.servico_id,
-              sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''),
+              sub_servicos: cleanSubs,
               auxiliares_ids: formData.auxiliares_ids,
               data: formData.data,
               hora_inicio: formData.hora_inicio,
               hora_fim: horaFim,
               allow_overlap: formData.allow_overlap,
+              is_fixed: formData.is_fixed,
+              recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
+            };
+          }
+          if (
+            formData.replicate_to_future &&
+            a.cliente_id === formData.cliente_id &&
+            a.data > formData.data &&
+            a.status !== 'cancelado' &&
+            (!formData.profissional_id || a.profissional_id === formData.profissional_id)
+          ) {
+            const [hFut, mFut] = a.hora_inicio.slice(0, 5).split(':').map(Number);
+            const fimFut = new Date(2000, 0, 1, hFut, mFut + duracaoMin);
+            const horaFimFut = `${String(fimFut.getHours()).padStart(2, '0')}:${String(fimFut.getMinutes()).padStart(2, '0')}`;
+            return {
+              ...a,
+              servico_id: formData.servico_id,
+              sub_servicos: cleanSubs,
+              auxiliares_ids: formData.auxiliares_ids,
+              hora_fim: horaFimFut,
             };
           }
           return a;
@@ -1595,11 +1624,15 @@ function AgendaContent() {
         setDataSelecionada(formData.data);
         setShowForm(false);
         setEditingApptId(null);
-        setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+        setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false, replicate_to_future: false });
         setBuscaCliente('');
         setClienteDropdownAberto(false);
         setCadastrandoNovoCliente(false);
-        alert('Agendamento atualizado com sucesso!');
+        if (resData.futuros_atualizados && resData.futuros_atualizados > 0) {
+          alert(`Agendamento atualizado com sucesso!\nO serviço foi replicado para ${resData.futuros_atualizados} agendamento(s) futuro(s) deste cliente.`);
+        } else {
+          alert('Agendamento atualizado com sucesso!');
+        }
         return;
       } catch (err: any) {
         console.error('Erro ao atualizar agendamento:', err);
@@ -1651,7 +1684,7 @@ function AgendaContent() {
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
       setEditingApptId(null);
-      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false });
+      setFormData({ cliente_id: '', profissional_id: '', servico_id: '', sub_servicos: [], auxiliares_ids: [], data: hoje, hora_inicio: '09:00', duracao_min: '', is_fixed: false, recurrence_type: 'WEEKLY', recurrence_custom_day: '', allow_overlap: false, replicate_to_future: false });
       setBuscaCliente('');
       setClienteDropdownAberto(false);
       setCadastrandoNovoCliente(false);
@@ -4374,6 +4407,53 @@ function AgendaContent() {
                       <p className="text-[11px] text-foreground/50 mt-2">O sistema irá marcar este agendamento como fixo para o cliente.</p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Opção de Replicar Ajuste de Serviço para Agendamentos Recorrentes/Futuros */}
+              {editingApptId && (
+                <div className="pt-4 border-t border-[var(--border-subtle)] space-y-2 bg-gold/5 -mx-6 px-6 py-3.5 rounded-lg border border-gold/25">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={formData.replicate_to_future}
+                      onChange={e => setFormData(f => ({ ...f, replicate_to_future: e.target.checked }))}
+                      className="w-4 h-4 mt-0.5 rounded border-gold/40 bg-[var(--background)] text-gold focus:ring-gold accent-gold cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-foreground">
+                          Replicar este procedimento/serviço para os próximos agendamentos
+                        </span>
+                        <RefreshCw size={13} className={`text-gold ${formData.replicate_to_future ? 'animate-spin' : ''}`} />
+                      </div>
+                      <p className="text-xs text-foreground/70 mt-1 leading-relaxed">
+                        Ao salvar, a alteração do procedimento e adicionais será replicada automaticamente para as próximas datas recorrentes deste cliente.
+                      </p>
+                      {(() => {
+                        const futuros = agendamentos.filter(a =>
+                          a.cliente_id === formData.cliente_id &&
+                          a.id !== editingApptId &&
+                          a.data > formData.data &&
+                          a.status !== 'cancelado' &&
+                          (!formData.profissional_id || a.profissional_id === formData.profissional_id)
+                        );
+                        if (futuros.length > 0) {
+                          return (
+                            <div className="mt-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-md flex items-center gap-1.5">
+                              <CheckCircle2 size={13} className="shrink-0" />
+                              <span>{futuros.length} agendamento(s) futuro(s) encontrado(s) para este cliente na agenda.</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="mt-1 text-[11px] text-foreground/50">
+                            (Aplica a todas as datas futuras cadastradas no banco de dados para este cliente com este profissional)
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </label>
                 </div>
               )}
 

@@ -308,7 +308,11 @@ export async function PUT(req: Request) {
       hora_inicio, 
       hora_fim, 
       status, 
-      allow_overlap 
+      allow_overlap,
+      is_fixed,
+      recurrence_type,
+      recurrence_custom_day,
+      replicate_to_future,
     } = body;
 
     if (!id) {
@@ -415,6 +419,15 @@ export async function PUT(req: Request) {
     if (allow_overlap !== undefined) {
       patch.allow_overlap = Boolean(allow_overlap);
     }
+    if (is_fixed !== undefined) {
+      patch.is_fixed = Boolean(is_fixed);
+    }
+    if (recurrence_type !== undefined) {
+      patch.recurrence_type = recurrence_type || null;
+    }
+    if (recurrence_custom_day !== undefined) {
+      patch.recurrence_custom_day = recurrence_custom_day ? parseInt(recurrence_custom_day) : null;
+    }
 
     let updatedResult: any = null;
     const { data: updated, error } = await auth.supabase!
@@ -462,7 +475,93 @@ export async function PUT(req: Request) {
       updatedResult = updated;
     }
 
-    return NextResponse.json({ success: true, agendamento: updatedResult });
+    // Replicar ajuste de serviço para agendamentos futuros do cliente recorrente
+    let futurosAtualizados = 0;
+    if (replicate_to_future && cliente_id && data && servico_id) {
+      try {
+        let futureQuery = auth.supabase!
+          .from('salon_appointments')
+          .select('id, date, start_time, end_time, status, professional_id')
+          .eq('customer_id', cliente_id)
+          .gt('date', data)
+          .not('status', 'in', '("CANCELLED","COMPLETED")');
+
+        if (profissional_id) {
+          futureQuery = futureQuery.eq('professional_id', profissional_id);
+        }
+
+        const { data: futureAppts, error: errFut } = await futureQuery;
+
+        if (!errFut && futureAppts && futureAppts.length > 0) {
+          // Duração do novo procedimento (serviço principal + sub_serviços)
+          let serviceDurationMin = 60;
+          try {
+            const { data: srvData } = await auth.supabase!
+              .from('salon_services')
+              .select('duration_minutes')
+              .eq('id', servico_id)
+              .maybeSingle();
+            serviceDurationMin = Number(srvData?.duration_minutes) || 60;
+
+            if (Array.isArray(sub_servicos) && sub_servicos.length > 0) {
+              const subIds = sub_servicos
+                .filter((s: any) => !s?._meta)
+                .map((s: any) => typeof s === 'string' ? s : s.id);
+              if (subIds.length > 0) {
+                const { data: subsData } = await auth.supabase!
+                  .from('salon_services')
+                  .select('duration_minutes')
+                  .in('id', subIds);
+                if (subsData && subsData.length > 0) {
+                  serviceDurationMin += subsData.reduce((acc: number, cur: any) => acc + (Number(cur.duration_minutes) || 0), 0);
+                }
+              }
+            }
+          } catch {
+            // fallback para duração padrão
+          }
+
+          for (const fut of futureAppts) {
+            let futEndTime = fut.end_time;
+            if (fut.start_time && serviceDurationMin > 0) {
+              const [fH, fM] = fut.start_time.slice(0, 5).split(':').map(Number);
+              const endD = new Date(2000, 0, 1, fH, fM + serviceDurationMin);
+              futEndTime = `${String(endD.getHours()).padStart(2, '0')}:${String(endD.getMinutes()).padStart(2, '0')}`;
+            }
+
+            const futurePatch: Record<string, any> = {
+              service_id: servico_id,
+              end_time: futEndTime,
+              updated_at: new Date().toISOString()
+            };
+
+            if (patch.sub_services !== undefined) {
+              futurePatch.sub_services = patch.sub_services;
+            }
+            if (patch.assistant_ids !== undefined) {
+              futurePatch.assistant_ids = patch.assistant_ids;
+            }
+
+            const { error: errUpdateFut } = await auth.supabase!
+              .from('salon_appointments')
+              .update(futurePatch)
+              .eq('id', fut.id);
+
+            if (!errUpdateFut) {
+              futurosAtualizados++;
+            }
+          }
+        }
+      } catch (errRep) {
+        console.error('[api/agendamentos/admin] Erro ao replicar para futuros:', errRep);
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      agendamento: updatedResult, 
+      futuros_atualizados: futurosAtualizados 
+    });
   } catch (err) {
     console.error('[api/agendamentos/admin] Erro no PUT:', err);
     const message = err instanceof Error ? err.message : 'Erro interno';
