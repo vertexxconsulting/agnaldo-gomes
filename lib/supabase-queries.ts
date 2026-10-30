@@ -144,9 +144,13 @@ function mapAgendamento(r: Row): Agendamento {
   const cleanSubs = rawSubs.filter((s: any) => !s?._meta);
 
   // Status financeiro: PENDING_CONFIRMATION (Pré-fechamento pela secretaria) ou CONFIRMED (Confirmado pela gestão)
-  let finStatus = r.financial_status || metaObj.financial_status;
-  if (!finStatus) {
-    finStatus = (r.payment_method && r.status === 'COMPLETED') ? 'CONFIRMED' : 'PENDING_CONFIRMATION';
+  let finStatus = 'PENDING_CONFIRMATION';
+  if (r.financial_status === 'CONFIRMED' || metaObj.financial_status === 'CONFIRMED') {
+    finStatus = 'CONFIRMED';
+  } else if (r.financial_status === 'PENDING_CONFIRMATION' || metaObj.financial_status === 'PENDING_CONFIRMATION') {
+    finStatus = 'PENDING_CONFIRMATION';
+  } else if (r.payment_method && r.status === 'COMPLETED') {
+    finStatus = 'CONFIRMED';
   }
 
   // Auxiliares (assistant_ids na coluna dedicada ou em _meta.auxiliares_ids)
@@ -594,6 +598,25 @@ export async function confirmarFechamentoGestao(params: {
   confirmedBy?: string;
   agendamentosUnificadosIds?: string[];
 }): Promise<boolean> {
+  // 1. Prioriza a rota de API segura no servidor para garantir execução com privilégios de serviço
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/admin/pagamentos/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        return true;
+      }
+      const errData = await res.json().catch(() => ({}));
+      console.warn('[confirmarFechamentoGestao] API retornou erro, tentando fallback:', errData);
+    } catch (apiErr) {
+      console.warn('[confirmarFechamentoGestao] Falha de rede na API, tentando fallback direto:', apiErr);
+    }
+  }
+
+  // 2. Fallback direto caso esteja fora do navegador ou a API esteja indisponível
   const { data: current } = await supabase
     .from(TBL.agendamentos)
     .select('sub_services, payment_method, total_amount')
@@ -602,15 +625,21 @@ export async function confirmarFechamentoGestao(params: {
 
   const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
   const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+  const nowIso = new Date().toISOString();
+  const confirmedByStr = params.confirmedBy || 'Gestão';
+
   metaObj.financial_status = 'CONFIRMED';
-  metaObj.confirmed_at = new Date().toISOString();
-  metaObj.confirmed_by = params.confirmedBy || 'Gestão';
+  metaObj.confirmed_at = nowIso;
+  metaObj.confirmed_by = confirmedByStr;
 
   const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
   cleanSubs.push(metaObj);
 
   const patch: Row = {
     status: 'COMPLETED',
+    financial_status: 'CONFIRMED',
+    confirmed_at: nowIso,
+    confirmed_by: confirmedByStr,
     sub_services: cleanSubs,
   };
 
@@ -640,8 +669,8 @@ export async function confirmarFechamentoGestao(params: {
           const secSubs = Array.isArray(secCurrent?.sub_services) ? secCurrent.sub_services : [];
           const secMeta = secSubs.find((s: any) => s?._meta) || { _meta: true };
           secMeta.financial_status = 'CONFIRMED';
-          secMeta.confirmed_at = new Date().toISOString();
-          secMeta.confirmed_by = params.confirmedBy || 'Gestão';
+          secMeta.confirmed_at = nowIso;
+          secMeta.confirmed_by = confirmedByStr;
           const cleanSecSubs = secSubs.filter((s: any) => !s?._meta);
           cleanSecSubs.push(secMeta);
 
@@ -649,6 +678,9 @@ export async function confirmarFechamentoGestao(params: {
             .from(TBL.agendamentos)
             .update({
               status: 'COMPLETED',
+              financial_status: 'CONFIRMED',
+              confirmed_at: nowIso,
+              confirmed_by: confirmedByStr,
               total_amount: 0,
               payment_method: params.paymentMethod || 'UNIFICADO',
               sub_services: cleanSecSubs

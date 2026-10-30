@@ -1028,7 +1028,7 @@ export default function AdminFinanceiro() {
                               {isPendingConfirmation ? (
                                 <>
                                   <button
-                      onClick={() => handleConfirmarGestao(ag, undefined, valorFinalEditado ? parseFloat(valorFinalEditado.replace(',', '.')) : undefined)}
+                      onClick={() => handleConfirmarGestao(ag)}
                                     disabled={actionLoadingId === ag.id}
                                     className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
                                     title="Confirmar conferência e contabilizar oficialmente no financeiro"
