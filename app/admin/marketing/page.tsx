@@ -86,7 +86,6 @@ export default function MarketingPage() {
       const lista: ClienteInativo[] = [];
       for (const c of clientes) {
         const ultima = ultimaPorCliente.get(c.id);
-        // IMPORTANTE: Só é considerado inativo quem REALMENTE já frequentou o salão e passou de 60 dias sem voltar.
         if (!ultima) continue;
         const dias = Math.floor((agora - new Date(`${ultima}T12:00:00`).getTime()) / (24 * 3600 * 1000));
         if (dias >= DIAS_INATIVO) {
@@ -121,7 +120,7 @@ export default function MarketingPage() {
 
   const carregarTudo = useCallback(async () => {
     await checkApiStatus();
-    // NOTA: Chamadas com ?preview=true JAMAIS disparam mensagens na abertura da tela!
+    // Chamadas com ?preview=true para alimentar a listagem sem disparos automáticos
     const [ani, ag, reat, fb] = await Promise.all([
       carregarCron('/api/cron/aniversarios?preview=true'),
       carregarCron('/api/cron/agenda?preview=true'),
@@ -142,6 +141,44 @@ export default function MarketingPage() {
       setLoading(false);
     })();
   }, [carregarTudo]);
+
+  // Função central para registrar envio manual (WhatsApp Web) e atualizar cards instantaneamente
+  const handleEnviarManual = async (item: ItemMsg) => {
+    if (!item.wa_link) return;
+    window.open(item.wa_link, '_blank', 'noopener,noreferrer');
+
+    if (item.chaveUnica) {
+      // 1. Atualizar UI imediatamente em todos os quadros
+      const atualizarLista = (prev: RespostaCron | null): RespostaCron | null => {
+        if (!prev || !prev.itens) return prev;
+        return {
+          ...prev,
+          itens: prev.itens.map(it =>
+            it.chaveUnica === item.chaveUnica || (it.telefone === item.telefone && it.tipo === item.tipo)
+              ? { ...it, ja_enviado_hoje: true, enviada_via_api: true }
+              : it
+          ),
+        };
+      };
+
+      setAniversarios(atualizarLista);
+      setAgenda(atualizarLista);
+      setFeedback(atualizarLista);
+      setReativacao(atualizarLista);
+
+      // 2. Persistir no banco de dados para proteção anti-duplicação
+      try {
+        await fetch('/api/admin/marketing/registrar-disparo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chaveUnica: item.chaveUnica }),
+        });
+        toast.success(`Disparo para ${item.nome || 'cliente'} registrado! Não será reenviado hoje.`);
+      } catch (err) {
+        console.error('Erro ao registrar disparo:', err);
+      }
+    }
+  };
 
   const dispararFilaAtiva = async () => {
     if (!waStatus.conectado) {
@@ -276,6 +313,7 @@ export default function MarketingPage() {
                 title={`🎂 Aniversariantes (${aniversarios?.total ?? 0})`}
                 data={aniversarios} 
                 icon={<Cake size={16} />}
+                onEnviarManual={handleEnviarManual}
               />
 
               <MarketingWidget 
@@ -283,6 +321,7 @@ export default function MarketingPage() {
                 data={agenda} 
                 icon={<CalendarCheck size={16} />}
                 typeLabel={(i) => i.tipo === 'confirmacao_vespera' ? 'Véspera' : i.tipo === 'lembrete_hoje' ? 'Hoje' : 'Feedback'}
+                onEnviarManual={handleEnviarManual}
                 action={
                   <Button
                     variant="outline"
@@ -303,6 +342,7 @@ export default function MarketingPage() {
                 data={feedback} 
                 icon={<Star size={16} />}
                 isFeedback
+                onEnviarManual={handleEnviarManual}
               />
             </div>
 
@@ -339,10 +379,13 @@ export default function MarketingPage() {
                             <span className="text-[10px] font-bold bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30">
                               PENDENTE
                             </span>
-                            <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+                            <button
+                              type="button"
+                              onClick={() => handleEnviarManual(i)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors cursor-pointer"
+                            >
                               <MessageCircleHeart size={13} /> Chamar
-                            </a>
+                            </button>
                           </div>
                         ) : (
                           <span className="text-[10px] text-foreground/40">—</span>
@@ -369,7 +412,7 @@ export default function MarketingPage() {
                             {c.telefone || 'sem telefone'}
                           </p>
                         </div>
-                        <BotaoReativar nome={c.nome} telefone={c.telefone} dias={c.diasDesdeUltima} />
+                        <BotaoReativar id={c.id} nome={c.nome} telefone={c.telefone} dias={c.diasDesdeUltima} />
                       </li>
                     ))}
                   </ul>
@@ -390,6 +433,7 @@ function MarketingWidget({
   typeLabel, 
   isFeedback,
   action,
+  onEnviarManual,
 }: { 
   title: string, 
   data: RespostaCron | null, 
@@ -397,6 +441,7 @@ function MarketingWidget({
   typeLabel?: (i: any) => string, 
   isFeedback?: boolean,
   action?: React.ReactNode,
+  onEnviarManual?: (i: ItemMsg) => void,
 }) {
   return (
     <Panel 
@@ -433,10 +478,13 @@ function MarketingWidget({
                   <span className="text-[10px] font-bold bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 whitespace-nowrap">
                     AGUARDANDO
                   </span>
-                  <a href={i.wa_link} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => onEnviarManual?.(i)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors cursor-pointer"
+                  >
                     <ExternalLink size={12} /> Enviar
-                  </a>
+                  </button>
                 </div>
               ) : (
                 <span className="text-[10px] text-foreground/40">—</span>
@@ -449,8 +497,9 @@ function MarketingWidget({
   );
 }
 
-function BotaoReativar({ nome, telefone, dias }: { nome: string; telefone: string; dias: number | null }) {
+function BotaoReativar({ id, nome, telefone, dias }: { id: string; nome: string; telefone: string; dias: number | null }) {
   const [url, setUrl] = useState<string>('');
+  const [enviado, setEnviado] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -461,11 +510,39 @@ function BotaoReativar({ nome, telefone, dias }: { nome: string; telefone: strin
     })();
   }, [nome, telefone, dias]);
 
+  const handleEnviar = async () => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setEnviado(true);
+    const chaveUnica = `reativacao:${id}`;
+    try {
+      await fetch('/api/admin/marketing/registrar-disparo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chaveUnica }),
+      });
+      toast.success(`Mensagem para ${nome || 'cliente'} registrada como enviada!`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (!url) return <span className="text-[10px] text-foreground/40">—</span>;
+  if (enviado) {
+    return (
+      <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+        ENVIADA HOJE
+      </span>
+    );
+  }
+
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+    <button
+      type="button"
+      onClick={handleEnviar}
+      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors cursor-pointer"
+    >
       <MessageCircle size={13} /> Chamar
-    </a>
+    </button>
   );
 }

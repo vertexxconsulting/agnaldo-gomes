@@ -78,6 +78,7 @@ interface RegraPreview {
   ativo: boolean;
   horario: string;
   itens: {
+    chaveUnica?: string;
     nome: string | null;
     telefone: string;
     mensagem: string;
@@ -258,14 +259,32 @@ function CardRegraControle({ regra }: { regra: any }) {
                       )}
                     </div>
                     {item.wa_link && (
-                      <a
-                        href={item.wa_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors whitespace-nowrap"
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!item.wa_link) return;
+                          window.open(item.wa_link, '_blank', 'noopener,noreferrer');
+                          if (item.chaveUnica) {
+                            try {
+                              await fetch('/api/admin/marketing/registrar-disparo', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chaveUnica: item.chaveUnica }),
+                              });
+                              setPreview(prev => prev ? {
+                                ...prev,
+                                itens: prev.itens.map(it => it.chaveUnica === item.chaveUnica ? { ...it, ja_enviado_hoje: true } : it)
+                              } : prev);
+                              toast.success(`Mensagem para ${item.nome || 'cliente'} registrada como enviada!`);
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }
+                        }}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors whitespace-nowrap cursor-pointer"
                       >
                         Chamar
-                      </a>
+                      </button>
                     )}
                   </div>
                 ))
