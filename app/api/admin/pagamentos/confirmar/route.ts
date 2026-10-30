@@ -113,3 +113,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || 'Erro interno ao confirmar fechamento' }, { status: 500 });
   }
 }
+

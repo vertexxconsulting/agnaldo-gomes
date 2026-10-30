@@ -160,3 +160,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message || 'Erro ao atualizar perfil' }, { status: 500 });
   }
 }
+

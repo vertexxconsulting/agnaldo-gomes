@@ -15,7 +15,7 @@ import {
 } from '@/lib/mock-data';
 import type { Agendamento, BloqueioAgenda, StatusAgendamento, Cliente, Servico, ProfissionalServico, ProdutoEstoque, ServicoProduto, InsumoAtendimento, FormaPagamento, PaymentFee, RegraComissao, ProcedimentoComanda, ComandaMultiProfissional } from '@/lib/gestao-types';
 import type { Profissional } from '@/lib/gestao-types';
-import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell, RefreshCw, Scissors } from 'lucide-react';
+import { CalendarDays, Clock, User2, Users, Check, X, CheckCircle2, AlertCircle, AlertTriangle, Sparkles, Beaker, CreditCard, Banknote, Smartphone, ShoppingBag, Search, UserPlus, Phone, Percent, Tag, Trash2, Plus, Pencil, Scale, DollarSign, Bell, RefreshCw, Scissors, LayoutGrid, Columns3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { obterHorariosSalao, DEFAULT_HORARIOS_SALAO } from '@/lib/ia-config';
 import { supabase } from '@/lib/supabase';
@@ -298,6 +298,27 @@ function AgendaContent() {
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<string>('dia');
+  const [densidade, setDensidade] = useState<'compacta' | 'expandida'>('compacta');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('agenda_densidade_cards');
+      if (saved === 'expandida' || saved === 'compacta') {
+        setDensidade(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleMudarDensidade = (novaDensidade: 'compacta' | 'expandida') => {
+    setDensidade(novaDensidade);
+    try {
+      localStorage.setItem('agenda_densidade_cards', novaDensidade);
+    } catch {
+      // ignore
+    }
+  };
   const [showForm, setShowForm] = useState(false);
   const [disparandoLembretes, setDisparandoLembretes] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<Agendamento | null>(null);
@@ -1974,8 +1995,38 @@ function AgendaContent() {
           )}
         </div>
 
-        {/* View Toggle */}
-        <div className="sm:ml-auto flex gap-2 w-full sm:w-auto">
+        {/* Controles de Visualização: Densidade (Quadrado vs Largo) e Modo (Dia vs Semana) */}
+        <div className="sm:ml-auto flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Seletor de Densidade dos Cards dos Profissionais */}
+          <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg gap-1 shadow-xs" title="Ajuste o formato dos cards dos profissionais">
+            <button
+              type="button"
+              onClick={() => handleMudarDensidade('compacta')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                densidade === 'compacta'
+                  ? 'bg-gold text-background shadow-xs font-extrabold'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
+              }`}
+              title="Cards mais quadrados: formato compacto que ocupa menos espaço horizontal e exibe mais profissionais na tela"
+            >
+              <LayoutGrid size={13} />
+              <span>Cards Quadrados</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMudarDensidade('expandida')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                densidade === 'expandida'
+                  ? 'bg-gold text-background shadow-xs font-extrabold'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
+              }`}
+              title="Cards mais largos (retangulares tradicionais)"
+            >
+              <Columns3 size={13} />
+              <span className="hidden md:inline">Larga</span>
+            </button>
+          </div>
+
           <ViewToggle 
             options={[
               { id: 'dia', label: 'Dia' },
@@ -2154,24 +2205,56 @@ function AgendaContent() {
                 }
 
                 return (
-                  <div key={prof.id} className="flex-1 min-w-[280px] border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5">
-                    {/* Cabeçalho */}
-                    <div className="p-3 flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)]">
-                      {prof.foto_url ? (
-                        <img src={prof.foto_url} alt={prof.nome} className="w-10 h-10 rounded-full object-cover border-2 border-gold/50 shadow-sm shrink-0" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center shadow-sm shrink-0">
-                          <User2 size={20} className="text-gold" />
-                        </div>
-                      )}
-                      <div className="flex flex-col text-left">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-foreground text-sm uppercase tracking-wide leading-tight">{prof.nome}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold">
-                            {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
+                  <div 
+                    key={prof.id} 
+                    className={`flex-1 ${
+                      densidade === 'compacta' 
+                        ? 'min-w-[195px] sm:min-w-[210px] md:min-w-[215px] max-w-[245px]' 
+                        : 'min-w-[280px]'
+                    } border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5 transition-all`}
+                  >
+                    {/* Cabeçalho do Profissional (Card do Profissional) */}
+                    <div className={`border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)] transition-all ${
+                      densidade === 'compacta'
+                        ? 'p-2.5 flex flex-col items-center text-center gap-1.5'
+                        : 'p-3 flex items-center gap-3'
+                    }`}>
+                      <div className="relative shrink-0 inline-block">
+                        {prof.foto_url ? (
+                          <img 
+                            src={prof.foto_url} 
+                            alt={prof.nome} 
+                            className={`rounded-full object-cover border-2 border-gold/50 shadow-xs shrink-0 ${
+                              densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
+                            }`} 
+                          />
+                        ) : (
+                          <div className={`rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center shadow-xs shrink-0 ${
+                            densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
+                          }`}>
+                            <User2 size={densidade === 'compacta' ? 16 : 20} className="text-gold" />
+                          </div>
+                        )}
+                        <span 
+                          className="absolute -bottom-1 -right-1 text-[8px] px-1 py-0.2 rounded-full bg-gold text-white font-extrabold shadow-xs leading-none"
+                          title={getCategoriaProfissional(prof)}
+                        >
+                          {getCategoriaProfissional(prof) === 'Unhas' ? '💅' : '✂️'}
+                        </span>
+                      </div>
+
+                      <div className={`w-full min-w-0 ${densidade === 'compacta' ? 'text-center' : 'text-left'}`}>
+                        <div className={`flex items-center gap-1 min-w-0 ${densidade === 'compacta' ? 'justify-center' : 'flex-wrap'}`}>
+                          <span className="font-bold text-foreground text-xs uppercase tracking-tight truncate leading-tight" title={prof.nome}>
+                            {prof.nome}
                           </span>
+                          {densidade !== 'compacta' && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold">
+                              {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[10px] text-foreground/50 mt-0.5">
+                        <div className="text-[9px] text-foreground/50 mt-0.5 truncate font-medium">
                           {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
                           {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
                         </div>
@@ -2179,7 +2262,7 @@ function AgendaContent() {
                     </div>
 
                     {/* Slots */}
-                    <div className="flex flex-col p-2 gap-2 h-full relative">
+                    <div className="flex flex-col p-1.5 gap-1.5 h-full relative">
                       {!profAtende && (
                         <div className="absolute inset-0 flex items-center justify-center text-foreground/30 text-xs font-mono bg-[var(--background)]">
                           INDISPONÍVEL
@@ -2209,14 +2292,18 @@ function AgendaContent() {
                         const temAgendamento = startingAppts.length > 0 || ongoingAppts.length > 0;
                         
                         return (
-                          <div key={time} className="flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm min-h-[65px] group relative overflow-hidden transition-colors hover:border-gold/30">
+                          <div key={time} className={`flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm ${
+                            densidade === 'compacta' ? 'min-h-[58px]' : 'min-h-[65px]'
+                          } group relative overflow-hidden transition-colors hover:border-gold/30`}>
                             {/* Left Time label */}
-                            <div className="w-14 bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center text-[12px] font-mono font-bold text-foreground/70 shrink-0">
+                            <div className={`${
+                              densidade === 'compacta' ? 'w-11 text-[11px]' : 'w-14 text-[12px]'
+                            } bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center font-mono font-bold text-foreground/70 shrink-0`}>
                               {time}
                             </div>
                             
                             {/* Appts or Add */}
-                            <div className="flex-1 p-1.5 flex flex-col justify-center relative gap-1.5">
+                            <div className="flex-1 p-1 flex flex-col justify-center relative gap-1 min-w-0">
                               {!temAgendamento ? (
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
                                   <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
@@ -2240,7 +2327,9 @@ function AgendaContent() {
                                       <div 
                                         key={a.id} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border rounded-lg p-2 cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center ${estilo.cardClass}`}
+                                        className={`text-xs border rounded-lg ${
+                                          densidade === 'compacta' ? 'p-1.5' : 'p-2'
+                                        } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass}`}
                                       >
                                         <div 
                                           className="absolute left-0 top-0 bottom-0 w-1.5" 
@@ -2330,7 +2419,9 @@ function AgendaContent() {
                                       <div 
                                         key={`ongoing-${a.id}-${time}`} 
                                         onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border border-dashed rounded-lg p-1.5 cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] ${estilo.ongoingClass}`}
+                                        className={`text-xs border border-dashed rounded-lg ${
+                                          densidade === 'compacta' ? 'p-1' : 'p-1.5'
+                                        } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass}`}
                                         title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
                                       >
                                         <div 
