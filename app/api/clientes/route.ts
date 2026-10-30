@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { upsertClienteMae } from '@/lib/crm-sync';
 import { requireStudioAuth } from '@/lib/api-auth';
+import { getSupabaseServiceClient } from '@/lib/supabase/server';
 
 export async function GET(req: Request) {
   const auth = await requireStudioAuth();
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
   const search = searchParams.get('search');
 
   try {
-    const supabase = auth.supabase!;
+    const supabase = await getSupabaseServiceClient();
 
     if (search && search.trim()) {
       const termo = search.trim();
@@ -115,7 +116,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true, message: 'Mock id ignorado' });
     }
 
-    const supabase = auth.supabase!;
+    const supabase = await getSupabaseServiceClient();
 
     // 1. Excluir agendamentos do cliente para evitar violação de FK
     const { error: agError } = await supabase

@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 async function checkEditPermission(auth: any): Promise<boolean> {
   const role = auth.user!.role;
   // Admins têm acesso total
-  if (role === 'STUDIO_ADMIN' || role === 'ADMIN') return true;
+  if (role === 'STUDIO_ADMIN' || role === 'ADMIN' || role === 'studio_admin') return true;
   
   // Secretaria: verifica as permissões específicas granulares no JSONB "permissions"
   if (role === 'STUDIO_SECRETARIA') {
@@ -28,7 +28,7 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
-    const { data, error } = await auth.supabase!
+    const { data, error } = await supabaseAdmin
       .from('salon_professionals')
       .select('*')
       .order('name');

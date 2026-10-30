@@ -414,6 +414,16 @@ export async function fetchAgendamentos(filtro?: {
 }
 
 export async function fetchAgendamentoPorId(id: string): Promise<Agendamento | null> {
+  try {
+    const res = await fetch(`/api/agendamentos/admin?id=${encodeURIComponent(id)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data) return mapAgendamento(data);
+    }
+  } catch (err) {
+    console.warn('[fetchAgendamentoPorId] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase
     .from(TBL.agendamentos)
     .select(`
@@ -435,6 +445,21 @@ export async function fetchAgendamentoPorId(id: string): Promise<Agendamento | n
 // ── BLOQUEIOS ────────────────────────────────────────────
 
 export async function fetchBloqueios(data?: string): Promise<BloqueioAgenda[]> {
+  try {
+    const res = await fetch('/api/agendamentos/bloqueios');
+    if (res.ok) {
+      const dbData = await res.json();
+      if (Array.isArray(dbData)) {
+        let lista = dbData.map(mapBloqueio);
+        if (data) lista = lista.filter(b => b.data_inicio === data || b.data_fim === data ||
+          (b.data_inicio <= data && b.data_fim >= data));
+        return lista;
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchBloqueios] API server falhou, tentando client-side:', err);
+  }
+
   let query = supabase.from(TBL.bloqueios).select('*').order('start_time');
 
   const { data: bloqueios, error } = await query;
@@ -460,6 +485,21 @@ export async function criarAgendamento(payload: {
   hora_fim: string;
   canal?: 'online' | 'recepcao';
 }): Promise<{ id: string } | null> {
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const resp = await res.json();
+      if (resp?.agendamento?.id) return { id: resp.agendamento.id };
+      if (Array.isArray(resp?.agendamentos) && resp.agendamentos[0]?.id) return { id: resp.agendamentos[0].id };
+    }
+  } catch (err) {
+    console.warn('[criarAgendamento] API server falhou, tentando client-side:', err);
+  }
+
   const { data, error } = await supabase.from(TBL.agendamentos).insert({
     customer_id: payload.cliente_id,
     professional_id: payload.profissional_id,
@@ -479,6 +519,17 @@ export async function criarAgendamento(payload: {
 }
 
 export async function atualizarStatusAgendamento(id: string, status: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    console.warn('[atualizarStatusAgendamento] API server falhou, tentando client-side:', err);
+  }
+
   const dbStatus = STATUS_TO_DB[status as StatusAgendamento] ?? status;
   const patch: Row = { status: dbStatus };
 
@@ -563,6 +614,17 @@ export async function finalizarRecebimentoAgendamento(params: {
 
   if (params.auxiliaresIds && params.auxiliaresIds.length > 0) {
     patch.assistant_ids = params.auxiliaresIds;
+  }
+
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: params.id, ...patch }),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    console.warn('[finalizarRecebimentoAgendamento] API server falhou, tentando client-side:', err);
   }
 
   const { error } = await supabase
@@ -1215,6 +1277,19 @@ function mapServicoProduto(r: Row): ServicoProduto {
 
 /** Lista todos os produtos do estoque */
 export async function fetchEstoque(apenasAtivos = false): Promise<ProdutoEstoque[]> {
+  try {
+    const url = `/api/admin/estoque${apenasAtivos ? '?apenasAtivos=true' : ''}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map(mapProdutoEstoque);
+      }
+    }
+  } catch (err) {
+    console.warn('[fetchEstoque] API server falhou, tentando client-side:', err);
+  }
+
   let q = supabase.from(TBL_INV.inventory).select('*').order('name');
   if (apenasAtivos) q = q.eq('active', true);
   const { data, error } = await q;
@@ -1253,9 +1328,32 @@ export async function salvarProdutoEstoque(
   };
 
   if (id) {
+    try {
+      const res = await fetch('/api/admin/estoque', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...row }),
+      });
+      if (res.ok) return { ok: true, id };
+    } catch (err) {
+      console.warn('[salvarProdutoEstoque update] API server falhou, tentando client-side:', err);
+    }
     const { error } = await supabase.from(TBL_INV.inventory).update(row).eq('id', id);
     if (error) { logSupabaseError('[salvarProdutoEstoque update]', error); return { ok: false, error: error.message }; }
     return { ok: true, id };
+  }
+  try {
+    const res = await fetch('/api/admin/estoque', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(row),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { ok: true, id: json.id };
+    }
+  } catch (err) {
+    console.warn('[salvarProdutoEstoque insert] API server falhou, tentando client-side:', err);
   }
   const { data, error } = await supabase.from(TBL_INV.inventory).insert(row).select('id').single();
   if (error) { logSupabaseError('[salvarProdutoEstoque insert]', error); return { ok: false, error: error.message }; }
@@ -1263,6 +1361,16 @@ export async function salvarProdutoEstoque(
 }
 
 export async function atualizarProdutoEstoqueParcial(id: string, payload: Partial<ProdutoEstoque>): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/estoque', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (res.ok) return { ok: true };
+  } catch (err) {
+    console.warn('[atualizarProdutoEstoqueParcial] API server falhou, tentando client-side:', err);
+  }
   const { error } = await supabase.from(TBL_INV.inventory).update(payload).eq('id', id);
   if (error) { logSupabaseError('[atualizarProdutoEstoqueParcial]', error); return { ok: false, error: error.message }; }
   return { ok: true };

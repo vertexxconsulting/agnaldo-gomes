@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireStudioAuth } from '@/lib/api-auth';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function GET() {
   const auth = await requireStudioAuth();
   if (auth.error) return auth.error;
 
   try {
-    const { data, error } = await auth.supabase!
+    const { data, error } = await supabaseAdmin
       .from('salon_services')
       .select('*')
       .order('name');
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isUUID) {
-      const { data, error } = await auth.supabase!
+      const { data, error } = await supabaseAdmin
         .from('salon_services')
         .update(payload)
         .eq('id', id)
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ success: true, servico: data });
     } else {
-      const { data, error } = await auth.supabase!
+      const { data, error } = await supabaseAdmin
         .from('salon_services')
         .insert(payload)
         .select('*')
@@ -108,10 +109,10 @@ export async function DELETE(req: Request) {
     }
 
     // 1. Remove vínculos primeiro
-    await auth.supabase!.from('salon_professional_services').delete().eq('service_id', id);
+    await supabaseAdmin.from('salon_professional_services').delete().eq('service_id', id);
 
     // 2. Remove o serviço
-    const { error } = await auth.supabase!
+    const { error } = await supabaseAdmin
       .from('salon_services')
       .delete()
       .eq('id', id);
