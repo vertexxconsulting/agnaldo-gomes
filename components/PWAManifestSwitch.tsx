@@ -16,26 +16,31 @@
 import { useEffect } from 'react';
 
 interface Props {
-  /** Caminho para o manifest alternativo em /public, ex: "/manifest-admin.json" */
-  manifest: string;
+  /** Caminho para o manifest alternativo, ou omita para usar a URL atual da janela */
+  manifest?: string;
 }
 
 export function PWAManifestSwitch({ manifest }: Props) {
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
-    // Encontra o <link rel="manifest"> existente ou cria um novo
     let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (!link) {
       link = document.createElement('link');
       link.rel = 'manifest';
       document.head.appendChild(link);
     }
-    link.href = manifest;
 
-    // Restaura o manifest padrão ao sair da seção
+    const currentUrl = window.location.pathname + (window.location.search || '');
+    const targetHref = manifest || `/api/pwa/manifest?url=${encodeURIComponent(currentUrl)}`;
+    link.setAttribute('href', targetHref);
+
+    // Restaura o manifest com a URL atual ao sair da seção
     return () => {
-      if (link) link.href = '/manifest.webmanifest';
+      if (link) {
+        const exitUrl = window.location.pathname + (window.location.search || '');
+        link.setAttribute('href', `/api/pwa/manifest?url=${encodeURIComponent(exitUrl)}`);
+      }
     };
   }, [manifest]);
 

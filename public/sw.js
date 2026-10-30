@@ -7,21 +7,15 @@
  *  - Offline page  → /offline  (fallback quando rede e cache falham)
  */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE  = `static-${CACHE_VERSION}`;
 const PAGES_CACHE   = `pages-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `images-${CACHE_VERSION}`;
 
-// Recursos essenciais pré-cacheados no install
+// Recursos essenciais pré-cacheados no install (manifests são dinâmicos e sempre frescos)
 const PRECACHE_URLS = [
   '/',
   '/offline',
-  '/agendamento',
-  '/admin',
-  '/academy/login',
-  '/manifest.webmanifest',
-  '/manifest-admin.json',
-  '/manifest-academy.json',
   '/theme-init.js',
   '/icon-192x192.png',
   '/icon-512x512.png',
@@ -56,7 +50,6 @@ function isStaticAsset(url) {
   return url.pathname.startsWith('/_next/static/') ||
          url.pathname.match(/\.(woff2?|ttf|otf|eot)(\?.*)?$/) ||
          url.pathname === '/theme-init.js' ||
-         url.pathname.includes('manifest') ||
          url.pathname.match(/\/(icon-|logo|favicon)/);
 }
 

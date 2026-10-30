@@ -1,9 +1,52 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, Share2, PlusSquare, X, Smartphone, WifiOff, Wifi, MoreVertical, Monitor } from 'lucide-react';
 
 type Platform = 'ios' | 'android' | 'desktop' | 'other';
+
+function getPWAInfo(pathname: string) {
+  const p = (pathname || '').toLowerCase();
+  if (p.startsWith('/admin') || p === '/hub' || p.startsWith('/admin-')) {
+    return {
+      title: 'Instale o Painel Admin',
+      descriptionDesktop: 'Gerencie o Studio diretamente do seu computador.',
+      descriptionMobile: 'Acesse a gestão do Studio direto da tela inicial.',
+      buttonText: 'Instalar Painel Admin',
+    };
+  }
+  if (p.startsWith('/academy') || p.startsWith('/aluno')) {
+    return {
+      title: 'Instale o App da Academy',
+      descriptionDesktop: 'Acesse suas aulas e cursos direto do computador.',
+      descriptionMobile: 'Acesse seus cursos com um toque na tela inicial.',
+      buttonText: 'Instalar App Academy',
+    };
+  }
+  if (p.startsWith('/loja')) {
+    return {
+      title: 'Instale o App da Loja',
+      descriptionDesktop: 'Compre produtos profissionais direto do app.',
+      descriptionMobile: 'Compre produtos direto da tela inicial.',
+      buttonText: 'Instalar App da Loja',
+    };
+  }
+  if (p.startsWith('/agendamento')) {
+    return {
+      title: 'Instale o App de Agendamento',
+      descriptionDesktop: 'Agende horários rapidamente sem abrir o navegador.',
+      descriptionMobile: 'Agende horários direto da tela inicial.',
+      buttonText: 'Instalar App Agendamento',
+    };
+  }
+  return {
+    title: 'Instale o App do Studio',
+    descriptionDesktop: 'Use no computador sem abrir o navegador.',
+    descriptionMobile: 'Acesse rapidinho da tela inicial.',
+    buttonText: 'Instalar App Agora',
+  };
+}
 
 // ─── HOOK DE REGISTRO DO SW ────────────────────────────────────────────────
 function useServiceWorker() {
@@ -113,6 +156,8 @@ function OfflineBanner({ isOnline }: { isOnline: boolean }) {
 
 // ─── PROMPT DE INSTALAÇÃO ──────────────────────────────────────────────────
 function InstallPrompt() {
+  const pathname = usePathname() || '/';
+  const info = getPWAInfo(pathname);
   const [platform, setPlatform] = useState<Platform>('other');
   const [isStandalone, setIsStandalone] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -188,12 +233,12 @@ function InstallPrompt() {
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-bold text-black leading-tight">
-            Instale o App do Studio
+            {info.title}
           </h4>
           <p className="text-[11px] text-gray-500 mt-0.5">
             {platform === 'desktop'
-              ? 'Use no computador sem abrir o navegador.'
-              : 'Acesse rapidinho da tela inicial.'}
+              ? info.descriptionDesktop
+              : info.descriptionMobile}
           </p>
         </div>
         <button onClick={handleDismiss} className="text-gray-300 hover:text-black p-1 shrink-0">
@@ -229,7 +274,7 @@ function InstallPrompt() {
               style={{ background: '#D4AF37', color: '#fff' }}
             >
               {platform === 'desktop' ? <Monitor size={16} /> : <Download size={16} />}
-              {installing ? 'Instalando...' : 'Instalar App Agora'}
+              {installing ? 'Instalando...' : info.buttonText}
             </button>
           ) : (
             <div className="bg-[#FAF8F5] rounded-xl border border-[#D4AF37]/20 p-3 text-[12px] text-gray-700 leading-relaxed space-y-2.5">
@@ -253,6 +298,26 @@ function InstallPrompt() {
 export function PWAManager() {
   useServiceWorker();
   const isOnline = useOnlineStatus();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    // Sincroniza dinamicamente o <link rel="manifest"> com a URL atual exata da página,
+    // garantindo que ao instalar o PWA em qualquer área (/admin, /aluno, /, etc.),
+    // o PWA seja instalado com start_url correspondente à URL solicitada e não force o agendamento.
+    const currentUrl = window.location.pathname + (window.location.search || '');
+    let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    const manifestHref = `/api/pwa/manifest?url=${encodeURIComponent(currentUrl)}`;
+    if (link.getAttribute('href') !== manifestHref) {
+      link.setAttribute('href', manifestHref);
+    }
+  }, [pathname]);
 
   return (
     <>

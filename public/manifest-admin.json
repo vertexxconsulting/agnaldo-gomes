@@ -4,7 +4,7 @@
   "description": "Painel administrativo do Studio Agnaldo Gomes",
   "start_url": "/admin",
   "id": "/admin",
-  "scope": "/admin",
+  "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0d0d0d",
