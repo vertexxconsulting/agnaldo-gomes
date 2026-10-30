@@ -7,8 +7,7 @@ import { Button } from '@/components/Button';
 import { Database, Download, Upload, AlertTriangle, FileJson, CheckCircle2, MessageSquare, Link as LinkIcon, Activity, ShieldCheck, RefreshCw } from 'lucide-react';
 import { getServicos, getProfissionais, getClientes, getAgendamentos, getBloqueios, getProfissionalServico } from '@/lib/mock-data';
 import type { Servico, Profissional, Cliente, Agendamento, BloqueioAgenda, ProfissionalServico } from '@/lib/gestao-types';
-import { fetchSystemSettings, updateSystemSetting } from '@/lib/supabase-queries';
-import { MENSAGENS_PADRAO, invalidarCacheMensagens } from '@/lib/mensagens';
+import { updateSystemSetting } from '@/lib/supabase-queries';
 
 export default function SistemaPage() {
   const [importStatus, setImportStatus] = useState<{ tipo: 'idle' | 'sucesso' | 'erro', msg: string }>({ tipo: 'idle', msg: '' });
@@ -20,38 +19,6 @@ export default function SistemaPage() {
     agendamentos: Agendamento[];
     bloqueios: BloqueioAgenda[];
   } | null>(null);
-
-  // Settings state
-  const [salvando, setSalvando] = useState(false);
-  const [msgConfirmacao, setMsgConfirmacao] = useState<string>(MENSAGENS_PADRAO.msg_confirmacao);
-  const [msgLembrete, setMsgLembrete] = useState<string>(MENSAGENS_PADRAO.msg_lembrete);
-  const [msgFeedback, setMsgFeedback] = useState<string>(MENSAGENS_PADRAO.msg_feedback);
-  const [msgAniversario, setMsgAniversario] = useState<string>(MENSAGENS_PADRAO.msg_aniversario);
-
-  useEffect(() => {
-    (async () => {
-      const settings = await fetchSystemSettings();
-      settings.forEach(s => {
-        if (s.key === 'msg_confirmacao') setMsgConfirmacao(s.value);
-        if (s.key === 'msg_lembrete') setMsgLembrete(s.value);
-        if (s.key === 'msg_feedback') setMsgFeedback(s.value);
-        if (s.key === 'msg_aniversario') setMsgAniversario(s.value);
-      });
-    })();
-  }, []);
-
-  const handleSalvarRegras = async () => {
-    setSalvando(true);
-    await Promise.all([
-      updateSystemSetting('msg_confirmacao', msgConfirmacao),
-      updateSystemSetting('msg_lembrete', msgLembrete),
-      updateSystemSetting('msg_feedback', msgFeedback),
-      updateSystemSetting('msg_aniversario', msgAniversario),
-    ]);
-    invalidarCacheMensagens();
-    setSalvando(false);
-    alert('Regras de notificação salvas com sucesso!');
-  };
 
 
   const [instance, setInstance] = useState('');
@@ -394,71 +361,6 @@ return (
           </div>
         </CardGlass>
       </div>
-
-      {/* Regras de Comunicação */}
-      <CardGlass className="p-6">
-        <div className="flex items-center gap-3 mb-6 border-b border-[var(--border-subtle)] pb-4">
-          <div className="p-3 bg-gold/10 text-gold rounded-lg">
-            <MessageSquare size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-foreground">Regras de Comunicação e Mensagens</h3>
-            <p className="text-sm text-foreground/60">Templates de confirmação e disparo para clientes</p>
-          </div>
-        </div>
-
-        <div className="space-y-4 max-w-2xl">
-          <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <label className="block text-sm font-bold text-foreground mb-1">Mensagem Padrão de Confirmação (Véspera)</label>
-            <p className="text-xs text-foreground/50 mb-3">Variáveis: <code className="bg-foreground/10 px-1 rounded">{'{nome}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{servico}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{hora}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{data}'}</code></p>
-            <textarea
-              rows={3}
-              value={msgConfirmacao}
-              onChange={(e) => setMsgConfirmacao(e.target.value)}
-              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold resize-none"
-            />
-          </div>
-
-          <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <label className="block text-sm font-bold text-foreground mb-1">Lembrete (Mesmo Dia)</label>
-            <p className="text-xs text-foreground/50 mb-3">Variáveis: <code className="bg-foreground/10 px-1 rounded">{'{nome}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{servico}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{hora}'}</code></p>
-            <textarea
-              rows={3}
-              value={msgLembrete}
-              onChange={(e) => setMsgLembrete(e.target.value)}
-              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold resize-none"
-            />
-          </div>
-
-          <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <label className="block text-sm font-bold text-foreground mb-1">Feedback Pós-Atendimento</label>
-            <p className="text-xs text-foreground/50 mb-3">Variáveis: <code className="bg-foreground/10 px-1 rounded">{'{nome}'}</code>, <code className="bg-foreground/10 px-1 rounded">{'{servico}'}</code></p>
-            <textarea
-              rows={3}
-              value={msgFeedback}
-              onChange={(e) => setMsgFeedback(e.target.value)}
-              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold resize-none"
-            />
-          </div>
-
-          <div className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <label className="block text-sm font-bold text-foreground mb-1">Feliz Aniversário</label>
-            <p className="text-xs text-foreground/50 mb-3">Variáveis: <code className="bg-foreground/10 px-1 rounded">{'{nome}'}</code></p>
-            <textarea
-              rows={3}
-              value={msgAniversario}
-              onChange={(e) => setMsgAniversario(e.target.value)}
-              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-3 text-foreground text-sm focus:outline-none focus:border-gold resize-none"
-            />
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button onClick={handleSalvarRegras} disabled={salvando} variant="primary">
-              {salvando ? 'Salvando...' : 'Salvar Regras'}
-            </Button>
-          </div>
-        </div>
-      </CardGlass>
     </div>
   );
 }

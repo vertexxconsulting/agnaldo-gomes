@@ -171,3 +171,4 @@ ON salon_service_products FOR ALL USING (
   OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_admin', 'studio_secretaria', 'STUDIO_ADMIN', 'STUDIO_SECRETARIA')
   OR (auth.jwt() -> 'app_metadata' ->> 'role') IN ('ADMIN', 'admin', 'studio_admin', 'studio_secretaria', 'STUDIO_ADMIN', 'STUDIO_SECRETARIA')
 );
+
