@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
       'recharts',
       '@supabase/supabase-js',
     ],
+    agentUpgrade: "security",
   },
 
   async headers() {
