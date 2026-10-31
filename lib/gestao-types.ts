@@ -103,6 +103,12 @@ export interface Agendamento {
   comanda_unificada?: ComandaMultiProfissional;
   unificado_em_id?: UUID | null;
   financial_status?: 'PENDING_CONFIRMATION' | 'CONFIRMED' | string;
+  desconto_valor?: number | null;
+  desconto_pct?: number | null;
+  pacote_utilizado_id?: string | null;
+  pacote_nome?: string | null;
+  descontado_pacote?: boolean | null;
+  agnaldo_recebe_comissao?: boolean | null;
   confirmed_at?: string | null;
   confirmed_by?: string | null;
   observacoes?: string | null;
@@ -361,4 +367,19 @@ export interface RegraMarketing {
   message_template: string | null;
   active: boolean;
   created_at: string;
+}
+
+/** Pacotes de Serviços Pagos Antecipadamente */
+export interface PacoteCliente {
+  id: string;
+  cliente_id: string;
+  servico_id: string;
+  nome_pacote: string;
+  sessoes_total: number;
+  sessoes_utilizadas: number;
+  sessoes_restantes: number;
+  valor_total_pago: number;
+  data_aquisicao: string;
+  observacoes?: string;
+  status: 'ATIVO' | 'CONCLUIDO' | 'EXPIRADO';
 }

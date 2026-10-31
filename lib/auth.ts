@@ -38,10 +38,12 @@ export const AREA_LABELS: Record<Role, string> = {
 /** Mapeia a role da aplicação para o enum 'user_role' do PostgreSQL (profiles.role) */
 export function toDbRole(role: string): string {
   const r = (role || '').toLowerCase();
-  if (r === 'studio_profissional' || r === 'professional' || r === 'profissional') return 'PROFESSIONAL';
+  if (r.includes('profis') || r.includes('professional')) return 'PROFESSIONAL';
   if (r === 'aluno' || r === 'student') return 'STUDENT';
   if (r === 'cliente' || r === 'customer') return 'CUSTOMER';
   if (r === 'admin') return 'ADMIN';
+  if (r.includes('secretaria')) return 'studio_secretaria';
+  if (r.includes('studio_admin')) return 'studio_admin';
   return role;
 }
 

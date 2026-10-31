@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil,
-  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight
+  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight, Scissors, Package, Check, ChevronRight
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -19,6 +19,11 @@ import {
   salvarItemComanda,
   fetchItensComanda,
   atualizarStatusAgendamento,
+  atualizarProcedimentoCadeiraAgendamento,
+  excluirAgendamentoAdmin,
+  criarAgendamento,
+  finalizarRecebimentoAgendamento,
+  fetchRegrasComissao,
   salvarInsumoTempoRealProcedimento,
   removerInsumoTempoRealProcedimento,
   editarInsumoTempoRealProcedimento,
@@ -26,7 +31,8 @@ import {
   fetchComissoes,
   fetchParcelasPendentes
 } from '@/lib/supabase-queries';
-import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento } from '@/lib/gestao-types';
+import { fetchPacotesClientes, salvarPacoteCliente, abaterSessaoPacote, estornarSessaoPacote } from '@/lib/pacotes';
+import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento, PacoteCliente, RegraComissao } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -80,6 +86,48 @@ export default function MeuPainelPage() {
   const [loadingComissoes, setLoadingComissoes] = useState(false);
   const [filtroExtrato, setFiltroExtrato] = useState<'todos' | 'liberados' | 'carencia' | 'pagos'>('liberados');
 
+  // --- NOVOS ESTADOS PARA AS 3 OPÇÕES DA CADEIRA & PRÉ-FECHAMENTO & AGENDA ---
+  // 1. Modal de Serviço
+  const [servicoModalOpen, setServicoModalOpen] = useState(false);
+  const [servicoEditandoId, setServicoEditandoId] = useState('');
+  const [servicoPrecoEditado, setServicoPrecoEditado] = useState('');
+  const [subServicosEditados, setSubServicosEditados] = useState<any[]>([]);
+  const [salvandoServico, setSalvandoServico] = useState(false);
+
+  // 2. Modal de Pacote
+  const [pacoteModalOpen, setPacoteModalOpen] = useState(false);
+  const [pacotesCliente, setPacotesCliente] = useState<PacoteCliente[]>([]);
+  const [loadingPacotes, setLoadingPacotes] = useState(false);
+  const [novoPacoteNome, setNovoPacoteNome] = useState('');
+  const [novoPacoteServicoId, setNovoPacoteServicoId] = useState('');
+  const [novoPacoteSessoes, setNovoPacoteSessoes] = useState('4');
+  const [novoPacoteValor, setNovoPacoteValor] = useState('');
+  const [criandoNovoPacote, setCriandoNovoPacote] = useState(false);
+
+  // 3. Modal de Pré-Fechamento da Cadeira
+  const [preFechamentoModalOpen, setPreFechamentoModalOpen] = useState(false);
+  const [preFechamentoPrecoServico, setPreFechamentoPrecoServico] = useState<number>(0);
+  const [preFechamentoDescontoValor, setPreFechamentoDescontoValor] = useState<string>('');
+  const [preFechamentoDescontoPct, setPreFechamentoDescontoPct] = useState<string>('');
+  const [preFechamentoAgnaldoRecebe, setPreFechamentoAgnaldoRecebe] = useState<boolean>(true);
+  const [preFechamentoLoading, setPreFechamentoLoading] = useState(false);
+
+  // 4. Modal de Novo Agendamento pelo Profissional
+  const [novoAgModalOpen, setNovoAgModalOpen] = useState(false);
+  const [novoAgClienteId, setNovoAgClienteId] = useState('');
+  const [novoAgServicoId, setNovoAgServicoId] = useState('');
+  const [novoAgData, setNovoAgData] = useState(new Date().toISOString().split('T')[0]);
+  const [novoAgHoraInicio, setNovoAgHoraInicio] = useState('10:00');
+  const [novoAgLoading, setNovoAgLoading] = useState(false);
+
+  // 5. Modal de Excluir Agendamento
+  const [cancelarAgModalOpen, setCancelarAgModalOpen] = useState(false);
+  const [apptParaExcluir, setApptParaExcluir] = useState<Agendamento | null>(null);
+  const [excluindoAgLoading, setExcluindoAgLoading] = useState(false);
+
+  // Regras de comissão
+  const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
+
   const handleAlterarMeuPeriodo = async (novoPeriodo: PeriodoRecebimentoComissao) => {
     if (!selectedProfId) return;
     setSalvandoPeriodo(true);
@@ -118,12 +166,13 @@ export default function MeuPainelPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [ags, cls, srvs, est, profs] = await Promise.all([
+      const [ags, cls, srvs, est, profs, regras] = await Promise.all([
         fetchAgendamentos({ data: new Date().toISOString().split('T')[0] }),
         fetchClientes(),
         fetchServicos(),
         fetchEstoque(),
         fetchProfissionais(),
+        fetchRegrasComissao(),
       ]);
       const { data: prods } = await supabase.from('products').select('*').eq('active', true).order('name');
       
@@ -132,6 +181,7 @@ export default function MeuPainelPage() {
       setServicos(srvs);
       setEstoque(est);
       setProfissionais(profs || []);
+      setRegrasComissao(regras || []);
       const { data: { user } } = await supabase.auth.getUser();
       const userMeta = user?.user_metadata;
       const profIdFromPerm = userMeta?.permissions?.professional_id || userMeta?.professional_id;
@@ -318,10 +368,242 @@ export default function MeuPainelPage() {
   };
 
   const encerrarAtendimento = async (id: string) => {
-    const success = await atualizarStatusAgendamento(id, 'concluido');
-    if (success) {
-      setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status: 'concluido' } : a));
-      alert('Atendimento encerrado e enviado para a recepção (Aguardando Pagamento)!');
+    const ag = agendamentos.find(a => a.id === id);
+    if (ag) {
+      abrirPreFechamento(ag);
+    } else {
+      const success = await atualizarStatusAgendamento(id, 'concluido');
+      if (success) {
+        setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status: 'concluido' } : a));
+      }
+    }
+  };
+
+  // --- HANDLERS: SERVIÇO NA CADEIRA ---
+  const abrirModalServico = (ag: Agendamento) => {
+    setActiveAgendamento(ag);
+    setServicoEditandoId(ag.servico_id);
+    const srvAtual = servicos.find(s => s.id === ag.servico_id);
+    const precoAtual = (ag.total_amount != null && ag.total_amount > 0) ? ag.total_amount : (srvAtual?.preco || 0);
+    setServicoPrecoEditado(String(precoAtual));
+    setSubServicosEditados(Array.isArray(ag.sub_servicos) ? [...ag.sub_servicos] : []);
+    setServicoModalOpen(true);
+  };
+
+  const handleSalvarServico = async () => {
+    if (!activeAgendamento || !servicoEditandoId) return;
+    setSalvandoServico(true);
+    try {
+      const novoPreco = parseFloat(servicoPrecoEditado) || 0;
+      const ok = await atualizarProcedimentoCadeiraAgendamento({
+        id: activeAgendamento.id,
+        servico_id: servicoEditandoId,
+        sub_servicos: subServicosEditados,
+        total_amount: novoPreco,
+      });
+      if (ok) {
+        const updated: Agendamento = {
+          ...activeAgendamento,
+          servico_id: servicoEditandoId,
+          sub_servicos: subServicosEditados,
+          total_amount: novoPreco,
+        };
+        setActiveAgendamento(updated);
+        setAgendamentos(prev => prev.map(a => a.id === updated.id ? updated : a));
+        setServicoModalOpen(false);
+      } else {
+        alert('Erro ao atualizar serviço na cadeira.');
+      }
+    } catch (err: any) {
+      alert('Erro: ' + (err.message || 'Falha ao salvar'));
+    } finally {
+      setSalvandoServico(false);
+    }
+  };
+
+  // --- HANDLERS: PACOTES DA CLIENTE ---
+  const abrirModalPacotes = async (ag: Agendamento) => {
+    setActiveAgendamento(ag);
+    setLoadingPacotes(true);
+    setPacoteModalOpen(true);
+    setCriandoNovoPacote(false);
+    setNovoPacoteNome('');
+    setNovoPacoteServicoId(ag.servico_id);
+    setNovoPacoteSessoes('4');
+    setNovoPacoteValor('');
+    try {
+      const pacs = await fetchPacotesClientes(ag.cliente_id);
+      setPacotesCliente(pacs);
+    } catch (err) {
+      console.error('Erro ao carregar pacotes:', err);
+    } finally {
+      setLoadingPacotes(false);
+    }
+  };
+
+  const handleAbaterPacote = async (pacote: PacoteCliente) => {
+    if (!activeAgendamento) return;
+    const res = await abaterSessaoPacote(pacote.id, activeAgendamento.id);
+    if (res.ok) {
+      const updated: Agendamento = {
+        ...activeAgendamento,
+        descontado_pacote: true,
+        pacote_utilizado_id: pacote.id,
+        pacote_nome: pacote.nome_pacote,
+        total_amount: 0,
+      };
+      await atualizarProcedimentoCadeiraAgendamento({
+        id: activeAgendamento.id,
+        servico_id: activeAgendamento.servico_id,
+        total_amount: 0,
+      });
+      setActiveAgendamento(updated);
+      setAgendamentos(prev => prev.map(a => a.id === updated.id ? updated : a));
+      const pacs = await fetchPacotesClientes(activeAgendamento.cliente_id);
+      setPacotesCliente(pacs);
+    } else {
+      alert('Erro ao abater sessão: ' + (res.error || 'Tente novamente'));
+    }
+  };
+
+  const handleEstornarPacote = async () => {
+    if (!activeAgendamento?.pacote_utilizado_id) return;
+    const ok = await estornarSessaoPacote(activeAgendamento.pacote_utilizado_id);
+    if (ok) {
+      const srv = servicos.find(s => s.id === activeAgendamento.servico_id);
+      const precoTabela = srv?.preco || 0;
+      const updated: Agendamento = {
+        ...activeAgendamento,
+        descontado_pacote: false,
+        pacote_utilizado_id: undefined,
+        pacote_nome: undefined,
+        total_amount: precoTabela,
+      };
+      await atualizarProcedimentoCadeiraAgendamento({
+        id: activeAgendamento.id,
+        servico_id: activeAgendamento.servico_id,
+        total_amount: precoTabela,
+      });
+      setActiveAgendamento(updated);
+      setAgendamentos(prev => prev.map(a => a.id === updated.id ? updated : a));
+      const pacs = await fetchPacotesClientes(activeAgendamento.cliente_id);
+      setPacotesCliente(pacs);
+    }
+  };
+
+  const handleCriarPacote = async () => {
+    if (!activeAgendamento || !novoPacoteNome || !novoPacoteServicoId) {
+      alert('Preencha o nome do pacote e selecione o serviço.');
+      return;
+    }
+    const sessoes = parseInt(novoPacoteSessoes) || 4;
+    const valor = parseFloat(novoPacoteValor) || 0;
+    const novo: PacoteCliente = {
+      id: 'pac_' + Date.now(),
+      cliente_id: activeAgendamento.cliente_id,
+      servico_id: novoPacoteServicoId,
+      nome_pacote: novoPacoteNome,
+      sessoes_total: sessoes,
+      sessoes_utilizadas: 0,
+      sessoes_restantes: sessoes,
+      valor_total_pago: valor,
+      data_aquisicao: new Date().toISOString().split('T')[0],
+      status: 'ATIVO',
+    };
+    const ok = await salvarPacoteCliente(novo);
+    if (ok) {
+      setCriandoNovoPacote(false);
+      const pacs = await fetchPacotesClientes(activeAgendamento.cliente_id);
+      setPacotesCliente(pacs);
+    } else {
+      alert('Erro ao salvar pacote da cliente.');
+    }
+  };
+
+  // --- HANDLERS: PRÉ-FECHAMENTO DA CADEIRA ---
+  const abrirPreFechamento = async (ag: Agendamento) => {
+    setActiveAgendamento(ag);
+    const srv = servicos.find(s => s.id === ag.servico_id);
+    const precoBase = (ag.total_amount != null && ag.total_amount > 0)
+      ? Number(ag.total_amount)
+      : (srv?.preco || 0);
+    setPreFechamentoPrecoServico(precoBase);
+    setPreFechamentoDescontoValor(ag.desconto_valor ? String(ag.desconto_valor) : '');
+    setPreFechamentoDescontoPct(ag.desconto_pct ? String(ag.desconto_pct) : '');
+    setPreFechamentoAgnaldoRecebe(ag.agnaldo_recebe_comissao !== false);
+    const itens = await fetchItensComanda(ag.id);
+    setComandaAtual(itens);
+    setPreFechamentoModalOpen(true);
+  };
+
+  // --- HANDLERS: AGENDA DO PROFISSIONAL (MARCAR & EXCLUIR) ---
+  const abrirModalNovoAgendamento = () => {
+    setNovoAgData(hoje);
+    setNovoAgHoraInicio('10:00');
+    setNovoAgClienteId(clientes[0]?.id || '');
+    setNovoAgServicoId(servicos[0]?.id || '');
+    setNovoAgModalOpen(true);
+  };
+
+  const handleCriarNovoAgendamento = async () => {
+    if (!novoAgClienteId || !novoAgServicoId || !novoAgHoraInicio || !selectedProfId) {
+      alert('Preencha cliente, serviço e horário.');
+      return;
+    }
+    setNovoAgLoading(true);
+    try {
+      const srv = servicos.find(s => s.id === novoAgServicoId);
+      const durMin = srv?.duracao_min || 60;
+      const [h, m] = novoAgHoraInicio.split(':').map(Number);
+      const dt = new Date();
+      dt.setHours(h, (m || 0) + durMin, 0);
+      const horaFim = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      const res = await criarAgendamento({
+        cliente_id: novoAgClienteId,
+        profissional_id: selectedProfId,
+        servico_id: novoAgServicoId,
+        data: novoAgData || hoje,
+        hora_inicio: novoAgHoraInicio,
+        hora_fim: horaFim,
+        canal: 'recepcao',
+      });
+
+      if (res?.id) {
+        setNovoAgModalOpen(false);
+        const ags = await fetchAgendamentos({ data: novoAgData || hoje });
+        setAgendamentos(ags);
+      } else {
+        alert('Não foi possível criar o agendamento.');
+      }
+    } catch (err: any) {
+      alert('Erro: ' + (err.message || 'Erro ao agendar'));
+    } finally {
+      setNovoAgLoading(false);
+    }
+  };
+
+  const abrirModalExcluirAgendamento = (ag: Agendamento) => {
+    setApptParaExcluir(ag);
+    setCancelarAgModalOpen(true);
+  };
+
+  const handleConfirmarExclusaoAgendamento = async () => {
+    if (!apptParaExcluir) return;
+    setExcluindoAgLoading(true);
+    try {
+      const ok = await excluirAgendamentoAdmin(apptParaExcluir.id);
+      if (ok) {
+        setAgendamentos(prev => prev.filter(a => a.id !== apptParaExcluir.id));
+        setCancelarAgModalOpen(false);
+        setApptParaExcluir(null);
+      } else {
+        alert('Erro ao excluir agendamento.');
+      }
+    } catch (err: any) {
+      alert('Erro: ' + (err.message || 'Falha ao excluir'));
+    } finally {
+      setExcluindoAgLoading(false);
     }
   };
 
@@ -626,51 +908,135 @@ export default function MeuPainelPage() {
                               <Users size={11} className="text-gold" /> Auxiliar de {titularNome}
                             </span>
                           )}
-                          <h3 className="text-2xl font-bold text-foreground">
-                            {getClienteNome(ag.cliente_id)}
-                          </h3>
-                          <p className="text-foreground/70">{getServicoNome(ag.servico_id)}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-2xl font-bold text-foreground">
+                              {getClienteNome(ag.cliente_id)}
+                            </h3>
+                            {ag.descontado_pacote && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-bold text-xs border border-purple-500/30 flex items-center gap-1">
+                                <Package size={12} /> {ag.pacote_nome || 'Pacote Pré-Pago'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-foreground/70 font-medium mt-0.5">
+                            {getServicoNome(ag.servico_id)}
+                            {Array.isArray(ag.sub_servicos) && ag.sub_servicos.length > 0 && (
+                              <span className="text-xs text-foreground/50 ml-1">
+                                + {ag.sub_servicos.map(s => typeof s === 'string' ? getServicoNome(s) : s.nome || getServicoNome(s.id)).join(' + ')}
+                              </span>
+                            )}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-foreground/50">Iniciado às</p>
-                          <p className="text-xl font-mono text-foreground">{ag.hora_inicio}</p>
+                          <p className="text-xl font-mono text-foreground font-bold">{ag.hora_inicio}</p>
                           {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                            <p className="text-xs font-mono text-gold font-bold mt-1">
-                              Insumos: R$ {Number(ag.product_cost).toFixed(2)}
+                            <p className="text-xs font-mono text-emerald-500 font-bold mt-1 flex items-center justify-end gap-1">
+                              <Beaker size={12} /> R$ {Number(ag.product_cost).toFixed(2)}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3 mt-6">
-                      <Button 
-                        variant="secondary" 
-                        className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
-                        onClick={() => abrirModalInsumos(ag)}
-                      >
-                        <Plus size={16} /> Lançar Insumos
-                      </Button>
+                      {/* AS 3 OPÇÕES DA CADEIRA: SERVIÇO, PRODUTO (INSUMOS) E PACOTE */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
+                        {/* OPÇÃO 1: SERVIÇO */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalServico(ag)}
+                          className="p-3 rounded-lg border border-gold/30 hover:border-gold hover:bg-gold/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                              <Scissors size={14} /> Serviço
+                            </span>
+                            <Pencil size={13} className="text-foreground/40 group-hover:text-gold" />
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm font-semibold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
+                            <p className="text-[11px] text-foreground/50">
+                              {ag.total_amount != null && ag.total_amount > 0 ? fmt(ag.total_amount) : 'Preço de Tabela'} • Alterar/Ajustar
+                            </p>
+                          </div>
+                        </button>
 
-                      <Button 
-                        variant="secondary" 
-                        onClick={() => abrirModalUpsell(ag)}
-                      >
-                        <ShoppingBag size={16} /> Vender Produto (Upsell)
-                      </Button>
+                        {/* OPÇÃO 2: PRODUTO (INSUMOS) */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalInsumos(ag)}
+                          className="p-3 rounded-lg border border-emerald-500/30 hover:border-emerald-500 hover:bg-emerald-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                              <Beaker size={14} /> Produto (Insumos)
+                            </span>
+                            {ag.insumos_detalhes && ag.insumos_detalhes.length > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400">
+                                {ag.insumos_detalhes.length} itens
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm font-semibold text-foreground">
+                              {ag.product_cost && Number(ag.product_cost) > 0 ? fmt(Number(ag.product_cost)) : 'Nenhum lançado'}
+                            </p>
+                            <p className="text-[11px] text-foreground/50">Lançar produtos da etapa e pesar</p>
+                          </div>
+                        </button>
 
-                      <div className="flex-1" />
+                        {/* OPÇÃO 3: PACOTE */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalPacotes(ag)}
+                          className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between group cursor-pointer ${
+                            ag.descontado_pacote 
+                              ? 'border-purple-500 bg-purple-500/15 ring-1 ring-purple-500/40' 
+                              : 'border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                              <Package size={14} /> Pacote
+                            </span>
+                            {ag.descontado_pacote ? (
+                              <CheckCircle2 size={15} className="text-purple-400" />
+                            ) : (
+                              <span className="text-[10px] text-foreground/40 font-mono">Pré-pago</span>
+                            )}
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {ag.descontado_pacote ? (ag.pacote_nome || 'Pacote Abatido') : 'Consultar Pacote'}
+                            </p>
+                            <p className="text-[11px] text-foreground/50">
+                              {ag.descontado_pacote ? 'Sessão descontada ✓' : 'Descontar sessão pré-paga'}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
 
-                      <Button 
-                        variant="primary" 
-                        onClick={() => encerrarAtendimento(ag.id)}
-                      >
-                        <CheckCircle2 size={16} /> Encerrar Atendimento
-                      </Button>
+                      {/* BOTÕES DE VENDER PRODUTO & PRÉ-FECHAMENTO */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                        <Button 
+                          variant="secondary" 
+                          onClick={() => abrirModalUpsell(ag)}
+                          className="border border-[var(--border-subtle)] hover:border-gold/40 flex items-center gap-2"
+                        >
+                          <ShoppingBag size={16} className="text-gold" /> Vender Produto (Upsell)
+                        </Button>
+
+                        <Button 
+                          variant="primary" 
+                          onClick={() => abrirPreFechamento(ag)}
+                          className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center gap-2 px-5 py-2.5 shadow-md"
+                        >
+                          <CheckCircle2 size={16} /> Encerrar Atendimento (Pré-Fechamento)
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardGlass>
-              );
-            })}
+                  </CardGlass>
+                );
+              })}
             </div>
           )}
 
@@ -948,10 +1314,20 @@ export default function MeuPainelPage() {
 
         {/* COLUNA DIREITA: Próximos Atendimentos */}
         <div className="space-y-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Clock className="text-foreground/50" />
-            Próximos Hoje
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Clock className="text-foreground/50" />
+              Próximos Hoje
+            </h2>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={abrirModalNovoAgendamento}
+              className="bg-gold hover:bg-gold-dim text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+            >
+              <Plus size={14} /> Marcar Cliente
+            </Button>
+          </div>
 
           <div className="space-y-3">
             {proximos.length === 0 ? (
@@ -959,17 +1335,32 @@ export default function MeuPainelPage() {
             ) : (
               proximos.map(ag => (
                 <CardGlass key={ag.id} className="p-4 hover:border-foreground/20 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center font-mono text-sm text-foreground/50">
+                  <div className="flex items-center gap-3">
+                    <div className="text-center font-mono text-sm text-foreground/50 font-bold shrink-0">
                       {ag.hora_inicio}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold truncate">{getClienteNome(ag.cliente_id)}</p>
+                      <p className="font-bold truncate text-sm">{getClienteNome(ag.cliente_id)}</p>
                       <p className="text-xs text-foreground/50 truncate">{getServicoNome(ag.servico_id)}</p>
                     </div>
-                    <Button variant="outline" size="sm" className="px-2" onClick={() => iniciarAtendimento(ag.id)}>
-                      <Play size={14} /> Puxar
-                    </Button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="px-2.5 py-1 text-xs border-gold/40 hover:bg-gold/10 text-gold flex items-center gap-1 font-semibold"
+                        onClick={() => iniciarAtendimento(ag.id)}
+                      >
+                        <Play size={13} /> Puxar
+                      </Button>
+                      <button
+                        type="button"
+                        title="Excluir ou Cancelar Atendimento"
+                        onClick={() => abrirModalExcluirAgendamento(ag)}
+                        className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </CardGlass>
               ))
@@ -1448,6 +1839,858 @@ export default function MeuPainelPage() {
             </div>
 
             <Button variant="outline" className="w-full" onClick={() => setCatalogoModalOpen(false)}>Fechar</Button>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* 1. MODAL ALTERAR / AJUSTAR SERVIÇO NA CADEIRA */}
+      {servicoModalOpen && activeAgendamento && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto border border-gold/30 shadow-2xl space-y-4">
+            <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/30">
+                  <Scissors size={20} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold font-serif text-foreground">Definir / Alterar Serviço</h3>
+                  <p className="text-xs text-foreground/60">
+                    Definido inicialmente pela recepção • Ajuste para o procedimento real da cadeira
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setServicoModalOpen(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="bg-foreground/[0.03] p-3 rounded-xl border border-[var(--border-subtle)] text-xs space-y-1">
+              <span className="text-foreground/50 uppercase font-semibold text-[10px]">Cliente</span>
+              <p className="text-base font-bold text-foreground">{getClienteNome(activeAgendamento.cliente_id)}</p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">
+                  Serviço Principal Realizado
+                </label>
+                <select
+                  value={servicoEditandoId}
+                  onChange={(e) => {
+                    const novoId = e.target.value;
+                    setServicoEditandoId(novoId);
+                    const s = servicos.find(srv => srv.id === novoId);
+                    if (s) setServicoPrecoEditado(String(s.preco || 0));
+                  }}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                >
+                  {servicos.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.nome} — {fmt(s.preco)} {s.preco_variavel ? `(até ${fmt(s.preco_maximo || 0)})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">
+                  Valor do Serviço (R$) — Fixo ou Ajustado
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-foreground/40 text-sm">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={servicoPrecoEditado}
+                    onChange={(e) => setServicoPrecoEditado(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    placeholder="0.00"
+                  />
+                </div>
+                {(() => {
+                  const s = servicos.find(srv => srv.id === servicoEditandoId);
+                  if (s?.preco_variavel) {
+                    return (
+                      <p className="text-[11px] text-amber-500 font-medium mt-1">
+                        ℹ️ Este serviço possui faixa de preço variável (Tabela: {fmt(s.preco)} a {fmt(s.preco_maximo || 0)}). Ajuste conforme tamanho/volume do cabelo.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
+              {/* Sub-serviços adicionais */}
+              <div className="pt-2 border-t border-[var(--border-subtle)]">
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1.5">
+                  Procedimentos Adicionais / Sub-serviços
+                </label>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {servicos.filter(s => s.id !== servicoEditandoId).map(s => {
+                    const isAdded = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === s.id : sub?.id === s.id));
+                    return (
+                      <label 
+                        key={s.id} 
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                          isAdded ? 'bg-gold/15 border-gold text-foreground' : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.05]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isAdded}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSubServicosEditados(prev => [...prev, { id: s.id, nome: s.nome, preco: s.preco }]);
+                              } else {
+                                setSubServicosEditados(prev => prev.filter(sub => (typeof sub === 'string' ? sub !== s.id : sub?.id !== s.id)));
+                              }
+                            }}
+                            className="rounded accent-gold"
+                          />
+                          <span className="font-semibold">{s.nome}</span>
+                        </div>
+                        <span className="font-mono text-gold font-bold">+{fmt(s.preco)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
+              <Button variant="outline" onClick={() => setServicoModalOpen(false)}>Cancelar</Button>
+              <Button variant="primary" disabled={salvandoServico} onClick={handleSalvarServico} className="bg-gold hover:bg-gold-dim text-white font-bold">
+                {salvandoServico ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* 2. MODAL PACOTES DA CLIENTE */}
+      {pacoteModalOpen && activeAgendamento && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto border border-purple-500/40 shadow-2xl space-y-4">
+            <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                  <Package size={20} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold font-serif text-foreground">Pacotes Pré-Pagos da Cliente</h3>
+                  <p className="text-xs text-foreground/60">
+                    Sessões pagas antecipadamente para abater no atendimento
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setPacoteModalOpen(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="bg-foreground/[0.03] p-3 rounded-xl border border-[var(--border-subtle)] text-xs flex justify-between items-center">
+              <div>
+                <span className="text-foreground/50 uppercase font-semibold text-[10px]">Cliente</span>
+                <p className="text-base font-bold text-foreground">{getClienteNome(activeAgendamento.cliente_id)}</p>
+                <p className="text-xs text-foreground/70">{getServicoNome(activeAgendamento.servico_id)}</p>
+              </div>
+              {activeAgendamento.descontado_pacote && (
+                <div className="text-right">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/40 block">
+                    ✓ Sessão Abatida
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleEstornarPacote}
+                    className="text-[11px] text-red-400 hover:underline mt-1 block cursor-pointer font-semibold"
+                  >
+                    Estornar / Desvincular
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {loadingPacotes ? (
+              <div className="p-6 text-center text-foreground/50 text-xs">Carregando pacotes da cliente...</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/60">
+                    Pacotes Ativos Disponíveis
+                  </h4>
+                  {!criandoNovoPacote && (
+                    <button
+                      type="button"
+                      onClick={() => setCriandoNovoPacote(true)}
+                      className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={13} /> Novo Pacote
+                    </button>
+                  )}
+                </div>
+
+                {pacotesCliente.length === 0 && !criandoNovoPacote ? (
+                  <div className="p-6 text-center border border-dashed border-[var(--border-subtle)] rounded-xl text-foreground/50 space-y-2">
+                    <Package size={28} className="mx-auto text-foreground/30" />
+                    <p className="text-xs">Esta cliente não possui pacotes ativos registrados.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCriandoNovoPacote(true)}
+                      className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 text-xs"
+                    >
+                      <Plus size={13} className="mr-1" /> Cadastrar Pacote Pré-Pago
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {pacotesCliente.map(p => {
+                      const isEste = activeAgendamento.pacote_utilizado_id === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            isEste 
+                              ? 'bg-purple-500/15 border-purple-500 ring-1 ring-purple-500/40' 
+                              : 'bg-foreground/[0.02] border-[var(--border-subtle)] hover:border-purple-500/40'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h5 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                                <Package size={14} className="text-purple-400" /> {p.nome_pacote}
+                              </h5>
+                              <p className="text-xs text-foreground/60 mt-0.5">
+                                Serviço: <strong>{getServicoNome(p.servico_id)}</strong> • Adquirido em {fmtDate(p.data_aquisicao)}
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                  {p.sessoes_restantes} de {p.sessoes_total} sessões restantes
+                                </span>
+                                {p.valor_total_pago > 0 && (
+                                  <span className="text-[11px] text-foreground/50 font-mono">
+                                    Total pago: {fmt(p.valor_total_pago)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              {isEste ? (
+                                <span className="text-xs font-bold text-purple-400 bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/30">
+                                  ✓ Vinculado
+                                </span>
+                              ) : (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  disabled={p.sessoes_restantes <= 0}
+                                  onClick={() => handleAbaterPacote(p)}
+                                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-xs"
+                                >
+                                  Abater Sessão
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* FORMULÁRIO DE NOVO PACOTE */}
+                {criandoNovoPacote && (
+                  <div className="p-4 bg-purple-500/5 border border-purple-500/30 rounded-xl space-y-3 mt-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                        Cadastrar Novo Pacote Pré-Pago
+                      </h5>
+                      <button onClick={() => setCriandoNovoPacote(false)} className="text-foreground/40 hover:text-foreground text-xs">
+                        Fechar
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-foreground/70 block">Nome do Pacote</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Pacote 4 Escovas Curtas"
+                          value={novoPacoteNome}
+                          onChange={e => setNovoPacoteNome(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-xs font-medium text-foreground focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-foreground/70 block">Serviço do Pacote</label>
+                          <select
+                            value={novoPacoteServicoId}
+                            onChange={e => setNovoPacoteServicoId(e.target.value)}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-xs font-medium text-foreground focus:outline-none focus:border-purple-500 cursor-pointer"
+                          >
+                            {servicos.map(s => (
+                              <option key={s.id} value={s.id}>{s.nome} ({fmt(s.preco)})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-foreground/70 block">Qtd. de Sessões</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={novoPacoteSessoes}
+                            onChange={e => setNovoPacoteSessoes(e.target.value)}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-purple-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-foreground/70 block">Valor Total Pago Antecipadamente (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Ex: 200.00"
+                          value={novoPacoteValor}
+                          onChange={e => setNovoPacoteValor(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => setCriandoNovoPacote(false)}>Cancelar</Button>
+                        <Button variant="primary" size="sm" onClick={handleCriarPacote} className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs">
+                          Salvar Pacote
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-[var(--border-subtle)]">
+              <Button variant="outline" onClick={() => setPacoteModalOpen(false)}>Concluído</Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* 3. MODAL DE PRÉ-FECHAMENTO DA CADEIRA (VISÃO COMPLETA DAS 3 PARTES) */}
+      {preFechamentoModalOpen && activeAgendamento && (() => {
+        const precoBaseServico = preFechamentoPrecoServico;
+        const descValor = Math.max(0, parseFloat(preFechamentoDescontoValor) || 0);
+        const valorServicoLiquido = activeAgendamento.descontado_pacote 
+          ? 0 
+          : Math.max(0, precoBaseServico - descValor);
+
+        const custoInsumos = Number(activeAgendamento.product_cost || 0);
+
+        // Itens de produto de balcão (upsell)
+        const itensUpsell = comandaAtual.filter(i => i.type === 'PRODUTO');
+        const totalUpsell = itensUpsell.reduce((acc, i) => acc + (i.price * i.qty), 0);
+
+        // TOTAL COBRADO DA CLIENTE NO CAIXA
+        const totalCobradoCliente = valorServicoLiquido + totalUpsell;
+
+        // 1ª PARTE: INSUMOS (RECOMPRA DE ESTOQUE)
+        const parte1InsumosRecompra = custoInsumos;
+
+        // Base para cálculo da comissão: Valor Líquido do Serviço - Insumos
+        const baseCalculoComissao = Math.max(0, (activeAgendamento.descontado_pacote ? precoBaseServico : valorServicoLiquido) - custoInsumos);
+
+        // Identificação dos profissionais envolvidos:
+        const titular = profissionais.find(p => p.id === activeAgendamento.profissional_id);
+        const titularNome = titular?.nome || 'Titular';
+        const titularesEAuxiliares = [
+          activeAgendamento.profissional_id,
+          ...(activeAgendamento.auxiliares_ids || [])
+        ].filter(Boolean) as string[];
+
+        const isAgnaldoEnvolvido = titularesEAuxiliares.some(id => {
+          const p = profissionais.find(pr => pr.id === id);
+          return p?.nome?.toLowerCase().includes('agnaldo');
+        });
+        const agnaldoId = titularesEAuxiliares.find(id => {
+          const p = profissionais.find(pr => pr.id === id);
+          return p?.nome?.toLowerCase().includes('agnaldo');
+        });
+        const auxiliares = (activeAgendamento.auxiliares_ids || []);
+        const temAuxiliares = auxiliares.length > 0;
+
+        // Regras de comissão
+        const regraTitular = regrasComissao.find(r => r.professional_id === activeAgendamento.profissional_id && (r.service_id === activeAgendamento.servico_id || !r.service_id) && r.active);
+        const pctComissaoBase = regraTitular?.commission_pct ?? titular?.comissao_padrao ?? 40;
+
+        const totalComissaoBancada = Number(((baseCalculoComissao * pctComissaoBase) / 100).toFixed(2));
+
+        // Divisão entre os profissionais:
+        const comissoesIndividuais: Array<{
+          profissionalId: string;
+          nome: string;
+          isAgnaldo: boolean;
+          isAuxiliar: boolean;
+          pct: number;
+          valor: number;
+          observacao?: string;
+        }> = [];
+
+        if (titularesEAuxiliares.length === 1) {
+          const pid = titularesEAuxiliares[0];
+          const pNome = profissionais.find(p => p.id === pid)?.nome || 'Profissional';
+          const isAg = pNome.toLowerCase().includes('agnaldo');
+          const val = (isAg && !preFechamentoAgnaldoRecebe) ? 0 : totalComissaoBancada;
+          comissoesIndividuais.push({
+            profissionalId: pid,
+            nome: pNome,
+            isAgnaldo: isAg,
+            isAuxiliar: false,
+            pct: (isAg && !preFechamentoAgnaldoRecebe) ? 0 : pctComissaoBase,
+            valor: val,
+            observacao: (!preFechamentoAgnaldoRecebe && isAg) ? 'Comissão não retida' : undefined,
+          });
+        } else {
+          if (isAgnaldoEnvolvido && !preFechamentoAgnaldoRecebe && agnaldoId) {
+            // Agnaldo cede a comissão para o(s) auxiliar(es)
+            const agNome = profissionais.find(p => p.id === agnaldoId)?.nome || 'Agnaldo Gomes';
+            comissoesIndividuais.push({
+              profissionalId: agnaldoId,
+              nome: agNome,
+              isAgnaldo: true,
+              isAuxiliar: false,
+              pct: 0,
+              valor: 0,
+              observacao: 'Cedeu a comissão para o(s) auxiliar(es)',
+            });
+            const valorPorAux = Number((totalComissaoBancada / auxiliares.length).toFixed(2));
+            auxiliares.forEach((auxId, idx) => {
+              const auxNome = profissionais.find(p => p.id === auxId)?.nome || 'Auxiliar';
+              comissoesIndividuais.push({
+                profissionalId: auxId,
+                nome: auxNome,
+                isAgnaldo: false,
+                isAuxiliar: true,
+                pct: pctComissaoBase,
+                valor: idx === 0 ? Number((totalComissaoBancada - valorPorAux * (auxiliares.length - 1)).toFixed(2)) : valorPorAux,
+                observacao: 'Recebe a comissão integral repassada',
+              });
+            });
+          } else {
+            titularesEAuxiliares.forEach((pid) => {
+              const pNome = profissionais.find(p => p.id === pid)?.nome || 'Profissional';
+              const isAg = pNome.toLowerCase().includes('agnaldo');
+              const isAux = pid !== activeAgendamento.profissional_id;
+              const valorCom = Number(((totalComissaoBancada / titularesEAuxiliares.length)).toFixed(2));
+              comissoesIndividuais.push({
+                profissionalId: pid,
+                nome: pNome,
+                isAgnaldo: isAg,
+                isAuxiliar: isAux,
+                pct: Number((pctComissaoBase / titularesEAuxiliares.length).toFixed(1)),
+                valor: valorCom,
+              });
+            });
+          }
+        }
+
+        const parte2ComissoesTotal = comissoesIndividuais.reduce((sum, c) => sum + c.valor, 0);
+
+        // 3ª PARTE: SALÃO / STUDIO
+        const parte3Salao = Number(Math.max(0, valorServicoLiquido - parte1InsumosRecompra - parte2ComissoesTotal + (totalUpsell * 0.4)).toFixed(2));
+
+        const handleConfirmar = async () => {
+          setPreFechamentoLoading(true);
+          try {
+            const splitCustom: Record<string, number> = {};
+            comissoesIndividuais.forEach(c => {
+              splitCustom[c.profissionalId] = c.valor;
+            });
+
+            const ok = await finalizarRecebimentoAgendamento({
+              id: activeAgendamento.id,
+              paymentMethod: activeAgendamento.descontado_pacote ? 'PACOTE' : 'DINHEIRO',
+              totalAmount: totalCobradoCliente,
+              productCost: parte1InsumosRecompra,
+              insumosDetalhes: activeAgendamento.insumos_detalhes,
+              splitComissao: splitCustom,
+              auxiliaresIds: activeAgendamento.auxiliares_ids,
+              financialStatus: 'PENDING_CONFIRMATION',
+              descontoValor: descValor,
+              pacoteUtilizadoId: activeAgendamento.pacote_utilizado_id || undefined,
+              pacoteNome: activeAgendamento.pacote_nome || undefined,
+              descontadoPacote: activeAgendamento.descontado_pacote || false,
+              agnaldoRecebeComissao: preFechamentoAgnaldoRecebe,
+              preFechadoPor: 'Profissional',
+            });
+
+            if (ok) {
+              setPreFechamentoModalOpen(false);
+              const ags = await fetchAgendamentos({ data: hoje });
+              setAgendamentos(ags);
+              if (selectedProfId) carregarComissoesProf(selectedProfId);
+              alert('Atendimento pré-fechado com sucesso e enviado para a recepção / caixa!');
+            } else {
+              alert('Erro ao finalizar pré-fechamento.');
+            }
+          } catch (err: any) {
+            alert('Erro: ' + (err.message || 'Falha ao pré-fechar'));
+          } finally {
+            setPreFechamentoLoading(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <CardGlass className="w-full max-w-2xl p-6 max-h-[92vh] overflow-y-auto border border-gold/40 shadow-2xl space-y-5">
+              <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2.5 rounded-xl bg-gold/15 text-gold border border-gold/30">
+                    <CheckCircle2 size={22} />
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-bold font-serif text-foreground">Pré-Fechamento da Cadeira</h3>
+                    <p className="text-xs text-foreground/60">
+                      Conferência final do procedimento, desconto e divisão transparente das 3 partes
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setPreFechamentoModalOpen(false)} className="text-foreground/50 hover:text-foreground">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* DADOS DO CLIENTE & SERVIÇO */}
+              <div className="bg-foreground/[0.03] p-4 rounded-xl border border-[var(--border-subtle)] space-y-3">
+                <div className="flex flex-wrap justify-between items-start gap-2">
+                  <div>
+                    <span className="text-foreground/50 uppercase font-semibold text-[10px]">Cliente Atendida</span>
+                    <h4 className="text-lg font-bold text-foreground">{getClienteNome(activeAgendamento.cliente_id)}</h4>
+                    <p className="text-xs text-foreground/70 font-medium">
+                      Procedimento: <strong>{getServicoNome(activeAgendamento.servico_id)}</strong>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-foreground/50 uppercase font-semibold text-[10px]">Profissional Titular</span>
+                    <p className="text-sm font-bold text-foreground">{titularNome}</p>
+                    {temAuxiliares && (
+                      <p className="text-xs text-gold font-semibold">
+                        Auxiliar(es): {auxiliares.map(id => profissionais.find(p => p.id === id)?.nome).filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {activeAgendamento.descontado_pacote && (
+                  <div className="p-2.5 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs flex items-center gap-2">
+                    <Package size={16} className="shrink-0 text-purple-400" />
+                    <span>
+                      <strong>Procedimento Coberto por Pacote Pré-Pago:</strong> {activeAgendamento.pacote_nome}. O cliente não paga pelo serviço no caixa (já quitado antecipadamente).
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* AJUSTE DE VALOR & DESCONTO */}
+              <div className="p-4 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center gap-1.5">
+                  <DollarSign size={14} className="text-gold" /> Ajuste de Valor e Desconto do Serviço
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-foreground/60 block mb-1">
+                      Valor do Serviço (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      disabled={activeAgendamento.descontado_pacote || false}
+                      value={preFechamentoPrecoServico}
+                      onChange={e => setPreFechamentoPrecoServico(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-foreground/60 block mb-1">
+                      Desconto no Serviço (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      disabled={activeAgendamento.descontado_pacote || false}
+                      placeholder="0.00"
+                      value={preFechamentoDescontoValor}
+                      onChange={e => setPreFechamentoDescontoValor(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)] text-xs">
+                  <span className="text-foreground/60">Valor Líquido do Serviço:</span>
+                  <span className="text-sm font-bold font-mono text-foreground">
+                    {fmt(valorServicoLiquido)}
+                  </span>
+                </div>
+              </div>
+
+              {/* CENÁRIO ESPECIAL: AGNALDO + AUXILIAR */}
+              {isAgnaldoEnvolvido && temAuxiliares && (
+                <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-gold" />
+                      <div>
+                        <h4 className="text-xs font-bold uppercase text-foreground">
+                          Comissão do Agnaldo Gomes
+                        </h4>
+                        <p className="text-[11px] text-foreground/60">
+                          Procedimento com auxiliar(es) envolvido(s)
+                        </p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <span className="text-xs font-bold text-foreground">
+                        {preFechamentoAgnaldoRecebe ? 'Agnaldo Recebe' : 'Agnaldo Cede p/ Auxiliar'}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={preFechamentoAgnaldoRecebe}
+                        onChange={e => setPreFechamentoAgnaldoRecebe(e.target.checked)}
+                        className="w-4 h-4 rounded accent-gold cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                  {!preFechamentoAgnaldoRecebe && (
+                    <p className="text-[11px] text-amber-500 font-medium bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                      ✨ O Agnaldo abriu mão da comissão neste atendimento. 100% da comissão da bancada ({fmt(totalComissaoBancada)}) será repassada integralmente para o(s) auxiliar(es)!
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* DEMONSTRATIVO DAS 3 PARTES */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-gold/10 via-foreground/[0.02] to-background border-2 border-gold/30 space-y-3.5">
+                <div className="flex justify-between items-center border-b border-gold/20 pb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                    <Sparkles size={14} /> Demonstrativo da Divisão em 3 Partes
+                  </h4>
+                  <span className="text-[11px] text-foreground/50 font-mono">
+                    Total: {fmt(activeAgendamento.descontado_pacote ? precoBaseServico : valorServicoLiquido)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* PARTE 1: INSUMOS */}
+                  <div className="p-3 rounded-lg bg-[var(--background)] border border-emerald-500/30 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-emerald-500 block">1ª Parte • Insumos</span>
+                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte1InsumosRecompra)}</p>
+                    <p className="text-[10px] text-foreground/50 leading-tight">
+                      Separado p/ recompra do estoque ({activeAgendamento.insumos_detalhes?.length || 0} itens)
+                    </p>
+                  </div>
+
+                  {/* PARTE 2: COMISSÃO DO PROFISSIONAL */}
+                  <div className="p-3 rounded-lg bg-[var(--background)] border border-blue-500/30 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissão</span>
+                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte2ComissoesTotal)}</p>
+                    <p className="text-[10px] text-foreground/50 leading-tight">
+                      Base líquida ({fmt(baseCalculoComissao)}) × {pctComissaoBase}%
+                    </p>
+                  </div>
+
+                  {/* PARTE 3: SALÃO */}
+                  <div className="p-3 rounded-lg bg-[var(--background)] border border-gold/30 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-gold block">3ª Parte • Salão</span>
+                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte3Salao)}</p>
+                    <p className="text-[10px] text-foreground/50 leading-tight">
+                      Estrutura, salão e margem operacional
+                    </p>
+                  </div>
+                </div>
+
+                {/* DETALHAMENTO INDIVIDUAL DE CADA PROFISSIONAL */}
+                <div className="space-y-1.5 pt-2 border-t border-gold/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60 block">
+                    Distribuição da Comissão entre Profissionais:
+                  </span>
+                  {comissoesIndividuais.map((c, i) => (
+                    <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-foreground/[0.03] border border-[var(--border-subtle)]">
+                      <div className="flex items-center gap-2">
+                        <User2 size={13} className="text-gold" />
+                        <span className="font-semibold text-foreground">{c.nome}</span>
+                        {c.isAuxiliar && (
+                          <span className="px-1.5 py-0.2 rounded bg-gold/15 text-gold text-[9px] font-bold">Auxiliar</span>
+                        )}
+                        {c.observacao && (
+                          <span className="text-[10px] text-amber-500 font-medium italic">({c.observacao})</span>
+                        )}
+                      </div>
+                      <span className="font-mono font-bold text-foreground">
+                        {fmt(c.valor)} <span className="text-foreground/40 font-normal">({c.pct}%)</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* TOTAL NO CAIXA */}
+              <div className="p-4 rounded-xl bg-foreground/[0.04] border border-[var(--border-subtle)] flex justify-between items-center">
+                <div>
+                  <span className="text-xs uppercase font-bold text-foreground/60 block">Total a Cobrar da Cliente no Caixa</span>
+                  <span className="text-[11px] text-foreground/50">
+                    {activeAgendamento.descontado_pacote ? 'Serviço coberto pelo pacote pré-pago' : 'Serviço líquido'}
+                    {totalUpsell > 0 ? ` + Produtos (${fmt(totalUpsell)})` : ''}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black font-mono text-gold block">
+                    {fmt(totalCobradoCliente)}
+                  </span>
+                </div>
+              </div>
+
+              {/* BOTÕES DE AÇÃO */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+                <Button variant="outline" onClick={() => setPreFechamentoModalOpen(false)}>
+                  Voltar
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={preFechamentoLoading}
+                  onClick={handleConfirmar}
+                  className="bg-gold hover:bg-gold-dim text-white font-bold px-6 py-2.5 shadow-lg flex items-center gap-2"
+                >
+                  <CheckCircle2 size={18} />
+                  {preFechamentoLoading ? 'Enviando...' : 'Confirmar Pré-Fechamento e Enviar ao Caixa'}
+                </Button>
+              </div>
+            </CardGlass>
+          </div>
+        );
+      })()}
+
+      {/* 4. MODAL NOVO AGENDAMENTO PELO PROFISSIONAL (LIBERDADE DE AGENDA) */}
+      {novoAgModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-md p-6 max-h-[90vh] overflow-y-auto border border-gold/30 shadow-2xl space-y-4">
+            <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/30">
+                  <CalendarDays size={20} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold font-serif text-foreground">Marcar Cliente na Minha Agenda</h3>
+                  <p className="text-xs text-foreground/60">
+                    Adicione um horário diretamente para você
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setNovoAgModalOpen(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Cliente</label>
+                <select
+                  value={novoAgClienteId}
+                  onChange={e => setNovoAgClienteId(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                >
+                  {clientes.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome} ({c.telefone || 'Sem tel'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Serviço</label>
+                <select
+                  value={novoAgServicoId}
+                  onChange={e => setNovoAgServicoId(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                >
+                  {servicos.map(s => (
+                    <option key={s.id} value={s.id}>{s.nome} — {fmt(s.preco)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Data</label>
+                  <input
+                    type="date"
+                    value={novoAgData}
+                    onChange={e => setNovoAgData(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Horário de Início</label>
+                  <input
+                    type="time"
+                    value={novoAgHoraInicio}
+                    onChange={e => setNovoAgHoraInicio(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
+              <Button variant="outline" onClick={() => setNovoAgModalOpen(false)}>Cancelar</Button>
+              <Button
+                variant="primary"
+                disabled={novoAgLoading}
+                onClick={handleCriarNovoAgendamento}
+                className="bg-gold hover:bg-gold-dim text-white font-bold"
+              >
+                {novoAgLoading ? 'Salvando...' : 'Agendar Cliente'}
+              </Button>
+            </div>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* 5. MODAL EXCLUIR / CANCELAR AGENDAMENTO PELO PROFISSIONAL */}
+      {cancelarAgModalOpen && apptParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-sm p-6 border border-red-500/30 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 text-red-500">
+              <span className="p-2 rounded-xl bg-red-500/15 border border-red-500/30">
+                <Trash2 size={20} />
+              </span>
+              <h3 className="text-lg font-bold">Excluir Atendimento</h3>
+            </div>
+
+            <p className="text-xs text-foreground/70">
+              Tem certeza que deseja excluir o agendamento de <strong>{getClienteNome(apptParaExcluir.cliente_id)}</strong> às <strong>{apptParaExcluir.hora_inicio}</strong> ({getServicoNome(apptParaExcluir.servico_id)}) da sua agenda?
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+              <Button variant="outline" size="sm" onClick={() => { setCancelarAgModalOpen(false); setApptParaExcluir(null); }}>
+                Voltar
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={excluindoAgLoading}
+                onClick={handleConfirmarExclusaoAgendamento}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold"
+              >
+                {excluindoAgLoading ? 'Excluindo...' : 'Sim, Excluir'}
+              </Button>
+            </div>
           </CardGlass>
         </div>
       )}

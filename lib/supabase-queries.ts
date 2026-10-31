@@ -190,6 +190,12 @@ function mapAgendamento(r: Row): Agendamento {
     comanda_unificada: metaObj.comanda_unificada || undefined,
     unificado_em_id: metaObj.unificado_em_id || null,
     financial_status: finStatus,
+    desconto_valor: metaObj.desconto_valor != null ? Number(metaObj.desconto_valor) : undefined,
+    desconto_pct: metaObj.desconto_pct != null ? Number(metaObj.desconto_pct) : undefined,
+    pacote_utilizado_id: metaObj.pacote_utilizado_id || undefined,
+    pacote_nome: metaObj.pacote_nome || undefined,
+    descontado_pacote: Boolean(metaObj.descontado_pacote),
+    agnaldo_recebe_comissao: metaObj.agnaldo_recebe_comissao !== undefined ? Boolean(metaObj.agnaldo_recebe_comissao) : true,
     confirmed_at: r.confirmed_at || metaObj.confirmed_at || null,
     confirmed_by: r.confirmed_by || metaObj.confirmed_by || null,
     observacoes: null,
@@ -549,6 +555,50 @@ export async function atualizarStatusAgendamento(id: string, status: string): Pr
   return true;
 }
 
+export async function atualizarProcedimentoCadeiraAgendamento(params: {
+  id: string;
+  servico_id: string;
+  sub_servicos?: any[];
+  total_amount?: number;
+  product_cost?: number;
+}): Promise<boolean> {
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    console.warn('[atualizarProcedimentoCadeiraAgendamento] API server falhou:', err);
+  }
+
+  const patch: Row = {
+    service_id: params.servico_id,
+  };
+  if (params.sub_servicos) patch.sub_services = params.sub_servicos;
+  if (params.total_amount != null) patch.total_amount = params.total_amount;
+  if (params.product_cost != null) patch.product_cost = params.product_cost;
+
+  const { error } = await supabase.from(TBL.agendamentos).update(patch).eq('id', params.id);
+  return !error;
+}
+
+export async function excluirAgendamentoAdmin(id: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, modo: 'apenas_dia', excluir_atual: true }),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    console.warn('[excluirAgendamentoAdmin] API server falhou:', err);
+  }
+  const { error } = await supabase.from(TBL.agendamentos).delete().eq('id', id);
+  return !error;
+}
+
 export async function finalizarRecebimentoAgendamento(params: {
   id: string;
   paymentMethod: string;
@@ -561,6 +611,13 @@ export async function finalizarRecebimentoAgendamento(params: {
   comandaUnificada?: ComandaMultiProfissional;
   unificadoEmId?: string;
   financialStatus?: 'PENDING_CONFIRMATION' | 'CONFIRMED';
+  descontoValor?: number;
+  descontoPct?: number;
+  pacoteUtilizadoId?: string;
+  pacoteNome?: string;
+  descontadoPacote?: boolean;
+  agnaldoRecebeComissao?: boolean;
+  preFechadoPor?: string;
 }): Promise<boolean> {
   const finStatus = params.financialStatus || 'PENDING_CONFIRMATION';
 
@@ -591,13 +648,19 @@ export async function finalizarRecebimentoAgendamento(params: {
   if (params.unificadoEmId) {
     metaObj.unificado_em_id = params.unificadoEmId;
   }
+  if (params.descontoValor != null) metaObj.desconto_valor = params.descontoValor;
+  if (params.descontoPct != null) metaObj.desconto_pct = params.descontoPct;
+  if (params.pacoteUtilizadoId) metaObj.pacote_utilizado_id = params.pacoteUtilizadoId;
+  if (params.pacoteNome) metaObj.pacote_nome = params.pacoteNome;
+  if (params.descontadoPacote != null) metaObj.descontado_pacote = params.descontadoPacote;
+  if (params.agnaldoRecebeComissao != null) metaObj.agnaldo_recebe_comissao = params.agnaldoRecebeComissao;
 
   if (finStatus === 'CONFIRMED') {
     metaObj.confirmed_at = new Date().toISOString();
     metaObj.confirmed_by = 'Gestão';
   } else {
     metaObj.pre_fechado_em = new Date().toISOString();
-    metaObj.pre_fechado_por = 'Secretaria';
+    metaObj.pre_fechado_por = params.preFechadoPor || 'Profissional';
   }
 
   const cleanSubs = currentSubs.filter((s: any) => !s?._meta);

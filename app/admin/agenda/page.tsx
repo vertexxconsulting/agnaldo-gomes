@@ -371,6 +371,7 @@ function AgendaContent() {
   const [liveInsumoLoading, setLiveInsumoLoading] = useState<boolean>(false);
   const [editingInsumoIndex, setEditingInsumoIndex] = useState<number | null>(null);
   const [isGestoraOuAdmin, setIsGestoraOuAdmin] = useState<boolean>(false);
+  const [isSecretaria, setIsSecretaria] = useState<boolean>(false);
 
   // Rateio / Split de comissões da equipe
   const [splitComissaoCustom, setSplitComissaoCustom] = useState<Record<string, number>>({});
@@ -604,6 +605,14 @@ function AgendaContent() {
             userMeta?.role === 'admin' ||
             userMeta?.isOwner === true;
           setIsGestoraOuAdmin(Boolean(isGestoraOrAdminUser));
+
+          const isSecretariaUser = !isGestoraOrAdminUser && (
+            effectiveRole === ROLES.STUDIO_SECRETARIA ||
+            userMeta?.role === 'secretaria' ||
+            userMeta?.role === 'studio_secretaria' ||
+            profProfile?.role === 'studio_secretaria'
+          );
+          setIsSecretaria(Boolean(isSecretariaUser));
 
           if (!isFullAdmin) {
             const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
@@ -943,6 +952,7 @@ function AgendaContent() {
   };
 
   const abrirLancarInsumoTempoReal = async (appt: Agendamento) => {
+    if (isSecretaria) return;
     setLiveInsumoAppt(appt);
     setEditingInsumoIndex(null);
     setLiveInsumoEtapa('Etapa 1 - Descoloração / Mechas');
@@ -1169,6 +1179,7 @@ function AgendaContent() {
   };
 
   const abrirCheckout = async (appt: Agendamento) => {
+    if (isSecretaria) return;
     setCheckoutAppt(appt);
     setCheckoutExtras([]);
     setCheckoutInsumos([]);
@@ -2377,7 +2388,7 @@ function AgendaContent() {
                                                 </span>
                                               )}
                                             </div>
-                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
+                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && !isSecretaria && (
                                               <button
                                                 type="button"
                                                 title="Lançar produtos aplicados nesta etapa em tempo real"
@@ -2460,7 +2471,7 @@ function AgendaContent() {
                                               >
                                                 {estilo.label}
                                               </span>
-                                              {(a.status === 'em_atendimento' || a.status === 'confirmado') && (
+                                              {(a.status === 'em_atendimento' || a.status === 'confirmado') && !isSecretaria && (
                                                 <button
                                                   type="button"
                                                   title="Lançar produtos aplicados nesta etapa em tempo real"
@@ -2585,8 +2596,8 @@ function AgendaContent() {
             </div>
 
             <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-[var(--border-subtle)]">
-              {/* Botão de Lançar Insumos em Tempo Real (disponível quando em atendimento ou confirmado) */}
-              {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && (
+              {/* Botão de Lançar Insumos em Tempo Real (disponível para admin/profissional; oculto para secretária) */}
+              {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && !isSecretaria && (
                 <Button 
                   variant="primary" 
                   className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
@@ -2610,12 +2621,12 @@ function AgendaContent() {
                   <User2 size={16} className="mr-2"/> Iniciar Atendimento
                 </Button>
               )}
-              {selectedAppt.status === 'em_atendimento' && (
+              {selectedAppt.status === 'em_atendimento' && !isSecretaria && (
                 <Button variant="primary" onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}>
                   <CheckCircle2 size={16} className="mr-2"/> Concluir e Ir para Caixa
                 </Button>
               )}
-              {selectedAppt.status === 'concluido' && !selectedAppt.payment_method && (
+              {selectedAppt.status === 'concluido' && !selectedAppt.payment_method && !isSecretaria && (
                 <Button 
                   variant="primary" 
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
