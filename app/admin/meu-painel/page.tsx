@@ -155,6 +155,9 @@ export default function MeuPainelPage() {
 
   const hoje = new Date().toISOString().split('T')[0];
 
+  const getClienteNome = (id: string) => clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
+  const getServicoNome = (id: string) => servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
+
   const extratoComissoes = useMemo(() => {
     const list: {
       id: string;
@@ -306,9 +309,6 @@ export default function MeuPainelPage() {
   const emAtendimento = meusAgendamentosHoje.filter(a => a.status === 'em_atendimento');
   const proximos = meusAgendamentosHoje.filter(a => a.status === 'pendente' || a.status === 'confirmado');
   const concluidos = meusAgendamentosHoje.filter(a => a.status === 'concluido');
-
-  const getClienteNome = (id: string) => clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
-  const getServicoNome = (id: string) => servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
 
   const iniciarAtendimento = async (id: string) => {
     const success = await atualizarStatusAgendamento(id, 'em_atendimento');
