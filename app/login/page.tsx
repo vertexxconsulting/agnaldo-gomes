@@ -42,7 +42,7 @@ export default async function LoginPage({
         formSubtitle="Acesse o painel administrativo e de gestão do Studio."
         cta="Acessar Gestão"
         redirectTo={next || '/admin'}
-        allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
+        allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.STUDIO_AUXILIAR, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
       />
     );
   }
@@ -76,7 +76,7 @@ export default async function LoginPage({
       formSubtitle="Acesse o painel administrativo e de gestão do Studio."
       cta="Acessar Gestão"
       redirectTo={next || '/admin'}
-      allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
+      allowedRoles={[ROLES.STUDIO_ADMIN, ROLES.STUDIO_SECRETARIA, ROLES.STUDIO_PROFISSIONAL, ROLES.STUDIO_AUXILIAR, ROLES.ACADEMY_ADMIN, ROLES.LOJA_ADMIN]}
     />
   );
 }

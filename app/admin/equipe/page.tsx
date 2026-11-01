@@ -21,7 +21,7 @@ export default function TeamManagementPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tipoAcesso, setTipoAcesso] = useState<'profissional' | 'administrativo'>('profissional');
+  const [tipoAcesso, setTipoAcesso] = useState<'profissional' | 'auxiliar' | 'administrativo'>('profissional');
   const [selectedProfissionalId, setSelectedProfissionalId] = useState<string>('');
   const [newUser, setNewUser] = useState({ 
     email: '', 
@@ -192,7 +192,7 @@ export default function TeamManagementPage() {
         permissions: {
           ...DEFAULT_PERMISSIONS,
           agenda: 'write',
-          meu_painel: 'write',
+          meu_painel: 'write' as any,
           clientes: 'read',
           comissoes: 'read',
         }
@@ -209,6 +209,24 @@ export default function TeamManagementPage() {
     setCreating(true);
     try {
       const perms = { ...newUser.permissions };
+      let roleToSave = newUser.role;
+
+      if (tipoAcesso === 'auxiliar') {
+        roleToSave = ROLES.STUDIO_AUXILIAR;
+        (perms as any).is_auxiliar = true;
+        (perms as any).cargo = 'auxiliar';
+        (perms as any).tipo = 'auxiliar';
+        (perms as any).categoria = 'Cabelo';
+        (perms as any).agenda = 'write';
+        (perms as any).meu_painel = 'write';
+        perms.clientes = 'read';
+        perms.estoque = 'write';
+        perms.profissionais = 'read';
+        perms.servicos = 'read';
+        perms.comissoes = 'none';
+        perms.equipe = 'none';
+      }
+
       if (newUser.nickname.trim()) {
         (perms as any).nickname = newUser.nickname.trim().toLowerCase();
       }
@@ -221,6 +239,7 @@ export default function TeamManagementPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ...newUser, 
+          role: roleToSave,
           permissions: perms,
           avatar_url: newUser.avatar_url,
           professional_id: newUser.professional_id || selectedProfissionalId,
@@ -384,8 +403,8 @@ export default function TeamManagementPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               
-              {/* Seleção do Tipo de Acesso: Profissional vs Administrativo */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-foreground/5 rounded-2xl border border-[var(--border-subtle)]">
+              {/* Seleção do Tipo de Acesso: Profissional vs Auxiliar vs Administrativo */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-foreground/5 rounded-2xl border border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => {
@@ -395,13 +414,36 @@ export default function TeamManagementPage() {
                       role: ROLES.STUDIO_PROFISSIONAL,
                     }));
                   }}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     tipoAcesso === 'profissional'
                       ? 'bg-gold text-black shadow-md'
                       : 'text-foreground/70 hover:text-foreground'
                   }`}
                 >
-                  <Scissors size={14} /> Profissional do Salão
+                  <Scissors size={13} /> Profissional
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTipoAcesso('auxiliar');
+                    setSelectedProfissionalId('');
+                    setNewUser(prev => ({
+                      ...prev,
+                      role: ROLES.STUDIO_AUXILIAR,
+                      full_name: prev.full_name || 'Auxiliar de Cabelo',
+                      email: prev.email || 'auxiliar@agnaldogomes.com',
+                      nickname: prev.nickname || 'auxiliar',
+                      avatar_url: '',
+                      professional_id: '',
+                    }));
+                  }}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                    tipoAcesso === 'auxiliar'
+                      ? 'bg-gold text-black shadow-md'
+                      : 'text-foreground/70 hover:text-foreground'
+                  }`}
+                >
+                  <Sparkles size={13} /> Auxiliar (Cabelo)
                 </button>
                 <button
                   type="button"
@@ -415,18 +457,18 @@ export default function TeamManagementPage() {
                       professional_id: '',
                     }));
                   }}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     tipoAcesso === 'administrativo'
                       ? 'bg-gold text-black shadow-md'
                       : 'text-foreground/70 hover:text-foreground'
                   }`}
                 >
-                  <Shield size={14} /> Cargo Administrativo
+                  <Shield size={13} /> Administrativo
                 </button>
               </div>
 
-              {/* FLUXO 1: Profissional do Salão (Seleção Direta e Auto-preenchimento) */}
-              {tipoAcesso === 'profissional' ? (
+              {/* FLUXO 1: Profissional do Salão */}
+              {tipoAcesso === 'profissional' && (
                 <div className="space-y-4">
                   
                   {/* Seletor de Profissional Cadastrado */}
@@ -539,7 +581,7 @@ export default function TeamManagementPage() {
                     </div>
                   </div>
 
-                  {/* Senha Inicial (Principal campo a preencher) */}
+                  {/* Senha Inicial */}
                   <div className="flex flex-col gap-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
                     <label className="block text-xs font-bold text-amber-900 uppercase">
                       🔑 Senha Inicial de Acesso (Obrigatório)
@@ -556,7 +598,80 @@ export default function TeamManagementPage() {
                     </p>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {/* FLUXO 2: Auxiliar (Cabelo) */}
+              {tipoAcesso === 'auxiliar' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-gold/10 border border-gold/30 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-gold shrink-0" />
+                      <h4 className="text-sm font-bold text-foreground">Perfil Auxiliar (Sessão de Cabelo)</h4>
+                    </div>
+                    <p className="text-xs text-foreground/75 leading-relaxed">
+                      A pessoa com este login acessa a <strong>Agenda de todos os profissionais de Cabelo</strong> e o <strong>Painel da Cadeira</strong> para lançamento de insumos em tempo real durante os procedimentos em andamento.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-semibold">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">✓ Vê todos de Cabelo</span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-600 border border-blue-500/30">✓ Lança insumos na comanda</span>
+                      <span className="px-2 py-0.5 rounded-md bg-foreground/10 text-foreground/60 border border-[var(--border-subtle)]">✕ Oculta Unhas</span>
+                      <span className="px-2 py-0.5 rounded-md bg-foreground/10 text-foreground/60 border border-[var(--border-subtle)]">✕ Oculta Comissões</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="block text-xs font-bold text-foreground/60 uppercase">Nome Completo</label>
+                    <input 
+                      type="text" 
+                      value={newUser.full_name}
+                      onChange={e => setNewUser({...newUser, full_name: e.target.value})}
+                      className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
+                      placeholder="Ex: Auxiliar de Cabelo"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="block text-xs font-bold text-foreground/60 uppercase">E-mail de Acesso</label>
+                    <input 
+                      type="email" 
+                      value={newUser.email}
+                      onChange={e => setNewUser({...newUser, email: e.target.value})}
+                      className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
+                      placeholder="auxiliar@agnaldogomes.com"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="block text-xs font-bold text-foreground/60 uppercase">Nickname de Login (@)</label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-gold font-bold text-sm">@</span>
+                      <input 
+                        type="text" 
+                        value={newUser.nickname}
+                        onChange={e => setNewUser({...newUser, nickname: e.target.value})}
+                        className="w-full bg-background border border-[var(--border-subtle)] rounded-xl pl-8 pr-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
+                        placeholder="ex: auxiliar"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                    <label className="block text-xs font-bold text-amber-900 uppercase">
+                      🔑 Senha Inicial de Acesso (Obrigatório)
+                    </label>
+                    <input 
+                      type="password" 
+                      value={newUser.password}
+                      onChange={e => setNewUser({...newUser, password: e.target.value})}
+                      className="w-full bg-[var(--color-card)] border border-amber-500/40 rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm font-mono"
+                      placeholder="Defina a senha da auxiliar..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* FLUXO 3: Cargo Administrativo */}
+              {tipoAcesso === 'administrativo' && (
                 /* FLUXO 2: Cargo Administrativo Tradicional (Gestor, Secretária, etc.) */
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1">

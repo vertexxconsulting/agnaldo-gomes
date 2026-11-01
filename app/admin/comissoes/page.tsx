@@ -378,7 +378,7 @@ export default function ComissoesPage() {
           userMeta?.isOwner === true;
 
         // Profissionais não têm permissão para acessar a aba de comissões
-        if (!isFullAdmin || effectiveRole === ROLES.STUDIO_PROFISSIONAL || effectiveRole === 'PROFESSIONAL' || effectiveRole === 'studio_profissional') {
+        if (!isFullAdmin || effectiveRole === ROLES.STUDIO_PROFISSIONAL || effectiveRole === 'PROFESSIONAL' || effectiveRole === 'studio_profissional' || effectiveRole === ROLES.STUDIO_AUXILIAR || effectiveRole === 'studio_auxiliar' || effectiveRole === 'AUXILIAR') {
           setAcessoNegado(true);
           setLoading(false);
           return;

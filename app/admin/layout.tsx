@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           router.replace('/');
           return;
         }
-        const isProfissional = role === ROLES.STUDIO_PROFISSIONAL || (role as any) === 'PROFESSIONAL';
+        const isProfissional = role === ROLES.STUDIO_PROFISSIONAL || (role as any) === 'PROFESSIONAL' || role === ROLES.STUDIO_AUXILIAR || (role as any) === 'studio_auxiliar';
         if (isProfissional && (pathname === '/admin' || pathname === '/admin/')) {
           router.replace('/admin/meu-painel');
           return;
@@ -114,7 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 
   const filteredLinks = links.filter(link => {
-    const isProfissional = userRole === ROLES.STUDIO_PROFISSIONAL || (userRole as any) === 'PROFESSIONAL';
+    const isProfissional = userRole === ROLES.STUDIO_PROFISSIONAL || (userRole as any) === 'PROFESSIONAL' || userRole === ROLES.STUDIO_AUXILIAR || (userRole as any) === 'studio_auxiliar';
     // Para profissionais do salão, ocultar painel geral da recepção (dashboard) e aba de comissões
     if (isProfissional) {
       if (link.id === 'dashboard') return false;

@@ -44,7 +44,7 @@ export async function requireAdminAuth(): Promise<AuthResult> {
 }
 
 export async function requireStudioAuth(): Promise<AuthResult> {
-  return requireAuth(['studio_admin', 'studio_secretaria', 'studio_profissional']);
+  return requireAuth(['studio_admin', 'studio_secretaria', 'studio_profissional', 'studio_auxiliar']);
 }
 
 export async function requireAcademyAuth(): Promise<AuthResult> {

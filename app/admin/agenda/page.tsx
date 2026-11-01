@@ -293,6 +293,7 @@ function AgendaContent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [meuProfissional, setMeuProfissional] = useState<Profissional | null>(null);
   const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
+  const [isAuxiliarCabelo, setIsAuxiliarCabelo] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profServicos, setProfServicos] = useState<ProfissionalServico[]>([]);
@@ -606,7 +607,21 @@ function AgendaContent() {
 
           const isFullAdmin = isGestoraOrAdminUser || isSecretariaUser;
 
-          const isProfissionalUser = !isFullAdmin && (
+          const isAuxiliarUser = !isGestoraOrAdminUser && !isSecretariaUser && (
+            effectiveRole === ROLES.STUDIO_AUXILIAR ||
+            effectiveRole === 'studio_auxiliar' ||
+            effectiveRole === 'AUXILIAR' ||
+            userMeta?.role === 'studio_auxiliar' ||
+            userMeta?.role === 'auxiliar' ||
+            profProfile?.role === 'studio_auxiliar' ||
+            profProfile?.role === 'AUXILIAR' ||
+            Boolean(userMeta?.is_auxiliar) ||
+            Boolean(profProfile?.permissions?.is_auxiliar) ||
+            userMeta?.cargo?.toLowerCase?.().includes('auxiliar') ||
+            (profProfile?.permissions as any)?.cargo?.toLowerCase?.().includes('auxiliar')
+          );
+
+          const isProfissionalUser = !isFullAdmin && !isAuxiliarUser && (
             effectiveRole === ROLES.STUDIO_PROFISSIONAL ||
             effectiveRole === 'PROFESSIONAL' ||
             effectiveRole === 'studio_profissional' ||
@@ -650,8 +665,23 @@ function AgendaContent() {
               });
             }
 
-            if (matchedProf || isProfissionalUser) {
+            if (isAuxiliarUser) {
+              // AUXILIAR DE CABELO: Acesso à agenda de todos os profissionais da sessão de CABELO
+              setIsAuxiliarCabelo(true);
+              setIsRestrictedProfissional(false);
+              setCategoriaFiltro('Cabelo');
+              if (matchedProf) {
+                setMeuProfissional(matchedProf);
+              }
+              const profsCabelo = ativos.filter((p: Profissional) => getCategoriaProfissional(p) === 'Cabelo');
+              setProfissionais(profsCabelo);
+              setProfFiltro('todos');
+              const idsCabelo = new Set(profsCabelo.map(p => p.id));
+              setAgendamentos(agendamentosData.filter(a => idsCabelo.has(a.profissional_id) || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.some(id => idsCabelo.has(id)))));
+              setBloqueiosDia(bloqueiosData.filter(b => idsCabelo.has(b.profissional_id)));
+            } else if (matchedProf || isProfissionalUser) {
               setIsRestrictedProfissional(true);
+              setIsAuxiliarCabelo(false);
               if (matchedProf) {
                 setMeuProfissional(matchedProf);
                 setProfFiltro(matchedProf.id);
@@ -668,11 +698,15 @@ function AgendaContent() {
                 setBloqueiosDia([]);
               }
             } else {
+              setIsRestrictedProfissional(false);
+              setIsAuxiliarCabelo(false);
               setProfissionais(profissionaisData.filter(p => p.ativo));
               setAgendamentos(agendamentosData);
               setBloqueiosDia(bloqueiosData);
             }
           } else {
+            setIsRestrictedProfissional(false);
+            setIsAuxiliarCabelo(false);
             setProfissionais(profissionaisData.filter(p => p.ativo));
             setAgendamentos(agendamentosData);
             setBloqueiosDia(bloqueiosData);
@@ -722,7 +756,7 @@ function AgendaContent() {
 
   // Troca de categoria com auto-reset do filtro de profissional se não pertencer à nova categoria
   const handleCategoriaChange = (cat: string) => {
-    if (isRestrictedProfissional) return;
+    if (isRestrictedProfissional || isAuxiliarCabelo) return;
     setCategoriaFiltro(cat);
     if (profFiltro !== 'todos') {
       const prof = profissionais.find(p => p.id === profFiltro);
@@ -737,8 +771,13 @@ function AgendaContent() {
     if (isRestrictedProfissional) {
       return meuProfissional ? [meuProfissional] : [];
     }
+    if (isAuxiliarCabelo) {
+      const cabeloProfs = profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo');
+      if (profFiltro === 'todos') return cabeloProfs;
+      return cabeloProfs.filter(p => p.id === profFiltro);
+    }
     return profissionaisFiltradosPorCategoria.filter(p => profFiltro === 'todos' || p.id === profFiltro);
-  }, [profissionaisFiltradosPorCategoria, profFiltro, isRestrictedProfissional, meuProfissional]);
+  }, [profissionaisFiltradosPorCategoria, profFiltro, isRestrictedProfissional, meuProfissional, isAuxiliarCabelo, profissionais]);
 
   const idsVisiveis = useMemo(() => new Set(profissionaisVisiveisNaAgenda.map(p => p.id)), [profissionaisVisiveisNaAgenda]);
 
@@ -1930,6 +1969,53 @@ function AgendaContent() {
                 <div className="text-[10px] uppercase font-bold text-foreground/50 tracking-wider">Atendimentos no Dia</div>
                 <div className="text-base font-mono font-black text-gold">
                   {agendamentosFiltrados.length} {agendamentosFiltrados.length === 1 ? 'cliente' : 'clientes'}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : isAuxiliarCabelo ? (
+          <div className="p-4 bg-gradient-to-r from-amber-500/15 via-[var(--color-card)] to-[var(--color-card)] border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-extrabold text-xl border-2 border-amber-500/40 shadow-sm shrink-0">
+                <Sparkles size={26} className="text-amber-500" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-500 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                    Acesso Auxiliar • Sessão Cabelo
+                  </span>
+                  <span className="text-xs font-semibold text-foreground/70 flex items-center gap-1">
+                    ✂️ Toda Equipe de Cabelo
+                  </span>
+                </div>
+                <h2 className="text-lg font-black text-foreground mt-0.5 tracking-tight">
+                  {currentUser?.user_metadata?.full_name || meuProfissional?.nome || 'Auxiliar do Salão'}
+                </h2>
+                <p className="text-xs text-foreground/60">
+                  Agenda unificada para auxílio e suporte aos procedimentos da sessão de Cabelo
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <User2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none" />
+                <select
+                  value={profFiltro}
+                  onChange={(e) => setProfFiltro(e.target.value)}
+                  className="w-full bg-[var(--color-card)] border border-amber-500/40 focus:border-amber-500 rounded-xl pl-10 pr-10 py-2.5 text-xs font-bold text-foreground appearance-none shadow-sm cursor-pointer transition-colors"
+                >
+                  <option value="todos">Todos os Profissionais (Cabelo) ({profissionais.length})</option>
+                  {profissionais.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
                 </div>
               </div>
             </div>

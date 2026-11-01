@@ -6,10 +6,11 @@ export const ROLES = {
   ALUNO: 'STUDENT',
   STUDIO_SECRETARIA: 'studio_secretaria',
   STUDIO_PROFISSIONAL: 'studio_profissional',
+  STUDIO_AUXILIAR: 'studio_auxiliar',
   CUSTOMER: 'CUSTOMER',
 } as const;
 
-export type Role = (typeof ROLES)[keyof typeof ROLES] | 'PROFESSIONAL';
+export type Role = (typeof ROLES)[keyof typeof ROLES] | 'PROFESSIONAL' | 'AUXILIAR' | 'studio_auxiliar';
 
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Administrador Geral',
@@ -20,6 +21,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   studio_secretaria: 'Secretária do Studio',
   studio_profissional: 'Profissional',
   PROFESSIONAL: 'Profissional',
+  studio_auxiliar: 'Auxiliar (Cabelo)',
+  AUXILIAR: 'Auxiliar (Cabelo)',
   CUSTOMER: 'Cliente/Comprador',
 };
 
@@ -32,12 +35,15 @@ export const AREA_LABELS: Record<Role, string> = {
   studio_secretaria: 'Secretaria (Studio)',
   studio_profissional: 'Profissional (Studio)',
   PROFESSIONAL: 'Profissional (Studio)',
+  studio_auxiliar: 'Auxiliar de Cabelo (Studio)',
+  AUXILIAR: 'Auxiliar de Cabelo (Studio)',
   CUSTOMER: 'Cliente/Comprador (Loja)',
 };
 
 /** Mapeia a role da aplicação para o enum 'user_role' do PostgreSQL (profiles.role) */
 export function toDbRole(role: string): string {
   const r = (role || '').toLowerCase();
+  if (r.includes('auxiliar')) return 'PROFESSIONAL';
   if (r.includes('profis') || r.includes('professional')) return 'PROFESSIONAL';
   if (r === 'aluno' || r === 'student') return 'STUDENT';
   if (r === 'cliente' || r === 'customer') return 'CUSTOMER';
@@ -48,8 +54,12 @@ export function toDbRole(role: string): string {
 }
 
 /** Mapeia o enum 'user_role' do PostgreSQL (profiles.role) de volta para a role padrão da aplicação */
-export function fromDbRole(role: string): Role {
+export function fromDbRole(role: string, permissions?: any): Role {
+  if (permissions?.is_auxiliar || permissions?.cargo === 'auxiliar' || permissions?.tipo === 'auxiliar') {
+    return ROLES.STUDIO_AUXILIAR;
+  }
   const r = (role || '').toLowerCase();
+  if (r === 'studio_auxiliar' || r === 'auxiliar') return ROLES.STUDIO_AUXILIAR;
   if (r === 'professional' || r === 'profissional') return ROLES.STUDIO_PROFISSIONAL;
   if (r === 'student' || r === 'aluno') return ROLES.ALUNO;
   if (r === 'customer' || r === 'cliente') return ROLES.CUSTOMER;

@@ -37,14 +37,17 @@ import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profis
 import { supabase } from '@/lib/supabase';
 import { getUserRole, isOwner, ROLES } from '@/lib/auth';
 
-const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-const fmtDate = (d: string) => {
+function fmt(v: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+}
+
+function fmtDate(d: string): string {
   if (!d) return '—';
   const clean = d.includes('T') ? d.slice(0, 10) : d;
   const [ano, mes, dia] = clean.split('-');
   if (!ano || !mes || !dia) return d;
   return `${dia}/${mes}/${ano}`;
-};
+}
 
 const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: any; cor: string; badge: string }> = {
   DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-500', badge: 'Imediato' },
@@ -54,6 +57,26 @@ const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: any; cor: 
   BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-500', badge: 'D+3' },
 };
 
+function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
+  if (p.categoria) {
+    const catNorm = p.categoria.trim().toLowerCase();
+    if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic')) return 'Unhas';
+    if (catNorm.includes('cabelo') || catNorm.includes('capilar')) return 'Cabelo';
+    return p.categoria;
+  }
+  if (p.especialidades && p.especialidades.length > 0) {
+    const tags = p.especialidades.map(e => e.toLowerCase()).join(' ');
+    if (tags.includes('unha') || tags.includes('manicure') || tags.includes('pedicure') || tags.includes('esmalte') || tags.includes('podolog')) {
+      return 'Unhas';
+    }
+  }
+  const nomeLower = (p.nome || '').toLowerCase();
+  if (nomeLower.includes('unha') || nomeLower.includes('manicure') || nomeLower.includes('camila')) {
+    return 'Unhas';
+  }
+  return 'Cabelo';
+}
+
 export default function MeuPainelPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -62,6 +85,7 @@ export default function MeuPainelPage() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [selectedProfId, setSelectedProfId] = useState<string>('');
   const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
+  const [isAuxiliarCabelo, setIsAuxiliarCabelo] = useState(false);
   const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -248,7 +272,21 @@ export default function MeuPainelPage() {
         userMeta?.role === 'admin' ||
         userMeta?.isOwner === true;
 
-      const isProfissionalUser = !isFullAdmin && (
+      const isAuxiliarUser = !owner && !isFullAdmin && (
+        effectiveRole === ROLES.STUDIO_AUXILIAR ||
+        effectiveRole === 'studio_auxiliar' ||
+        effectiveRole === 'AUXILIAR' ||
+        userMeta?.role === 'studio_auxiliar' ||
+        userMeta?.role === 'auxiliar' ||
+        profProfile?.role === 'studio_auxiliar' ||
+        profProfile?.role === 'AUXILIAR' ||
+        Boolean(userMeta?.is_auxiliar) ||
+        Boolean(profProfile?.permissions?.is_auxiliar) ||
+        userMeta?.cargo?.toLowerCase?.().includes('auxiliar') ||
+        (profProfile?.permissions as any)?.cargo?.toLowerCase?.().includes('auxiliar')
+      );
+
+      const isProfissionalUser = !isFullAdmin && !isAuxiliarUser && (
         effectiveRole === ROLES.STUDIO_PROFISSIONAL ||
         effectiveRole === 'PROFESSIONAL' ||
         effectiveRole === 'studio_profissional' ||
@@ -293,7 +331,19 @@ export default function MeuPainelPage() {
         }
       }
 
-      if (isProfissionalUser || (matched && !isFullAdmin)) {
+      if (isAuxiliarUser) {
+        setIsAuxiliarCabelo(true);
+        setIsRestrictedProfissional(false);
+        const profsCabelo = (profs || []).filter(p => p.ativo && getCategoriaProfissional(p) === 'Cabelo');
+        setProfissionais(profsCabelo);
+        const targetId = profsCabelo.length > 0 ? profsCabelo[0].id : '';
+        setSelectedProfId(prev => prev || targetId);
+        if (targetId) {
+          carregarComissoesProf(targetId);
+          buscarPendenciasPassadas(targetId);
+        }
+      } else if (isProfissionalUser || (matched && !isFullAdmin)) {
+        setIsAuxiliarCabelo(false);
         setIsRestrictedProfissional(true);
         if (matched) {
           setSelectedProfId(matched.id);
@@ -305,6 +355,7 @@ export default function MeuPainelPage() {
           setSelectedProfId('');
         }
       } else {
+        setIsAuxiliarCabelo(false);
         setIsRestrictedProfissional(false);
         setProfissionais(profs || []);
         const targetId = matched ? matched.id : (profs && profs.length > 0 ? profs[0].id : '');
@@ -320,10 +371,16 @@ export default function MeuPainelPage() {
     loadData();
   }, []);
 
-  const getClienteNome = (id: string) => clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
-  const getServicoNome = (id: string) => servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
+  function getClienteNome(id: string): string {
+    return clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
+  }
+  function getServicoNome(id: string): string {
+    return servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
+  }
 
   const extratoComissoes = useMemo(() => {
+    const getCli = (id: string) => clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
+    const getSrv = (id: string) => servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
     const list: {
       id: string;
       data: string;
@@ -341,8 +398,8 @@ export default function MeuPainelPage() {
     }[] = [];
 
     minhasComissoes.forEach(c => {
-      const cliNome = (c as any).client_name || getClienteNome((c as any).client_id) || 'Cliente';
-      const srvNome = (c as any).service_name || getServicoNome((c as any).service_id) || 'Serviço';
+      const cliNome = (c as any).client_name || getCli((c as any).client_id) || 'Cliente';
+      const srvNome = (c as any).service_name || getSrv((c as any).service_id) || 'Serviço';
       const dataCriacao = c.created_at ? c.created_at.split('T')[0] : hoje;
 
       if (c.parcelas && c.parcelas.length > 0) {
@@ -972,7 +1029,9 @@ export default function MeuPainelPage() {
             <User2 size={20} />
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider block">Profissional / Cadeira Atuante:</label>
+            <label className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider block">
+              {isAuxiliarCabelo ? 'Cadeira em Atendimento (Auxiliar de Cabelo):' : 'Profissional / Cadeira Atuante:'}
+            </label>
             {isRestrictedProfissional ? (
               <div className="bg-[var(--background)] border border-gold/40 rounded-lg px-3 py-1.5 text-sm font-bold text-foreground flex items-center gap-2">
                 <span>{profissionais.find(p => p.id === selectedProfId)?.nome || 'Sua Cadeira'}</span>
@@ -988,7 +1047,7 @@ export default function MeuPainelPage() {
               >
                 {profissionais.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.nome}
+                    {p.nome} {isAuxiliarCabelo ? '✂️' : ''}
                   </option>
                 ))}
               </select>

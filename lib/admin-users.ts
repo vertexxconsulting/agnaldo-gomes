@@ -30,7 +30,7 @@ export async function getAllProfiles(excludeRole?: Role) {
 
     const enriched = (profiles || []).map(p => {
       const u = authUserMap.get(p.id) || authUsers.find(user => user.email?.toLowerCase() === p.email?.toLowerCase());
-      if (!u) return { ...p, role: fromDbRole(p.role) };
+      if (!u) return { ...p, role: fromDbRole(p.role, p.permissions) };
 
       const userMeta = u.user_metadata || {};
       const fullName = (userMeta.full_name && typeof userMeta.full_name === 'string' && userMeta.full_name.trim())
@@ -57,7 +57,7 @@ export async function getAllProfiles(excludeRole?: Role) {
 
       return {
         ...p,
-        role: fromDbRole(p.role),
+        role: fromDbRole(p.role, perms),
         full_name: fullName,
         phone,
         avatar_url: avatarUrl,
@@ -69,7 +69,7 @@ export async function getAllProfiles(excludeRole?: Role) {
     return enriched;
   } catch (authErr) {
     console.warn('[getAllProfiles] Falha ao enriquecer com Auth:', authErr);
-    return (profiles || []).map(p => ({ ...p, role: fromDbRole(p.role) }));
+    return (profiles || []).map(p => ({ ...p, role: fromDbRole(p.role, p.permissions) }));
   }
 }
 
