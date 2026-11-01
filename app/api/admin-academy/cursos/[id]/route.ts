@@ -41,7 +41,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (description !== undefined) payload.description = description;
     if (thumbnail_url !== undefined) payload.thumbnail_url = thumbnail_url;
     if (duration_hours !== undefined) payload.duration_hours = Number(duration_hours) || 0;
-    if (level !== undefined) payload.level = level;
     if (tags !== undefined) payload.tags = Array.isArray(tags) ? tags : [];
     if (stripe_payment_link !== undefined) payload.stripe_payment_link = stripe_payment_link;
     if (price !== undefined) payload.price = Number(price) || 0;
