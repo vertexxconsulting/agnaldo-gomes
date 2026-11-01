@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, description, thumbnail_url, duration_hours, level, tags } = body;
+    const { title, description, thumbnail_url, duration_hours, tags } = body;
 
     if (!title) {
       return NextResponse.json({ error: 'Título do curso é obrigatório.' }, { status: 400 });
