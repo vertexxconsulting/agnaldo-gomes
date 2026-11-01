@@ -210,6 +210,24 @@ export interface ProdutoEstoque {
   updated_at?: string;
 }
 
+export type TipoProduto = 'insumo' | 'revenda' | 'ambos';
+
+export function getTipoProduto(p: ProdutoEstoque): TipoProduto {
+  const insumo = p.allow_procedure_use === true;
+  const revenda = p.allow_sale === true;
+  if (insumo && revenda) return 'ambos';
+  if (insumo) return 'insumo';
+  return 'revenda';
+}
+
+export function getTipoProdutoLabel(tipo: TipoProduto): string {
+  switch (tipo) {
+    case 'insumo': return 'Insumo';
+    case 'revenda': return 'Revenda';
+    case 'ambos': return 'Insumo + Revenda';
+  }
+}
+
 /** Movimentação de entrada/saída do estoque */
 export interface MovimentacaoEstoque {
   id: UUID;

@@ -19,6 +19,7 @@ import {
   fetchTaxasPagamento, calcularTaxaMaquininha, validarSenhaProfissional
 } from '@/lib/supabase-queries';
 import type { ProdutoEstoque, MovimentacaoEstoque, UnidadeEstoque, Cliente, Profissional, FormaPagamento, PaymentFee } from '@/lib/gestao-types';
+import { getTipoProduto, getTipoProdutoLabel } from '@/lib/gestao-types';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number, u: string) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${u}`;
@@ -711,6 +712,15 @@ export default function EstoquePage() {
                         <div className="flex items-center gap-1.5 ml-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cor}`}>{badge.label}</span>
                         </div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter ${
+                          p.allow_procedure_use && p.allow_sale
+                            ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                            : p.allow_procedure_use
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            : 'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}>
+                          {getTipoProdutoLabel(getTipoProduto(p))}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-2 mb-3">
@@ -946,7 +956,18 @@ export default function EstoquePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 backdrop-blur-sm p-4">
           <CardGlass className="w-full max-w-2xl p-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-xl font-bold font-serif">{editando ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold font-serif">{editando ? 'Editar Produto' : 'Novo Produto'}</h3>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter ${
+                  form.allow_procedure_use && form.allow_sale
+                    ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                    : form.allow_procedure_use
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                    : 'bg-blue-100 text-blue-700 border border-blue-200'
+                }`}>
+                  {getTipoProdutoLabel(getTipoProduto(form as any))}
+                </span>
+              </div>
               <button onClick={() => setShowForm(false)} className="text-foreground/50 hover:text-foreground"><X size={20} /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
