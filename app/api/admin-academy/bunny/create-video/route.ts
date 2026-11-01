@@ -37,11 +37,10 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
     
-    // Retornamos os dados incluindo a apiKey temporariamente para o upload via frontend (admin)
+    // Retornamos os dados para o frontend (sem expor a apiKey)
     return NextResponse.json({ 
       guid: data.guid,
       libraryId,
-      apiKey
     });
 
   } catch (error: any) {

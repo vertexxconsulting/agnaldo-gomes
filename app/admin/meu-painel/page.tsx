@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil,
-  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight, Scissors, Package, Check, ChevronRight
+  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight, Scissors, Package, Check, ChevronRight, ChevronLeft, Calendar, AlertTriangle
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -16,6 +16,7 @@ import {
   fetchServicos, 
   fetchEstoque,
   fetchProfissionais,
+  fetchPendenciasAgendamentosProfissional,
   salvarItemComanda,
   fetchItensComanda,
   atualizarStatusAgendamento,
@@ -128,6 +129,43 @@ export default function MeuPainelPage() {
   // Regras de comissão
   const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
 
+  const hoje = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState<string>(hoje);
+  const [loadingAgendamentos, setLoadingAgendamentos] = useState<boolean>(false);
+  const [pendenciasPassadas, setPendenciasPassadas] = useState<Agendamento[]>([]);
+
+  const mudarData = (deltaDias: number) => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + deltaDias);
+    const ano = dt.getFullYear();
+    const mes = String(dt.getMonth() + 1).padStart(2, '0');
+    const dia = String(dt.getDate()).padStart(2, '0');
+    setSelectedDate(`${ano}-${mes}-${dia}`);
+  };
+
+  const carregarAgendamentosData = async (dataTarget: string) => {
+    setLoadingAgendamentos(true);
+    try {
+      const ags = await fetchAgendamentos({ data: dataTarget });
+      setAgendamentos(ags || []);
+    } catch (err) {
+      console.error('Erro ao carregar agendamentos da data:', err);
+    } finally {
+      setLoadingAgendamentos(false);
+    }
+  };
+
+  const buscarPendenciasPassadas = async (profId: string) => {
+    if (!profId) return;
+    try {
+      const pend = await fetchPendenciasAgendamentosProfissional(profId);
+      setPendenciasPassadas(pend || []);
+    } catch (e) {
+      console.warn('Aviso ao buscar pendências passadas:', e);
+    }
+  };
+
   const handleAlterarMeuPeriodo = async (novoPeriodo: PeriodoRecebimentoComissao) => {
     if (!selectedProfId) return;
     setSalvandoPeriodo(true);
@@ -160,14 +198,21 @@ export default function MeuPainelPage() {
   useEffect(() => {
     if (selectedProfId) {
       carregarComissoesProf(selectedProfId);
+      buscarPendenciasPassadas(selectedProfId);
     }
   }, [selectedProfId]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      carregarAgendamentosData(selectedDate);
+    }
+  }, [selectedDate]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const [ags, cls, srvs, est, profs, regras] = await Promise.all([
-        fetchAgendamentos({ data: new Date().toISOString().split('T')[0] }),
+        fetchAgendamentos({ data: selectedDate }),
         fetchClientes(),
         fetchServicos(),
         fetchEstoque(),
@@ -196,14 +241,13 @@ export default function MeuPainelPage() {
         const targetId = matched ? matched.id : profs[0].id;
         setSelectedProfId(prev => prev || targetId);
         carregarComissoesProf(targetId);
+        buscarPendenciasPassadas(targetId);
       }
       setProdutosLoja(prods || []);
       setLoading(false);
     }
     loadData();
   }, []);
-
-  const hoje = new Date().toISOString().split('T')[0];
 
   const getClienteNome = (id: string) => clientes.find(c => c.id === id)?.nome || 'Cliente não encontrado';
   const getServicoNome = (id: string) => servicos.find(s => s.id === id)?.nome || 'Serviço excluído';
@@ -352,9 +396,9 @@ export default function MeuPainelPage() {
   const meusAgendamentosHoje = useMemo(() => {
     if (!selectedProfId) return [];
     return agendamentos
-      .filter(a => (a.profissional_id === selectedProfId || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(selectedProfId))) && a.data === hoje)
+      .filter(a => (a.profissional_id === selectedProfId || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(selectedProfId))) && a.data === selectedDate)
       .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
-  }, [agendamentos, hoje, selectedProfId]);
+  }, [agendamentos, selectedDate, selectedProfId]);
 
   const emAtendimento = meusAgendamentosHoje.filter(a => a.status === 'em_atendimento');
   const proximos = meusAgendamentosHoje.filter(a => a.status === 'pendente' || a.status === 'confirmado');
@@ -538,7 +582,7 @@ export default function MeuPainelPage() {
 
   // --- HANDLERS: AGENDA DO PROFISSIONAL (MARCAR & EXCLUIR) ---
   const abrirModalNovoAgendamento = () => {
-    setNovoAgData(hoje);
+    setNovoAgData(selectedDate);
     setNovoAgHoraInicio('10:00');
     setNovoAgClienteId(clientes[0]?.id || '');
     setNovoAgServicoId(servicos[0]?.id || '');
@@ -877,18 +921,136 @@ export default function MeuPainelPage() {
         </div>
       </div>
 
+      {/* Alerta de Atendimentos Pendentes de Fechamento de Dias Anteriores */}
+      {pendenciasPassadas.length > 0 && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-amber-500/20 text-amber-500 shrink-0">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                <span>{pendenciasPassadas.length} cliente(s) de dias anteriores sem fechamento</span>
+                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-extrabold tracking-wider">
+                  Pendente
+                </span>
+              </p>
+              <p className="text-xs text-foreground/60 mt-0.5">
+                Estes atendimentos ficaram em aberto. Clique no cliente abaixo para abrir a data e fechar:
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {pendenciasPassadas.slice(0, 4).map(pen => (
+              <button
+                key={pen.id}
+                type="button"
+                onClick={() => {
+                  setSelectedDate(pen.data);
+                  abrirPreFechamento(pen);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 font-bold text-xs border border-amber-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Calendar size={13} /> {fmtDate(pen.data)} · {getClienteNome(pen.cliente_id).split(' ')[0]} (Fechar)
+              </button>
+            ))}
+            {pendenciasPassadas.length > 4 && (
+              <span className="text-xs text-foreground/50">+{pendenciasPassadas.length - 4} mais</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Seletor de Data da Cadeira & Agenda */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-foreground/[0.03] border border-[var(--border-subtle)] p-3.5 rounded-xl">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-foreground/60 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+            <Calendar size={15} className="text-gold" /> Data da Cadeira & Agenda:
+          </span>
+
+          <div className="flex items-center gap-1 bg-background border border-[var(--border-subtle)] rounded-lg p-0.5 shadow-2xs">
+            <button
+              type="button"
+              title="Dia Anterior"
+              onClick={() => mudarData(-1)}
+              className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDate(hoje)}
+              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                selectedDate === hoje
+                  ? 'bg-gold text-white shadow-2xs'
+                  : 'hover:bg-foreground/5 text-foreground/70'
+              }`}
+            >
+              Hoje
+            </button>
+
+            <button
+              type="button"
+              title="Próximo Dia"
+              onClick={() => mudarData(1)}
+              className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="relative flex items-center">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => e.target.value && setSelectedDate(e.target.value)}
+              className="bg-background border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+            />
+          </div>
+
+          {selectedDate !== hoje && (
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-1 rounded-lg font-bold text-xs border flex items-center gap-1.5 ${
+                selectedDate < hoje
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  : 'bg-blue-500/15 text-blue-500 border-blue-500/30'
+              }`}>
+                <Clock size={13} />
+                {selectedDate < hoje ? `Data Passada (${fmtDate(selectedDate)}) • Modo Fechamento Retroativo` : `Data Futura (${fmtDate(selectedDate)})`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedDate(hoje)}
+                className="text-xs text-gold hover:underline font-bold cursor-pointer"
+              >
+                Voltar para Hoje
+              </button>
+            </div>
+          )}
+        </div>
+
+        {loadingAgendamentos && (
+          <span className="text-xs text-gold flex items-center gap-1.5 animate-pulse font-medium">
+            <RefreshCw size={13} className="animate-spin" /> Atualizando atendimentos...
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* COLUNA ESQUERDA: Cadeira Atual & Multitarefas */}
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-            Na Cadeira Agora
+            Na Cadeira {selectedDate !== hoje ? `(${fmtDate(selectedDate)})` : 'Agora'}
           </h2>
 
           {emAtendimento.length === 0 ? (
             <CardGlass className="p-8 text-center text-foreground/50 border-dashed">
-              Nenhuma cliente na cadeira no momento para este profissional.
+              {selectedDate === hoje 
+                ? 'Nenhuma cliente na cadeira no momento para este profissional.'
+                : `Nenhuma cliente em atendimento na cadeira na data ${fmtDate(selectedDate)}.`}
             </CardGlass>
           ) : (
             <div className="space-y-4">
@@ -1312,13 +1474,20 @@ export default function MeuPainelPage() {
           </CardGlass>
         </div>
 
-        {/* COLUNA DIREITA: Próximos Atendimentos */}
+        {/* COLUNA DIREITA: Atendimentos da Data */}
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Clock className="text-foreground/50" />
-              Próximos Hoje
-            </h2>
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Clock className="text-foreground/50" />
+                {selectedDate === hoje ? 'Próximos Hoje' : `Atendimentos de ${fmtDate(selectedDate)}`}
+              </h2>
+              {selectedDate !== hoje && (
+                <p className="text-[11px] text-foreground/50 mt-0.5">
+                  {selectedDate < hoje ? 'Fechamento retroativo de clientes da data' : 'Agendamentos futuros'}
+                </p>
+              )}
+            </div>
             <Button 
               variant="primary" 
               size="sm" 
@@ -1331,7 +1500,9 @@ export default function MeuPainelPage() {
 
           <div className="space-y-3">
             {proximos.length === 0 ? (
-              <p className="text-sm text-foreground/50 text-center py-4">Agenda livre.</p>
+              <p className="text-sm text-foreground/50 text-center py-4">
+                {selectedDate === hoje ? 'Agenda livre hoje.' : `Nenhum agendamento pendente em ${fmtDate(selectedDate)}.`}
+              </p>
             ) : (
               proximos.map(ag => (
                 <CardGlass key={ag.id} className="p-4 hover:border-foreground/20 transition-colors">
@@ -1351,6 +1522,14 @@ export default function MeuPainelPage() {
                         onClick={() => iniciarAtendimento(ag.id)}
                       >
                         <Play size={13} /> Puxar
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="px-2.5 py-1 text-xs border border-[var(--border-subtle)] hover:border-gold/40 text-foreground flex items-center gap-1 font-semibold"
+                        onClick={() => abrirPreFechamento(ag)}
+                      >
+                        <CheckCircle2 size={13} className="text-gold" /> Fechar
                       </Button>
                       <button
                         type="button"
@@ -2330,9 +2509,11 @@ export default function MeuPainelPage() {
 
             if (ok) {
               setPreFechamentoModalOpen(false);
-              const ags = await fetchAgendamentos({ data: hoje });
-              setAgendamentos(ags);
-              if (selectedProfId) carregarComissoesProf(selectedProfId);
+              await carregarAgendamentosData(selectedDate);
+              if (selectedProfId) {
+                buscarPendenciasPassadas(selectedProfId);
+                carregarComissoesProf(selectedProfId);
+              }
               alert('Atendimento pré-fechado com sucesso e enviado para a recepção / caixa!');
             } else {
               alert('Erro ao finalizar pré-fechamento.');

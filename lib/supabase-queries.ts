@@ -419,6 +419,28 @@ export async function fetchAgendamentos(filtro?: {
   return (data ?? []).map(mapAgendamento);
 }
 
+export async function fetchPendenciasAgendamentosProfissional(profId: string): Promise<Agendamento[]> {
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from(TBL.agendamentos)
+      .select('*')
+      .eq('professional_id', profId)
+      .lt('date', hoje)
+      .in('status', ['IN_PROGRESS', 'CONFIRMED', 'PENDING'])
+      .order('date', { ascending: false });
+
+    if (error) {
+      logSupabaseError('[fetchPendenciasAgendamentosProfissional] error:', error);
+      return [];
+    }
+    return (data ?? []).map(mapAgendamento);
+  } catch (err) {
+    console.warn('[fetchPendenciasAgendamentosProfissional] erro:', err);
+    return [];
+  }
+}
+
 export async function fetchAgendamentoPorId(id: string): Promise<Agendamento | null> {
   try {
     const res = await fetch(`/api/agendamentos/admin?id=${encodeURIComponent(id)}`);

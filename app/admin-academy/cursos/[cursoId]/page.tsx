@@ -936,37 +936,29 @@ function AulaCard({
         throw new Error(errorData.error || 'Falha ao iniciar upload');
       }
 
-      const { guid, libraryId, apiKey } = await res.json();
+      const { guid, libraryId } = await res.json();
 
-      // 2. Fazer o upload do binário direto pro BunnyCDN via XMLHttpRequest para ter barra de progresso
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', `https://video.bunnycdn.com/library/${libraryId}/videos/${guid}`, true);
-        xhr.setRequestHeader('AccessKey', apiKey);
-        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      // 2. Fazer o upload do binário através do proxy do servidor (evita CORS e não expõe a apiKey)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('guid', guid);
+      formData.append('libraryId', libraryId);
 
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            setEditData(prev => ({ ...prev, video_url: guid }));
-            resolve(true);
-          } else {
-            reject(new Error('Falha no envio para o BunnyCDN'));
-          }
-        };
-
-        xhr.onerror = () => {
-          reject(new Error('Erro de rede durante o upload'));
-        };
-
-        xhr.send(file);
+      const uploadRes = await fetch('/api/admin-academy/bunny/upload-video', {
+        method: 'POST',
+        body: formData,
       });
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.error || 'Falha no envio para o BunnyCDN');
+      }
+
+      const uploadData = await uploadRes.json();
+
+      // 3. Salvar a URL do vídeo na aula automaticamente
+      setEditData(prev => ({ ...prev, video_url: uploadData.videoUrl || guid }));
+      await onUpdate(aula, { video_url: uploadData.videoUrl || guid });
 
     } catch (err: any) {
       alert('Erro no upload: ' + err.message);

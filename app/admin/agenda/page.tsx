@@ -40,7 +40,7 @@ export interface EstiloProcessoAgenda {
   textHora: string;
 }
 
-export const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
+const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
   pendente: {
     label: 'Agendado',
     barColor: '#94a3b8',
@@ -109,7 +109,7 @@ export const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgen
   },
 };
 
-export function getEstiloProcesso(status?: StatusAgendamento): EstiloProcessoAgenda {
+function getEstiloProcesso(status?: StatusAgendamento): EstiloProcessoAgenda {
   if (status && CORES_PROCESSO_AGENDA[status]) {
     return CORES_PROCESSO_AGENDA[status];
   }
@@ -230,19 +230,19 @@ function formatPhone(val: string) {
   return val;
 }
 
-export function timeToMinutes(timeStr: string): number {
+function timeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
   const [h, m] = timeStr.slice(0, 5).split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
 }
 
-export function minutesToTime(totalMins: number): string {
+function minutesToTime(totalMins: number): string {
   const h = Math.floor(totalMins / 60) % 24;
   const m = totalMins % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function getAgendamentoHoraFim(a: Agendamento, servicosList: Servico[]): string {
+function getAgendamentoHoraFim(a: Agendamento, servicosList: Servico[]): string {
   if (a.hora_fim && timeToMinutes(a.hora_fim) > timeToMinutes(a.hora_inicio)) {
     return a.hora_fim.slice(0, 5);
   }
@@ -259,7 +259,7 @@ export function getAgendamentoHoraFim(a: Agendamento, servicosList: Servico[]): 
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
-export function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
+function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
   if (p.categoria) {
     const catNorm = p.categoria.trim().toLowerCase();
     if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic')) return 'Unhas';
