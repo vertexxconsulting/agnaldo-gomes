@@ -2388,25 +2388,6 @@ function AgendaContent() {
                                                 </span>
                                               )}
                                             </div>
-                                            {(a.status === 'em_atendimento' || a.status === 'confirmado') && !isSecretaria && (
-                                              <button
-                                                type="button"
-                                                title="Lançar produtos aplicados nesta etapa em tempo real"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  abrirLancarInsumoTempoReal(a);
-                                                }}
-                                                className="px-2 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[9px] flex items-center gap-1 transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-                                              >
-                                                <Beaker size={10} className="text-white shrink-0" />
-                                                <span>+ Insumo</span>
-                                                {a.insumos_detalhes && a.insumos_detalhes.length > 0 && (
-                                                  <span className="bg-black/30 text-white px-1 rounded-full text-[8px] font-mono font-bold shrink-0">
-                                                    {a.insumos_detalhes.length}
-                                                  </span>
-                                                )}
-                                              </button>
-                                            )}
                                           </div>
                                         </div>
                                       </div>
@@ -2471,20 +2452,6 @@ function AgendaContent() {
                                               >
                                                 {estilo.label}
                                               </span>
-                                              {(a.status === 'em_atendimento' || a.status === 'confirmado') && !isSecretaria && (
-                                                <button
-                                                  type="button"
-                                                  title="Lançar produtos aplicados nesta etapa em tempo real"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    abrirLancarInsumoTempoReal(a);
-                                                  }}
-                                                  className="px-2 py-0.5 rounded bg-gold hover:bg-gold-dim text-white font-bold text-[8px] flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
-                                                >
-                                                  <Beaker size={9} className="text-white shrink-0" />
-                                                  <span>+ Insumo</span>
-                                                </button>
-                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -2566,73 +2533,13 @@ function AgendaContent() {
                   <span>Permite sobreposição / encaixe durante pausas</span>
                 </div>
               )}
-
-              {/* Resumo de Insumos já aplicados neste agendamento */}
-              {selectedAppt.insumos_detalhes && selectedAppt.insumos_detalhes.length > 0 && (
-                <div className="text-xs bg-foreground/[0.03] border border-[var(--border-subtle)] p-2.5 rounded-lg text-foreground space-y-1.5 mt-2">
-                  <div className="font-bold flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-foreground font-bold">
-                      <Beaker size={13} className="text-gold" /> {selectedAppt.insumos_detalhes.length} Insumo(s) Lançado(s)
-                    </span>
-                    <span className="font-mono text-foreground font-bold">
-                      R$ {Number(selectedAppt.product_cost || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {selectedAppt.insumos_detalhes.slice(0, 3).map((ins, i) => (
-                      <div key={i} className="flex justify-between items-center text-[11px] text-foreground/80">
-                        <span className="truncate">• {ins.name} ({ins.qty_used}{ins.unit})</span>
-                        <span className="font-mono text-foreground/50">{ins.etapa?.split('-')[0]?.trim() || 'Etapa'}</span>
-                      </div>
-                    ))}
-                    {selectedAppt.insumos_detalhes.length > 3 && (
-                      <p className="text-[10px] text-foreground/50 italic text-right">
-                        +{selectedAppt.insumos_detalhes.length - 3} outro(s) produto(s)...
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-[var(--border-subtle)]">
-              {/* Botão de Lançar Insumos em Tempo Real (disponível para admin/profissional; oculto para secretária) */}
-              {(selectedAppt.status === 'em_atendimento' || selectedAppt.status === 'confirmado') && !isSecretaria && (
-                <Button 
-                  variant="primary" 
-                  className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center justify-center gap-2 py-2.5 shadow-sm"
-                  onClick={() => {
-                    abrirLancarInsumoTempoReal(selectedAppt);
-                    setSelectedAppt(null);
-                  }}
-                >
-                  <Beaker size={16} className="text-white" />
-                  Lançar Produtos da Etapa (Tempo Real)
-                </Button>
-              )}
 
               {selectedAppt.status === 'pendente' && (
                 <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
                   <Check size={16} className="mr-2"/> Confirmar
-                </Button>
-              )}
-              {selectedAppt.status === 'confirmado' && (
-                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'em_atendimento'); setSelectedAppt(null); }}>
-                  <User2 size={16} className="mr-2"/> Iniciar Atendimento
-                </Button>
-              )}
-              {selectedAppt.status === 'em_atendimento' && !isSecretaria && (
-                <Button variant="primary" onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}>
-                  <CheckCircle2 size={16} className="mr-2"/> Concluir e Ir para Caixa
-                </Button>
-              )}
-              {selectedAppt.status === 'concluido' && !selectedAppt.payment_method && !isSecretaria && (
-                <Button 
-                  variant="primary" 
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
-                  onClick={() => { abrirCheckout(selectedAppt); setSelectedAppt(null); }}
-                >
-                  <Banknote size={16} className="mr-2"/> Ir para Recebimento
                 </Button>
               )}
 
