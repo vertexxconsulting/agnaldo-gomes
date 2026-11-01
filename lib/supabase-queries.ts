@@ -196,6 +196,8 @@ function mapAgendamento(r: Row): Agendamento {
     pacote_nome: metaObj.pacote_nome || undefined,
     descontado_pacote: Boolean(metaObj.descontado_pacote),
     agnaldo_recebe_comissao: metaObj.agnaldo_recebe_comissao !== undefined ? Boolean(metaObj.agnaldo_recebe_comissao) : true,
+    pre_fechado_por: metaObj.pre_fechado_por || null,
+    pre_fechado_em: metaObj.pre_fechado_em || null,
     confirmed_at: r.confirmed_at || metaObj.confirmed_at || null,
     confirmed_by: r.confirmed_by || metaObj.confirmed_by || null,
     observacoes: null,

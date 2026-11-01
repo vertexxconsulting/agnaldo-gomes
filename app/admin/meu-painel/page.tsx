@@ -2500,6 +2500,7 @@ export default function MeuPainelPage() {
               auxiliaresIds: activeAgendamento.auxiliares_ids,
               financialStatus: 'PENDING_CONFIRMATION',
               descontoValor: descValor,
+              descontoPct: parseFloat(preFechamentoDescontoPct) || 0,
               pacoteUtilizadoId: activeAgendamento.pacote_utilizado_id || undefined,
               pacoteNome: activeAgendamento.pacote_nome || undefined,
               descontadoPacote: activeAgendamento.descontado_pacote || false,
@@ -2581,7 +2582,7 @@ export default function MeuPainelPage() {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center gap-1.5">
                   <DollarSign size={14} className="text-gold" /> Ajuste de Valor e Desconto do Serviço
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-foreground/60 block mb-1">
                       Valor do Serviço (R$)
@@ -2592,9 +2593,48 @@ export default function MeuPainelPage() {
                       min="0"
                       disabled={activeAgendamento.descontado_pacote || false}
                       value={preFechamentoPrecoServico}
-                      onChange={e => setPreFechamentoPrecoServico(parseFloat(e.target.value) || 0)}
+                      onChange={e => {
+                        const novoPreco = parseFloat(e.target.value) || 0;
+                        setPreFechamentoPrecoServico(novoPreco);
+                        const pct = parseFloat(preFechamentoDescontoPct);
+                        if (!isNaN(pct) && pct > 0 && novoPreco > 0) {
+                          setPreFechamentoDescontoValor(((novoPreco * pct) / 100).toFixed(2));
+                        }
+                      }}
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-foreground/60 block mb-1">
+                      Desconto no Serviço (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        disabled={activeAgendamento.descontado_pacote || false}
+                        placeholder="0"
+                        value={preFechamentoDescontoPct}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setPreFechamentoDescontoPct(val);
+                          const pct = parseFloat(val);
+                          if (!isNaN(pct) && preFechamentoPrecoServico > 0) {
+                            const desc = Number(((preFechamentoPrecoServico * pct) / 100).toFixed(2));
+                            setPreFechamentoDescontoValor(desc > 0 ? String(desc) : '');
+                          } else if (val === '') {
+                            setPreFechamentoDescontoValor('');
+                          }
+                        }}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 pr-7 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-foreground/40 pointer-events-none">
+                        %
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -2608,7 +2648,17 @@ export default function MeuPainelPage() {
                       disabled={activeAgendamento.descontado_pacote || false}
                       placeholder="0.00"
                       value={preFechamentoDescontoValor}
-                      onChange={e => setPreFechamentoDescontoValor(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setPreFechamentoDescontoValor(val);
+                        const desc = parseFloat(val);
+                        if (!isNaN(desc) && preFechamentoPrecoServico > 0) {
+                          const pct = Number(((desc / preFechamentoPrecoServico) * 100).toFixed(1));
+                          setPreFechamentoDescontoPct(pct > 0 ? String(pct) : '');
+                        } else if (val === '') {
+                          setPreFechamentoDescontoPct('');
+                        }
+                      }}
                       className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
                     />
                   </div>
@@ -2657,70 +2707,32 @@ export default function MeuPainelPage() {
                 </div>
               )}
 
-              {/* DEMONSTRATIVO DAS 3 PARTES */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-gold/10 via-foreground/[0.02] to-background border-2 border-gold/30 space-y-3.5">
-                <div className="flex justify-between items-center border-b border-gold/20 pb-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                    <Sparkles size={14} /> Demonstrativo da Divisão em 3 Partes
-                  </h4>
-                  <span className="text-[11px] text-foreground/50 font-mono">
-                    Total: {fmt(activeAgendamento.descontado_pacote ? precoBaseServico : valorServicoLiquido)}
+              {/* RESUMO SIMPLES DE INSUMOS E PRODUTOS (SEM DETALHAMENTO DE SALÃO/MARGEM) */}
+              {((activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0) || itensUpsell.length > 0) && (
+                <div className="p-3.5 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] space-y-2 text-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/60 block">
+                    Produtos e Insumos do Atendimento
                   </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* PARTE 1: INSUMOS */}
-                  <div className="p-3 rounded-lg bg-[var(--background)] border border-emerald-500/30 space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-emerald-500 block">1ª Parte • Insumos</span>
-                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte1InsumosRecompra)}</p>
-                    <p className="text-[10px] text-foreground/50 leading-tight">
-                      Separado p/ recompra do estoque ({activeAgendamento.insumos_detalhes?.length || 0} itens)
-                    </p>
-                  </div>
-
-                  {/* PARTE 2: COMISSÃO DO PROFISSIONAL */}
-                  <div className="p-3 rounded-lg bg-[var(--background)] border border-blue-500/30 space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissão</span>
-                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte2ComissoesTotal)}</p>
-                    <p className="text-[10px] text-foreground/50 leading-tight">
-                      Base líquida ({fmt(baseCalculoComissao)}) × {pctComissaoBase}%
-                    </p>
-                  </div>
-
-                  {/* PARTE 3: SALÃO */}
-                  <div className="p-3 rounded-lg bg-[var(--background)] border border-gold/30 space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-gold block">3ª Parte • Salão</span>
-                    <p className="text-base font-bold font-mono text-foreground">{fmt(parte3Salao)}</p>
-                    <p className="text-[10px] text-foreground/50 leading-tight">
-                      Estrutura, salão e margem operacional
-                    </p>
-                  </div>
-                </div>
-
-                {/* DETALHAMENTO INDIVIDUAL DE CADA PROFISSIONAL */}
-                <div className="space-y-1.5 pt-2 border-t border-gold/20">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60 block">
-                    Distribuição da Comissão entre Profissionais:
-                  </span>
-                  {comissoesIndividuais.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-foreground/[0.03] border border-[var(--border-subtle)]">
-                      <div className="flex items-center gap-2">
-                        <User2 size={13} className="text-gold" />
-                        <span className="font-semibold text-foreground">{c.nome}</span>
-                        {c.isAuxiliar && (
-                          <span className="px-1.5 py-0.2 rounded bg-gold/15 text-gold text-[9px] font-bold">Auxiliar</span>
-                        )}
-                        {c.observacao && (
-                          <span className="text-[10px] text-amber-500 font-medium italic">({c.observacao})</span>
-                        )}
-                      </div>
-                      <span className="font-mono font-bold text-foreground">
-                        {fmt(c.valor)} <span className="text-foreground/40 font-normal">({c.pct}%)</span>
+                  {activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0 && (
+                    <div className="flex items-center justify-between text-foreground/80">
+                      <span className="flex items-center gap-1.5">
+                        <Beaker size={13} className="text-emerald-500" />
+                        Insumos de Apoio / Procedimento ({activeAgendamento.insumos_detalhes.length} itens aplicados)
                       </span>
+                      <span className="font-semibold text-emerald-500 text-[11px]">Lançado na comanda</span>
                     </div>
-                  ))}
+                  )}
+                  {itensUpsell.length > 0 && (
+                    <div className="flex items-center justify-between text-foreground/80 pt-1 border-t border-[var(--border-subtle)]">
+                      <span className="flex items-center gap-1.5">
+                        <ShoppingBag size={13} className="text-gold" />
+                        Produtos de Balcão (Venda Upsell - {itensUpsell.length} item(s))
+                      </span>
+                      <span className="font-mono font-bold text-gold">+{fmt(totalUpsell)}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {/* TOTAL NO CAIXA */}
               <div className="p-4 rounded-xl bg-foreground/[0.04] border border-[var(--border-subtle)] flex justify-between items-center">

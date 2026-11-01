@@ -109,6 +109,8 @@ export interface Agendamento {
   pacote_nome?: string | null;
   descontado_pacote?: boolean | null;
   agnaldo_recebe_comissao?: boolean | null;
+  pre_fechado_por?: string | null;
+  pre_fechado_em?: string | null;
   confirmed_at?: string | null;
   confirmed_by?: string | null;
   observacoes?: string | null;
