@@ -664,6 +664,10 @@ export default function AdminEdicaoCursoPage() {
                     }}
                     onUpdateAula={handleUpdateAula}
                     onDeleteAula={handleDeleteAula}
+                    onReplicate={() => {
+                      setIsReplicateModalOpen(true);
+                      carregarCursosDisponiveis();
+                    }}
                   />
                 </div>
               ))}
@@ -918,6 +922,7 @@ function ModuloCard({
   onCreateAula,
   onUpdateAula,
   onDeleteAula,
+  onReplicate,
 }: {
   modulo: ModuloComAulas;
   index: number;
@@ -927,6 +932,7 @@ function ModuloCard({
   onCreateAula: (module_id: string) => void;
   onUpdateAula: (id: string, data: Partial<Aula>) => void;
   onDeleteAula: (id: string) => void;
+  onReplicate: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(modulo.title);
@@ -1012,15 +1018,6 @@ function ModuloCard({
               className="w-full mt-2 py-3 border border-dashed border-gold/20 rounded-lg text-sm font-medium text-foreground/50 hover:text-gold hover:border-gold/50 transition-colors flex items-center justify-center gap-2"
             >
               <Plus size={16} /> Adicionar Aula
-            </button>
-            <button
-              onClick={() => {
-                setIsReplicateModalOpen(true);
-                carregarCursosDisponiveis();
-              }}
-              className="w-full mt-2 py-2 rounded-lg border border-gold/20 text-xs font-medium text-foreground/50 hover:text-gold hover:border-gold/50 transition-colors flex items-center justify-center gap-2"
-            >
-              <Copy size={14} /> Replicar de outro curso
             </button>
           </div>
         </>

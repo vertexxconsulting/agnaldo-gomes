@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     // Copiar as aulas para o novo módulo
     if (sourceLessons && sourceLessons.length > 0) {
-      const lessonsToInsert = sourceLessons.map((lesson, index) => ({
+      const lessonsToInsert = sourceLessons.map((lesson: any, index: number) => ({
         module_id: newModule.id,
         title: lesson.title,
         video_url: lesson.video_url || '',
