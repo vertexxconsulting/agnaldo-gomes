@@ -932,33 +932,45 @@ function AulaCard({
       });
       
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Falha ao iniciar upload');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Falha ao iniciar upload no Bunny');
       }
 
-      const { guid, libraryId } = await res.json();
+      const { guid, libraryId, apiKey } = await res.json();
 
-      // 2. Fazer o upload do binário através do proxy do servidor (evita CORS e não expõe a apiKey)
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('guid', guid);
-      formData.append('libraryId', libraryId);
+      // 2. Fazer o upload do binário direto do navegador para o BunnyCDN via XMLHttpRequest
+      // Isso contorna o limite de 4.5MB da Vercel (Erro 413) e fornece barra de progresso em tempo real
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', `https://video.bunnycdn.com/library/${libraryId}/videos/${guid}`, true);
+        xhr.setRequestHeader('AccessKey', apiKey);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
 
-      const uploadRes = await fetch('/api/admin-academy/bunny/upload-video', {
-        method: 'POST',
-        body: formData,
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(true);
+          } else {
+            reject(new Error(`Falha no envio para o BunnyCDN (Código ${xhr.status}): ${xhr.responseText || 'Erro desconhecido'}`));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error('Falha de conexão com os servidores do BunnyCDN durante o upload'));
+        };
+
+        xhr.send(file);
       });
 
-      if (!uploadRes.ok) {
-        const errorData = await uploadRes.json();
-        throw new Error(errorData.error || 'Falha no envio para o BunnyCDN');
-      }
-
-      const uploadData = await uploadRes.json();
-
-      // 3. Salvar a URL do vídeo na aula automaticamente
-      setEditData(prev => ({ ...prev, video_url: uploadData.videoUrl || guid }));
-      await onUpdate(aula, { video_url: uploadData.videoUrl || guid });
+      // 3. Salvar o GUID do vídeo na aula automaticamente
+      setEditData(prev => ({ ...prev, video_url: guid }));
+      await onUpdate(aula, { video_url: guid });
 
     } catch (err: any) {
       alert('Erro no upload: ' + err.message);
