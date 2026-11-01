@@ -77,8 +77,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return;
         }
 
-        setUserRole(role);
-        setUserPermissions(user.user_metadata?.permissions);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('permissions, role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        setUserRole(profile?.role || role);
+        setUserPermissions(profile?.permissions || user.user_metadata?.permissions);
       } catch (err) {
         console.error('Erro ao verificar autenticação no painel administrativo:', err);
         if (mounted) {

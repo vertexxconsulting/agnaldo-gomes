@@ -5,6 +5,8 @@ import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, Histo
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { getClientes, getAgendamentos, getServicos, getProfissionais, getServicoNome, getServicoPreco, getProfissionalNome, STATUS_LABELS } from '@/lib/mock-data';
 import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
 
@@ -106,6 +108,7 @@ export default function ClienteModule() {
   const [cidade, setCidade] = useState('');
   const [complemento, setComplemento] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const { isReadOnly } = useModulePermission('clientes');
   const numeroRef = useRef<HTMLInputElement>(null);
 
   const buscarCep = async (cepInput: string) => {
@@ -214,6 +217,10 @@ export default function ClienteModule() {
 
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isReadOnly) {
+      alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
+      return;
+    }
     const form = new FormData(e.currentTarget);
     const enderecoCompleto = comporEndereco({
       rua,
@@ -283,6 +290,10 @@ export default function ClienteModule() {
   };
 
   const excluir = async (id: string) => {
+    if (isReadOnly) {
+      alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
+      return;
+    }
     if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
     try {
       const res = await fetch(`/api/clientes?id=${id}`, { method: 'DELETE' });
@@ -300,6 +311,7 @@ export default function ClienteModule() {
   return (
     <div className="py-4">
       <SectionTitle title="Clientes (CRM)" subtitle="Gestão de relacionamento e histórico" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Clientes" />}
 
       {/* Busca + nova ação */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
@@ -320,7 +332,7 @@ export default function ClienteModule() {
             </button>
           )}
         </div>
-        <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={abrirNovoCliente}>
+        <Button variant="primary" size="md" className={`sm:w-auto w-full ${isReadOnly ? 'hidden' : ''}`} disabled={isReadOnly} onClick={abrirNovoCliente}>
           <UserPlus size={18} className="mr-2" /> Novo Cliente
         </Button>
       </div>
@@ -567,7 +579,7 @@ export default function ClienteModule() {
                         </div>
                       </div>
 
-                      <div className="pt-2 flex gap-2">
+                      <div className={`pt-2 flex gap-2 ${isReadOnly ? 'hidden' : ''}`}>
                         <Button variant="outline" size="sm" className="flex-1 text-xs py-1.5 h-auto" onClick={(e) => { e.stopPropagation(); abrirEdicaoCliente(c); }}><Edit size={14} className="mr-1"/> Editar</Button>
                         <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 h-auto py-1.5" onClick={(e) => { e.stopPropagation(); excluir(c.id); }}><Trash2 size={14}/></Button>
                       </div>

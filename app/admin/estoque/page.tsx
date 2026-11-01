@@ -9,6 +9,8 @@ import {
   ShieldCheck, UserCheck, Filter
 } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
@@ -64,6 +66,7 @@ const FORM_VAZIO = {
 };
 
 export default function EstoquePage() {
+  const { isReadOnly } = useModulePermission('estoque');
   const [aba, setAba] = useState<Aba>('produtos');
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [movs, setMovs] = useState<MovimentacaoEstoque[]>([]);
@@ -580,6 +583,7 @@ export default function EstoquePage() {
   };
 
   const salvar = async () => {
+    if (isReadOnly) return alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
     if (!form.name || !form.category) return alert('Nome e categoria são obrigatórios.');
     setSalvando(true);
     const payload: Omit<ProdutoEstoque, 'id' | 'created_at' | 'updated_at'> = {
@@ -610,6 +614,7 @@ export default function EstoquePage() {
   return (
     <div className="py-4 w-full">
       <SectionTitle title="Estoque do Salão" subtitle="Insumos · Produtos para Venda · Movimentações" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Estoque" />}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-5">
@@ -685,10 +690,10 @@ export default function EstoquePage() {
                 <option value="insumo">Só insumos</option>
                 <option value="venda">Só para venda</option>
               </select>
-              <Button variant="outline" className="text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={() => abrirVenda()}>
+              <Button variant="outline" className={`text-blue-400 border-blue-500/30 hover:bg-blue-500/10 ${isReadOnly ? 'hidden' : ''}`} onClick={() => abrirVenda()}>
                 <ShoppingBag size={16} className="mr-1.5" /> Venda no Salão
               </Button>
-              <Button variant="primary" onClick={() => abrirForm()}>
+              <Button variant="primary" className={isReadOnly ? 'hidden' : ''} onClick={() => abrirForm()}>
                 <Plus size={16} className="mr-1.5" /> Novo Produto
               </Button>
               <button onClick={carregarDados} className="p-2.5 rounded-lg border border-[var(--border-subtle)] text-foreground/60 hover:text-gold hover:border-gold/40 transition-colors" title="Atualizar estoque">
@@ -754,7 +759,7 @@ export default function EstoquePage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className={`flex gap-2 ${isReadOnly ? 'hidden' : ''}`}>
                         <button onClick={() => abrirEntrada(p)}
                           className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors"
                           title="Registrar entrada de estoque com senha">

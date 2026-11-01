@@ -299,7 +299,7 @@ function CardRegraControle({ regra }: { regra: any }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function RegrasMarketing() {
+export function RegrasMarketing({ isReadOnly }: { isReadOnly?: boolean } = {}) {
   const [regras, setRegras] = useState<any[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [templates, setTemplates] = useState<Record<string, string>>({});
@@ -346,12 +346,13 @@ export function RegrasMarketing() {
 
   // ── Mensagens padrão ─────────────────────────────────────────────────────────
   const abrirPadrao = (chave: ChaveMensagem) => {
+    if (isReadOnly) return;
     setEditPadrao(chave);
     setTextoPadrao(textoAtual(chave));
   };
 
   const salvarPadrao = async () => {
-    if (!editPadrao) return;
+    if (isReadOnly || !editPadrao) return;
     if (!textoPadrao.trim()) {
       alert('A mensagem não pode ficar vazia.');
       return;
@@ -370,6 +371,7 @@ export function RegrasMarketing() {
 
   // ── Regras personalizadas ─────────────────────────────────────────────────────
   const abrirNovaRegra = () => {
+    if (isReadOnly) return;
     setEditId(null);
     setNome('');
     setServiceId('');
@@ -381,6 +383,7 @@ export function RegrasMarketing() {
   };
 
   const abrirEditarRegra = (r: any) => {
+    if (isReadOnly) return;
     setEditId(r.id);
     setNome(r.name ?? '');
     setServiceId(r.service_id ?? '');
@@ -392,6 +395,7 @@ export function RegrasMarketing() {
   };
 
   const handleSalvar = async () => {
+    if (isReadOnly) return;
     if (!nome.trim()) {
       alert('Informe o nome da operação');
       return;
@@ -420,6 +424,7 @@ export function RegrasMarketing() {
   };
 
   const handleExcluir = async (id: string) => {
+    if (isReadOnly) return;
     if (!confirm('Deseja excluir esta regra?')) return;
     const res = await deleteMarketingRule(id);
     if (res.ok) carregarDados();
@@ -453,13 +458,15 @@ export function RegrasMarketing() {
                         <p className="text-[11px] text-foreground/55 mt-0.5">{p.quando}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => abrirPadrao(p.chave)}
-                      className="p-1.5 rounded-lg text-foreground/50 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
-                      title="Editar mensagem"
-                    >
-                      <Pencil size={14} />
-                    </button>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => abrirPadrao(p.chave)}
+                        className="p-1.5 rounded-lg text-foreground/50 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                        title="Editar mensagem"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-foreground/70 whitespace-pre-wrap line-clamp-4 leading-relaxed">
                     {textoAtual(p.chave)}
@@ -485,9 +492,11 @@ export function RegrasMarketing() {
       <Panel
         title="Regras Personalizadas"
         action={
-          <Button variant="outline" size="sm" onClick={abrirNovaRegra}>
-            <Plus size={14} className="mr-1" /> Nova Regra
-          </Button>
+          !isReadOnly ? (
+            <Button variant="outline" size="sm" onClick={abrirNovaRegra}>
+              <Plus size={14} className="mr-1" /> Nova Regra
+            </Button>
+          ) : undefined
         }
       >
         {loading ? (
@@ -526,22 +535,24 @@ export function RegrasMarketing() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center shrink-0">
-                        <button
-                          onClick={() => abrirEditarRegra(r)}
-                          className="p-1.5 rounded-lg text-foreground/50 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
-                          title="Editar regra"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleExcluir(r.id)}
-                          className="p-1.5 rounded-lg text-danger/60 hover:text-danger hover:bg-danger/10 transition-colors"
-                          title="Excluir regra"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="flex items-center shrink-0">
+                          <button
+                            onClick={() => abrirEditarRegra(r)}
+                            className="p-1.5 rounded-lg text-foreground/50 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                            title="Editar regra"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleExcluir(r.id)}
+                            className="p-1.5 rounded-lg text-danger/60 hover:text-danger hover:bg-danger/10 transition-colors"
+                            title="Excluir regra"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-foreground/70 whitespace-pre-wrap line-clamp-4 leading-relaxed flex-1">
                       {r.message_template || <span className="italic opacity-60">Sem mensagem definida</span>}

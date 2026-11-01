@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import {
@@ -229,6 +231,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
 }
 
 export default function ComissoesPage() {
+  const { isReadOnly } = useModulePermission('comissoes');
   const router = useRouter();
   const [acessoNegado, setAcessoNegado] = useState(false);
   // Controle de Permissão e Identificação do Usuário Logado
@@ -433,6 +436,7 @@ export default function ComissoesPage() {
   };
 
   const handleSalvarTaxa = async () => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Comissões.'); return; }
     if (!formTaxa.name.trim()) {
       setErroModalTaxa('Informe o nome da regra de taxa.');
       return;
@@ -453,6 +457,7 @@ export default function ComissoesPage() {
   };
 
   const handleExcluirTaxa = async (id: string, name: string) => {
+    if (isReadOnly) return;
     if (!confirm(`Deseja realmente excluir a regra de taxa "${name}"?`)) return;
     const res = await excluirTaxaPagamento(id);
     if (res.ok) {
@@ -463,6 +468,7 @@ export default function ComissoesPage() {
   };
 
   const handleToggleAtivoTaxa = async (id: string, currentActive: boolean) => {
+    if (isReadOnly) return;
     const res = await alternarStatusTaxa(id, !currentActive);
     if (res.ok) {
       setTaxas(prev => prev.map(t => t.id === id ? { ...t, active: !currentActive } : t));
@@ -472,6 +478,7 @@ export default function ComissoesPage() {
   };
 
   const handleToggleConfigTaxa = async () => {
+    if (isReadOnly) return;
     setSalvandoConfigTaxa(true);
     const novoValor = !descontarTaxaComissao;
     const res = await salvarConfigTaxas({ descontarTaxaComissao: novoValor });
@@ -689,6 +696,7 @@ export default function ComissoesPage() {
   const isVencida = (dueDate: string) => new Date(dueDate) < new Date();
 
   const marcarPago = async (parcelaId: string) => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Comissões.'); return; }
     setPagando(parcelaId);
     const res = await pagarParcela(parcelaId);
     if (res.ok) await carregarDados();
@@ -697,6 +705,7 @@ export default function ComissoesPage() {
   };
 
   const handleFecharCaixaProfissional = async (item: typeof fechamentoSemanalData[0]) => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Comissões.'); return; }
     const ids = item.parcelasPendentes.map(p => p.id);
     if (ids.length === 0) {
       alert(`Não há parcelas pendentes para fechar neste período (${periodoAdjetivo}).`);
@@ -717,6 +726,7 @@ export default function ComissoesPage() {
   };
 
   const handleFecharTodosCaixasSemana = async () => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Comissões.'); return; }
     const todosIdsPendentes = fechamentoSemanalData.flatMap(f => f.parcelasPendentes.map(p => p.id));
     if (todosIdsPendentes.length === 0) {
       alert(`Todos os profissionais listados já estão quitados neste período (${periodoAdjetivo}).`);
@@ -750,6 +760,7 @@ export default function ComissoesPage() {
   };
 
   const salvarRegra = async () => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Comissões.'); return; }
     setErroModal(null);
     if (!formRegra.professional_id) {
       setErroModal('Selecione um profissional.');
@@ -782,6 +793,7 @@ export default function ComissoesPage() {
   };
 
   const excluirRegra = async (id: string) => {
+    if (isReadOnly) return;
     if (!confirm('Deseja excluir esta regra de comissão?')) return;
     const res = await excluirRegraComissao(id);
     if (res.ok) {
@@ -862,6 +874,7 @@ export default function ComissoesPage() {
 
   return (
     <div className="py-4 w-full">
+      {isReadOnly && <ReadOnlyNotice modulo="Comissões e Repasses" />}
       <SectionTitle 
         title={isRestrictedProfissional && meuProfissional ? `Comissões & Faturamento · ${meuProfissional.nome}` : "Comissões de Profissionais"} 
         subtitle={isRestrictedProfissional ? "Acompanhamento Individual · Fechamento · Extratos e Recebíveis D+30" : "Fechamento Semanal · Recebíveis D+30 · Repasses Financeiros"} 
@@ -1080,7 +1093,7 @@ export default function ComissoesPage() {
                   Próximo(a) {periodoNome} <ChevronRight size={14} />
                 </button>
 
-                {!isRestrictedProfissional && (
+                {!isRestrictedProfissional && !isReadOnly && (
                   <Button
                     variant="primary"
                     onClick={handleFecharTodosCaixasSemana}
@@ -1294,7 +1307,7 @@ export default function ComissoesPage() {
                               <Printer size={13} /> Extrato
                             </button>
 
-                            {item.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && (
+                            {item.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && !isReadOnly && (
                               <Button
                                 variant="primary"
                                 size="sm"
@@ -1540,7 +1553,7 @@ export default function ComissoesPage() {
                             ({item.commission_pct}%)
                           </span>
                         </td>
-                        {!isRestrictedProfissional && (
+                        {!isRestrictedProfissional && !isReadOnly && (
                           <td className="py-3.5 px-4">
                             <span className="text-xs font-mono font-bold text-emerald-400">
                               {fmt((item as any).liquido_salao ?? 0)}
@@ -1611,7 +1624,7 @@ export default function ComissoesPage() {
                     : 'Valores a repassar e porcentagem de comissão ativa de cada membro da equipe.'}
                 </p>
               </div>
-              {!isRestrictedProfissional && (
+              {!isRestrictedProfissional && !isReadOnly && (
                 <Button variant="primary" onClick={() => abrirRegra()}>
                   <Plus size={16} className="mr-1.5" /> Nova Regra de Comissão
                 </Button>
@@ -1949,7 +1962,7 @@ export default function ComissoesPage() {
                       : 'Configure individualmente o percentual de repasse de cada profissional por procedimento.'}
                   </p>
                 </div>
-                {!isRestrictedProfissional && (
+                {!isRestrictedProfissional && !isReadOnly && (
                   <Button variant="primary" size="sm" onClick={() => abrirRegra()} className="py-2 px-3 text-xs">
                     <Plus size={15} className="mr-1.5" /> Nova Regra por Serviço
                   </Button>
@@ -2095,7 +2108,7 @@ export default function ComissoesPage() {
 
                           {/* Ações e Botão de Expandir */}
                           <div className="flex items-center justify-end gap-2 shrink-0">
-                            {!isRestrictedProfissional && (
+                            {!isRestrictedProfissional && !isReadOnly && (
                               <Button
                                 type="button"
                                 size="sm"
@@ -2120,7 +2133,7 @@ export default function ComissoesPage() {
                         {/* Conteúdo Expandido: Tabela de Serviços e Comissões */}
                         {isExpanded && (
                           <div className="p-3 sm:p-4 bg-background/50 animate-in fade-in duration-200 space-y-3">
-                            {!isRestrictedProfissional && (
+                            {!isRestrictedProfissional && !isReadOnly && (
                               <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--color-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
@@ -2188,7 +2201,7 @@ export default function ComissoesPage() {
                                 <p className="text-[11px] text-foreground/40 mt-0.5">
                                   Atendimentos deste profissional utilizam a comissão padrão ({prof.comissao_padrao ?? 40}%).
                                 </p>
-                                {!isRestrictedProfissional && (
+                                {!isRestrictedProfissional && !isReadOnly && (
                                   <Button
                                     type="button"
                                     size="sm"
@@ -2238,7 +2251,7 @@ export default function ComissoesPage() {
                                             <td className="py-2 px-3 font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
                                               {precoBase > 0 ? fmt(repasseEstimado) : '—'}
                                             </td>
-                                            {!isRestrictedProfissional && (
+                                            {!isRestrictedProfissional && !isReadOnly && (
                                               <td className="py-2 px-3 text-right">
                                                 <div className="inline-flex items-center gap-1">
                                                   <button
@@ -2805,7 +2818,7 @@ export default function ComissoesPage() {
               </div>
 
               <div className="flex gap-2 w-full sm:w-auto">
-                {reciboModalData.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && (
+                {reciboModalData.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && !isReadOnly && (
                   <Button
                     variant="primary"
                     size="sm"

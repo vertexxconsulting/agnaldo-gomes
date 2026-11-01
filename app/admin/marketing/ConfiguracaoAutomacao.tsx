@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { MarketingAutomacaoConfig, CONFIG_PADRAO_MARKETING } from '@/lib/marketing-types';
 import { ModalServicosFeedback } from './ModalServicosFeedback';
 
-export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () => void }) {
+export function ConfiguracaoAutomacao({ onConfigSaved, isReadOnly }: { onConfigSaved?: () => void; isReadOnly?: boolean }) {
   const [config, setConfig] = useState<MarketingAutomacaoConfig>(CONFIG_PADRAO_MARKETING);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -19,6 +19,10 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
   const [disparandoLembrete, setDisparandoLembrete] = useState(false);
 
   const handleDispararLembreteHoje = async () => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura em Marketing.');
+      return;
+    }
     if (!confirm('Deseja iniciar agora o disparo manual dos lembretes de horário para os agendamentos de HOJE?\n\n• As mensagens serão disparadas imediatamente, mesmo que antes do horário padrão configurado.\n• Clientes que já receberam mensagem hoje não receberão novamente (proteção anti-duplicação).\n• Intervalo seguro anti-ban de 1 min entre cada envio.')) {
       return;
     }
@@ -68,6 +72,7 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
   };
 
   const salvar = async () => {
+    if (isReadOnly) return;
     setSalvando(true);
     try {
       const res = await fetch('/api/admin/marketing/config', {
@@ -95,6 +100,7 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
     servicos_permitidos: string[];
     categorias_permitidas: string[];
   }) => {
+    if (isReadOnly) return;
     const novaConfig: MarketingAutomacaoConfig = {
       ...config,
       feedback: {
@@ -204,16 +210,18 @@ export function ConfiguracaoAutomacao({ onConfigSaved }: { onConfigSaved?: () =>
             <RefreshCw size={13} className={`mr-1.5 ${carregando ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={salvar}
-            disabled={salvando}
-            className="text-xs font-bold shadow-md shadow-gold/10"
-          >
-            <Save size={14} className="mr-1.5" />
-            {salvando ? 'Salvando...' : 'Salvar Regras'}
-          </Button>
+          {!isReadOnly && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={salvar}
+              disabled={salvando}
+              className="text-xs font-bold shadow-md shadow-gold/10"
+            >
+              <Save size={14} className="mr-1.5" />
+              {salvando ? 'Salvando...' : 'Salvar Regras'}
+            </Button>
+          )}
         </div>
       </div>
 

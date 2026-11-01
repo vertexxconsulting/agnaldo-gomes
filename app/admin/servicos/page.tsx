@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Clock, Eye, EyeOff } from 'lucide-react';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import {
@@ -14,6 +16,7 @@ import {
 import type { Servico, Profissional, ProfissionalServico } from '@/lib/gestao-types';
 
 export default function ServicosPage() {
+  const { isReadOnly } = useModulePermission('servicos');
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [profisiconalServicoData, setProfisiconalServicoData] = useState<ProfissionalServico[]>([]);
   const [profissionaisData, setProfissionaisData] = useState<Profissional[]>([]);
@@ -67,6 +70,7 @@ export default function ServicosPage() {
   };
 
   const toggleVisivel = async (id: string) => {
+    if (isReadOnly) return alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
     const atual = servicos.find(s => s.id === id);
     if (!atual) return;
     const resultado = await atualizarServico(id, { visivel_app: !atual.visivel_app });
@@ -78,6 +82,7 @@ export default function ServicosPage() {
   };
 
   const excluir = async (id: string) => {
+    if (isReadOnly) return alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
     if (!confirm('Excluir este serviço? Ele será removido também dos profissionais vinculados.')) return;
     const resultado = await excluirServico(id);
     if (resultado.ok) {
@@ -89,6 +94,7 @@ export default function ServicosPage() {
   };
 
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (isReadOnly) { e.preventDefault(); return alert('Ação bloqueada: seu usuário possui permissão apenas de leitura.'); }
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const payload = {
@@ -136,6 +142,7 @@ export default function ServicosPage() {
   return (
     <div className="py-4 w-full">
       <SectionTitle title="Serviços" subtitle="Cadastro · Categorias · Duração · Preço" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Serviços" />}
 
         {/* Ações */}
         <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
@@ -154,7 +161,7 @@ export default function ServicosPage() {
             <option value="todas">Todas categorias</option>
             {categorias.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <Button variant="primary" size="md" onClick={() => { setEditando(null); setIsVariablePrice(false); setShowForm(true); }}>
+          <Button variant="primary" size="md" className={isReadOnly ? 'hidden' : ''} onClick={() => { setEditando(null); setIsVariablePrice(false); setShowForm(true); }}>
             <Plus size={18} className="mr-2" /> Novo Serviço
           </Button>
         </div>
@@ -317,7 +324,7 @@ export default function ServicosPage() {
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-right">
-                      <div className="inline-flex gap-1">
+                      <div className={`inline-flex gap-1 ${isReadOnly ? 'hidden' : ''}`}>
                         <button onClick={() => { setEditando(s); setIsVariablePrice(s.preco_variavel || false); setShowForm(true); }} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
                         <button onClick={() => excluir(s.id)} title="Excluir" className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/60 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                       </div>

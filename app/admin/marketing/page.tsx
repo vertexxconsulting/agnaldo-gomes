@@ -9,6 +9,8 @@ import {
   Sliders, MessageSquareQuote, CalendarDays, Phone, User2, RefreshCw, Scissors, Sparkles
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { Button } from '@/components/Button';
 import { CardGlass } from '@/components/CardGlass';
 import { RegrasMarketing } from './RegrasMarketing';
@@ -56,6 +58,7 @@ interface ClienteInativo {
 const DIAS_INATIVO = 60;
 
 export default function MensagensWhatsAppPage() {
+  const { isReadOnly } = useModulePermission('marketing');
   const [abaAtiva, setAbaAtiva] = useState<SubAbaMarketing>('operacoes');
 
   const [aniversarios, setAniversarios] = useState<RespostaCron | null>(null);
@@ -167,6 +170,10 @@ export default function MensagensWhatsAppPage() {
 
   // Função central para envio manual (WhatsApp Web)
   const handleEnviarManual = async (item: ItemMsg) => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura em Marketing.');
+      return;
+    }
     if (!item.wa_link) {
       if (!item.telefone) {
         toast.error(`A cliente ${item.nome || ''} não possui telefone cadastrado.`);
@@ -209,6 +216,10 @@ export default function MensagensWhatsAppPage() {
   // Salvar novo telefone para cliente sem número
   const handleSalvarTelefoneCliente = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura em Marketing.');
+      return;
+    }
     if (!clienteEditandoTelefone || !novoTelefone.trim()) return;
 
     if (!clienteEditandoTelefone.clienteId) {
@@ -250,6 +261,10 @@ export default function MensagensWhatsAppPage() {
     tituloOperacao: string,
     confirmacaoTexto: string
   ) => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura em Marketing.');
+      return;
+    }
     if (!waStatus.conectado) {
       toast.error('O WhatsApp está desconectado! Conecte via QR Code antes de disparar.');
       return;
@@ -402,20 +417,24 @@ export default function MensagensWhatsAppPage() {
               </div>
             </Link>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={dispararFilaCompletaHoje}
-              disabled={disparando}
-              className="font-bold shadow-md shadow-gold/10"
-              title="Disparar todas as mensagens elegíveis do dia em segundo plano"
-            >
-              <Send size={14} className="mr-1.5" />
-              {disparando ? 'Disparando...' : 'Disparar Fila do Dia'}
-            </Button>
+            {!isReadOnly && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={dispararFilaCompletaHoje}
+                disabled={disparando}
+                className="font-bold shadow-md shadow-gold/10"
+                title="Disparar todas as mensagens elegíveis do dia em segundo plano"
+              >
+                <Send size={14} className="mr-1.5" />
+                {disparando ? 'Disparando...' : 'Disparar Fila do Dia'}
+              </Button>
+            )}
           </div>
         }
       />
+
+      {isReadOnly && <ReadOnlyNotice modulo="Marketing e WhatsApp" />}
 
       {/* BARRA DE SUB-ABAS DE NAVEGAÇÃO */}
       <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-3 overflow-x-auto custom-scrollbar">
@@ -799,7 +818,7 @@ export default function MensagensWhatsAppPage() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {abaAtiva === 'regras' && (
             <div className="space-y-6">
-              <RegrasMarketing />
+              <RegrasMarketing isReadOnly={isReadOnly} />
             </div>
           )}
 
@@ -808,7 +827,7 @@ export default function MensagensWhatsAppPage() {
           {/* ═══════════════════════════════════════════════════════════════ */}
           {abaAtiva === 'automacao' && (
             <div className="space-y-6">
-              <ConfiguracaoAutomacao onConfigSaved={carregarTudo} />
+              <ConfiguracaoAutomacao isReadOnly={isReadOnly} onConfigSaved={carregarTudo} />
             </div>
           )}
         </div>

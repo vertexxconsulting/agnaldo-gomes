@@ -6,6 +6,8 @@ import { Search, Receipt, CheckCircle, AlertTriangle, FileText, Calendar, Dollar
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 
 interface ClienteInfo {
   id: string;
@@ -39,6 +41,7 @@ function formatarDataSegura(dataStr: string) {
 }
 
 function NotasFiscaisContent() {
+  const { isReadOnly } = useModulePermission('notas-fiscais');
   const searchParams = useSearchParams();
   const cpfParam = searchParams.get('cpf');
   const agendamentoIdParam = searchParams.get('agendamentoId');
@@ -141,6 +144,10 @@ function NotasFiscaisContent() {
   const valorEfetivo = valorFinal !== '' ? parseFloat(valorFinal.replace(',', '.')) : (selectedService?.valor || 0);
 
   const emitirNota = async () => {
+    if (isReadOnly) {
+      alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Notas Fiscais.');
+      return;
+    }
     if (!cliente || !servicoSelecionado) return;
     if (isNaN(valorEfetivo) || valorEfetivo <= 0) {
       alert('O valor da nota deve ser maior que zero.');
@@ -247,6 +254,7 @@ function NotasFiscaisContent() {
         title="Emissão de Notas Fiscais"
         subtitle="Busque o cliente pelo CPF para emitir a NFS-e dos serviços realizados."
       />
+      {isReadOnly && <ReadOnlyNotice modulo="Notas Fiscais" />}
 
       {/* Buscar CPF */}
       <CardGlass className="p-6">
@@ -408,6 +416,10 @@ function NotasFiscaisContent() {
                   >
                     🖨️ Imprimir Canhoto (Térmica 80mm)
                   </Button>
+                </div>
+              ) : isReadOnly ? (
+                <div className="text-center py-3.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-500">
+                  Modo Somente Leitura — Emissão de Notas Fiscais desativada.
                 </div>
               ) : (
                 <Button 

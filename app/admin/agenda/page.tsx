@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
@@ -282,6 +284,7 @@ function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string 
 }
 
 function AgendaContent() {
+  const { isReadOnly } = useModulePermission('agenda');
   const searchParams = useSearchParams();
   const hoje = new Date().toISOString().split('T')[0];
   const [dataSelecionada, setDataSelecionada] = useState(searchParams.get('date') || hoje);
@@ -925,6 +928,10 @@ function AgendaContent() {
   }, [formData.data, formData.profissional_id, profissionais, agendamentos, servicos, editingApptId]);
 
   async function mudarStatus(id: string, status: StatusAgendamento) {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura na Agenda.');
+      return;
+    }
     try {
       const { atualizarStatusAgendamento } = await import('@/lib/supabase-queries');
       const success = await atualizarStatusAgendamento(id, status);
@@ -953,6 +960,10 @@ function AgendaContent() {
   }
 
   const abrirModalCancelar = async (appt: Agendamento) => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura na Agenda.');
+      return;
+    }
     setApptParaCancelar(appt);
     setModoCancelamento('apenas_dia');
     setExcluirDiaAtual(false);
@@ -978,7 +989,7 @@ function AgendaContent() {
   };
 
   const handleConfirmarCancelamento = async () => {
-    if (!apptParaCancelar) return;
+    if (isReadOnly || !apptParaCancelar) return;
     setProcessandoCancelamento(true);
 
     try {
@@ -1703,6 +1714,10 @@ function AgendaContent() {
   };
 
   const abrirFormNovo = (hora?: string, profId = '', isEncaixe = false) => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura na Agenda.');
+      return;
+    }
     const finalProfId = (isRestrictedProfissional && meuProfissional) ? meuProfissional.id : (profId || '');
     setEditingApptId(null);
     setFormData({
@@ -1727,6 +1742,10 @@ function AgendaContent() {
   };
 
   const abrirEdicao = (appt: Agendamento) => {
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura na Agenda.');
+      return;
+    }
     if (isRestrictedProfissional && meuProfissional) {
       const isMine = appt.profissional_id === meuProfissional.id || (Array.isArray(appt.auxiliares_ids) && appt.auxiliares_ids.includes(meuProfissional.id));
       if (!isMine) {
@@ -1772,6 +1791,10 @@ function AgendaContent() {
 
   const handleSalvarAgendamento = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      toast.error('Ação bloqueada: seu perfil possui permissão somente de leitura na Agenda.');
+      return;
+    }
     if (!formData.cliente_id) {
       alert('Por favor, busque e selecione um cliente para o agendamento.');
       return;
@@ -1929,6 +1952,7 @@ function AgendaContent() {
   return (
     <div className="py-4">
       <SectionTitle title="Agenda do Salão" subtitle="Gerenciamento de horários e profissionais" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Agenda" />}
 
       {/* Filtro por Categoria ou Card do Profissional Exclusivo */}
       <div className="mt-8 mb-4">
@@ -2204,14 +2228,16 @@ function AgendaContent() {
             <Bell size={14} className={disparandoLembretes ? 'animate-bounce' : 'text-amber-400'} />
             <span className="hidden sm:inline">{disparandoLembretes ? 'Disparando...' : 'Lembretes de Hoje'}</span>
           </Button>
-          <Button 
-            variant="primary" 
-            onClick={() => {
-              abrirFormNovo();
-            }}
-          >
-            + Novo Agendamento
-          </Button>
+          {!isReadOnly && (
+            <Button 
+              variant="primary" 
+              onClick={() => {
+                abrirFormNovo();
+              }}
+            >
+              + Novo Agendamento
+            </Button>
+          )}
         </div>
       </div>
 
@@ -2470,11 +2496,13 @@ function AgendaContent() {
                             {/* Appts or Add */}
                             <div className="flex-1 p-1 flex flex-col justify-center relative gap-1 min-w-0">
                               {!temAgendamento ? (
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
-                                  <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
-                                    + Agendar
-                                  </span>
-                                </div>
+                                !isReadOnly ? (
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
+                                    <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
+                                      + Agendar
+                                    </span>
+                                  </div>
+                                ) : null
                               ) : (
                                 <>
                                   {startingAppts.map(a => {
@@ -2512,7 +2540,7 @@ function AgendaContent() {
                                               {cliente}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
-                                              {a.allow_overlap && (
+                                              {a.allow_overlap && !isReadOnly && (
                                                 <button
                                                   type="button"
                                                   title="Encaixar cliente neste horário (Pausa/Encaixe)"
@@ -2583,7 +2611,7 @@ function AgendaContent() {
                                               )}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
-                                              {a.allow_overlap && (
+                                              {a.allow_overlap && !isReadOnly && (
                                                 <button
                                                   type="button"
                                                   title="Encaixar cliente neste horário (Pausa/Encaixe)"
@@ -2692,52 +2720,59 @@ function AgendaContent() {
             </div>
 
             <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-[var(--border-subtle)]">
-
-              {selectedAppt.status === 'pendente' && (
-                <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
-                  <Check size={16} className="mr-2"/> Confirmar
-                </Button>
-              )}
-
-              <Button 
-                variant="outline" 
-                className="border-gold/40 text-gold hover:bg-gold/10 flex items-center justify-center gap-2"
-                onClick={() => abrirEdicao(selectedAppt)}
-              >
-                <Pencil size={15} /> Editar Agendamento
-              </Button>
-
-              {selectedAppt.status !== 'concluido' && selectedAppt.status !== 'cancelado' && selectedAppt.status !== 'no_show' && (
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <Button
-                    variant="outline"
-                    className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5"
-                    onClick={() => {
-                      const appt = selectedAppt;
-                      setSelectedAppt(null);
-                      abrirModalCancelar(appt);
-                    }}
-                  >
-                    <Trash2 size={14} /> Cancelar
-                  </Button>
-                  <Button variant="outline" className="text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
-                    Faltou
-                  </Button>
+              {isReadOnly ? (
+                <div className="text-center py-2.5 px-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-500">
+                  Modo Somente Leitura — Edição e cancelamento desativados.
                 </div>
-              )}
+              ) : (
+                <>
+                  {selectedAppt.status === 'pendente' && (
+                    <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
+                      <Check size={16} className="mr-2"/> Confirmar
+                    </Button>
+                  )}
 
-              {selectedAppt.status === 'cancelado' && (
-                <Button
-                  variant="outline"
-                  className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5 mt-1 text-xs"
-                  onClick={() => {
-                    const appt = selectedAppt;
-                    setSelectedAppt(null);
-                    abrirModalCancelar(appt);
-                  }}
-                >
-                  <Trash2 size={13} /> Opções de Cancelamento / Exclusão
-                </Button>
+                  <Button 
+                    variant="outline" 
+                    className="border-gold/40 text-gold hover:bg-gold/10 flex items-center justify-center gap-2"
+                    onClick={() => abrirEdicao(selectedAppt)}
+                  >
+                    <Pencil size={15} /> Editar Agendamento
+                  </Button>
+
+                  {selectedAppt.status !== 'concluido' && selectedAppt.status !== 'cancelado' && selectedAppt.status !== 'no_show' && (
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <Button
+                        variant="outline"
+                        className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5"
+                        onClick={() => {
+                          const appt = selectedAppt;
+                          setSelectedAppt(null);
+                          abrirModalCancelar(appt);
+                        }}
+                      >
+                        <Trash2 size={14} /> Cancelar
+                      </Button>
+                      <Button variant="outline" className="text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 font-semibold" onClick={() => { mudarStatus(selectedAppt.id, 'no_show'); setSelectedAppt(null); }}>
+                        Faltou
+                      </Button>
+                    </div>
+                  )}
+
+                  {selectedAppt.status === 'cancelado' && (
+                    <Button
+                      variant="outline"
+                      className="text-red-400 border-red-500/20 hover:bg-red-500/10 flex items-center justify-center gap-1.5 mt-1 text-xs"
+                      onClick={() => {
+                        const appt = selectedAppt;
+                        setSelectedAppt(null);
+                        abrirModalCancelar(appt);
+                      }}
+                    >
+                      <Trash2 size={13} /> Opções de Cancelamento / Exclusão
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </CardGlass>

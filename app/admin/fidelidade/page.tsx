@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { fetchEstoque, atualizarProdutoEstoqueParcial, salvarProdutoEstoque } from '@/lib/supabase-queries';
@@ -9,6 +11,7 @@ import type { ProdutoEstoque } from '@/lib/gestao-types';
 import { Gift, Package, Plus, X } from 'lucide-react';
 
 export default function FidelidadePage() {
+  const { isReadOnly } = useModulePermission('fidelidade');
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -43,6 +46,7 @@ export default function FidelidadePage() {
   };
 
   const toggleFidelidade = async () => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura em Fidelidade.'); return; }
     const novoStatus = !fidelidadeAtiva;
     setFidelidadeAtiva(novoStatus);
     try {
@@ -68,6 +72,7 @@ export default function FidelidadePage() {
   };
 
   const handleUpdateProduto = async (produtoId: string, cost: number) => {
+    if (isReadOnly) return;
     setSaving(produtoId);
     await atualizarProdutoEstoqueParcial(produtoId, { points_cost: cost });
     setSaving(null);
@@ -75,6 +80,7 @@ export default function FidelidadePage() {
   };
 
   const handleRemoveProduto = async (produtoId: string) => {
+    if (isReadOnly) return;
     setSaving(produtoId);
     // Remover do resgate = colocar pontos como 0 (ou null)
     await atualizarProdutoEstoqueParcial(produtoId, { points_cost: 0 });
@@ -83,6 +89,7 @@ export default function FidelidadePage() {
   };
 
   const handleAddProduto = async () => {
+    if (isReadOnly) return;
     const cost = Number(newPointsCost);
     if (!cost || cost <= 0) {
       alert('Informe um custo em pontos válido.');
@@ -139,17 +146,20 @@ export default function FidelidadePage() {
         
         {!loadingConfig && (
           <button 
+            disabled={isReadOnly}
             onClick={toggleFidelidade}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
               fidelidadeAtiva 
                 ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25' 
                 : 'bg-red-500/15 text-red-500 hover:bg-red-500/25'
-            }`}
+            } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             {fidelidadeAtiva ? '🟢 Fidelidade Ativa' : '🔴 Fidelidade Desativada'}
           </button>
         )}
       </div>
+
+      {isReadOnly && <ReadOnlyNotice modulo="Fidelidade" />}
 
       <div className="bg-[var(--accent)]/10 text-[var(--accent)] p-4 rounded-xl flex gap-3 items-start border border-[var(--accent)]/20">
         <Gift className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -169,10 +179,12 @@ export default function FidelidadePage() {
               <Package className="w-5 h-5 text-rose-500" />
               Produtos Disponíveis para Resgate
             </h2>
-            <Button size="sm" onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Adicionar Produto
-            </Button>
+            {!isReadOnly && (
+              <Button size="sm" onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Adicionar Produto
+              </Button>
+            )}
           </div>
 
           {loading ? (
@@ -193,6 +205,7 @@ export default function FidelidadePage() {
                       key={p.id} 
                       produto={p} 
                       saving={saving === p.id}
+                      isReadOnly={isReadOnly}
                       onSave={handleUpdateProduto} 
                       onRemove={handleRemoveProduto}
                     />
@@ -299,11 +312,13 @@ export default function FidelidadePage() {
 function ProdutoFidelidadeRow({ 
   produto, 
   saving,
+  isReadOnly,
   onSave,
   onRemove
 }: { 
   produto: ProdutoEstoque; 
   saving: boolean;
+  isReadOnly?: boolean;
   onSave: (id: string, cost: number) => void;
   onRemove: (id: string) => void;
 }) {
@@ -321,37 +336,44 @@ function ProdutoFidelidadeRow({
           <span className="text-rose-500 font-semibold">-</span>
           <input 
             type="number" 
+            disabled={isReadOnly}
             value={cost}
             onChange={(e) => setCost(e.target.value)}
-            className="w-24 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-center"
+            className="w-24 bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[var(--foreground)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none text-center disabled:opacity-60"
             min="1"
           />
         </div>
       </td>
       <td className="py-4 px-4 text-right space-x-2">
-        {isChanged && (
-          <Button 
-            size="sm" 
-            disabled={saving}
-            onClick={() => onSave(produto.id, Number(cost))}
-            className="h-8"
-          >
-            {saving ? '...' : 'Salvar'}
-          </Button>
+        {isReadOnly ? (
+          <span className="text-xs text-foreground/40 italic">Somente leitura</span>
+        ) : (
+          <>
+            {isChanged && (
+              <Button 
+                size="sm" 
+                disabled={saving}
+                onClick={() => onSave(produto.id, Number(cost))}
+                className="h-8"
+              >
+                {saving ? '...' : 'Salvar'}
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="h-8 text-red-500 border-red-500/20 hover:bg-red-500/10"
+              disabled={saving}
+              onClick={() => {
+                if (window.confirm(`Remover "${produto.name}" do programa de fidelidade?`)) {
+                  onRemove(produto.id);
+                }
+              }}
+            >
+              Remover
+            </Button>
+          </>
         )}
-        <Button 
-          size="sm" 
-          variant="outline"
-          className="h-8 text-red-500 border-red-500/20 hover:bg-red-500/10"
-          disabled={saving}
-          onClick={() => {
-            if (window.confirm(`Remover "${produto.name}" do programa de fidelidade?`)) {
-              onRemove(produto.id);
-            }
-          }}
-        >
-          Remover
-        </Button>
       </td>
     </tr>
   );

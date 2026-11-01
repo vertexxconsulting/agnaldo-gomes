@@ -6,6 +6,8 @@ import Image from 'next/image';
 
 import { toast } from 'sonner';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
@@ -26,6 +28,7 @@ import {
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function ProfissionaisPage() {
+  const { isReadOnly } = useModulePermission('profissionais');
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [servicosCache, setServicosCache] = useState<Servico[]>([]);
   const [profServCache, setProfServCache] = useState<ProfissionalServico[]>([]);
@@ -99,6 +102,7 @@ export default function ProfissionaisPage() {
   };
 
   const toggleAtivo = async (id: string) => {
+    if (isReadOnly) return toast.error('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
     const prof = profissionais.find(p => p.id === id);
     if (!prof) return;
     const novoAtivo = !prof.ativo;
@@ -111,6 +115,7 @@ export default function ProfissionaisPage() {
   };
 
   const excluir = async (id: string) => {
+    if (isReadOnly) return toast.error('Ação bloqueada: seu usuário possui permissão apenas de leitura.');
     if (!confirm('Excluir este profissional?')) return;
     const resultado = await excluirProfissional(id);
     if (resultado.ok) {
@@ -134,6 +139,7 @@ export default function ProfissionaisPage() {
   };
 
   const salvar = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (isReadOnly) { e.preventDefault(); return toast.error('Ação bloqueada: seu usuário possui permissão apenas de leitura.'); }
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const jornada: JornadaSemanal = {};
@@ -300,6 +306,7 @@ export default function ProfissionaisPage() {
   return (
     <div className="py-4 w-full">
       <SectionTitle title="Profissionais" subtitle="Cadastro · Jornada · Agenda" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Profissionais" />}
 
         {/* Barra de ações */}
         <div className="flex flex-col sm:flex-row gap-4 mt-10 mb-6">
@@ -324,7 +331,7 @@ export default function ProfissionaisPage() {
 
 
 
-          <Button variant="primary" size="md" onClick={() => abrirForm()}>
+          <Button variant="primary" size="md" className={isReadOnly ? 'hidden' : ''} onClick={() => abrirForm()}>
             <Plus size={18} className="mr-2" /> Novo Profissional
           </Button>
         </div>
@@ -789,7 +796,7 @@ export default function ProfissionaisPage() {
                   </div>
 
                   {/* Ações */}
-                  <div className="flex flex-col gap-1 shrink-0">
+                  <div className={`flex flex-col gap-1 shrink-0 ${isReadOnly ? 'hidden' : ''}`}>
                     <button onClick={() => setExpandido(isExpanded ? null : prof.id)} className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/40 hover:text-foreground/70 text-xs">{isExpanded ? '▲' : '▼'}</button>
                     <button onClick={() => abrirForm(prof)} title="Editar" className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-gold transition-colors"><Edit size={14} /></button>
                     <button onClick={() => toggleAtivo(prof.id)} title={prof.ativo ? 'Desativar' : 'Ativar'} className="p-1.5 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-amber-400 transition-colors"><User2 size={14} /></button>

@@ -6,6 +6,8 @@ import { Plus, UserPlus, X, Search, Scissors, Shield, Sparkles, CheckCircle2, Lo
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { fetchProfissionais } from '@/lib/supabase-queries';
 import type { Profissional } from '@/lib/gestao-types';
 
@@ -15,6 +17,7 @@ import {
 } from '@/lib/permissions';
 
 export default function TeamManagementPage() {
+  const { isReadOnly } = useModulePermission('equipe');
   const [profiles, setProfiles] = useState<any[]>([]);
   const [nicknames, setNicknames] = useState<Record<string, string>>({});
   const [profissionaisSalao, setProfissionaisSalao] = useState<Profissional[]>([]);
@@ -101,6 +104,10 @@ export default function TeamManagementPage() {
   }, []);
 
   async function handleChangeRole(userId: string, newRole: Role) {
+    if (isReadOnly) {
+      alert('Ação bloqueada: seu perfil possui permissão somente de leitura na Gestão de Equipe.');
+      return;
+    }
     setUpdatingId(userId);
     try {
       await safeFetch('/api/admin/equipe', {
@@ -118,7 +125,7 @@ export default function TeamManagementPage() {
   }
 
   async function handleSavePermissions() {
-    if (!editingProfile) return;
+    if (isReadOnly || !editingProfile) return;
     setUpdatingId(editingProfile.id);
     try {
       const permsToSave = { ...editPermissions };
@@ -201,6 +208,10 @@ export default function TeamManagementPage() {
   }
 
   async function handleCreateUser() {
+    if (isReadOnly) {
+      alert('Ação bloqueada: seu perfil possui permissão somente de leitura na Gestão de Equipe.');
+      return;
+    }
     if (!newUser.email || !newUser.password || !newUser.full_name) {
       alert('Preencha os campos obrigatórios (Nome, E-mail e Senha).');
       return;
@@ -291,6 +302,7 @@ export default function TeamManagementPage() {
   return (
     <div className="py-4">
       <SectionTitle title="Gestão de Equipe" subtitle="Controle de acessos e hierarquias do sistema" align="left" />
+      {isReadOnly && <ReadOnlyNotice modulo="Gestão de Equipe" />}
 
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
         <div className="relative flex-1">
@@ -302,13 +314,15 @@ export default function TeamManagementPage() {
             placeholder="Buscar por nome ou e-mail..."
           />
         </div>
-        <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={() => {
-          setTipoAcesso('profissional');
-          setSelectedProfissionalId('');
-          setIsModalOpen(true);
-        }}>
-          <UserPlus size={18} className="mr-2" /> Novo Membro
-        </Button>
+        {!isReadOnly && (
+          <Button variant="primary" size="md" className="sm:w-auto w-full" onClick={() => {
+            setTipoAcesso('profissional');
+            setSelectedProfissionalId('');
+            setIsModalOpen(true);
+          }}>
+            <UserPlus size={18} className="mr-2" /> Novo Membro
+          </Button>
+        )}
       </div>
 
       <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-lg">
@@ -344,24 +358,28 @@ export default function TeamManagementPage() {
                 </td>
                 <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
                 <td className="px-6 py-4 text-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                      setEditingProfile(profile);
-                      setEditingNickname(getNicknameDisplay(profile));
-                      setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
-                    }}
-                    disabled={updatingId === profile.id}
-                  >
-                    Editar
-                  </Button>
+                  {!isReadOnly ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setEditingProfile(profile);
+                        setEditingNickname(getNicknameDisplay(profile));
+                        setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
+                      }}
+                      disabled={updatingId === profile.id}
+                    >
+                      Editar
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-foreground/40 italic">Somente leitura</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <select 
                     value={profile.role}
                     onChange={(e) => handleChangeRole(profile.id, e.target.value as Role)}
-                    disabled={updatingId === profile.id}
+                    disabled={isReadOnly || updatingId === profile.id}
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >
                     {Object.entries(ROLES)

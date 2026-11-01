@@ -71,36 +71,55 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
 
 /** Verifica se o usuário tem permissão para acessar o módulo (read ou write) */
 export function canAccess(permissions: UserPermissions | undefined, moduleId: AdminModuleId, fallbackRole?: string): boolean {
-  // Profissionais do estúdio NUNCA têm acesso à aba global de comissões
-  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') {
-    if (moduleId === 'comissoes') return false;
+  // 1. Se houver permissão explícita no perfil do usuário, ela é soberana:
+  if (permissions && permissions[moduleId]) {
+    return permissions[moduleId] !== 'none';
   }
-  if (fallbackRole === 'ADMIN' || fallbackRole === 'studio_admin') {
-    // Para STUDIO_ADMIN, liberar só os do Studio? Por enquanto vamos manter o admin gerenciar tudo
-    if (fallbackRole === 'studio_admin' && (moduleId.startsWith('loja_') || moduleId.startsWith('academy_'))) return false;
-    if (fallbackRole === 'ADMIN') return true;
+
+  // 2. Profissionais e Auxiliares do salão NUNCA têm acesso à aba global de comissões
+  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL' || fallbackRole === 'studio_auxiliar' || fallbackRole === 'AUXILIAR') {
+    if (moduleId === 'comissoes' || moduleId === 'equipe') return false;
   }
+
+  // 3. Administrador Global tem acesso a tudo por padrão
+  if (fallbackRole === 'ADMIN') return true;
+
+  // 4. Gestor do Studio tem acesso a módulos do Studio, exceto Loja e Academy
+  if (fallbackRole === 'studio_admin') {
+    if (moduleId.startsWith('loja_') || moduleId.startsWith('academy_')) return false;
+    return true;
+  }
+
+  // 5. Fallback para permissões padrão
   if (!permissions) {
-    if ((fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') && moduleId === 'comissoes') {
-      return false;
-    }
     return DEFAULT_PERMISSIONS[moduleId] !== 'none';
-  }
-  if ((fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') && moduleId === 'comissoes') {
-    return false;
   }
   return permissions[moduleId] === 'read' || permissions[moduleId] === 'write';
 }
 
-/** Verifica se o usuário tem permissão para editar no módulo */
+/** Verifica se o usuário tem permissão para editar/gravar no módulo (write) */
 export function canEdit(permissions: UserPermissions | undefined, moduleId: AdminModuleId, fallbackRole?: string): boolean {
-  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL') {
-    if (moduleId === 'comissoes') return false;
+  // 1. Se houver permissão explícita no perfil do usuário, ela é soberana:
+  // Se estiver 'read', RETORNA FALSE (bloqueia edição); se estiver 'write', RETORNA TRUE.
+  if (permissions && permissions[moduleId]) {
+    return permissions[moduleId] === 'write';
   }
-  if (fallbackRole === 'ADMIN' || fallbackRole === 'studio_admin') {
-    if (fallbackRole === 'studio_admin' && (moduleId.startsWith('loja_') || moduleId.startsWith('academy_'))) return false;
-    if (fallbackRole === 'ADMIN') return true;
+
+  // 2. Profissionais e Auxiliares do salão NUNCA podem editar comissões globais ou equipe
+  if (fallbackRole === 'studio_profissional' || fallbackRole === 'PROFESSIONAL' || fallbackRole === 'studio_auxiliar' || fallbackRole === 'AUXILIAR') {
+    if (moduleId === 'comissoes' || moduleId === 'equipe') return false;
   }
+
+  // 3. Administrador Global tem permissão de escrita por padrão (quando não há restrição explícita)
+  if (fallbackRole === 'ADMIN') return true;
+
+  // 4. Gestor do Studio tem permissão de escrita nos módulos do Studio
+  if (fallbackRole === 'studio_admin') {
+    if (moduleId.startsWith('loja_') || moduleId.startsWith('academy_')) return false;
+    return true;
+  }
+
+  // 5. Fallback para permissões padrão
   if (!permissions) return DEFAULT_PERMISSIONS[moduleId] === 'write';
   return permissions[moduleId] === 'write';
 }

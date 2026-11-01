@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { supabase } from '@/lib/supabase';
 import { fetchAgendamentos, fetchClientes, fetchServicos, fetchProfissionais, confirmarFechamentoGestao, fetchRegrasComissao } from '@/lib/supabase-queries';
 import { getServicoNome, getProfissionalNome, getServicoPreco, STATUS_LABELS } from '@/lib/mock-data';
@@ -166,6 +168,7 @@ function calcularDemonstrativo3Partes(
 }
 
 export default function AdminFinanceiro() {
+  const { isReadOnly } = useModulePermission('pagamentos');
   const [loading, setLoading] = useState(true);
   const [caixaAberto, setCaixaAberto] = useState<any>(null);
   const [transacoes, setTransacoes] = useState<any[]>([]);
@@ -256,6 +259,7 @@ export default function AdminFinanceiro() {
   };
 
   const handleAbrirCaixa = async () => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
     const valorNum = parseFloat(abrirCaixaValor.replace(',', '.'));
     if (isNaN(valorNum) || valorNum < 0) return alert('Digite um valor inicial válido.');
 
@@ -282,7 +286,7 @@ export default function AdminFinanceiro() {
   };
 
   const handleFecharCaixa = async () => {
-    if (!caixaAberto) return;
+    if (isReadOnly || !caixaAberto) return;
     if (!confirm('Deseja realmente fechar o caixa de hoje?')) return;
 
     // Calcula saldo final = inicial + receitas - despesas (apenas DINHEIRO)
@@ -321,6 +325,7 @@ export default function AdminFinanceiro() {
 
   const handleLancarDespesa = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
     if (!caixaAberto) return alert('Abra o caixa do dia primeiro!');
 
     const valorNum = parseFloat(formAmount.replace(',', '.'));
@@ -369,6 +374,7 @@ export default function AdminFinanceiro() {
 
   // Confirmação e Contabilização pela Gestão
   const handleConfirmarGestao = async (ag: Agendamento, metodoCustom?: string, valorCustom?: number) => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
     setActionLoadingId(ag.id);
     try {
       const finalMetodo = metodoCustom || ag.payment_method || 'DINHEIRO';
@@ -428,7 +434,7 @@ export default function AdminFinanceiro() {
   };
 
   const handleConfirmarTodosPendentes = async () => {
-    if (preFechadosPendentes.length === 0) return;
+    if (isReadOnly || preFechadosPendentes.length === 0) return;
     if (!confirm(`Deseja confirmar e contabilizar todos os ${preFechadosPendentes.length} pré-fechamentos da secretaria de uma só vez?`)) {
       return;
     }
@@ -483,6 +489,7 @@ export default function AdminFinanceiro() {
   };
 
   const handleAbrirAjusteModal = (ag: Agendamento) => {
+    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
     const val = getValorEfetivo(ag);
     setEditingApptGestao(ag);
     setModalMetodo(ag.payment_method || 'DINHEIRO');
@@ -567,6 +574,8 @@ export default function AdminFinanceiro() {
         </p>
       </div>
 
+      {isReadOnly && <ReadOnlyNotice modulo="Financeiro e Pagamentos" />}
+
       {!caixaAberto && !loading && (
         <CardGlass className="p-8 text-center flex flex-col items-center justify-center space-y-4 border-amber-500/20">
           <Lock size={48} className="text-amber-500/50 mb-2" />
@@ -574,19 +583,25 @@ export default function AdminFinanceiro() {
           <p className="text-foreground/60 max-w-sm">
             Para iniciar os lançamentos de despesas e controlar as entradas em dinheiro de hoje, abra o caixa informando o valor que há na gaveta.
           </p>
-          <div className="flex items-center gap-3 mt-4">
-            <span className="text-foreground font-medium">Fundo de Caixa R$</span>
-            <input 
-              type="number" 
-              value={abrirCaixaValor}
-              onChange={e => setAbrirCaixaValor(e.target.value)}
-              placeholder="0.00" 
-              className="bg-background border border-border-subtle rounded-md px-3 py-2 w-32 focus:border-gold outline-none"
-            />
-            <Button onClick={handleAbrirCaixa} variant="primary" disabled={actionLoading}>
-              {actionLoading ? 'Abrindo...' : 'Abrir Caixa'}
-            </Button>
-          </div>
+          {!isReadOnly ? (
+            <div className="flex items-center gap-3 mt-4">
+              <span className="text-foreground font-medium">Fundo de Caixa R$</span>
+              <input 
+                type="number" 
+                value={abrirCaixaValor}
+                onChange={e => setAbrirCaixaValor(e.target.value)}
+                placeholder="0.00" 
+                className="bg-background border border-border-subtle rounded-md px-3 py-2 w-32 focus:border-gold outline-none"
+              />
+              <Button onClick={handleAbrirCaixa} variant="primary" disabled={actionLoading}>
+                {actionLoading ? 'Abrindo...' : 'Abrir Caixa'}
+              </Button>
+            </div>
+          ) : (
+            <div className="text-xs text-amber-500 font-semibold bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-lg mt-3">
+              Modo somente leitura — Abertura de caixa desativada.
+            </div>
+          )}
         </CardGlass>
       )}
 
@@ -631,12 +646,16 @@ export default function AdminFinanceiro() {
           <div className="flex items-center justify-between mt-8 mb-4">
             <h2 className="text-xl font-bold text-foreground">Movimentações de Hoje</h2>
             <div className="flex gap-3">
-              <Button variant="outline" className="text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={handleFecharCaixa}>
-                Fechar Caixa
-              </Button>
-              <Button variant="primary" onClick={() => setShowForm(!showForm)} className="gap-2">
-                <Plus size={18} /> Nova Despesa
-              </Button>
+              {!isReadOnly && (
+                <>
+                  <Button variant="outline" className="text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={handleFecharCaixa}>
+                    Fechar Caixa
+                  </Button>
+                  <Button variant="primary" onClick={() => setShowForm(!showForm)} className="gap-2">
+                    <Plus size={18} /> Nova Despesa
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -821,18 +840,20 @@ export default function AdminFinanceiro() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={batchLoading}
-                onClick={handleConfirmarTodosPendentes}
-                className="gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold border-none shadow-md shadow-amber-500/20 text-xs py-2 px-3"
-              >
-                <CheckCheck size={16} />
-                {batchLoading ? 'Confirmando...' : 'Confirmar Todos da Secretaria'}
-              </Button>
-            </div>
+            {!isReadOnly && (
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={batchLoading}
+                  onClick={handleConfirmarTodosPendentes}
+                  className="gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold border-none shadow-md shadow-amber-500/20 text-xs py-2 px-3"
+                >
+                  <CheckCheck size={16} />
+                  {batchLoading ? 'Confirmando...' : 'Confirmar Todos da Secretaria'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1170,24 +1191,30 @@ export default function AdminFinanceiro() {
                               </button>
 
                               {isPendingConfirmation ? (
-                                <>
-                                  <button
-                                    onClick={() => handleAbrirAjusteModal(ag)}
-                                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40 transition-colors flex items-center gap-1 shadow-sm"
-                                    title="Faturar atendimento e conferir demonstrativo da divisão em 3 partes"
-                                  >
-                                    <DollarSign size={13} /> Faturar
-                                  </button>
-                                  <button
-                                    onClick={() => handleConfirmarGestao(ag)}
-                                    disabled={actionLoadingId === ag.id}
-                                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
-                                    title="Confirmar conferência e contabilizar oficialmente no financeiro"
-                                  >
-                                    <CheckCircle2 size={13} />
-                                    {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar'}
-                                  </button>
-                                </>
+                                !isReadOnly ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleAbrirAjusteModal(ag)}
+                                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40 transition-colors flex items-center gap-1 shadow-sm"
+                                      title="Faturar atendimento e conferir demonstrativo da divisão em 3 partes"
+                                    >
+                                      <DollarSign size={13} /> Faturar
+                                    </button>
+                                    <button
+                                      onClick={() => handleConfirmarGestao(ag)}
+                                      disabled={actionLoadingId === ag.id}
+                                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
+                                      title="Confirmar conferência e contabilizar oficialmente no financeiro"
+                                    >
+                                      <CheckCircle2 size={13} />
+                                      {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar'}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-[11px] text-amber-500 font-semibold px-2 py-1 bg-amber-500/10 rounded border border-amber-500/20">
+                                    Aguardando Gestão
+                                  </span>
+                                )
                               ) : isConfirmed ? (
                                 <>
                                   {cpfCliente ? (
@@ -1569,7 +1596,7 @@ export default function AdminFinanceiro() {
                     Fechar
                   </Button>
 
-                  {isPending && (
+                  {isPending && !isReadOnly && (
                     <Button
                       variant="primary"
                       size="sm"
