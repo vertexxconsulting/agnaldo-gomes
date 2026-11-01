@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, CheckCircle2, AlertTriangle, UploadCloud, Globe, EyeOff } from 'lucide-react';
+import { ArrowLeft, Save, Plus, GripVertical, Edit2, Trash2, Video, FileText, Loader2, CreditCard, Wallet, CheckCircle, CheckCircle2, AlertTriangle, UploadCloud, Globe, EyeOff, Copy } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -58,9 +58,14 @@ export default function AdminEdicaoCursoPage() {
   // Modal states (replaces prompt())
   const [isModuloModalOpen, setIsModuloModalOpen] = useState(false);
   const [isAulaModalOpen, setIsAulaModalOpen] = useState(false);
+  const [isReplicateModalOpen, setIsReplicateModalOpen] = useState(false);
   const [moduloTitleInput, setModuloTitleInput] = useState('');
   const [aulaTitleInput, setAulaTitleInput] = useState('');
   const [aulaModuleId, setAulaModuleId] = useState('');
+  const [replicateSourceCourseId, setReplicateSourceCourseId] = useState('');
+  const [replicateSourceModuleId, setReplicateSourceModuleId] = useState('');
+  const [availableCourses, setAvailableCourses] = useState<{ id: string; title: string }[]>([]);
+  const [sourceModules, setSourceModules] = useState<{ id: string; title: string }[]>([]);
 
   const [curso, setCurso] = useState<Curso | null>(null);
   const [modulos, setModulos] = useState<ModuloComAulas[]>([]);
@@ -91,6 +96,70 @@ export default function AdminEdicaoCursoPage() {
       setPaymentResult({ success: false, error: 'Erro de conexão' });
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const carregarCursosDisponiveis = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin-academy/cursos');
+      if (res.ok) {
+        const cursos = await res.json();
+        setAvailableCourses(
+          (cursos as Array<{ id: string; title: string }>)
+            .filter((c: { id: string; title: string }) => c.id !== cursoId)
+            .map((c: { id: string; title: string }) => ({ id: c.id, title: c.title }))
+        );
+      }
+    } catch (err) {
+      console.error('Erro ao carregar cursos disponíveis:', err);
+    }
+  }, [cursoId]);
+
+  const carregarModulosDoCursoOrigem = useCallback(async (sourceCourseId: string) => {
+    try {
+      const res = await fetch(`/api/admin-academy/cursos/${sourceCourseId}/modulos`);
+      if (res.ok) {
+        const modulos = await res.json();
+        setSourceModules(
+          (modulos as Array<{ id: string; title: string }>).map((m: { id: string; title: string }) => ({
+            id: m.id,
+            title: m.title,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Erro ao carregar módulos do curso de origem:', err);
+    }
+  }, []);
+
+  const handleReplicateModulo = async () => {
+    if (!replicateSourceCourseId || !replicateSourceModuleId) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin-academy/cursos/${cursoId}/modulos/replicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceCourseId: replicateSourceCourseId,
+          sourceModuleId: replicateSourceModuleId,
+        }),
+      });
+      if (res.ok) {
+        await carregarDados();
+        setIsReplicateModalOpen(false);
+        setReplicateSourceCourseId('');
+        setReplicateSourceModuleId('');
+        setSourceModules([]);
+        alert('Módulo replicado com sucesso!');
+      } else {
+        const err = await res.json();
+        alert('Erro ao replicar módulo: ' + (err.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      console.error('Erro ao replicar módulo:', err);
+      alert('Erro de conexão');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -776,6 +845,66 @@ export default function AdminEdicaoCursoPage() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={isReplicateModalOpen}
+        onClose={() => setIsReplicateModalOpen(false)}
+        title="Replicar Módulo de Outro Curso"
+        description="Copie um módulo (e suas aulas) de outro curso para este curso."
+      >
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="block text-xs font-medium text-foreground/70 mb-1">Curso de origem</label>
+            <select
+              value={replicateSourceCourseId}
+              onChange={e => {
+                setReplicateSourceCourseId(e.target.value);
+                setReplicateSourceModuleId('');
+                setSourceModules([]);
+                if (e.target.value) carregarModulosDoCursoOrigem(e.target.value);
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-background border border-gold/20 text-foreground focus:border-gold outline-none text-sm"
+            >
+              <option value="">Selecione um curso</option>
+              {availableCourses.map((c: { id: string; title: string }) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+
+          {sourceModules.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-foreground/70 mb-1">Módulo para replicar</label>
+              <select
+                value={replicateSourceModuleId}
+                onChange={e => setReplicateSourceModuleId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-gold/20 text-foreground focus:border-gold outline-none text-sm"
+              >
+                <option value="">Selecione um módulo</option>
+                {sourceModules.map((m: { id: string; title: string }) => (
+                  <option key={m.id} value={m.id}>{m.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => setIsReplicateModalOpen(false)}
+              className="flex-1 py-2 rounded-lg border border-gold/20 text-foreground/70 hover:bg-gold/5 text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleReplicateModulo}
+              disabled={!replicateSourceCourseId || !replicateSourceModuleId || saving}
+              className="flex-1 py-2 rounded-lg bg-gold text-foreground font-semibold text-sm hover:bg-gold-dim disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              {saving ? 'Replicando...' : 'Replicar Módulo'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -883,6 +1012,15 @@ function ModuloCard({
               className="w-full mt-2 py-3 border border-dashed border-gold/20 rounded-lg text-sm font-medium text-foreground/50 hover:text-gold hover:border-gold/50 transition-colors flex items-center justify-center gap-2"
             >
               <Plus size={16} /> Adicionar Aula
+            </button>
+            <button
+              onClick={() => {
+                setIsReplicateModalOpen(true);
+                carregarCursosDisponiveis();
+              }}
+              className="w-full mt-2 py-2 rounded-lg border border-gold/20 text-xs font-medium text-foreground/50 hover:text-gold hover:border-gold/50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Copy size={14} /> Replicar de outro curso
             </button>
           </div>
         </>
