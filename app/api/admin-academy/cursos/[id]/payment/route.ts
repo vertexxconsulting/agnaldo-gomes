@@ -74,6 +74,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ success: true, paymentLink: paymentLink.url });
   } catch (err: any) {
     console.error('Erro ao gerar Stripe Payment Link:', err);
+    // Chave restrita (rk_live_/rk_test_) sem as permissões necessárias
+    if (err?.type === 'StripePermissionError' || err?.statusCode === 403 || /permission/i.test(err?.message || '')) {
+      return NextResponse.json({
+        success: false,
+        error:
+          'A chave do Stripe configurada não tem permissão para criar produtos. ' +
+          'No Dashboard do Stripe (Desenvolvedores → Chaves de API), edite a chave restrita e marque como "Gravação" (Write): ' +
+          'Products, Prices e Payment Links. Ou use a chave secreta padrão (sk_live_...) em STRIPE_SECRET_KEY.',
+      }, { status: 403 });
+    }
     return NextResponse.json({ success: false, error: err.message || 'Erro interno' }, { status: 500 });
   }
 }
