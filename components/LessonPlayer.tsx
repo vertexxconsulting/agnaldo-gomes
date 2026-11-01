@@ -49,6 +49,11 @@ function extractBunnyData(url: string): { libraryId: string; videoId: string } |
   if (match) {
     return { libraryId: match[1], videoId: match[2] };
   }
+  const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url.trim());
+  if (isGuid) {
+    const defaultLib = process.env.NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID || '796043';
+    return { libraryId: defaultLib, videoId: url.trim() };
+  }
   return null;
 }
 
