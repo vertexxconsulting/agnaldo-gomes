@@ -103,16 +103,22 @@ function mapProfissional(r: Row): Profissional {
   const metaPeriodo = sched?._meta?.periodo_recebimento;
   return {
     id: r.id,
-    nome: r.name ?? '',
-    foto_url: r.photo_url ?? null,
+    nome: r.name ?? r.nome ?? '',
+    foto_url: r.photo_url ?? r.foto_url ?? r.avatar_url ?? null,
+    avatar_url: r.avatar_url ?? r.photo_url ?? r.foto_url ?? null,
     categoria: r.categoria ?? r.category ?? null,
-    especialidades: r.specialties ?? [],
-    ativo: r.active ?? true,
+    especialidades: r.specialties ?? r.especialidades ?? [],
+    ativo: r.active ?? r.ativo ?? true,
     jornada_semanal: sched as Profissional['jornada_semanal'],
     stock_pin: r.stock_pin || metaPin || null,
     periodo_recebimento: (r.commission_frequency || metaPeriodo || 'semanal') as PeriodoRecebimentoComissao,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
+    user_id: r.user_id ?? null,
+    email: r.email ?? null,
+    cargo: r.cargo ?? null,
+    comissao_padrao: r.comissao_padrao != null ? Number(r.comissao_padrao) : undefined,
+    product_commission_pct: r.product_commission_pct != null ? Number(r.product_commission_pct) : undefined,
   };
 }
 

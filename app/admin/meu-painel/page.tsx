@@ -35,6 +35,7 @@ import {
 import { fetchPacotesClientes, salvarPacoteCliente, abaterSessaoPacote, estornarSessaoPacote } from '@/lib/pacotes';
 import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento, PacoteCliente, RegraComissao } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
+import { getUserRole, isOwner, ROLES } from '@/lib/auth';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtDate = (d: string) => {
@@ -60,6 +61,7 @@ export default function MeuPainelPage() {
   const [estoque, setEstoque] = useState<ProdutoEstoque[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [selectedProfId, setSelectedProfId] = useState<string>('');
+  const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
   const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -225,23 +227,92 @@ export default function MeuPainelPage() {
       setClientes(cls);
       setServicos(srvs);
       setEstoque(est);
-      setProfissionais(profs || []);
       setRegrasComissao(regras || []);
+
       const { data: { user } } = await supabase.auth.getUser();
       const userMeta = user?.user_metadata;
-      const profIdFromPerm = userMeta?.permissions?.professional_id || userMeta?.professional_id;
+      const owner = user ? isOwner(user) : false;
+      const role = user ? getUserRole(user) : '';
 
+      const { data: profProfile } = user ? await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle() : { data: null };
+
+      const effectiveRole = profProfile?.role || role;
+      const isFullAdmin = owner ||
+        effectiveRole === ROLES.ADMIN ||
+        effectiveRole === ROLES.STUDIO_ADMIN ||
+        effectiveRole === ROLES.STUDIO_SECRETARIA ||
+        userMeta?.role === 'admin' ||
+        userMeta?.isOwner === true;
+
+      const isProfissionalUser = !isFullAdmin && (
+        effectiveRole === ROLES.STUDIO_PROFISSIONAL ||
+        effectiveRole === 'PROFESSIONAL' ||
+        effectiveRole === 'studio_profissional' ||
+        userMeta?.role === 'studio_profissional' ||
+        userMeta?.role === 'PROFESSIONAL' ||
+        userMeta?.role === 'profissional' ||
+        userMeta?.role === 'professional' ||
+        profProfile?.role === 'PROFESSIONAL' ||
+        profProfile?.role === 'studio_profissional' ||
+        Boolean(profProfile?.permissions?.professional_id) ||
+        Boolean(userMeta?.permissions?.professional_id) ||
+        Boolean(userMeta?.professional_id) ||
+        Boolean((profProfile as any)?.professional_id)
+      );
+
+      const normalizeText = (text?: string | null) => {
+        if (!text) return '';
+        return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      };
+
+      const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.permissions?.professional_id || userMeta?.professional_id || (profProfile as any)?.professional_id;
+
+      let matched: Profissional | undefined;
       if (profs && profs.length > 0) {
-        const matched = profs.find(p =>
-          (profIdFromPerm && p.id === profIdFromPerm) ||
-          (p.user_id && user?.id && p.user_id === user.id) ||
-          (p.email && user?.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
-          (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase())
-        );
-        const targetId = matched ? matched.id : profs[0].id;
+        matched = profs.find(p => profIdFromPerm && p.id === profIdFromPerm);
+        if (!matched && user?.id) {
+          matched = profs.find(p => p.user_id && p.user_id === user.id);
+        }
+        if (!matched && user?.email) {
+          const uEmail = user.email.toLowerCase().trim();
+          matched = profs.find(p => p.email && p.email.toLowerCase().trim() === uEmail);
+        }
+        const uNameNorm = normalizeText(userMeta?.full_name || profProfile?.full_name || user?.email?.split('@')[0]);
+        if (!matched && uNameNorm) {
+          matched = profs.find(p => normalizeText(p.nome) === uNameNorm);
+        }
+        if (!matched && uNameNorm) {
+          matched = profs.find(p => {
+            const pNorm = normalizeText(p.nome);
+            return pNorm.includes(uNameNorm) || uNameNorm.includes(pNorm);
+          });
+        }
+      }
+
+      if (isProfissionalUser || (matched && !isFullAdmin)) {
+        setIsRestrictedProfissional(true);
+        if (matched) {
+          setSelectedProfId(matched.id);
+          setProfissionais([matched]);
+          carregarComissoesProf(matched.id);
+          buscarPendenciasPassadas(matched.id);
+        } else {
+          setProfissionais([]);
+          setSelectedProfId('');
+        }
+      } else {
+        setIsRestrictedProfissional(false);
+        setProfissionais(profs || []);
+        const targetId = matched ? matched.id : (profs && profs.length > 0 ? profs[0].id : '');
         setSelectedProfId(prev => prev || targetId);
-        carregarComissoesProf(targetId);
-        buscarPendenciasPassadas(targetId);
+        if (targetId) {
+          carregarComissoesProf(targetId);
+          buscarPendenciasPassadas(targetId);
+        }
       }
       setProdutosLoja(prods || []);
       setLoading(false);
@@ -902,17 +973,26 @@ export default function MeuPainelPage() {
           </div>
           <div>
             <label className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider block">Profissional / Cadeira Atuante:</label>
-            <select
-              className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:border-gold cursor-pointer"
-              value={selectedProfId}
-              onChange={e => setSelectedProfId(e.target.value)}
-            >
-              {profissionais.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
+            {isRestrictedProfissional ? (
+              <div className="bg-[var(--background)] border border-gold/40 rounded-lg px-3 py-1.5 text-sm font-bold text-foreground flex items-center gap-2">
+                <span>{profissionais.find(p => p.id === selectedProfId)?.nome || 'Sua Cadeira'}</span>
+                <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-gold/15 text-gold font-extrabold tracking-wider border border-gold/30">
+                  Sua Cadeira
+                </span>
+              </div>
+            ) : (
+              <select
+                className="bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                value={selectedProfId}
+                onChange={e => setSelectedProfId(e.target.value)}
+              >
+                {profissionais.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
         <div className="text-xs text-foreground/60 flex items-center gap-2">

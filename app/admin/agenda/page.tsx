@@ -565,9 +565,6 @@ function AgendaContent() {
         fetchTaxasPagamento(),
         fetchRegrasComissao()
       ]);
-      setAgendamentos(agendamentosData);
-      setBloqueiosDia(bloqueiosData);
-      setProfissionais(profissionaisData.filter(p => p.ativo));
       setClientes(clientesData);
       setServicos(servicosData);
       setProfServicos(profServData);
@@ -576,7 +573,7 @@ function AgendaContent() {
       setTaxasPagamento(taxasData.taxas);
       setRegrasComissao(regrasData);
 
-      // Identificar o papel do usuário logado (ex: Agnaldo = Admin vê todos; Edinaldo/Elen/Erica = vê apenas a si mesmo)
+      // Identificar o papel do usuário logado (ex: Agnaldo = Admin vê todos; Edinaldo/Elen/Erica/Walison = vê apenas a si mesmo)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -592,13 +589,6 @@ function AgendaContent() {
             .maybeSingle();
 
           const effectiveRole = profProfile?.role || role;
-          const isFullAdmin = owner ||
-            effectiveRole === ROLES.ADMIN ||
-            effectiveRole === ROLES.STUDIO_ADMIN ||
-            effectiveRole === ROLES.STUDIO_SECRETARIA ||
-            userMeta?.role === 'admin' ||
-            userMeta?.isOwner === true;
-
           const isGestoraOrAdminUser = owner ||
             effectiveRole === ROLES.ADMIN ||
             effectiveRole === ROLES.STUDIO_ADMIN ||
@@ -614,26 +604,89 @@ function AgendaContent() {
           );
           setIsSecretaria(Boolean(isSecretariaUser));
 
-          if (!isFullAdmin) {
-            const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.professional_id;
-            const ativos = profissionaisData.filter((p: Profissional) => p.ativo);
-            const matchedProf = ativos.find((p: Profissional) =>
-              (profIdFromPerm && p.id === profIdFromPerm) ||
-              (p.user_id && p.user_id === user.id) ||
-              (p.email && user.email && p.email.toLowerCase() === user.email.toLowerCase()) ||
-              (userMeta?.full_name && p.nome.toLowerCase() === userMeta.full_name.toLowerCase()) ||
-              (profProfile?.full_name && p.nome.toLowerCase() === profProfile.full_name.toLowerCase())
-            );
+          const isFullAdmin = isGestoraOrAdminUser || isSecretariaUser;
 
-            if (matchedProf) {
-              setMeuProfissional(matchedProf);
-              setIsRestrictedProfissional(true);
-              setProfFiltro(matchedProf.id);
+          const isProfissionalUser = !isFullAdmin && (
+            effectiveRole === ROLES.STUDIO_PROFISSIONAL ||
+            effectiveRole === 'PROFESSIONAL' ||
+            effectiveRole === 'studio_profissional' ||
+            userMeta?.role === 'studio_profissional' ||
+            userMeta?.role === 'PROFESSIONAL' ||
+            userMeta?.role === 'profissional' ||
+            userMeta?.role === 'professional' ||
+            profProfile?.role === 'PROFESSIONAL' ||
+            profProfile?.role === 'studio_profissional' ||
+            Boolean(profProfile?.permissions?.professional_id) ||
+            Boolean(userMeta?.permissions?.professional_id) ||
+            Boolean(userMeta?.professional_id) ||
+            Boolean((profProfile as any)?.professional_id)
+          );
+
+          if (!isFullAdmin) {
+            const normalizeText = (text?: string | null) => {
+              if (!text) return '';
+              return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            };
+
+            const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.permissions?.professional_id || userMeta?.professional_id || (profProfile as any)?.professional_id;
+            const ativos = profissionaisData.filter((p: Profissional) => p.ativo);
+            
+            let matchedProf = ativos.find((p: Profissional) => profIdFromPerm && p.id === profIdFromPerm);
+            if (!matchedProf) {
+              matchedProf = ativos.find((p: Profissional) => p.user_id && p.user_id === user.id);
             }
+            if (!matchedProf && user.email) {
+              const uEmail = user.email.toLowerCase().trim();
+              matchedProf = ativos.find((p: Profissional) => p.email && p.email.toLowerCase().trim() === uEmail);
+            }
+            const uNameNorm = normalizeText(userMeta?.full_name || profProfile?.full_name || user.email?.split('@')[0]);
+            if (!matchedProf && uNameNorm) {
+              matchedProf = ativos.find((p: Profissional) => normalizeText(p.nome) === uNameNorm);
+            }
+            if (!matchedProf && uNameNorm) {
+              matchedProf = ativos.find((p: Profissional) => {
+                const pNorm = normalizeText(p.nome);
+                return pNorm.includes(uNameNorm) || uNameNorm.includes(pNorm);
+              });
+            }
+
+            if (matchedProf || isProfissionalUser) {
+              setIsRestrictedProfissional(true);
+              if (matchedProf) {
+                setMeuProfissional(matchedProf);
+                setProfFiltro(matchedProf.id);
+                // Exclusividade total: lista de profissionais contém estritamente o profissional logado
+                setProfissionais([matchedProf]);
+                // Filtrar agendamentos e bloqueios na memória apenas para este profissional (titular ou auxiliar)
+                setAgendamentos(agendamentosData.filter(a => a.profissional_id === matchedProf.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(matchedProf.id))));
+                setBloqueiosDia(bloqueiosData.filter(b => b.profissional_id === matchedProf.id));
+              } else {
+                setMeuProfissional(null);
+                setProfFiltro('');
+                setProfissionais([]);
+                setAgendamentos([]);
+                setBloqueiosDia([]);
+              }
+            } else {
+              setProfissionais(profissionaisData.filter(p => p.ativo));
+              setAgendamentos(agendamentosData);
+              setBloqueiosDia(bloqueiosData);
+            }
+          } else {
+            setProfissionais(profissionaisData.filter(p => p.ativo));
+            setAgendamentos(agendamentosData);
+            setBloqueiosDia(bloqueiosData);
           }
+        } else {
+          setProfissionais(profissionaisData.filter(p => p.ativo));
+          setAgendamentos(agendamentosData);
+          setBloqueiosDia(bloqueiosData);
         }
       } catch (authErr) {
         console.warn('Erro ao verificar perfil do usuário na agenda:', authErr);
+        setProfissionais(profissionaisData.filter(p => p.ativo));
+        setAgendamentos(agendamentosData);
+        setBloqueiosDia(bloqueiosData);
       }
 
       setLoading(false);
@@ -669,6 +722,7 @@ function AgendaContent() {
 
   // Troca de categoria com auto-reset do filtro de profissional se não pertencer à nova categoria
   const handleCategoriaChange = (cat: string) => {
+    if (isRestrictedProfissional) return;
     setCategoriaFiltro(cat);
     if (profFiltro !== 'todos') {
       const prof = profissionais.find(p => p.id === profFiltro);
@@ -680,8 +734,8 @@ function AgendaContent() {
 
   // Profissionais visíveis na agenda (colunas do Kanban)
   const profissionaisVisiveisNaAgenda = useMemo(() => {
-    if (isRestrictedProfissional && meuProfissional) {
-      return [meuProfissional];
+    if (isRestrictedProfissional) {
+      return meuProfissional ? [meuProfissional] : [];
     }
     return profissionaisFiltradosPorCategoria.filter(p => profFiltro === 'todos' || p.id === profFiltro);
   }, [profissionaisFiltradosPorCategoria, profFiltro, isRestrictedProfissional, meuProfissional]);
@@ -1610,7 +1664,7 @@ function AgendaContent() {
   };
 
   const abrirFormNovo = (hora?: string, profId = '', isEncaixe = false) => {
-    const finalProfId = profId || (isRestrictedProfissional && meuProfissional ? meuProfissional.id : '');
+    const finalProfId = (isRestrictedProfissional && meuProfissional) ? meuProfissional.id : (profId || '');
     setEditingApptId(null);
     setFormData({
       cliente_id: '',
@@ -1634,6 +1688,13 @@ function AgendaContent() {
   };
 
   const abrirEdicao = (appt: Agendamento) => {
+    if (isRestrictedProfissional && meuProfissional) {
+      const isMine = appt.profissional_id === meuProfissional.id || (Array.isArray(appt.auxiliares_ids) && appt.auxiliares_ids.includes(meuProfissional.id));
+      if (!isMine) {
+        alert('Você só possui permissão para editar agendamentos da sua própria agenda.');
+        return;
+      }
+    }
     setEditingApptId(appt.id);
     const subList = Array.isArray(appt.sub_servicos) ? appt.sub_servicos : [];
     const durTotal = calcularDuracaoTotal(appt.servico_id, subList);
@@ -1676,7 +1737,8 @@ function AgendaContent() {
       alert('Por favor, busque e selecione um cliente para o agendamento.');
       return;
     }
-    if (!formData.profissional_id || !formData.servico_id || !formData.data || !formData.hora_inicio) {
+    const profIdFinal = (isRestrictedProfissional && meuProfissional) ? meuProfissional.id : formData.profissional_id;
+    if (!profIdFinal || !formData.servico_id || !formData.data || !formData.hora_inicio) {
       alert('Preencha todos os campos obrigatórios (Profissional, Serviço, Data e Horário).');
       return;
     }
@@ -1695,7 +1757,7 @@ function AgendaContent() {
           body: JSON.stringify({
             id: editingApptId,
             cliente_id: formData.cliente_id,
-            profissional_id: formData.profissional_id,
+            profissional_id: profIdFinal,
             servico_id: formData.servico_id,
             sub_servicos: formData.sub_servicos,
             auxiliares_ids: formData.auxiliares_ids,
@@ -1719,7 +1781,7 @@ function AgendaContent() {
             return {
               ...a,
               cliente_id: formData.cliente_id,
-              profissional_id: formData.profissional_id,
+              profissional_id: profIdFinal,
               servico_id: formData.servico_id,
               sub_servicos: cleanSubs,
               auxiliares_ids: formData.auxiliares_ids,
@@ -1736,7 +1798,7 @@ function AgendaContent() {
             a.cliente_id === formData.cliente_id &&
             a.data > formData.data &&
             a.status !== 'cancelado' &&
-            (!formData.profissional_id || a.profissional_id === formData.profissional_id)
+            (!profIdFinal || a.profissional_id === profIdFinal)
           ) {
             const [hFut, mFut] = a.hora_inicio.slice(0, 5).split(':').map(Number);
             const fimFut = new Date(2000, 0, 1, hFut, mFut + duracaoMin);
@@ -1778,7 +1840,7 @@ function AgendaContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cliente_id: formData.cliente_id,
-          profissional_id: formData.profissional_id,
+          profissional_id: profIdFinal,
           servico_id: formData.servico_id,
           sub_servicos: formData.sub_servicos,
           auxiliares_ids: formData.auxiliares_ids,
@@ -1799,7 +1861,7 @@ function AgendaContent() {
       const novoAgendamento: Agendamento = {
         id: data.agendamento?.id ?? Date.now().toString(36),
         cliente_id: formData.cliente_id,
-        profissional_id: formData.profissional_id,
+        profissional_id: profIdFinal,
         servico_id: formData.servico_id,
         sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id.trim() !== ''),
         auxiliares_ids: formData.auxiliares_ids,
@@ -2139,14 +2201,22 @@ function AgendaContent() {
           <DragScrollX className="w-full min-w-0 border border-[var(--border-subtle)] rounded-xl bg-[var(--color-card)] shadow-sm">
             {profissionaisVisiveisNaAgenda.length === 0 ? (
               <div className="p-12 text-center text-foreground/60">
-                <p className="text-base font-semibold">Nenhum profissional encontrado na categoria "{categoriaFiltro}".</p>
-                <p className="text-xs text-foreground/40 mt-1">Selecione "Todos os Atendimentos" ou cadastre um novo profissional na aba Profissionais.</p>
-                <button
-                  onClick={() => { setCategoriaFiltro('todas'); setProfFiltro('todos'); }}
-                  className="mt-4 px-4 py-2 bg-gold/15 text-gold hover:bg-gold hover:text-background font-bold text-xs rounded-lg transition-colors inline-block"
-                >
-                  Ver todos os profissionais
-                </button>
+                <p className="text-base font-semibold">
+                  {isRestrictedProfissional
+                    ? (meuProfissional ? 'Nenhum agendamento ativo na sua agenda.' : 'Seu usuário profissional não possui vínculo com um profissional ativo no sistema. Contate o administrador.')
+                    : `Nenhum profissional encontrado na categoria "${categoriaFiltro}".`}
+                </p>
+                {!isRestrictedProfissional && (
+                  <>
+                    <p className="text-xs text-foreground/40 mt-1">Selecione "Todos os Atendimentos" ou cadastre um novo profissional na aba Profissionais.</p>
+                    <button
+                      onClick={() => { setCategoriaFiltro('todas'); setProfFiltro('todos'); }}
+                      className="mt-4 px-4 py-2 bg-gold/15 text-gold hover:bg-gold hover:text-background font-bold text-xs rounded-lg transition-colors inline-block"
+                    >
+                      Ver todos os profissionais
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
             <div className="flex min-h-[600px] w-max min-w-full">
