@@ -10,6 +10,8 @@ import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ProductSearchSelect } from '@/components/ProductSearchSelect';
+import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
+import { useModulePermission } from '@/lib/use-module-permission';
 import { 
   fetchClientes, 
   fetchAgendamentos, 
@@ -88,6 +90,9 @@ export default function MeuPainelPage() {
   const [isAuxiliarCabelo, setIsAuxiliarCabelo] = useState(false);
   const [produtosLoja, setProdutosLoja] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Permissão de leitura/escrita do módulo Agenda (usa para o meu-painel)
+  const { isReadOnly, loading: permLoading } = useModulePermission('agenda');
 
   // Modals state
   const [insumosModalOpen, setInsumosModalOpen] = useState(false);
@@ -1028,6 +1033,9 @@ export default function MeuPainelPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      {isReadOnly && !permLoading && (
+        <ReadOnlyNotice modulo="Meu Painel / Agenda" />
+      )}
       <SectionHeader
         title="Meu Painel Interativo"
         description="Controle seus atendimentos em andamento, lance insumos e feche as comandas da sua cadeira."
@@ -1678,24 +1686,27 @@ export default function MeuPainelPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex-1 px-2.5 py-1 text-xs border-gold/40 hover:bg-gold/10 text-gold flex items-center justify-center gap-1 font-semibold"
-                        onClick={() => iniciarAtendimento(ag.id)}
+                        disabled={isReadOnly}
+                        onClick={isReadOnly ? undefined : () => iniciarAtendimento(ag.id)}
+                        className={`flex-1 px-2.5 py-1 text-xs border-gold/40 hover:bg-gold/10 text-gold flex items-center justify-center gap-1 font-semibold ${isReadOnly ? 'opacity-50 cursor-not-allowed border-gold/20' : ''}`}
                       >
                         <Play size={13} /> Puxar
                       </Button>
                       <Button 
                         variant="secondary" 
                         size="sm" 
-                        className="flex-1 px-2.5 py-1 text-xs border border-[var(--border-subtle)] hover:border-gold/40 text-foreground flex items-center justify-center gap-1 font-semibold"
-                        onClick={() => abrirPreFechamento(ag)}
+                        disabled={isReadOnly}
+                        onClick={isReadOnly ? undefined : () => abrirPreFechamento(ag)}
+                        className={`flex-1 px-2.5 py-1 text-xs border border-[var(--border-subtle)] hover:border-gold/40 text-foreground flex items-center justify-center gap-1 font-semibold ${isReadOnly ? 'opacity-50 cursor-not-allowed border-foreground/10' : ''}`}
                       >
                         <CheckCircle2 size={13} className="text-gold" /> Fechar
                       </Button>
                       <button
                         type="button"
-                        title="Excluir ou Cancelar Atendimento"
-                        onClick={() => abrirModalExcluirAgendamento(ag)}
-                        className="flex-1 p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        disabled={isReadOnly}
+                        title={isReadOnly ? 'Ação bloqueada: somente leitura' : 'Excluir ou Cancelar Atendimento'}
+                        onClick={isReadOnly ? undefined : () => abrirModalExcluirAgendamento(ag)}
+                        className={`flex-1 p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center gap-1 ${isReadOnly ? 'opacity-50 cursor-not-allowed border-red-500/10 text-foreground/40' : ''}`}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -2215,13 +2226,14 @@ export default function MeuPainelPage() {
                 </label>
                 <select
                   value={servicoEditandoId}
-                  onChange={(e) => {
+                  onChange={isReadOnly ? undefined : (e) => {
                     const novoId = e.target.value;
                     setServicoEditandoId(novoId);
                     const s = servicos.find(srv => srv.id === novoId);
                     if (s) setServicoPrecoEditado(String(s.preco || 0));
                   }}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                  disabled={isReadOnly}
+                  className={`w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer ${isReadOnly ? 'opacity-50 cursor-not-allowed bg-foreground/[0.05]' : ''}`}
                 >
                   {servicos.map(s => (
                     <option key={s.id} value={s.id}>
@@ -2242,8 +2254,9 @@ export default function MeuPainelPage() {
                     step="0.01"
                     min="0"
                     value={servicoPrecoEditado}
-                    onChange={(e) => setServicoPrecoEditado(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    onChange={isReadOnly ? undefined : (e) => setServicoPrecoEditado(e.target.value)}
+                    disabled={isReadOnly}
+                    className={`w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-2 pl-9 pr-3 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold ${isReadOnly ? 'opacity-50 cursor-not-allowed bg-foreground/[0.05]' : ''}`}
                     placeholder="0.00"
                   />
                 </div>
@@ -2266,43 +2279,61 @@ export default function MeuPainelPage() {
                   Procedimentos Adicionais / Sub-serviços
                 </label>
                 <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {servicos.filter(s => s.id !== servicoEditandoId).map(s => {
-                    const isAdded = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === s.id : sub?.id === s.id));
-                    return (
-                      <label 
-                        key={s.id} 
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all ${
-                          isAdded ? 'bg-gold/15 border-gold text-foreground' : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.05]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isAdded}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSubServicosEditados(prev => [...prev, { id: s.id, nome: s.nome, preco: s.preco }]);
-                              } else {
-                                setSubServicosEditados(prev => prev.filter(sub => (typeof sub === 'string' ? sub !== s.id : sub?.id !== s.id)));
-                              }
-                            }}
-                            className="rounded accent-gold"
-                          />
-                          <span className="font-semibold">{s.nome}</span>
-                        </div>
-                        <span className="font-mono text-gold font-bold">+{fmt(s.preco)}</span>
-                      </label>
-                    );
-                  })}
+                      {servicos.filter(s => s.id !== servicoEditandoId).map(s => {
+                        const isAdded = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === s.id : sub?.id === s.id));
+                        return (
+                          <label 
+                            key={s.id} 
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''} ${isAdded ? 'bg-gold/15 border-gold text-foreground' : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.05]'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isAdded}
+                                onChange={isReadOnly ? undefined : (e) => {
+                                  if (e.target.checked) {
+                                    setSubServicosEditados(prev => [...prev, { id: s.id, nome: s.nome, preco: s.preco }]);
+                                  } else {
+                                    setSubServicosEditados(prev => prev.filter(sub => (typeof sub === 'string' ? sub !== s.id : sub?.id !== s.id)));
+                                  }
+                                }}
+                                disabled={isReadOnly}
+                                className="rounded accent-gold"
+                              />
+                              <span className="font-semibold">{s.nome}</span>
+                            </div>
+                            <span className="font-mono text-gold font-bold">+{fmt(s.preco)}</span>
+                          </label>
+                        );
+                      })}
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
-              <Button variant="outline" onClick={() => setServicoModalOpen(false)}>Cancelar</Button>
-              <Button variant="primary" disabled={salvandoServico} onClick={handleSalvarServico} className="bg-gold hover:bg-gold-dim text-white font-bold">
+              <Button variant="outline" onClick={() => setServicoModalOpen(false)} disabled={isReadOnly}>Cancelar</Button>
+              <Button variant="primary" disabled={isReadOnly || salvandoServico} onClick={isReadOnly ? undefined : handleSalvarServico} className={`bg-gold hover:bg-gold-dim text-white font-bold ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {salvandoServico ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
+              {!isReadOnly && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setServicoModalOpen(false);
+                  setPacoteModalOpen(true);
+                  setLoadingPacotes(true);
+                  setPacoteModalOpen(true);
+                  setCriandoNovoPacote(false);
+                  setNovoPacoteNome('');
+                  setNovoPacoteServicoId(activeAgendamento?.servico_id || '');
+                  setNovoPacoteSessoes('4');
+                  setNovoPacoteValor('');
+                  fetchPacotesClientes(activeAgendamento.cliente_id).then(pacs => {
+                    setPacotesCliente(pacs);
+                    setLoadingPacotes(false);
+                  }).catch(() => setLoadingPacotes(false));
+                }} className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 text-xs font-bold flex items-center gap-1">
+                  <Package size={13} className="mr-1" /> Criar Pacote Pré-Pago
+                </Button>
+              )}
             </div>
           </CardGlass>
         </div>
@@ -2342,8 +2373,9 @@ export default function MeuPainelPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={handleEstornarPacote}
-                    className="text-[11px] text-red-400 hover:underline mt-1 block cursor-pointer font-semibold"
+                    disabled={isReadOnly}
+                    onClick={isReadOnly ? undefined : handleEstornarPacote}
+                    className={`text-[11px] text-red-400 hover:underline mt-1 block cursor-pointer font-semibold ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Estornar / Desvincular
                   </button>
@@ -2362,8 +2394,9 @@ export default function MeuPainelPage() {
                   {!criandoNovoPacote && (
                     <button
                       type="button"
-                      onClick={() => setCriandoNovoPacote(true)}
-                      className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
+                      disabled={isReadOnly}
+                      onClick={isReadOnly ? undefined : () => setCriandoNovoPacote(true)}
+                      className={`text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <Plus size={13} /> Novo Pacote
                     </button>
@@ -2377,8 +2410,9 @@ export default function MeuPainelPage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setCriandoNovoPacote(true)}
-                      className="border-purple-500/40 text-purple-400 hover:bg-purple-500/10 text-xs"
+                      disabled={isReadOnly}
+                      onClick={isReadOnly ? undefined : () => setCriandoNovoPacote(true)}
+                      className={`border-purple-500/40 text-purple-400 hover:bg-purple-500/10 text-xs ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <Plus size={13} className="mr-1" /> Cadastrar Pacote Pré-Pago
                     </Button>
@@ -2424,9 +2458,9 @@ export default function MeuPainelPage() {
                                 <Button
                                   variant="primary"
                                   size="sm"
-                                  disabled={p.sessoes_restantes <= 0}
-                                  onClick={() => handleAbaterPacote(p)}
-                                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-xs"
+                                  disabled={isReadOnly || p.sessoes_restantes <= 0}
+                                  onClick={isReadOnly ? undefined : () => handleAbaterPacote(p)}
+                                  className={`bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-xs ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                   Abater Sessão
                                 </Button>
