@@ -1664,19 +1664,21 @@ export default function MeuPainelPage() {
             ) : (
               proximos.map(ag => (
                 <CardGlass key={ag.id} className="p-4 hover:border-foreground/20 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="text-center font-mono text-sm text-foreground/50 font-bold shrink-0">
-                      {ag.hora_inicio}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="text-center font-mono text-sm text-foreground/50 font-bold shrink-0">
+                        {ag.hora_inicio}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold truncate text-sm">{getClienteNome(ag.cliente_id)}</p>
+                        <p className="text-xs text-foreground/50 truncate">{getServicoNome(ag.servico_id)}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold truncate text-sm">{getClienteNome(ag.cliente_id)}</p>
-                      <p className="text-xs text-foreground/50 truncate">{getServicoNome(ag.servico_id)}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 w-full">
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="px-2.5 py-1 text-xs border-gold/40 hover:bg-gold/10 text-gold flex items-center gap-1 font-semibold"
+                        className="flex-1 px-2.5 py-1 text-xs border-gold/40 hover:bg-gold/10 text-gold flex items-center justify-center gap-1 font-semibold"
                         onClick={() => iniciarAtendimento(ag.id)}
                       >
                         <Play size={13} /> Puxar
@@ -1684,7 +1686,7 @@ export default function MeuPainelPage() {
                       <Button 
                         variant="secondary" 
                         size="sm" 
-                        className="px-2.5 py-1 text-xs border border-[var(--border-subtle)] hover:border-gold/40 text-foreground flex items-center gap-1 font-semibold"
+                        className="flex-1 px-2.5 py-1 text-xs border border-[var(--border-subtle)] hover:border-gold/40 text-foreground flex items-center justify-center gap-1 font-semibold"
                         onClick={() => abrirPreFechamento(ag)}
                       >
                         <CheckCircle2 size={13} className="text-gold" /> Fechar
@@ -1693,7 +1695,7 @@ export default function MeuPainelPage() {
                         type="button"
                         title="Excluir ou Cancelar Atendimento"
                         onClick={() => abrirModalExcluirAgendamento(ag)}
-                        className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                        className="flex-1 p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center gap-1"
                       >
                         <Trash2 size={14} />
                       </button>
