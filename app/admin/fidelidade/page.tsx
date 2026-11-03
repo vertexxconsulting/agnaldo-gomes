@@ -135,7 +135,7 @@ export default function FidelidadePage() {
 
   // Produtos que estão no programa de fidelidade (points_cost > 0)
   const produtosResgate = produtos.filter(p => (p.points_cost || 0) > 0);
-  
+
   // Produtos do estoque que ainda NÃO estão no programa
   const produtosDisponiveis = produtos.filter(p => (p.points_cost || 0) <= 0);
 
@@ -143,16 +143,15 @@ export default function FidelidadePage() {
     <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <SectionTitle title="Programa de Fidelidade" />
-        
+
         {!loadingConfig && (
-          <button 
+          <button
             disabled={isReadOnly}
             onClick={toggleFidelidade}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-              fidelidadeAtiva 
-                ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25' 
-                : 'bg-red-500/15 text-red-500 hover:bg-red-500/25'
-            } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${fidelidadeAtiva
+              ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25'
+              : 'bg-red-500/15 text-red-500 hover:bg-red-500/25'
+              } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             {fidelidadeAtiva ? '🟢 Fidelidade Ativa' : '🔴 Fidelidade Desativada'}
           </button>
@@ -166,7 +165,7 @@ export default function FidelidadePage() {
         <div className="text-sm">
           <p className="font-semibold mb-1">Catálogo de Resgate</p>
           <p>
-            Adicione produtos do seu estoque que as clientes podem resgatar usando seus pontos de fidelidade. 
+            Adicione produtos do seu estoque que as clientes podem resgatar usando seus pontos de fidelidade.
             Você também pode criar produtos exclusivos de resgate.
           </p>
         </div>
@@ -201,12 +200,12 @@ export default function FidelidadePage() {
                 </thead>
                 <tbody className="text-sm">
                   {produtosResgate.map((p) => (
-                    <ProdutoFidelidadeRow 
-                      key={p.id} 
-                      produto={p} 
+                    <ProdutoFidelidadeRow
+                      key={p.id}
+                      produto={p}
                       saving={saving === p.id}
                       isReadOnly={isReadOnly}
-                      onSave={handleUpdateProduto} 
+                      onSave={handleUpdateProduto}
                       onRemove={handleRemoveProduto}
                     />
                   ))}
@@ -228,7 +227,7 @@ export default function FidelidadePage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--card)] sm:bg-[var(--background)] border border-[var(--border-subtle)] w-full max-w-md rounded-2xl p-6 shadow-xl relative">
-            <button 
+            <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             >
@@ -294,8 +293,8 @@ export default function FidelidadePage() {
                 />
               </div>
 
-              <Button 
-                className="w-full mt-2" 
+              <Button
+                className="w-full mt-2"
                 onClick={handleAddProduto}
                 disabled={savingNew}
               >
@@ -309,14 +308,14 @@ export default function FidelidadePage() {
   );
 }
 
-function ProdutoFidelidadeRow({ 
-  produto, 
+function ProdutoFidelidadeRow({
+  produto,
   saving,
   isReadOnly,
   onSave,
   onRemove
-}: { 
-  produto: ProdutoEstoque; 
+}: {
+  produto: ProdutoEstoque;
   saving: boolean;
   isReadOnly?: boolean;
   onSave: (id: string, cost: number) => void;
@@ -334,8 +333,8 @@ function ProdutoFidelidadeRow({
       <td className="py-4 px-4">
         <div className="flex items-center justify-center gap-2">
           <span className="text-rose-500 font-semibold">-</span>
-          <input 
-            type="number" 
+          <input
+            type="number"
             disabled={isReadOnly}
             value={cost}
             onChange={(e) => setCost(e.target.value)}
@@ -350,8 +349,8 @@ function ProdutoFidelidadeRow({
         ) : (
           <>
             {isChanged && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 disabled={saving}
                 onClick={() => onSave(produto.id, Number(cost))}
                 className="h-8"
@@ -359,8 +358,8 @@ function ProdutoFidelidadeRow({
                 {saving ? '...' : 'Salvar'}
               </Button>
             )}
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               className="h-8 text-red-500 border-red-500/20 hover:bg-red-500/10"
               disabled={saving}

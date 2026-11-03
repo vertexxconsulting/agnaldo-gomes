@@ -63,6 +63,13 @@ export async function GET(req: Request) {
   }
 }
 
+function timeToMinutes(t: string | null | undefined): number {
+  if (!t) return 0;
+  const clean = String(t).trim();
+  const [h, m] = clean.slice(0, 5).split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
 function appointmentAllowsOverlap(app: any): boolean {
   if (app?.allow_overlap === true) return true;
   if (Array.isArray(app?.sub_services) && app.sub_services.some((s: any) => s?._meta && s?.allow_overlap)) return true;
@@ -241,8 +248,10 @@ export async function POST(req: Request) {
       .in('date', datesToCheck)
       .neq('status', 'CANCELLED');
 
-    // Filtra apenas os payloads que NÃO conflitam com horários existentes
-    const validPayloads = allow_overlap ? payloads : payloads.filter(p => {
+    // Mapeia os payloads e detecta sobreposição usando minutos exatos (evitando conflitos falsos por causa de segundos na string)
+    // Na gestão/recepção, NUNCA bloqueamos a secretária com erro 409: se houver invasão ou encaixe, permitimos o agendamento
+    // com allow_overlap: true para ser exibido e sinalizado na agenda com alerta visual.
+    const payloadsToInsert = payloads.map(p => {
       const conflictsForDate = allConflicts?.filter((c: any) => {
         if (c.date !== p.date) return false;
         const cAuxiliares = Array.isArray(c.assistant_ids) 
@@ -253,30 +262,31 @@ export async function POST(req: Request) {
       }) || [];
 
       const hasOverlap = conflictsForDate.some((app: any) => {
-        if (appointmentAllowsOverlap(app)) return false;
-
-        const startA = p.start_time;
-        const endA = p.end_time;
-        const startB = app.start_time;
-        const endB = app.end_time;
+        const startA = timeToMinutes(p.start_time);
+        const endA = timeToMinutes(p.end_time);
+        const startB = timeToMinutes(app.start_time);
+        const endB = timeToMinutes(app.end_time);
         return startA < endB && endA > startB;
       });
-      return !hasOverlap;
-    });
 
-    if (validPayloads.length === 0) {
-      return NextResponse.json({ error: 'O horário selecionado (ou a agenda de um dos auxiliares) já está ocupado.' }, { status: 409 });
-    }
+      if (hasOverlap || p.allow_overlap || allow_overlap) {
+        return {
+          ...p,
+          allow_overlap: true,
+        };
+      }
+      return p;
+    });
 
     let agendamentosResult: any = null;
     const { data: agendamentos, error } = await supabase
       .from('salon_appointments')
-      .insert(validPayloads)
+      .insert(payloadsToInsert)
       .select('*');
 
     if (error) {
       if (error.message?.includes('sub_services') || error.message?.includes('allow_overlap') || error.message?.includes('assistant_ids')) {
-        const cleanPayloads = validPayloads.map(p => {
+        const cleanPayloads = payloadsToInsert.map(p => {
           const cp: any = { ...p };
           if (error.message?.includes('sub_services')) delete cp.sub_services;
           if (error.message?.includes('allow_overlap')) delete cp.allow_overlap;
@@ -315,7 +325,7 @@ export async function POST(req: Request) {
       agendamentosResult = agendamentos;
     }
 
-    return NextResponse.json({ success: true, agendamento: agendamentosResult?.[0], projecoes: validPayloads.length });
+    return NextResponse.json({ success: true, agendamento: agendamentosResult?.[0], projecoes: payloadsToInsert.length });
   } catch (err) {
     console.error('[api/agendamentos/admin] Erro inesperado:', err);
     const message = err instanceof Error ? err.message : 'Erro interno';
@@ -379,8 +389,13 @@ export async function PUT(req: Request) {
       }
     }
 
-    // Validação de conflito de horário (considerando titular + auxiliares, se não for encaixe)
-    if (data && hora_inicio && calculatedHoraFim && profissional_id && !allow_overlap) {
+    const patch: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    };
+    if (allow_overlap !== undefined) patch.allow_overlap = Boolean(allow_overlap);
+
+    // Detecção de sobreposição de horário em minutos exatos
+    if (data && hora_inicio && calculatedHoraFim && profissional_id) {
       const profsToCheck = [profissional_id, ...(Array.isArray(auxiliares_ids) ? auxiliares_ids : [])];
       const { data: allConflicts } = await supabase
         .from('salon_appointments')
@@ -390,7 +405,6 @@ export async function PUT(req: Request) {
         .neq('status', 'CANCELLED');
 
       const hasOverlap = (allConflicts || []).some((app: any) => {
-        if (appointmentAllowsOverlap(app)) return false;
         const cAuxiliares = Array.isArray(app.assistant_ids) 
           ? app.assistant_ids 
           : (Array.isArray(app.sub_services) ? (app.sub_services.find((s: any) => s?._meta)?.auxiliares_ids || []) : []);
@@ -398,21 +412,19 @@ export async function PUT(req: Request) {
         const temProfissionalComum = profsToCheck.some(pid => cAllProfs.includes(pid));
         if (!temProfissionalComum) return false;
 
-        const startA = hora_inicio;
-        const endA = calculatedHoraFim;
-        const startB = app.start_time;
-        const endB = app.end_time;
+        const startA = timeToMinutes(hora_inicio);
+        const endA = timeToMinutes(calculatedHoraFim);
+        const startB = timeToMinutes(app.start_time);
+        const endB = timeToMinutes(app.end_time);
         return startA < endB && endA > startB;
       });
 
-      if (hasOverlap) {
-        return NextResponse.json({ error: 'O novo horário selecionado conflita com outro agendamento existente deste profissional ou de um dos auxiliares.' }, { status: 409 });
+      if (hasOverlap || allow_overlap) {
+        // Marca como sobreposição/encaixe permitido sem bloquear a secretária com erro 409
+        patch.allow_overlap = true;
       }
     }
 
-    const patch: Record<string, any> = {
-      updated_at: new Date().toISOString()
-    };
     if (cliente_id) patch.customer_id = cliente_id;
     if (profissional_id) patch.professional_id = profissional_id;
     if (servico_id) patch.service_id = servico_id;

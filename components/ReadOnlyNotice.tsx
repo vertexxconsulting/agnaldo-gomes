@@ -30,3 +30,4 @@ export function ReadOnlyNotice({ modulo, className = '' }: ReadOnlyNoticeProps) 
     </div>
   );
 }
+

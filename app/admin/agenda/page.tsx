@@ -259,6 +259,106 @@ function getAgendamentoHoraFim(a: Agendamento, servicosList: Servico[]): string 
   return minutesToTime(totalMins);
 }
 
+interface InvasaoInfo {
+  invade: boolean;
+  tipo: 'invade_proximo' | 'sobreposicao_simultanea';
+  proximoAppt: Agendamento;
+  proximoClienteNome: string;
+  proximaHoraInicio: string;
+  minutosInvasao: number;
+  horaFimCalculada: string;
+}
+
+function getInvasaoProximo(
+  appt: {
+    id?: string;
+    profissional_id: string;
+    data: string;
+    hora_inicio: string;
+    hora_fim?: string;
+    servico_id?: string;
+    sub_servicos?: any[];
+    auxiliares_ids?: string[];
+  },
+  todosAgendamentos: Agendamento[],
+  servicosList: Servico[],
+  clientesList: Cliente[]
+): InvasaoInfo | null {
+  if (!appt.hora_inicio || !appt.profissional_id || !appt.data) return null;
+
+  const inicioMin = timeToMinutes(appt.hora_inicio);
+  let fimMin = appt.hora_fim ? timeToMinutes(appt.hora_fim) : 0;
+  if (!fimMin || fimMin <= inicioMin) {
+    const mainServ = servicosList.find(s => s.id === appt.servico_id);
+    const durPrincipal = mainServ?.duracao_min ?? 30;
+    const durSub = (appt.sub_servicos || []).reduce((acc, sub) => {
+      const sId = typeof sub === 'string' ? sub : sub?.id;
+      const sObj = servicosList.find(s => s.id === sId);
+      return acc + (sObj?.duracao_min ?? 0);
+    }, 0);
+    fimMin = inicioMin + durPrincipal + durSub;
+  }
+  const horaFimCalculada = minutesToTime(fimMin);
+
+  const profsEnvolvidos = [
+    appt.profissional_id,
+    ...(Array.isArray(appt.auxiliares_ids) ? appt.auxiliares_ids : [])
+  ];
+
+  const conflitos = todosAgendamentos.filter(a => {
+    if (a.id && appt.id && a.id === appt.id) return false;
+    if (a.data !== appt.data) return false;
+    if (a.status === 'cancelado') return false;
+
+    const aProfs = [
+      a.profissional_id,
+      ...(Array.isArray(a.auxiliares_ids) ? a.auxiliares_ids : [])
+    ];
+    const temMesmoProf = profsEnvolvidos.some(pid => aProfs.includes(pid));
+    if (!temMesmoProf) return false;
+
+    const aInicioMin = timeToMinutes(a.hora_inicio);
+    const aFimMin = timeToMinutes(getAgendamentoHoraFim(a, servicosList));
+
+    // Sobreposição temporal
+    return aInicioMin < fimMin && aFimMin > inicioMin;
+  });
+
+  if (conflitos.length === 0) return null;
+
+  // Prioriza o agendamento seguinte que é invadido (inicia estritamente depois do início deste)
+  const proximos = conflitos
+    .filter(a => timeToMinutes(a.hora_inicio) > inicioMin)
+    .sort((a, b) => timeToMinutes(a.hora_inicio) - timeToMinutes(b.hora_inicio));
+
+  if (proximos.length > 0) {
+    const prox = proximos[0];
+    const proxInicioMin = timeToMinutes(prox.hora_inicio);
+    const minutosInvasao = fimMin - proxInicioMin;
+    return {
+      invade: true,
+      tipo: 'invade_proximo',
+      proximoAppt: prox,
+      proximoClienteNome: getClienteNome(prox.cliente_id, clientesList),
+      proximaHoraInicio: prox.hora_inicio,
+      minutosInvasao,
+      horaFimCalculada
+    };
+  }
+
+  // Sobreposição simultânea (começou no mesmo horário ou antes)
+  const simultaneo = conflitos[0];
+  return {
+    invade: true,
+    tipo: 'sobreposicao_simultanea',
+    proximoAppt: simultaneo,
+    proximoClienteNome: getClienteNome(simultaneo.cliente_id, clientesList),
+    proximaHoraInicio: simultaneo.hora_inicio,
+    minutosInvasao: fimMin - inicioMin,
+    horaFimCalculada
+  };
+}
+
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
 function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
@@ -926,6 +1026,50 @@ function AgendaContent() {
       }
     };
   }, [formData.data, formData.profissional_id, profissionais, agendamentos, servicos, editingApptId]);
+
+  // Alerta em tempo real no modal de agendamento caso o procedimento invada o próximo agendamento
+  const avisoInvasaoForm = useMemo(() => {
+    if (!showForm || !formData.data || !formData.profissional_id || !formData.servico_id || !formData.hora_inicio) {
+      return null;
+    }
+    const profIdFinal = (isRestrictedProfissional && meuProfissional) ? meuProfissional.id : formData.profissional_id;
+    const durCalc = calcularDuracaoTotal(formData.servico_id, formData.sub_servicos);
+    const durMin = formData.duracao_min ? parseInt(formData.duracao_min) : durCalc;
+    const [h, m] = formData.hora_inicio.split(':').map(Number);
+    const fim = new Date(2000, 0, 1, h, m + durMin);
+    const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
+
+    return getInvasaoProximo(
+      {
+        id: editingApptId || undefined,
+        profissional_id: profIdFinal,
+        data: formData.data,
+        hora_inicio: formData.hora_inicio,
+        hora_fim: horaFim,
+        servico_id: formData.servico_id,
+        sub_servicos: formData.sub_servicos,
+        auxiliares_ids: formData.auxiliares_ids,
+      },
+      agendamentos,
+      servicos,
+      clientes
+    );
+  }, [
+    showForm,
+    formData.data,
+    formData.profissional_id,
+    formData.servico_id,
+    formData.sub_servicos,
+    formData.duracao_min,
+    formData.hora_inicio,
+    formData.auxiliares_ids,
+    isRestrictedProfissional,
+    meuProfissional,
+    editingApptId,
+    agendamentos,
+    servicos,
+    clientes,
+  ]);
 
   async function mudarStatus(id: string, status: StatusAgendamento) {
     if (isReadOnly) {
@@ -1826,7 +1970,7 @@ function AgendaContent() {
             data: formData.data,
             hora_inicio: formData.hora_inicio,
             hora_fim: horaFim,
-            allow_overlap: formData.allow_overlap,
+            allow_overlap: formData.allow_overlap || Boolean(avisoInvasaoForm),
             is_fixed: formData.is_fixed,
             recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
             recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null,
@@ -1850,7 +1994,7 @@ function AgendaContent() {
               data: formData.data,
               hora_inicio: formData.hora_inicio,
               hora_fim: horaFim,
-              allow_overlap: formData.allow_overlap,
+              allow_overlap: formData.allow_overlap || Boolean(avisoInvasaoForm),
               is_fixed: formData.is_fixed,
               recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
             };
@@ -1914,28 +2058,51 @@ function AgendaContent() {
           is_fixed: formData.is_fixed,
           recurrence_type: formData.is_fixed ? formData.recurrence_type : null,
           recurrence_custom_day: (formData.is_fixed && formData.recurrence_type === 'CUSTOM') ? parseInt(formData.recurrence_custom_day) : null,
-          allow_overlap: formData.allow_overlap
+          allow_overlap: formData.allow_overlap || Boolean(avisoInvasaoForm)
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar agendamento');
 
-      const novoAgendamento: Agendamento = {
-        id: data.agendamento?.id ?? Date.now().toString(36),
-        cliente_id: formData.cliente_id,
-        profissional_id: profIdFinal,
-        servico_id: formData.servico_id,
-        sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id.trim() !== ''),
-        auxiliares_ids: formData.auxiliares_ids,
-        data: formData.data,
-        hora_inicio: formData.hora_inicio,
-        hora_fim: horaFim,
-        status: 'confirmado',
-        canal: 'recepcao',
-        allow_overlap: formData.allow_overlap,
-        criado_em: data.agendamento?.created_at ?? new Date().toISOString()
-      };
-      setAgendamentos(prev => [...prev, novoAgendamento]);
+      const isOverlapped = data.agendamento?.allow_overlap ?? (formData.allow_overlap || Boolean(avisoInvasaoForm));
+
+      const novosCriados: Agendamento[] = [];
+      if (Array.isArray(data.agendamentos) && data.agendamentos.length > 0) {
+        data.agendamentos.forEach((ag: any) => {
+          novosCriados.push({
+            id: ag.id,
+            cliente_id: formData.cliente_id,
+            profissional_id: profIdFinal,
+            servico_id: formData.servico_id,
+            sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''),
+            auxiliares_ids: formData.auxiliares_ids,
+            data: ag.date || formData.data,
+            hora_inicio: ag.start_time?.slice(0, 5) || formData.hora_inicio,
+            hora_fim: ag.end_time?.slice(0, 5) || horaFim,
+            status: 'confirmado',
+            canal: 'recepcao',
+            allow_overlap: ag.allow_overlap ?? isOverlapped,
+            criado_em: ag.created_at ?? new Date().toISOString()
+          });
+        });
+      } else {
+        novosCriados.push({
+          id: data.agendamento?.id ?? Date.now().toString(36),
+          cliente_id: formData.cliente_id,
+          profissional_id: profIdFinal,
+          servico_id: formData.servico_id,
+          sub_servicos: formData.sub_servicos.filter(sub => typeof sub === 'string' ? sub.trim() !== '' : sub.id?.trim() !== ''),
+          auxiliares_ids: formData.auxiliares_ids,
+          data: formData.data,
+          hora_inicio: formData.hora_inicio,
+          hora_fim: horaFim,
+          status: 'confirmado',
+          canal: 'recepcao',
+          allow_overlap: isOverlapped,
+          criado_em: data.agendamento?.created_at ?? new Date().toISOString()
+        });
+      }
+      setAgendamentos(prev => [...prev, ...novosCriados]);
       setDataSelecionada(formData.data); // Navega automaticamente para o dia agendado
       setShowForm(false);
       setEditingApptId(null);
@@ -2515,6 +2682,7 @@ function AgendaContent() {
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
                                     const estilo = getEstiloProcesso(a.status);
+                                    const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
 
                                     return (
                                       <div 
@@ -2522,7 +2690,9 @@ function AgendaContent() {
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border rounded-lg ${
                                           densidade === 'compacta' ? 'p-2' : 'p-2.5'
-                                        } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass}`}
+                                        } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass} ${
+                                          invasao ? 'border-amber-400/80 dark:border-amber-500/70 shadow-amber-500/10' : ''
+                                        }`}
                                       >
                                         <div 
                                           className="absolute left-0 top-0 bottom-0 w-1.5" 
@@ -2571,6 +2741,19 @@ function AgendaContent() {
                                                   Pausa liberada
                                                 </span>
                                               )}
+                                              {invasao && (
+                                                <span 
+                                                  className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
+                                                  title={
+                                                    invasao.tipo === 'invade_proximo'
+                                                      ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
+                                                      : `Horário compartilhado/sobreposto com ${invasao.proximoClienteNome}`
+                                                  }
+                                                >
+                                                  <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : 'Sobreposição'}</span>
+                                                </span>
+                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -2588,6 +2771,7 @@ function AgendaContent() {
                                     const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
                                     const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
                                     const estilo = getEstiloProcesso(a.status);
+                                    const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
 
                                     return (
                                       <div 
@@ -2595,7 +2779,9 @@ function AgendaContent() {
                                         onClick={() => setSelectedAppt(a)}
                                         className={`text-xs border border-dashed rounded-lg ${
                                           densidade === 'compacta' ? 'p-1.5' : 'p-2'
-                                        } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass}`}
+                                        } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass} ${
+                                          invasao ? 'border-amber-400/80 dark:border-amber-500/70' : ''
+                                        }`}
                                         title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
                                       >
                                         <div 
@@ -2636,6 +2822,19 @@ function AgendaContent() {
                                               >
                                                 {estilo.label}
                                               </span>
+                                              {invasao && (
+                                                <span 
+                                                  className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
+                                                  title={
+                                                    invasao.tipo === 'invade_proximo'
+                                                      ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
+                                                      : `Horário compartilhado/sobreposto com ${invasao.proximoClienteNome}`
+                                                  }
+                                                >
+                                                  <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : 'Sobreposição'}</span>
+                                                </span>
+                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -2717,6 +2916,35 @@ function AgendaContent() {
                   <span>Permite sobreposição / encaixe durante pausas</span>
                 </div>
               )}
+              {(() => {
+                const invasao = getInvasaoProximo(selectedAppt, agendamentos, servicos, clientes);
+                if (!invasao) return null;
+                return (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                      <span>
+                        {invasao.tipo === 'invade_proximo'
+                          ? 'Atenção: Invade o agendamento seguinte'
+                          : 'Atenção: Horário sobreposto / Encaixe'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-foreground/80">
+                      {invasao.tipo === 'invade_proximo' ? (
+                        <>
+                          Este atendimento termina às <strong>{invasao.horaFimCalculada}</strong> e ultrapassa o horário de início de{' '}
+                          <strong>{invasao.proximoClienteNome}</strong> (às {invasao.proximaHoraInicio}) em{' '}
+                          <strong>{invasao.minutosInvasao} minutos</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Este atendimento coincide com o horário de <strong>{invasao.proximoClienteNome}</strong> (às {invasao.proximaHoraInicio}).
+                        </>
+                      )}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex flex-col gap-2 shrink-0 pt-3 border-t border-[var(--border-subtle)]">
@@ -5055,22 +5283,18 @@ function AgendaContent() {
                         required
                       >
                         {horariosDisponiveis.map(slot => {
-                          const podeSelecionar = !slot.ocupado || formData.allow_overlap || slot.permiteEncaixe;
                           let labelTexto = '— Livre';
                           if (slot.ocupado) {
                             if (slot.permiteEncaixe) {
                               labelTexto = '— Encaixe liberado (Pausa)';
-                            } else if (formData.allow_overlap) {
-                              labelTexto = '— Encaixe';
                             } else {
-                              labelTexto = '(Ocupado)';
+                              labelTexto = '— Ocupado (Encaixe/Sobreposição)';
                             }
                           }
                           return (
                             <option 
                               key={slot.hora} 
-                              value={slot.hora} 
-                              disabled={!podeSelecionar}
+                              value={slot.hora}
                             >
                               {slot.hora} {labelTexto}
                             </option>
@@ -5098,6 +5322,39 @@ function AgendaContent() {
                   }`}>
                     {statusDiaInfo.tipo === 'aberto' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
                     <span>{statusDiaInfo.texto}</span>
+                  </div>
+                )}
+
+                {/* Alerta Visual em Tempo Real de Invasão de Horário ou Sobreposição */}
+                {avisoInvasaoForm && (
+                  <div className="p-3.5 rounded-lg text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 flex items-start gap-2.5 animate-in fade-in">
+                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>Aviso: Horário com Sobreposição / Encaixe</span>
+                        <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.2 rounded font-semibold text-amber-600 dark:text-amber-400">
+                          Permitido na Agenda
+                        </span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-foreground/80">
+                        {avisoInvasaoForm.tipo === 'invade_proximo' ? (
+                          <>
+                            Este procedimento terminará às <strong>{avisoInvasaoForm.horaFimCalculada}</strong> e{' '}
+                            <strong>ultrapassa o horário do agendamento seguinte</strong> de{' '}
+                            <strong>{avisoInvasaoForm.proximoClienteNome}</strong> (início às {avisoInvasaoForm.proximaHoraInicio}) em{' '}
+                            <strong>{avisoInvasaoForm.minutosInvasao} minutos</strong>.
+                          </>
+                        ) : (
+                          <>
+                            Este horário coincide com outro atendimento marcado para{' '}
+                            <strong>{avisoInvasaoForm.proximoClienteNome}</strong> às {avisoInvasaoForm.proximaHoraInicio}.
+                          </>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-foreground/60 italic">
+                        O agendamento será salvo normalmente como encaixe/sobreposição sem bloqueios de erro.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

@@ -113,3 +113,4 @@ export function useModulePermission(moduleId: AdminModuleId): ModulePermissionRe
     isSuperAdmin,
   };
 }
+
