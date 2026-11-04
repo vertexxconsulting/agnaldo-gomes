@@ -1753,14 +1753,7 @@ export default function AdminFinanceiro() {
 
               {/* Footer com Ações */}
               <div className="p-4 border-t border-white/10 bg-black/60 flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.print()}
-                  className="gap-1.5 text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
-                >
-                  <Printer size={15} /> Imprimir Comprovante
-                </Button>
+
 
                 <div className="flex items-center gap-2">
                   <Button

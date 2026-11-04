@@ -2794,28 +2794,7 @@ export default function ComissoesPage() {
               </div>
             )}
 
-            {/* Rodapé e Ações do Modal */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-[var(--border-subtle)] print:hidden">
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copiarWhatsAppRecibo}
-                  className="flex-1 sm:flex-none text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
-                >
-                  {whatsAppCopiado ? <Check size={14} className="mr-1.5" /> : <Share2 size={14} className="mr-1.5" />}
-                  {whatsAppCopiado ? 'Copiado para o WhatsApp!' : 'Copiar p/ WhatsApp'}
-                </Button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.print()}
-                  className="flex-1 sm:flex-none text-xs"
-                >
-                  <Printer size={14} className="mr-1.5" /> Imprimir / PDF
-                </Button>
-              </div>
 
               <div className="flex gap-2 w-full sm:w-auto">
                 {reciboModalData.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && !isReadOnly && (
