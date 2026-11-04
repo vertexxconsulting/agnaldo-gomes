@@ -464,7 +464,42 @@ export default function AdminFinanceiro() {
   const getValorEfetivo = (a: Agendamento): number => {
     // Se o agendamento foi unificado em outra comanda principal, seu valor a pagar individual é zero (cobrado no pai)
     if (a.unificado_em_id) return 0;
-    if (a.total_amount != null) return Number(a.total_amount);
+
+    // Comanda multi-profissional ou com serviços adicionais
+    const comanda = (a as any).comanda_unificada;
+    if (comanda) {
+      let total = 0;
+      // Somar todos os procedimentos da comanda
+      if (Array.isArray(comanda.procedimentos) && comanda.procedimentos.length > 0) {
+        total += comanda.procedimentos.reduce((acc: number, p: any) => {
+          const val = p.valor_final != null
+            ? Number(p.valor_final)
+            : Number((p.preco_tabela || 0) - (p.desconto_valor || 0));
+          return acc + (isNaN(val) ? 0 : val);
+        }, 0);
+      }
+
+      // Somar produtos vendidos no balcão / home care
+      const prods = comanda.produtos_venda || comanda.produtos_comprados || [];
+      if (Array.isArray(prods) && prods.length > 0) {
+        total += prods.reduce((acc: number, pr: any) => {
+          const preco = Number(pr.preco_unitario ?? pr.preco ?? 0);
+          const qtd = Number(pr.quantidade ?? pr.qty ?? 1);
+          const valProd = preco * qtd;
+          return acc + (isNaN(valProd) ? 0 : valProd);
+        }, 0);
+      }
+
+      if (total > 0) {
+        return Number(total.toFixed(2));
+      }
+    }
+
+    // Fallback para agendamento simples
+    if (a.total_amount != null && Number(a.total_amount) > 0) {
+      return Number(a.total_amount);
+    }
+
     return getServicoPreco(a.servico_id, servicos);
   };
 
