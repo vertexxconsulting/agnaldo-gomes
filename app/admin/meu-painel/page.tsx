@@ -366,8 +366,9 @@ export default function MeuPainelPage() {
       } else {
         setIsAuxiliarCabelo(false);
         setIsRestrictedProfissional(false);
-        setProfissionais(profs || []);
-        const targetId = matched ? matched.id : (profs && profs.length > 0 ? profs[0].id : '');
+        const profsAtivos = (profs || []).filter(p => p.ativo);
+        setProfissionais(profsAtivos);
+        const targetId = matched ? matched.id : (profsAtivos.length > 0 ? profsAtivos[0].id : '');
         setSelectedProfId(prev => prev || targetId);
         if (targetId) {
           carregarComissoesProf(targetId);
