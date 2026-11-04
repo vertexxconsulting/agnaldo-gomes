@@ -960,9 +960,9 @@ export default function MeuPainelPage() {
     }
   };
 
-  const prodSelMeuPainel = produtosLoja.find(p => p.id === produtoSelecionado);
+  const prodSelMeuPainel = estoque.find(p => p.id === produtoSelecionado);
   const qNumMeuPainel = Math.max(1, parseInt(produtoQty) || 1);
-  const subtotalProdMeuPainel = (prodSelMeuPainel?.price || 0) * qNumMeuPainel;
+  const subtotalProdMeuPainel = (prodSelMeuPainel?.sale_price || 0) * qNumMeuPainel;
 
   const handleProdDescPct = (pctStr: string) => {
     setProdutoDescPct(pctStr);
@@ -994,17 +994,17 @@ export default function MeuPainelPage() {
     const qtyNum = parseInt(produtoQty);
     if (isNaN(qtyNum) || qtyNum <= 0) return;
 
-    const prod = produtosLoja.find(p => p.id === produtoSelecionado);
+    const prod = estoque.find(p => p.id === produtoSelecionado);
     if (!prod) return;
 
-    const stockDisponivel = Number(prod.stock_quantity ?? (prod as any).stock ?? (prod as any).stock_qty ?? 0);
+    const stockDisponivel = Number(prod.stock_qty ?? 0);
     if (stockDisponivel <= 0) {
       alert('Produto com estoque zerado no momento. Não é possível lançar.');
       return;
     }
 
     const finalQty = Math.min(qtyNum, stockDisponivel);
-    const precoBase = prod.price ?? 0;
+    const precoBase = prod.sale_price ?? 0;
     const sub = precoBase * finalQty;
     const descVal = Math.min(sub, Math.max(0, parseFloat(produtoDescValor) || 0));
     const precoFinalUnit = (sub - descVal) / finalQty;
@@ -1987,13 +1987,13 @@ export default function MeuPainelPage() {
                 <div className="flex gap-2">
                   <ProductSearchSelect
                     mode="sale"
-                    products={produtosLoja.filter(p => (Number(p.stock_quantity ?? p.stock ?? p.stock_qty ?? 0)) > 0)}
+                    products={produtosDeVenda}
                     value={produtoSelecionado}
                     onChange={(pid) => {
                       setProdutoSelecionado(pid);
                       if (produtoDescPct) {
-                        const p = produtosLoja.find(x => x.id === pid);
-                        const sub = (p?.price || 0) * (Math.max(1, parseInt(produtoQty) || 1));
+                        const p = estoque.find(x => x.id === pid);
+                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(produtoQty) || 1));
                         const pct = parseFloat(produtoDescPct) || 0;
                         const val = (sub * pct) / 100;
                         setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
@@ -2012,8 +2012,8 @@ export default function MeuPainelPage() {
                       const q = e.target.value;
                       setProdutoQty(q);
                       if (produtoDescPct) {
-                        const p = produtosLoja.find(x => x.id === produtoSelecionado);
-                        const sub = (p?.price || 0) * (Math.max(1, parseInt(q) || 1));
+                        const p = estoque.find(x => x.id === produtoSelecionado);
+                        const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
                         const pct = parseFloat(produtoDescPct) || 0;
                         const val = (sub * pct) / 100;
                         setProdutoDescValor(val > 0 ? val.toFixed(2) : '');
@@ -2110,8 +2110,8 @@ export default function MeuPainelPage() {
                 <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden">
                   <div className="bg-foreground/5 p-2 text-xs font-bold uppercase text-foreground/60">Itens na Comanda</div>
                   {comandaAtual.filter(i => i.type === 'PRODUTO').map(item => {
-                    const prod = produtosLoja.find(p => p.id === item.inventory_id);
-                    const precoOrig = prod?.price || 0;
+                    const prod = estoque.find(p => p.id === item.inventory_id);
+                    const precoOrig = prod?.sale_price || 0;
                     const temDesc = precoOrig > item.price;
                     return (
                       <div key={item.id} className="p-2.5 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
