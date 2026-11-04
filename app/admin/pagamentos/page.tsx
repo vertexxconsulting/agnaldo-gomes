@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
+import {
   Wallet, DollarSign, ArrowDownRight, Plus, AlertTriangle, Coffee, Wrench, Users, Receipt, Archive, LockOpen, Lock,
   Calendar, CheckCircle, FileText, ArrowUpRight, Search, CreditCard, Banknote, Smartphone, ExternalLink,
   CheckCircle2, Clock, ShieldCheck, AlertCircle, Edit3, X, CheckCheck, RefreshCw, Filter, Sparkles, Scale, Beaker,
@@ -474,8 +474,8 @@ export default function AdminFinanceiro() {
     setActionLoadingId(ag.id);
     try {
       const finalMetodo = metodoCustom || ag.payment_method || 'DINHEIRO';
-      const finalValor = valorCustom !== undefined 
-        ? valorCustom 
+      const finalValor = valorCustom !== undefined
+        ? valorCustom
         : getValorEfetivo(ag);
 
       const unificadosIds = ag.comanda_unificada?.agendamentos_unificados_ids || [];
@@ -503,7 +503,7 @@ export default function AdminFinanceiro() {
         appointmentDate: ag.data,
         serviceId: ag.servico_id,
         paymentMethod: finalMetodo,
-        installments: ag.comanda_unificada?.installments || 1,
+        installments: (ag as any).installments || 1,
         comissoes: demoConfirmacao.comissoesIndividuais
           .filter(c => c.valor > 0)
           .map(c => {
@@ -590,7 +590,7 @@ export default function AdminFinanceiro() {
           appointmentDate: ag.data,
           serviceId: ag.servico_id,
           paymentMethod: met,
-          installments: ag.comanda_unificada?.installments || 1,
+          installments: (ag as any).installments || 1,
           comissoes: demoLote.comissoesIndividuais
             .filter(c => c.valor > 0)
             .map(c => {
@@ -665,9 +665,9 @@ export default function AdminFinanceiro() {
 
   // Resumos do Caixa Físico
   const totalDespesas = transacoes.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
-  const totalFisico = (caixaAberto ? Number(caixaAberto.opening_balance) : 0) + 
-                      transacoes.filter(t => t.payment_method === 'DINHEIRO' && t.type === 'INCOME').reduce((acc, t) => acc + Number(t.amount), 0) -
-                      transacoes.filter(t => t.payment_method === 'DINHEIRO' && t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
+  const totalFisico = (caixaAberto ? Number(caixaAberto.opening_balance) : 0) +
+    transacoes.filter(t => t.payment_method === 'DINHEIRO' && t.type === 'INCOME').reduce((acc, t) => acc + Number(t.amount), 0) -
+    transacoes.filter(t => t.payment_method === 'DINHEIRO' && t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
 
   // Resumos dos Atendimentos do Salão no Dia (Segregação de Funções)
   const atendimentosConcluidos = agendamentosDia.filter(a => a.status === 'concluido');
@@ -743,11 +743,11 @@ export default function AdminFinanceiro() {
           {!isReadOnly ? (
             <div className="flex items-center gap-3 mt-4">
               <span className="text-foreground font-medium">Fundo de Caixa R$</span>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={abrirCaixaValor}
                 onChange={e => setAbrirCaixaValor(e.target.value)}
-                placeholder="0.00" 
+                placeholder="0.00"
                 className="bg-background border border-border-subtle rounded-md px-3 py-2 w-32 focus:border-gold outline-none"
               />
               <Button onClick={handleAbrirCaixa} variant="primary" disabled={actionLoading}>
@@ -821,11 +821,11 @@ export default function AdminFinanceiro() {
             <CardGlass className="p-6 mb-6 border border-gold/30">
               <h3 className="font-bold text-lg mb-4 text-foreground">Registrar Pagamento / Despesa</h3>
               <form onSubmit={handleLancarDespesa} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 <div className="space-y-1">
                   <label className="text-sm text-foreground/60">Categoria da Despesa</label>
-                  <select 
-                    value={formCat} 
+                  <select
+                    value={formCat}
                     onChange={e => setFormCat(e.target.value)}
                     className="w-full bg-background border border-border-subtle rounded-md px-3 py-2 text-foreground focus:border-gold outline-none"
                   >
@@ -837,7 +837,7 @@ export default function AdminFinanceiro() {
 
                 <div className="space-y-1">
                   <label className="text-sm text-foreground/60">Valor (R$)</label>
-                  <input 
+                  <input
                     type="number" step="0.01" required
                     value={formAmount} onChange={e => setFormAmount(e.target.value)}
                     className="w-full bg-background border border-border-subtle rounded-md px-3 py-2 text-foreground focus:border-gold outline-none"
@@ -847,7 +847,7 @@ export default function AdminFinanceiro() {
 
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-sm text-foreground/60">Descrição / Motivo</label>
-                  <input 
+                  <input
                     type="text" required
                     value={formDesc} onChange={e => setFormDesc(e.target.value)}
                     className="w-full bg-background border border-border-subtle rounded-md px-3 py-2 text-foreground focus:border-gold outline-none"
@@ -857,8 +857,8 @@ export default function AdminFinanceiro() {
 
                 <div className="space-y-1">
                   <label className="text-sm text-foreground/60">Forma de Pagamento</label>
-                  <select 
-                    value={formMethod} 
+                  <select
+                    value={formMethod}
                     onChange={e => setFormMethod(e.target.value)}
                     className="w-full bg-background border border-border-subtle rounded-md px-3 py-2 text-foreground focus:border-gold outline-none"
                   >
@@ -965,9 +965,9 @@ export default function AdminFinanceiro() {
               }}
               className="bg-background border border-border-subtle rounded-md px-3 py-1.5 text-xs text-foreground focus:border-gold outline-none"
             />
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => carregarAtendimentosDia(dataFiltro)}
               className="text-xs py-1.5 px-3 h-auto"
             >
@@ -991,7 +991,7 @@ export default function AdminFinanceiro() {
                   </span>
                 </h3>
                 <p className="text-xs text-foreground/70 mt-1 max-w-2xl">
-                  A recepção liberou as clientes e registrou o pré-fechamento no total de <strong className="text-amber-500 font-bold">R$ {totalPendenteGestao.toFixed(2)}</strong>. 
+                  A recepção liberou as clientes e registrou o pré-fechamento no total de <strong className="text-amber-500 font-bold">R$ {totalPendenteGestao.toFixed(2)}</strong>.
                   Confira os valores abaixo e clique em <strong>Confirmar e Contabilizar</strong> para oficializar no caixa e financeiro do Studio.
                 </p>
               </div>
@@ -1019,7 +1019,7 @@ export default function AdminFinanceiro() {
           <CardGlass className="p-4 border-l-4 border-l-emerald-600 bg-emerald-500/5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-foreground/70 font-semibold">Contabilizado (Gestão)</span>
-              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-md"><ShieldCheck size={14}/></span>
+              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-md"><ShieldCheck size={14} /></span>
             </div>
             <p className="text-xl font-black text-emerald-700 mt-1">
               R$ {totalConfirmadoGestao.toFixed(2)}
@@ -1030,7 +1030,7 @@ export default function AdminFinanceiro() {
           <CardGlass className="p-4 border-l-4 border-l-amber-600 bg-amber-500/5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-foreground/70 font-semibold">Aguardando Gestão</span>
-              <span className="p-1.5 bg-amber-100 text-amber-800 rounded-md"><Clock size={14}/></span>
+              <span className="p-1.5 bg-amber-100 text-amber-800 rounded-md"><Clock size={14} /></span>
             </div>
             <p className="text-xl font-black text-amber-800 mt-1">
               R$ {totalPendenteGestao.toFixed(2)}
@@ -1041,7 +1041,7 @@ export default function AdminFinanceiro() {
           <CardGlass className="p-4 border-l-4 border-l-gold bg-gold/5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-foreground/70 font-semibold">Dinheiro Contabilizado</span>
-              <span className="p-1.5 bg-gold/15 text-gold-dim rounded-md"><Banknote size={14}/></span>
+              <span className="p-1.5 bg-gold/15 text-gold-dim rounded-md"><Banknote size={14} /></span>
             </div>
             <p className="text-xl font-black text-foreground mt-1">
               R$ {totalDinheiroConfirmado.toFixed(2)}
@@ -1052,7 +1052,7 @@ export default function AdminFinanceiro() {
           <CardGlass className="p-4 border-l-4 border-l-blue-600 bg-blue-500/5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-foreground/70 font-semibold">Cartões e PIX Contabilizados</span>
-              <span className="p-1.5 bg-blue-100 text-blue-800 rounded-md"><CreditCard size={14}/></span>
+              <span className="p-1.5 bg-blue-100 text-blue-800 rounded-md"><CreditCard size={14} /></span>
             </div>
             <p className="text-xl font-black text-foreground mt-1">
               R$ {(totalCartoesConfirmado + totalPixConfirmado).toFixed(2)}
@@ -1068,31 +1068,28 @@ export default function AdminFinanceiro() {
           </span>
           <button
             onClick={() => setFiltroStatus('TODOS')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filtroStatus === 'TODOS'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filtroStatus === 'TODOS'
                 ? 'bg-foreground text-background shadow-sm'
                 : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
-            }`}
+              }`}
           >
             Todos ({agendamentosDia.length})
           </button>
           <button
             onClick={() => setFiltroStatus('PENDING_CONFIRMATION')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              filtroStatus === 'PENDING_CONFIRMATION'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${filtroStatus === 'PENDING_CONFIRMATION'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-amber-800 hover:bg-amber-100/70 border border-amber-200/60'
-            }`}
+              }`}
           >
             <Clock size={13} /> Aguardando Gestão ({preFechadosPendentes.length})
           </button>
           <button
             onClick={() => setFiltroStatus('CONFIRMED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              filtroStatus === 'CONFIRMED'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${filtroStatus === 'CONFIRMED'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-emerald-800 hover:bg-emerald-100/70 border border-emerald-200/60'
-            }`}
+              }`}
           >
             <ShieldCheck size={13} /> Contabilizados Gestão ({contabilizadosGestao.length})
           </button>
@@ -1135,7 +1132,7 @@ export default function AdminFinanceiro() {
                     const nomeServico = getServicoNome(ag.servico_id, servicos);
                     const nomeProf = getProfissionalNome(ag.profissional_id, profissionais);
                     const valor = getValorEfetivo(ag);
-                    
+
                     const isPendingConfirmation = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
                     const isConfirmed = ag.status === 'concluido' && (ag.financial_status === 'CONFIRMED' || !ag.financial_status);
                     const isUnificado = Boolean(ag.unificado_em_id);
@@ -1143,11 +1140,10 @@ export default function AdminFinanceiro() {
                     const agendamentoPai = isUnificado ? agendamentosDia.find(x => x.id === ag.unificado_em_id) : null;
 
                     return (
-                      <tr 
-                        key={ag.id} 
-                        className={`border-b border-border-subtle/50 transition-colors ${
-                          isPendingConfirmation ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-foreground/5'
-                        }`}
+                      <tr
+                        key={ag.id}
+                        className={`border-b border-border-subtle/50 transition-colors ${isPendingConfirmation ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-foreground/5'
+                          }`}
                       >
                         <td className="p-4 text-sm font-mono font-medium text-foreground">
                           {ag.hora_inicio || '—'}
@@ -1236,16 +1232,16 @@ export default function AdminFinanceiro() {
                           ) : (() => {
                             const m = (ag.payment_method || '').toUpperCase();
                             if (m === 'DINHEIRO') {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-xs"><Banknote size={12}/> Dinheiro</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-xs"><Banknote size={12} /> Dinheiro</span>;
                             }
                             if (m === 'PIX') {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-950 border border-emerald-300 inline-flex items-center gap-1 shadow-xs"><Smartphone size={12}/> PIX</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-950 border border-emerald-300 inline-flex items-center gap-1 shadow-xs"><Smartphone size={12} /> PIX</span>;
                             }
                             if (m.includes('CREDITO') || m.includes('CRÉDITO')) {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-950 border border-blue-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12}/> C. Crédito</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-950 border border-blue-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12} /> C. Crédito</span>;
                             }
                             if (m.includes('DEBITO') || m.includes('DÉBITO')) {
-                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-950 border border-indigo-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12}/> C. Débito</span>;
+                              return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-950 border border-indigo-300 inline-flex items-center gap-1 shadow-xs"><CreditCard size={12} /> C. Débito</span>;
                             }
                             if (m) {
                               return <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-stone-100 text-stone-900 border border-stone-300 inline-flex items-center gap-1 shadow-xs">💳 {ag.payment_method}</span>;
@@ -1264,26 +1260,25 @@ export default function AdminFinanceiro() {
                               </span>
                             </div>
                           ) : (
-                            <span className={`font-black text-sm ${
-                              isConfirmed 
-                                ? 'text-emerald-700' 
-                                : isPendingConfirmation 
-                                ? 'text-amber-800' 
-                                : 'text-stone-900'
-                            }`}>
+                            <span className={`font-black text-sm ${isConfirmed
+                                ? 'text-emerald-700'
+                                : isPendingConfirmation
+                                  ? 'text-amber-800'
+                                  : 'text-stone-900'
+                              }`}>
                               R$ {valor.toFixed(2)}
                             </span>
                           )}
                         </td>
                         <td className="p-4 text-center">
                           <span className={`text-[11px] uppercase px-2.5 py-0.5 rounded-full font-bold border shadow-xs
-                            ${ag.status === 'concluido' 
-                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300' 
-                              : ag.status === 'em_atendimento' 
-                              ? 'bg-blue-100 text-blue-900 border-blue-300' 
-                              : ag.status === 'cancelado' || ag.status === 'no_show' 
-                              ? 'bg-red-100 text-red-900 border-red-300' 
-                              : 'bg-amber-100 text-amber-950 border-amber-300'}`}
+                            ${ag.status === 'concluido'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : ag.status === 'em_atendimento'
+                                ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                : ag.status === 'cancelado' || ag.status === 'no_show'
+                                  ? 'bg-red-100 text-red-900 border-red-300'
+                                  : 'bg-amber-100 text-amber-950 border-amber-300'}`}
                           >
                             {STATUS_LABELS[ag.status] || ag.status}
                           </span>
@@ -1336,11 +1331,10 @@ export default function AdminFinanceiro() {
                               {/* Botão de Extrato Discriminado da Cliente / Gestão */}
                               <button
                                 onClick={() => setExtratoComandaAppt(ag)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                                  isMultiProf
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${isMultiProf
                                     ? 'bg-gold/15 text-gold border border-gold/40 hover:bg-gold hover:text-black'
                                     : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-border-subtle'
-                                }`}
+                                  }`}
                                 title="Ver demonstrativo discriminado completo do atendimento com procedimentos, profissionais, descontos e insumos"
                               >
                                 <Receipt size={13} />
@@ -1416,19 +1410,19 @@ export default function AdminFinanceiro() {
         const isMulti = Boolean(comanda && comanda.procedimentos && comanda.procedimentos.length > 0);
 
         // Procedimentos a listar
-        const procedimentos = isMulti 
-          ? comanda!.procedimentos 
+        const procedimentos = isMulti
+          ? comanda!.procedimentos
           : [{
-              servico_id: ag.servico_id,
-              servico_nome: getServicoNome(ag.servico_id, servicos),
-              profissional_id: ag.profissional_id,
-              profissional_nome: getProfissionalNome(ag.profissional_id, profissionais),
-              preco_tabela: getServicoPreco(ag.servico_id, servicos),
-              desconto_pct: 0,
-              desconto_valor: 0,
-              desconto_motivo: '',
-              insumos_custo: Number(ag.product_cost) || 0
-            }];
+            servico_id: ag.servico_id,
+            servico_nome: getServicoNome(ag.servico_id, servicos),
+            profissional_id: ag.profissional_id,
+            profissional_nome: getProfissionalNome(ag.profissional_id, profissionais),
+            preco_tabela: getServicoPreco(ag.servico_id, servicos),
+            desconto_pct: 0,
+            desconto_valor: 0,
+            desconto_motivo: '',
+            insumos_custo: Number(ag.product_cost) || 0
+          }];
 
         const subtotalServicos = procedimentos.reduce((acc: number, p) => acc + p.preco_tabela, 0);
         const totalDescontos = procedimentos.reduce((acc: number, p) => acc + p.desconto_valor, 0);
@@ -1476,7 +1470,7 @@ export default function AdminFinanceiro() {
         return (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="dark bg-[#121214] text-stone-100 border border-gold/40 rounded-2xl w-full max-w-2xl my-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-              
+
               {/* Header do Extrato */}
               <div className="flex items-center justify-between p-5 border-b border-white/10 bg-gradient-to-r from-gold/15 via-gold/5 to-transparent">
                 <div className="flex items-center gap-3">
@@ -1492,7 +1486,7 @@ export default function AdminFinanceiro() {
                     </p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setExtratoComandaAppt(null)}
                   className="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
@@ -1502,7 +1496,7 @@ export default function AdminFinanceiro() {
 
               {/* Conteúdo do Extrato */}
               <div className="p-5 space-y-5 overflow-y-auto flex-1 text-sm custom-scrollbar">
-                
+
                 {/* Cartão de Identificação da Cliente e Atendimento */}
                 <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
@@ -1742,16 +1736,16 @@ export default function AdminFinanceiro() {
                     <span className="text-xs text-stone-300 font-semibold uppercase tracking-wider block">
                       Valor Total a Pagar pela Cliente
                     </span>
-                     <span className="text-2xl font-black text-gold font-mono tracking-tight">
-                       <input
-                         type="number"
-                         step="0.01"
-                         min="0"
-                         value={valorFinalEditado || valorFinalCliente.toFixed(2)}
-                         onChange={(e) => setValorFinalEditado(e.target.value)}
-                         className="w-36 text-right bg-black/60 border border-gold/50 rounded-lg px-2.5 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/50 shadow-inner"
-                       />
-                     </span>
+                    <span className="text-2xl font-black text-gold font-mono tracking-tight">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={valorFinalEditado || valorFinalCliente.toFixed(2)}
+                        onChange={(e) => setValorFinalEditado(e.target.value)}
+                        className="w-36 text-right bg-black/60 border border-gold/50 rounded-lg px-2.5 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/50 shadow-inner"
+                      />
+                    </span>
                   </div>
                 </div>
 
@@ -1759,8 +1753,8 @@ export default function AdminFinanceiro() {
 
               {/* Footer com Ações */}
               <div className="p-4 border-t border-white/10 bg-black/60 flex flex-wrap items-center justify-between gap-2">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => window.print()}
                   className="gap-1.5 text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
@@ -1769,9 +1763,9 @@ export default function AdminFinanceiro() {
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setExtratoComandaAppt(null)}
                     className="text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
                   >
@@ -1822,7 +1816,7 @@ export default function AdminFinanceiro() {
                     </p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setEditingApptGestao(null)}
                   className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
                 >
@@ -1975,9 +1969,9 @@ export default function AdminFinanceiro() {
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setEditingApptGestao(null)}
                   className="text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
                 >

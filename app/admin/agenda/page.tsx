@@ -361,26 +361,39 @@ function getInvasaoProximo(
 
 const DIAS_CHAVE = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
 
-function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
-  if (p.categoria) {
-    const catNorm = p.categoria.trim().toLowerCase();
-    if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic')) return 'Unhas';
-    if (catNorm.includes('cabelo') || catNorm.includes('capilar')) return 'Cabelo';
-    return p.categoria;
+function getCategoriaProfissional(p: Profissional): string {
+  if (p.categoria && p.categoria.trim()) {
+    return p.categoria.trim();
   }
   // Fallback por especialidades se a coluna ainda não estiver populada
   if (p.especialidades && p.especialidades.length > 0) {
     const tags = p.especialidades.map(e => e.toLowerCase()).join(' ');
     if (tags.includes('unha') || tags.includes('manicure') || tags.includes('pedicure') || tags.includes('esmalte') || tags.includes('podolog')) {
-      return 'Unhas';
+      return 'Manicure';
     }
   }
   // Fallback por nome
   const nomeLower = (p.nome || '').toLowerCase();
   if (nomeLower.includes('unha') || nomeLower.includes('manicure') || nomeLower.includes('camila')) {
-    return 'Unhas';
+    return 'Manicure';
   }
-  return 'Cabelo';
+  return 'Cabeleireiro(a)';
+}
+
+function getCategoriaIconAgenda(cat?: string | null): string {
+  const c = (cat || '').toLowerCase();
+  if (c.includes('auxiliar')) return '🤝';
+  if (c.includes('unha') || c.includes('manicure') || c.includes('pedic') || c.includes('podolog')) return '💅';
+  if (c.includes('barb')) return '💈';
+  return '✂️';
+}
+
+function isProfissionalSessaoCabelo(p: Profissional): boolean {
+  const catNorm = getCategoriaProfissional(p).toLowerCase();
+  if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic') || catNorm.includes('podolog')) {
+    return false;
+  }
+  return true;
 }
 
 function AgendaContent() {
@@ -446,7 +459,7 @@ function AgendaContent() {
     }, 0);
     return durPrincipal + durSub;
   };
-  
+
   // Checkout / Recebimento
   const [checkoutAppt, setCheckoutAppt] = useState<Agendamento | null>(null);
   const [checkoutExtras, setCheckoutExtras] = useState<Array<{ id: string; servicoId: string; preco: number }>>([]);
@@ -482,13 +495,13 @@ function AgendaContent() {
   const [splitComissaoCustom, setSplitComissaoCustom] = useState<Record<string, number>>({});
   const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
 
-  const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{ 
-    id: string; 
-    inventory_id: string; 
-    qty: number; 
+  const [checkoutProdutos, setCheckoutProdutos] = useState<Array<{
+    id: string;
+    inventory_id: string;
+    qty: number;
     precoOriginal: number;
-    preco: number; 
-    descontoPct?: number; 
+    preco: number;
+    descontoPct?: number;
     descontoValor?: number;
     profissional_id?: string;
     profissional_nome?: string;
@@ -636,7 +649,7 @@ function AgendaContent() {
   useEffect(() => {
     const carregarDados = async () => {
       setLoading(true);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       const agendamentoIdConfirmar = urlParams.get('confirmar');
       const agendamentoIdCancelar = urlParams.get('cancelar');
@@ -650,14 +663,14 @@ function AgendaContent() {
       }
 
       const [
-        agendamentosData, 
-        bloqueiosData, 
-        profissionaisData, 
-        clientesData, 
-        servicosData, 
+        agendamentosData,
+        bloqueiosData,
+        profissionaisData,
+        clientesData,
+        servicosData,
         profServData,
-        estoqueData, 
-        spData, 
+        estoqueData,
+        spData,
         taxasData,
         regrasData
       ] = await Promise.all([
@@ -752,7 +765,7 @@ function AgendaContent() {
 
             const profIdFromPerm = profProfile?.permissions?.professional_id || userMeta?.permissions?.professional_id || userMeta?.professional_id || (profProfile as any)?.professional_id;
             const ativos = profissionaisData.filter((p: Profissional) => p.ativo);
-            
+
             let matchedProf = ativos.find((p: Profissional) => profIdFromPerm && p.id === profIdFromPerm);
             if (!matchedProf) {
               matchedProf = ativos.find((p: Profissional) => p.user_id && p.user_id === user.id);
@@ -776,11 +789,11 @@ function AgendaContent() {
               // AUXILIAR DE CABELO: Acesso à agenda de todos os profissionais da sessão de CABELO
               setIsAuxiliarCabelo(true);
               setIsRestrictedProfissional(false);
-              setCategoriaFiltro('Cabelo');
+              setCategoriaFiltro('todas');
               if (matchedProf) {
                 setMeuProfissional(matchedProf);
               }
-              const profsCabelo = ativos.filter((p: Profissional) => getCategoriaProfissional(p) === 'Cabelo');
+              const profsCabelo = ativos.filter((p: Profissional) => isProfissionalSessaoCabelo(p));
               setProfissionais(profsCabelo);
               setProfFiltro('todos');
               const idsCabelo = new Set(profsCabelo.map(p => p.id));
@@ -835,22 +848,19 @@ function AgendaContent() {
     carregarDados();
   }, [dataSelecionada]);
 
+  // Categorias dinâmicas vindas do banco de dados
+  const categoriasAgenda = useMemo(() => {
+    return Array.from(new Set(profissionais.map(p => getCategoriaProfissional(p)).filter(Boolean)));
+  }, [profissionais]);
+
   // Contagem de profissionais por categoria
   const countPorCategoria = useMemo(() => {
-    const counts: { todas: number; Cabelo: number; Unhas: number; [key: string]: number } = {
+    const counts: { todas: number; [key: string]: number } = {
       todas: profissionais.length,
-      Cabelo: 0,
-      Unhas: 0
     };
     for (const p of profissionais) {
       const cat = getCategoriaProfissional(p);
-      if (cat === 'Unhas') {
-        counts.Unhas = (counts.Unhas || 0) + 1;
-      } else if (cat === 'Cabelo') {
-        counts.Cabelo = (counts.Cabelo || 0) + 1;
-      } else {
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
+      counts[cat] = (counts[cat] || 0) + 1;
     }
     return counts;
   }, [profissionais]);
@@ -879,7 +889,7 @@ function AgendaContent() {
       return meuProfissional ? [meuProfissional] : [];
     }
     if (isAuxiliarCabelo) {
-      const cabeloProfs = profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo');
+      const cabeloProfs = profissionais.filter(p => isProfissionalSessaoCabelo(p));
       if (profFiltro === 'todos') return cabeloProfs;
       return cabeloProfs.filter(p => p.id === profFiltro);
     }
@@ -890,8 +900,8 @@ function AgendaContent() {
 
   // Filtro por data e profissional na visualização respeitando a categoria ativa (Titular ou Auxiliar)
   const doDia = agendamentos.filter(a => a.data === dataSelecionada);
-  let agendamentosFiltrados = doDia.filter(a => 
-    idsVisiveis.has(a.profissional_id) || 
+  let agendamentosFiltrados = doDia.filter(a =>
+    idsVisiveis.has(a.profissional_id) ||
     (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.some(id => idsVisiveis.has(id)))
   );
 
@@ -922,7 +932,7 @@ function AgendaContent() {
     const idsVinculados = profServicos
       .filter(ps => ps.profissional_id === formData.profissional_id)
       .map(ps => ps.servico_id);
-    
+
     // Retorna EXCLUSIVAMENTE os procedimentos vinculados ao profissional (sem fallback geral)
     if (idsVinculados.length > 0) {
       return servicos.filter(s => s.ativo && idsVinculados.includes(s.id));
@@ -1083,11 +1093,11 @@ function AgendaContent() {
     try {
       const { atualizarStatusAgendamento } = await import('@/lib/supabase-queries');
       const success = await atualizarStatusAgendamento(id, status);
-      
+
       if (success) {
         // Atualizar estado local
         setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-        
+
         // Sincronizar com Bolten CRM (background, não bloqueia UI)
         try {
           await fetch('/api/bolten/sync-status', {
@@ -1194,7 +1204,7 @@ function AgendaContent() {
       }
 
       setApptParaCancelar(null);
-      fetchAgendamentos().then(setAgendamentos).catch(() => {});
+      fetchAgendamentos().then(setAgendamentos).catch(() => { });
     } catch (err: any) {
       console.error('Erro ao cancelar agendamento:', err);
       toast.error(err.message || 'Falha ao cancelar agendamento.');
@@ -1505,7 +1515,7 @@ function AgendaContent() {
 
     // 2. DETECÇÃO DE ATENDIMENTOS DA MESMA CLIENTE NO MESMO DIA (Multi-profissionais)
     // Ex: cliente fez coloração com um profissional e escova/unha com outro no mesmo dia!
-    const outrosDaCliente = agendamentos.filter(a => 
+    const outrosDaCliente = agendamentos.filter(a =>
       a.id !== appt.id &&
       a.cliente_id === appt.cliente_id &&
       a.data === appt.data &&
@@ -1712,8 +1722,8 @@ function AgendaContent() {
   const handleProcedimentoProfissional = (procId: string, profId: string) => {
     setCheckoutProcedimentos(prev => prev.map(p => {
       if (p.id !== procId) return p;
-      return { 
-        ...p, 
+      return {
+        ...p,
         profissional_id: profId,
         profissional_nome: getProfissionalNome(profId, profissionais)
       };
@@ -1972,7 +1982,7 @@ function AgendaContent() {
     const [h, m] = formData.hora_inicio.split(':').map(Number);
     const fim = new Date(2000, 0, 1, h, m + duracaoMin);
     const horaFim = `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}`;
-    
+
     if (editingApptId) {
       try {
         const res = await fetch('/api/agendamentos/admin', {
@@ -2161,7 +2171,7 @@ function AgendaContent() {
                     Sua Agenda Pessoal
                   </span>
                   <span className="text-xs font-semibold text-foreground/70 flex items-center gap-1">
-                    {getCategoriaProfissional(meuProfissional) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                    {getCategoriaIconAgenda(getCategoriaProfissional(meuProfissional))} {getCategoriaProfissional(meuProfissional)}
                   </span>
                 </div>
                 <h2 className="text-lg font-black text-foreground mt-0.5 tracking-tight">
@@ -2223,7 +2233,7 @@ function AgendaContent() {
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6"/>
+                    <path d="m6 9 6 6 6-6" />
                   </svg>
                 </div>
               </div>
@@ -2236,52 +2246,36 @@ function AgendaContent() {
               <span className="text-xs font-bold uppercase tracking-wider text-foreground/50 mr-1 flex items-center gap-1">
                 <Sparkles size={13} className="text-gold" /> Categoria:
               </span>
-              <div className="inline-flex p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl gap-1 shadow-sm">
+              <div className="inline-flex flex-wrap p-1 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-xl gap-1 shadow-sm">
                 <button
                   onClick={() => handleCategoriaChange('todas')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    categoriaFiltro === 'todas'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${categoriaFiltro === 'todas'
                       ? 'bg-gold text-background shadow'
                       : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <span>Todos os Atendimentos</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    categoriaFiltro === 'todas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-                  }`}>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${categoriaFiltro === 'todas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                    }`}>
                     {countPorCategoria.todas || 0}
                   </span>
                 </button>
-                <button
-                  onClick={() => handleCategoriaChange('Cabelo')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    categoriaFiltro === 'Cabelo'
-                      ? 'bg-gold text-background shadow'
-                      : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-                  }`}
-                >
-                  <span>Cabelo</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    categoriaFiltro === 'Cabelo' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-                  }`}>
-                    {countPorCategoria.Cabelo || 0}
-                  </span>
-                </button>
-                <button
-                  onClick={() => handleCategoriaChange('Unhas')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    categoriaFiltro === 'Unhas'
-                      ? 'bg-gold text-background shadow'
-                      : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
-                  }`}
-                >
-                  <span>Unhas</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    categoriaFiltro === 'Unhas' ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
-                  }`}>
-                    {countPorCategoria.Unhas || 0}
-                  </span>
-                </button>
+                {categoriasAgenda.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategoriaChange(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${categoriaFiltro === cat
+                        ? 'bg-gold text-background shadow'
+                        : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                      }`}
+                  >
+                    <span>{getCategoriaIconAgenda(cat)} {cat}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${categoriaFiltro === cat ? 'bg-black/20 text-background' : 'bg-foreground/10 text-foreground/60'
+                      }`}>
+                      {countPorCategoria[cat] || 0}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -2300,14 +2294,14 @@ function AgendaContent() {
                   const cat = getCategoriaProfissional(p);
                   return (
                     <option key={p.id} value={p.id} className="font-medium">
-                      {p.nome} — {cat === 'Unhas' ? 'Unhas' : 'Cabelo'}
+                      {p.nome} — {cat}
                     </option>
                   );
                 })}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m6 9 6 6 6-6"/>
+                  <path d="m6 9 6 6 6-6" />
                 </svg>
               </div>
             </div>
@@ -2370,11 +2364,10 @@ function AgendaContent() {
             <button
               type="button"
               onClick={() => handleMudarDensidade('expandida')}
-              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
-                densidade === 'expandida'
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${densidade === 'expandida'
                   ? 'bg-gold text-background shadow-xs font-extrabold'
                   : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
-              }`}
+                }`}
               title="Cards mais largos: espaço confortável para ver opções, insumos e clientes sem espremer"
             >
               <Columns3 size={13} />
@@ -2383,11 +2376,10 @@ function AgendaContent() {
             <button
               type="button"
               onClick={() => handleMudarDensidade('compacta')}
-              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
-                densidade === 'compacta'
+              className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${densidade === 'compacta'
                   ? 'bg-gold text-background shadow-xs font-extrabold'
                   : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
-              }`}
+                }`}
               title="Cards médios: formato equilibrado para ver mais colunas"
             >
               <LayoutGrid size={13} />
@@ -2395,15 +2387,15 @@ function AgendaContent() {
             </button>
           </div>
 
-          <ViewToggle 
+          <ViewToggle
             options={[
               { id: 'dia', label: 'Dia' },
               { id: 'semana', label: 'Semana' },
             ]}
-            selectedId={viewMode} 
-            onChange={setViewMode} 
+            selectedId={viewMode}
+            onChange={setViewMode}
           />
-          <Button 
+          <Button
             variant="outline"
             onClick={handleDispararLembretesHoje}
             disabled={disparandoLembretes}
@@ -2414,8 +2406,8 @@ function AgendaContent() {
             <span className="hidden sm:inline">{disparandoLembretes ? 'Disparando...' : 'Lembretes de Hoje'}</span>
           </Button>
           {!isReadOnly && (
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={() => {
                 abrirFormNovo();
               }}
@@ -2516,363 +2508,353 @@ function AgendaContent() {
                 )}
               </div>
             ) : (
-            <div className="flex min-h-[600px] w-max min-w-full">
-              {profissionaisVisiveisNaAgenda.map(prof => {
-                const isAgnaldo = (prof.nome || '').toLowerCase().includes('agnaldo') || prof.id === 'agnaldo';
-                const interval = isAgnaldo ? 20 : 30;
+              <div className="flex min-h-[600px] w-max min-w-full">
+                {profissionaisVisiveisNaAgenda.map(prof => {
+                  const isAgnaldo = (prof.nome || '').toLowerCase().includes('agnaldo') || prof.id === 'agnaldo';
+                  const interval = isAgnaldo ? 20 : 30;
 
-                const [ano, mes, dia] = dataSelecionada.split('-').map(Number);
-                const dataObj = new Date(ano, mes - 1, dia);
-                const diaSemana = dataObj.getDay();
-                
-                const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
-                const infoSalao = horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana];
-                
-                let profInicio = infoSalao?.inicio || '09:00';
-                let profFim = infoSalao?.fim || '19:00';
-                let profAtende = false;
-                
-                const jornadaProf = prof.jornada_semanal;
-                let intInicio = '';
-                let intFim = '';
+                  const [ano, mes, dia] = dataSelecionada.split('-').map(Number);
+                  const dataObj = new Date(ano, mes - 1, dia);
+                  const diaSemana = dataObj.getDay();
 
-                if (jornadaProf) {
-                  const chaveStr = DIAS_CHAVE[diaSemana];
-                  const cfgDia = jornadaProf[diaSemana] || (chaveStr ? jornadaProf[chaveStr] : undefined);
-                  if (cfgDia) {
-                    if (cfgDia.ativo !== false) {
+                  const horariosSalao = typeof window !== 'undefined' ? obterHorariosSalao() : DEFAULT_HORARIOS_SALAO;
+                  const infoSalao = horariosSalao[diaSemana] || DEFAULT_HORARIOS_SALAO[diaSemana];
+
+                  let profInicio = infoSalao?.inicio || '09:00';
+                  let profFim = infoSalao?.fim || '19:00';
+                  let profAtende = false;
+
+                  const jornadaProf = prof.jornada_semanal;
+                  let intInicio = '';
+                  let intFim = '';
+
+                  if (jornadaProf) {
+                    const chaveStr = DIAS_CHAVE[diaSemana];
+                    const cfgDia = jornadaProf[diaSemana] || (chaveStr ? jornadaProf[chaveStr] : undefined);
+                    if (cfgDia) {
+                      if (cfgDia.ativo !== false) {
+                        profAtende = true;
+                        profInicio = cfgDia.inicio || profInicio;
+                        profFim = cfgDia.fim || profFim;
+                        intInicio = cfgDia.intervalo_inicio || '';
+                        intFim = cfgDia.intervalo_fim || '';
+                      } else {
+                        profAtende = false;
+                      }
+                    } else if (infoSalao.aberto) {
                       profAtende = true;
-                      profInicio = cfgDia.inicio || profInicio;
-                      profFim = cfgDia.fim || profFim;
-                      intInicio = cfgDia.intervalo_inicio || '';
-                      intFim = cfgDia.intervalo_fim || '';
-                    } else {
-                      profAtende = false;
                     }
                   } else if (infoSalao.aberto) {
                     profAtende = true;
                   }
-                } else if (infoSalao.aberto) {
-                  profAtende = true;
-                }
 
-                const slots: string[] = [];
-                if (profAtende) {
-                  const [hIni, mIni] = profInicio.split(':').map(Number);
-                  const [hFim, mFim] = profFim.split(':').map(Number);
-                  const totalMinutosIni = hIni * 60 + mIni;
-                  const totalMinutosFim = hFim * 60 + mFim;
-                  
-                  let totalIntIni = -1;
-                  let totalIntFim = -1;
-                  if (intInicio && intFim) {
-                    const [hiI, miI] = intInicio.split(':').map(Number);
-                    totalIntIni = hiI * 60 + miI;
-                    const [hiF, miF] = intFim.split(':').map(Number);
-                    totalIntFim = hiF * 60 + miF;
-                  }
+                  const slots: string[] = [];
+                  if (profAtende) {
+                    const [hIni, mIni] = profInicio.split(':').map(Number);
+                    const [hFim, mFim] = profFim.split(':').map(Number);
+                    const totalMinutosIni = hIni * 60 + mIni;
+                    const totalMinutosFim = hFim * 60 + mFim;
 
-                  for (let m = totalMinutosIni; m < totalMinutosFim; m += interval) {
-                    if (totalIntIni > -1 && m >= totalIntIni && m < totalIntFim) {
-                      continue;
+                    let totalIntIni = -1;
+                    let totalIntFim = -1;
+                    if (intInicio && intFim) {
+                      const [hiI, miI] = intInicio.split(':').map(Number);
+                      totalIntIni = hiI * 60 + miI;
+                      const [hiF, miF] = intFim.split(':').map(Number);
+                      totalIntFim = hiF * 60 + miF;
                     }
-                    const hStr = String(Math.floor(m / 60)).padStart(2, '0');
-                    const minStr = String(m % 60).padStart(2, '0');
-                    slots.push(`${hStr}:${minStr}`);
-                  }
-                }
 
-                return (
-                  <div 
-                    key={prof.id} 
-                    className={`flex-1 ${
-                      densidade === 'compacta' 
-                        ? 'min-w-[290px] sm:min-w-[310px] md:min-w-[330px]' 
-                        : 'min-w-[350px] sm:min-w-[390px] md:min-w-[430px]'
-                    } border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5 transition-all`}
-                  >
-                    {/* Cabeçalho do Profissional (Card do Profissional) */}
-                    <div className={`border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)] transition-all ${
-                      densidade === 'compacta'
-                        ? 'p-2.5 flex items-center gap-2.5'
-                        : 'p-3 flex items-center gap-3'
-                    }`}>
-                      <div className="relative shrink-0 inline-block">
-                        {prof.foto_url ? (
-                          <img 
-                            src={prof.foto_url} 
-                            alt={prof.nome} 
-                            className={`rounded-full object-cover border-2 border-gold/50 shadow-xs shrink-0 ${
-                              densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
-                            }`} 
-                          />
-                        ) : (
-                          <div className={`rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center shadow-xs shrink-0 ${
-                            densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
-                          }`}>
-                            <User2 size={densidade === 'compacta' ? 16 : 20} className="text-gold" />
+                    for (let m = totalMinutosIni; m < totalMinutosFim; m += interval) {
+                      if (totalIntIni > -1 && m >= totalIntIni && m < totalIntFim) {
+                        continue;
+                      }
+                      const hStr = String(Math.floor(m / 60)).padStart(2, '0');
+                      const minStr = String(m % 60).padStart(2, '0');
+                      slots.push(`${hStr}:${minStr}`);
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={prof.id}
+                      className={`flex-1 ${densidade === 'compacta'
+                          ? 'min-w-[290px] sm:min-w-[310px] md:min-w-[330px]'
+                          : 'min-w-[350px] sm:min-w-[390px] md:min-w-[430px]'
+                        } border-r border-[var(--border-subtle)] last:border-0 flex flex-col bg-black/5 transition-all`}
+                    >
+                      {/* Cabeçalho do Profissional (Card do Profissional) */}
+                      <div className={`border-b border-[var(--border-subtle)] bg-[var(--color-card)] sticky top-14 md:top-0 z-20 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.25)] transition-all ${densidade === 'compacta'
+                          ? 'p-2.5 flex items-center gap-2.5'
+                          : 'p-3 flex items-center gap-3'
+                        }`}>
+                        <div className="relative shrink-0 inline-block">
+                          {prof.foto_url ? (
+                            <img
+                              src={prof.foto_url}
+                              alt={prof.nome}
+                              className={`rounded-full object-cover border-2 border-gold/50 shadow-xs shrink-0 ${densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
+                                }`}
+                            />
+                          ) : (
+                            <div className={`rounded-full bg-gold/10 border-2 border-gold/20 flex items-center justify-center shadow-xs shrink-0 ${densidade === 'compacta' ? 'w-9 h-9' : 'w-10 h-10'
+                              }`}>
+                              <User2 size={densidade === 'compacta' ? 16 : 20} className="text-gold" />
+                            </div>
+                          )}
+                          <span
+                            className="absolute -bottom-1 -right-1 text-[8px] px-1 py-0.2 rounded-full bg-gold text-white font-extrabold shadow-xs leading-none"
+                            title={getCategoriaProfissional(prof)}
+                          >
+                            {getCategoriaIconAgenda(getCategoriaProfissional(prof))}
+                          </span>
+                        </div>
+
+                        <div className="w-full min-w-0 text-left">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <span className="font-bold text-foreground text-xs uppercase tracking-tight truncate leading-tight" title={prof.nome}>
+                              {prof.nome}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold shrink-0">
+                              {getCategoriaProfissional(prof)}
+                            </span>
+                          </div>
+                          <div className="text-[9px] text-foreground/50 mt-0.5 truncate font-medium">
+                            {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
+                            {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Slots */}
+                      <div className="flex flex-col p-1.5 gap-1.5 h-full relative">
+                        {!profAtende && (
+                          <div className="absolute inset-0 flex items-center justify-center text-foreground/30 text-xs font-mono bg-[var(--background)]">
+                            INDISPONÍVEL
                           </div>
                         )}
-                        <span 
-                          className="absolute -bottom-1 -right-1 text-[8px] px-1 py-0.2 rounded-full bg-gold text-white font-extrabold shadow-xs leading-none"
-                          title={getCategoriaProfissional(prof)}
-                        >
-                          {getCategoriaProfissional(prof) === 'Unhas' ? '💅' : '✂️'}
-                        </span>
-                      </div>
+                        {profAtende && slots.length === 0 && (
+                          <div className="text-center text-xs text-foreground/50 mt-4">Nenhum horário disponível.</div>
+                        )}
 
-                      <div className="w-full min-w-0 text-left">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                          <span className="font-bold text-foreground text-xs uppercase tracking-tight truncate leading-tight" title={prof.nome}>
-                            {prof.nome}
-                          </span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gold/15 text-gold font-bold shrink-0">
-                            {getCategoriaProfissional(prof) === 'Unhas' ? 'Unhas' : 'Cabelo'}
-                          </span>
-                        </div>
-                        <div className="text-[9px] text-foreground/50 mt-0.5 truncate font-medium">
-                          {profAtende ? `${profInicio} às ${profFim}` : 'Não atende'}
-                          {intInicio && ` (Pausa: ${intInicio}-${intFim})`}
-                        </div>
-                      </div>
-                    </div>
+                        {profAtende && slots.map(time => {
+                          const slotMin = timeToMinutes(time);
 
-                    {/* Slots */}
-                    <div className="flex flex-col p-1.5 gap-1.5 h-full relative">
-                      {!profAtende && (
-                        <div className="absolute inset-0 flex items-center justify-center text-foreground/30 text-xs font-mono bg-[var(--background)]">
-                          INDISPONÍVEL
-                        </div>
-                      )}
-                      {profAtende && slots.length === 0 && (
-                        <div className="text-center text-xs text-foreground/50 mt-4">Nenhum horário disponível.</div>
-                      )}
-                      
-                      {profAtende && slots.map(time => {
-                        const slotMin = timeToMinutes(time);
+                          // Agendamentos que INICIAM dentro deste slot (ex: 13:00 ou 13:12 dentro de 13:00-13:30)
+                          const startingAppts = agendamentosFiltrados.filter(a => {
+                            const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
+                            if (!isEnvolvido || a.status === 'cancelado') return false;
+                            const aInicioMin = timeToMinutes(a.hora_inicio);
+                            return aInicioMin >= slotMin && aInicioMin < slotMin + interval;
+                          });
 
-                        // Agendamentos que INICIAM dentro deste slot (ex: 13:00 ou 13:12 dentro de 13:00-13:30)
-                        const startingAppts = agendamentosFiltrados.filter(a => {
-                          const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
-                          if (!isEnvolvido || a.status === 'cancelado') return false;
-                          const aInicioMin = timeToMinutes(a.hora_inicio);
-                          return aInicioMin >= slotMin && aInicioMin < slotMin + interval;
-                        });
+                          // Agendamentos em ANDAMENTO (iniciaram antes e terminam depois deste slot)
+                          const ongoingAppts = agendamentosFiltrados.filter(a => {
+                            const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
+                            if (!isEnvolvido || a.status === 'cancelado') return false;
+                            const aInicioMin = timeToMinutes(a.hora_inicio);
+                            const aFimMin = timeToMinutes(getAgendamentoHoraFim(a, servicos));
+                            return aInicioMin < slotMin && aFimMin > slotMin;
+                          });
 
-                        // Agendamentos em ANDAMENTO (iniciaram antes e terminam depois deste slot)
-                        const ongoingAppts = agendamentosFiltrados.filter(a => {
-                          const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
-                          if (!isEnvolvido || a.status === 'cancelado') return false;
-                          const aInicioMin = timeToMinutes(a.hora_inicio);
-                          const aFimMin = timeToMinutes(getAgendamentoHoraFim(a, servicos));
-                          return aInicioMin < slotMin && aFimMin > slotMin;
-                        });
+                          const temAgendamento = startingAppts.length > 0 || ongoingAppts.length > 0;
 
-                        const temAgendamento = startingAppts.length > 0 || ongoingAppts.length > 0;
-                        
-                        return (
-                          <div key={time} className={`flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm ${
-                            densidade === 'compacta' ? 'min-h-[64px]' : 'min-h-[74px]'
-                          } group relative overflow-hidden transition-colors hover:border-gold/30`}>
-                            {/* Left Time label */}
-                            <div className={`${
-                              densidade === 'compacta' ? 'w-11 text-[11px]' : 'w-13 text-[12px]'
-                            } bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center font-mono font-bold text-foreground/70 shrink-0`}>
-                              {time}
-                            </div>
-                            
-                            {/* Appts or Add */}
-                            <div className="flex-1 p-1 flex flex-col justify-center relative gap-1 min-w-0">
-                              {!temAgendamento ? (
-                                !isReadOnly ? (
-                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
-                                    <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
-                                      + Agendar
-                                    </span>
-                                  </div>
-                                ) : null
-                              ) : (
-                                <>
-                                  {startingAppts.map(a => {
-                                    const cliente = getClienteNome(a.cliente_id, clientes);
-                                    let servico = getServicoNome(a.servico_id, servicos);
-                                    if (a.sub_servicos && a.sub_servicos.length > 0) {
-                                      const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
-                                      servico += ' + ' + subNomes.join(' + ');
-                                    }
-                                    const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
-                                    const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
-                                    const estilo = getEstiloProcesso(a.status);
-                                    const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
+                          return (
+                            <div key={time} className={`flex border border-[var(--border-subtle)] rounded-lg bg-[var(--background)] shadow-sm ${densidade === 'compacta' ? 'min-h-[64px]' : 'min-h-[74px]'
+                              } group relative overflow-hidden transition-colors hover:border-gold/30`}>
+                              {/* Left Time label */}
+                              <div className={`${densidade === 'compacta' ? 'w-11 text-[11px]' : 'w-13 text-[12px]'
+                                } bg-black/5 border-r border-[var(--border-subtle)] flex items-center justify-center font-mono font-bold text-foreground/70 shrink-0`}>
+                                {time}
+                              </div>
 
-                                    return (
-                                      <div 
-                                        key={a.id} 
-                                        onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border rounded-lg ${
-                                          densidade === 'compacta' ? 'p-2' : 'p-2.5'
-                                        } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass} ${
-                                          invasao ? 'border-amber-400/80 dark:border-amber-500/70 shadow-amber-500/10' : ''
-                                        }`}
-                                      >
-                                        <div 
-                                          className="absolute left-0 top-0 bottom-0 w-1.5" 
-                                          style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
-                                        />
-                                        <div className="pl-2">
-                                          {isAuxiliarNeste && (
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit shrink-0 whitespace-nowrap">
-                                              <Users size={10} className="text-gold" />
-                                              <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
-                                            </div>
-                                          )}
-                                          <div className="flex items-center justify-between gap-1.5">
-                                            <span className={`font-bold truncate leading-tight text-xs ${estilo.textCliente}`} title={cliente}>
-                                              {cliente}
-                                            </span>
-                                            <div className="flex items-center gap-1 shrink-0">
-                                              {a.allow_overlap && !isReadOnly && (
-                                                <button
-                                                  type="button"
-                                                  title="Encaixar cliente neste horário (Pausa/Encaixe)"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    abrirFormNovo(time, prof.id, true);
-                                                  }}
-                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-                                                >
-                                                  <Plus size={11} className="stroke-[2.5]" />
-                                                  <span>Encaixe</span>
-                                                </button>
-                                              )}
-                                              <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} - {horaFimDisplay}</span>
-                                            </div>
-                                          </div>
-                                          <div className={`truncate text-[10px] font-medium leading-tight mt-1 ${estilo.servicoClass}`} title={servico}>
-                                            {servico}
-                                          </div>
-                                          <div className="flex items-center justify-between mt-1.5 gap-1.5 flex-wrap">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shadow-xs whitespace-nowrap shrink-0 ${estilo.badgeClass}`}>
-                                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: estilo.dotColor }}></span>
-                                                <span className="whitespace-nowrap">{estilo.label}</span>
+                              {/* Appts or Add */}
+                              <div className="flex-1 p-1 flex flex-col justify-center relative gap-1 min-w-0">
+                                {!temAgendamento ? (
+                                  !isReadOnly ? (
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 cursor-pointer" onClick={() => abrirFormNovo(time, prof.id)}>
+                                      <span className="text-[10px] text-gold/80 hover:text-gold uppercase font-bold tracking-wider px-2 py-1 bg-gold/10 rounded">
+                                        + Agendar
+                                      </span>
+                                    </div>
+                                  ) : null
+                                ) : (
+                                  <>
+                                    {startingAppts.map(a => {
+                                      const cliente = getClienteNome(a.cliente_id, clientes);
+                                      let servico = getServicoNome(a.servico_id, servicos);
+                                      if (a.sub_servicos && a.sub_servicos.length > 0) {
+                                        const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
+                                        servico += ' + ' + subNomes.join(' + ');
+                                      }
+                                      const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                      const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+                                      const estilo = getEstiloProcesso(a.status);
+                                      const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
+
+                                      return (
+                                        <div
+                                          key={a.id}
+                                          onClick={() => setSelectedAppt(a)}
+                                          className={`text-xs border rounded-lg ${densidade === 'compacta' ? 'p-2' : 'p-2.5'
+                                            } cursor-pointer hover:shadow-md hover:brightness-[0.98] transition-all relative overflow-hidden h-full flex flex-col justify-center min-w-0 ${estilo.cardClass} ${invasao ? 'border-amber-400/80 dark:border-amber-500/70 shadow-amber-500/10' : ''
+                                            }`}
+                                        >
+                                          <div
+                                            className="absolute left-0 top-0 bottom-0 w-1.5"
+                                            style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
+                                          />
+                                          <div className="pl-2">
+                                            {isAuxiliarNeste && (
+                                              <div className="flex items-center gap-1 text-[9px] font-bold text-foreground bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30 mb-1 w-fit shrink-0 whitespace-nowrap">
+                                                <Users size={10} className="text-gold" />
+                                                <span>Auxiliar de {getProfissionalNome(a.profissional_id, profissionais)}</span>
                                               </div>
-                                              {a.allow_overlap && (
-                                                <span className="text-[8px] font-bold text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 whitespace-nowrap shrink-0">
-                                                  Pausa liberada
-                                                </span>
-                                              )}
-                                              {invasao && (
-                                                <span 
-                                                  className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
-                                                  title={
-                                                    invasao.tipo === 'invade_proximo'
-                                                      ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
-                                                      : `Encaixe / Horário compartilhado com ${invasao.proximoClienteNome}`
-                                                  }
-                                                >
-                                                  <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : '⚡ Encaixe'}</span>
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-
-                                  {ongoingAppts.map(a => {
-                                    const cliente = getClienteNome(a.cliente_id, clientes);
-                                    let servico = getServicoNome(a.servico_id, servicos);
-                                    if (a.sub_servicos && a.sub_servicos.length > 0) {
-                                      const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
-                                      servico += ' + ' + subNomes.join(' + ');
-                                    }
-                                    const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
-                                    const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
-                                    const estilo = getEstiloProcesso(a.status);
-                                    const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
-
-                                    return (
-                                      <div 
-                                        key={`ongoing-${a.id}-${time}`} 
-                                        onClick={() => setSelectedAppt(a)}
-                                        className={`text-xs border border-dashed rounded-lg ${
-                                          densidade === 'compacta' ? 'p-1.5' : 'p-2'
-                                        } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass} ${
-                                          invasao ? 'border-amber-400/80 dark:border-amber-500/70' : ''
-                                        }`}
-                                        title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
-                                      >
-                                        <div 
-                                          className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70" 
-                                          style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
-                                        />
-                                        <div className="pl-2">
-                                          <div className="flex items-center justify-between gap-1.5">
-                                            <span className={`font-semibold text-xs truncate leading-tight flex items-center gap-1 ${estilo.textCliente}`}>
-                                              <span className="text-xs font-bold shrink-0" style={{ color: estilo.barColor }}>↳</span> <span className="truncate">{cliente}</span>
-                                              {isAuxiliarNeste && (
-                                                <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30 shrink-0">Auxiliar</span>
-                                              )}
-                                            </span>
-                                            <div className="flex items-center gap-1 shrink-0">
-                                              {a.allow_overlap && !isReadOnly && (
-                                                <button
-                                                  type="button"
-                                                  title="Encaixar cliente neste horário (Pausa/Encaixe)"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    abrirFormNovo(time, prof.id, true);
-                                                  }}
-                                                  className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-                                                >
-                                                  <Plus size={11} className="stroke-[2.5]" />
-                                                  <span>Encaixe</span>
-                                                </button>
-                                              )}
-                                              <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} às {horaFimDisplay}</span>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center justify-between gap-1.5 mt-1 flex-wrap">
-                                            <div className={`truncate text-[10px] font-medium ${estilo.servicoClass}`}>{servico}</div>
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                              <span 
-                                                className={`text-[8px] font-bold uppercase px-1.5 py-0.2 rounded border whitespace-nowrap shrink-0 ${estilo.badgeClass}`}
-                                              >
-                                                {estilo.label}
+                                            )}
+                                            <div className="flex items-center justify-between gap-1.5">
+                                              <span className={`font-bold truncate leading-tight text-xs ${estilo.textCliente}`} title={cliente}>
+                                                {cliente}
                                               </span>
-                                              {invasao && (
-                                                <span 
-                                                  className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
-                                                  title={
-                                                    invasao.tipo === 'invade_proximo'
-                                                      ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
-                                                      : `Horário compartilhado/sobreposto com ${invasao.proximoClienteNome}`
-                                                  }
-                                                >
-                                                  <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : 'Sobreposição'}</span>
-                                                </span>
-                                              )}
+                                              <div className="flex items-center gap-1 shrink-0">
+                                                {a.allow_overlap && !isReadOnly && (
+                                                  <button
+                                                    type="button"
+                                                    title="Encaixar cliente neste horário (Pausa/Encaixe)"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      abrirFormNovo(time, prof.id, true);
+                                                    }}
+                                                    className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                                                  >
+                                                    <Plus size={11} className="stroke-[2.5]" />
+                                                    <span>Encaixe</span>
+                                                  </button>
+                                                )}
+                                                <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} - {horaFimDisplay}</span>
+                                              </div>
+                                            </div>
+                                            <div className={`truncate text-[10px] font-medium leading-tight mt-1 ${estilo.servicoClass}`} title={servico}>
+                                              {servico}
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1.5 gap-1.5 flex-wrap">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border shadow-xs whitespace-nowrap shrink-0 ${estilo.badgeClass}`}>
+                                                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: estilo.dotColor }}></span>
+                                                  <span className="whitespace-nowrap">{estilo.label}</span>
+                                                </div>
+                                                {a.allow_overlap && (
+                                                  <span className="text-[8px] font-bold text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 whitespace-nowrap shrink-0">
+                                                    Pausa liberada
+                                                  </span>
+                                                )}
+                                                {invasao && (
+                                                  <span
+                                                    className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
+                                                    title={
+                                                      invasao.tipo === 'invade_proximo'
+                                                        ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
+                                                        : `Encaixe / Horário compartilhado com ${invasao.proximoClienteNome}`
+                                                    }
+                                                  >
+                                                    <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                                                    <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : '⚡ Encaixe'}</span>
+                                                  </span>
+                                                )}
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </>
-                              )}
+                                      );
+                                    })}
+
+                                    {ongoingAppts.map(a => {
+                                      const cliente = getClienteNome(a.cliente_id, clientes);
+                                      let servico = getServicoNome(a.servico_id, servicos);
+                                      if (a.sub_servicos && a.sub_servicos.length > 0) {
+                                        const subNomes = a.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos));
+                                        servico += ' + ' + subNomes.join(' + ');
+                                      }
+                                      const horaFimDisplay = getAgendamentoHoraFim(a, servicos);
+                                      const isAuxiliarNeste = a.profissional_id !== prof.id && Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id);
+                                      const estilo = getEstiloProcesso(a.status);
+                                      const invasao = getInvasaoProximo(a, agendamentosFiltrados, servicos, clientes);
+
+                                      return (
+                                        <div
+                                          key={`ongoing-${a.id}-${time}`}
+                                          onClick={() => setSelectedAppt(a)}
+                                          className={`text-xs border border-dashed rounded-lg ${densidade === 'compacta' ? 'p-1.5' : 'p-2'
+                                            } cursor-pointer transition-all shadow-xs relative overflow-hidden h-full flex flex-col justify-center hover:brightness-[0.97] min-w-0 ${estilo.ongoingClass} ${invasao ? 'border-amber-400/80 dark:border-amber-500/70' : ''
+                                            }`}
+                                          title={`Em andamento: ${cliente} (${a.hora_inicio} às ${horaFimDisplay}) - Status: ${estilo.label} - Clique para ver ou editar`}
+                                        >
+                                          <div
+                                            className="absolute left-0 top-0 bottom-0 w-1.5 opacity-70"
+                                            style={{ backgroundColor: isAuxiliarNeste ? '#C5A059' : estilo.barColor }}
+                                          />
+                                          <div className="pl-2">
+                                            <div className="flex items-center justify-between gap-1.5">
+                                              <span className={`font-semibold text-xs truncate leading-tight flex items-center gap-1 ${estilo.textCliente}`}>
+                                                <span className="text-xs font-bold shrink-0" style={{ color: estilo.barColor }}>↳</span> <span className="truncate">{cliente}</span>
+                                                {isAuxiliarNeste && (
+                                                  <span className="text-[9px] text-foreground font-bold bg-gold/15 px-1 rounded border border-gold/30 shrink-0">Auxiliar</span>
+                                                )}
+                                              </span>
+                                              <div className="flex items-center gap-1 shrink-0">
+                                                {a.allow_overlap && !isReadOnly && (
+                                                  <button
+                                                    type="button"
+                                                    title="Encaixar cliente neste horário (Pausa/Encaixe)"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      abrirFormNovo(time, prof.id, true);
+                                                    }}
+                                                    className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 hover:bg-gold hover:text-background text-foreground font-bold text-[10px] flex items-center gap-0.5 transition-all border border-foreground/20 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                                                  >
+                                                    <Plus size={11} className="stroke-[2.5]" />
+                                                    <span>Encaixe</span>
+                                                  </button>
+                                                )}
+                                                <span className={`text-[10px] font-mono font-semibold whitespace-nowrap ${estilo.textHora}`}>{a.hora_inicio} às {horaFimDisplay}</span>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-1.5 mt-1 flex-wrap">
+                                              <div className={`truncate text-[10px] font-medium ${estilo.servicoClass}`}>{servico}</div>
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                <span
+                                                  className={`text-[8px] font-bold uppercase px-1.5 py-0.2 rounded border whitespace-nowrap shrink-0 ${estilo.badgeClass}`}
+                                                >
+                                                  {estilo.label}
+                                                </span>
+                                                {invasao && (
+                                                  <span
+                                                    className="text-[8px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/40 whitespace-nowrap shrink-0 flex items-center gap-0.5 shadow-xs"
+                                                    title={
+                                                      invasao.tipo === 'invade_proximo'
+                                                        ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
+                                                        : `Horário compartilhado/sobreposto com ${invasao.proximoClienteNome}`
+                                                    }
+                                                  >
+                                                    <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                                                    <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : 'Sobreposição'}</span>
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
             )}
           </DragScrollX>
         </div>
@@ -2889,7 +2871,7 @@ function AgendaContent() {
                 </h3>
                 <p className="text-sm text-gold">
                   {getServicoNome(selectedAppt.servico_id, servicos)}
-                  {selectedAppt.sub_servicos && selectedAppt.sub_servicos.length > 0 && 
+                  {selectedAppt.sub_servicos && selectedAppt.sub_servicos.length > 0 &&
                     ' + ' + selectedAppt.sub_servicos.map(sub => getServicoNome(typeof sub === 'string' ? sub : sub.id, servicos)).join(' + ')
                   }
                 </p>
@@ -2898,7 +2880,7 @@ function AgendaContent() {
                 <X size={20} />
               </button>
             </div>
-            
+
             {/* Detalhes (rolável em telas baixas, para os botões de ação ficarem sempre visíveis) */}
             <div className="space-y-2 mb-4 text-sm text-foreground/80 flex-1 min-h-0 overflow-y-auto pr-1">
               <p><strong>Data:</strong> {new Date(`${selectedAppt.data}T12:00:00`).toLocaleDateString('pt-BR')}</p>
@@ -2977,12 +2959,12 @@ function AgendaContent() {
                 <>
                   {selectedAppt.status === 'pendente' && (
                     <Button variant="primary" onClick={() => { mudarStatus(selectedAppt.id, 'confirmado'); setSelectedAppt(null); }}>
-                      <Check size={16} className="mr-2"/> Confirmar
+                      <Check size={16} className="mr-2" /> Confirmar
                     </Button>
                   )}
 
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="border-gold/40 text-gold hover:bg-gold/10 flex items-center justify-center gap-2"
                     onClick={() => abrirEdicao(selectedAppt)}
                   >
@@ -3121,11 +3103,10 @@ function AgendaContent() {
                         {/* Opção 1: Apenas o dia */}
                         <label
                           onClick={() => setModoCancelamento('apenas_dia')}
-                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            modoCancelamento === 'apenas_dia'
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${modoCancelamento === 'apenas_dia'
                               ? 'bg-amber-500/10 border-amber-500/50 text-foreground'
                               : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -3145,11 +3126,10 @@ function AgendaContent() {
                         {/* Opção 2: Cancelar futuros */}
                         <label
                           onClick={() => setModoCancelamento('cancelar_futuros')}
-                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            modoCancelamento === 'cancelar_futuros'
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${modoCancelamento === 'cancelar_futuros'
                               ? 'bg-amber-500/10 border-amber-500/50 text-foreground'
                               : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -3169,11 +3149,10 @@ function AgendaContent() {
                         {/* Opção 3: Excluir futuros da grade */}
                         <label
                           onClick={() => setModoCancelamento('excluir_futuros')}
-                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            modoCancelamento === 'excluir_futuros'
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${modoCancelamento === 'excluir_futuros'
                               ? 'bg-red-500/10 border-red-500/50 text-foreground'
                               : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.04]'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -3272,8 +3251,8 @@ function AgendaContent() {
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setLiveInsumoAppt(null)} 
+              <button
+                onClick={() => setLiveInsumoAppt(null)}
                 className="text-foreground/50 hover:text-foreground p-1 rounded-lg hover:bg-foreground/5 transition-colors"
               >
                 <X size={20} />
@@ -3304,11 +3283,10 @@ function AgendaContent() {
             </div>
 
             {/* Formulário de Nova Aplicação ou Edição */}
-            <div className={`border rounded-xl p-4 mb-5 space-y-4 transition-all ${
-              editingInsumoIndex !== null 
-                ? 'bg-gold/10 border-gold/40 shadow-sm' 
+            <div className={`border rounded-xl p-4 mb-5 space-y-4 transition-all ${editingInsumoIndex !== null
+                ? 'bg-gold/10 border-gold/40 shadow-sm'
                 : 'bg-foreground/[0.02] border-[var(--border-subtle)]'
-            }`}>
+              }`}>
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
                   {editingInsumoIndex !== null ? (
@@ -3406,7 +3384,7 @@ function AgendaContent() {
                     {liveInsumoProdId && liveInsumoQtd && (
                       <span className="text-gold font-mono font-bold">
                         Custo: R$ {(
-                          (estoque.find(p => p.id === liveInsumoProdId)?.price_per_gram || 0.10) * 
+                          (estoque.find(p => p.id === liveInsumoProdId)?.price_per_gram || 0.10) *
                           (parseFloat(liveInsumoQtd) || 0)
                         ).toFixed(2)}
                       </span>
@@ -3482,19 +3460,17 @@ function AgendaContent() {
                     const isBeingEdited = editingInsumoIndex === idx;
 
                     return (
-                      <div key={idx} className={`p-3 transition-colors flex items-center justify-between gap-3 text-xs ${
-                        isBeingEdited 
-                          ? 'bg-gold/15 border-l-4 border-l-gold' 
+                      <div key={idx} className={`p-3 transition-colors flex items-center justify-between gap-3 text-xs ${isBeingEdited
+                          ? 'bg-gold/15 border-l-4 border-l-gold'
                           : 'bg-foreground/[0.015] hover:bg-foreground/[0.03]'
-                      }`}>
+                        }`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="px-2 py-0.5 rounded bg-foreground/5 text-foreground font-semibold text-[10px] border border-[var(--border-subtle)]">
                               {ins.etapa || 'Procedimento'}
                             </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${
-                              isTitular ? 'bg-gold/15 text-gold-dim dark:text-gold border border-gold/30' : 'bg-foreground/10 text-foreground border border-[var(--border-subtle)]'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${isTitular ? 'bg-gold/15 text-gold-dim dark:text-gold border border-gold/30' : 'bg-foreground/10 text-foreground border border-[var(--border-subtle)]'
+                              }`}>
                               {isTitular ? <Sparkles size={10} /> : <Users size={10} />}
                               {profNome}
                             </span>
@@ -3533,11 +3509,10 @@ function AgendaContent() {
                               title="Editar este insumo"
                               onClick={() => handleEditarInsumoTempoReal(idx)}
                               disabled={liveInsumoLoading}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                isBeingEdited 
-                                  ? 'text-gold bg-gold/25' 
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isBeingEdited
+                                  ? 'text-gold bg-gold/25'
                                   : 'text-foreground/50 hover:text-gold hover:bg-gold/10'
-                              }`}
+                                }`}
                             >
                               <Pencil size={15} />
                             </button>
@@ -3594,121 +3569,538 @@ function AgendaContent() {
                 <X size={22} />
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* COLUNA ESQUERDA: Procedimentos, Insumos e Produtos */}
               <div className="lg:col-span-7 space-y-4 min-w-0">
                 {/* Banner de Unificação Multi-Profissional da Cliente */}
-              {agendamentosUnificadosIds.length > 1 && (
-                <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex items-start gap-3">
-                  <div className="p-2 bg-gold/20 text-gold rounded-lg mt-0.5 shrink-0">
-                    <Users size={18} />
+                {agendamentosUnificadosIds.length > 1 && (
+                  <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex items-start gap-3">
+                    <div className="p-2 bg-gold/20 text-gold rounded-lg mt-0.5 shrink-0">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Comanda Unificada Multi-Profissional</p>
+                      <p className="text-xs text-foreground/80 mt-0.5">
+                        Identificamos que <strong>{getClienteNome(checkoutAppt.cliente_id, clientes)}</strong> realizou {agendamentosUnificadosIds.length} procedimentos hoje com profissionais diferentes. Todos foram agrupados nesta comanda para cobrança e contabilização única na recepção!
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-foreground">Comanda Unificada Multi-Profissional</p>
-                    <p className="text-xs text-foreground/80 mt-0.5">
-                      Identificamos que <strong>{getClienteNome(checkoutAppt.cliente_id, clientes)}</strong> realizou {agendamentosUnificadosIds.length} procedimentos hoje com profissionais diferentes. Todos foram agrupados nesta comanda para cobrança e contabilização única na recepção!
-                    </p>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* LISTA DE PROCEDIMENTOS REALIZADOS POR CADA PROFISSIONAL & DESCONTOS INDIVIDUAIS */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Sparkles size={16} className="text-gold" />
-                    Procedimentos Realizados pela Cliente
-                  </h4>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-bold font-mono">
-                    {checkoutProcedimentos.length} {checkoutProcedimentos.length === 1 ? 'procedimento' : 'procedimentos'}
-                  </span>
-                </div>
-
+                {/* LISTA DE PROCEDIMENTOS REALIZADOS POR CADA PROFISSIONAL & DESCONTOS INDIVIDUAIS */}
                 <div className="space-y-3">
-                  {checkoutProcedimentos.map((proc, pIdx) => {
-                    const pNome = getProfissionalNome(proc.profissional_id, profissionais);
-                    const sNome = proc.servico_nome || getServicoNome(proc.servico_id, servicos);
-                    const temDesconto = proc.desconto_valor > 0;
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Sparkles size={16} className="text-gold" />
+                      Procedimentos Realizados pela Cliente
+                    </h4>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-bold font-mono">
+                      {checkoutProcedimentos.length} {checkoutProcedimentos.length === 1 ? 'procedimento' : 'procedimentos'}
+                    </span>
+                  </div>
 
-                    return (
-                      <div key={proc.id} className="p-3.5 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-2.5 shadow-sm">
-                        {/* Linha Topo: Serviço, Profissional Executor e Preço de Tabela */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            <span className="w-6 h-6 rounded-full bg-gold/15 text-gold text-xs font-bold flex items-center justify-center shrink-0">
-                              {pIdx + 1}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-bold text-sm text-foreground truncate">{sNome}</p>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                <span className="text-[11px] text-foreground/50">Executado por:</span>
-                                <select
-                                  value={proc.profissional_id}
-                                  onChange={e => handleProcedimentoProfissional(proc.id, e.target.value)}
-                                  className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded px-2 py-0.5 text-xs text-gold font-bold focus:outline-none focus:border-gold"
-                                >
-                                  {profissionais.filter(p => p.ativo).map(p => (
-                                    <option key={p.id} value={p.id}>{p.nome}</option>
-                                  ))}
-                                </select>
+                  <div className="space-y-3">
+                    {checkoutProcedimentos.map((proc, pIdx) => {
+                      const pNome = getProfissionalNome(proc.profissional_id, profissionais);
+                      const sNome = proc.servico_nome || getServicoNome(proc.servico_id, servicos);
+                      const temDesconto = proc.desconto_valor > 0;
+
+                      return (
+                        <div key={proc.id} className="p-3.5 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-2.5 shadow-sm">
+                          {/* Linha Topo: Serviço, Profissional Executor e Preço de Tabela */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <span className="w-6 h-6 rounded-full bg-gold/15 text-gold text-xs font-bold flex items-center justify-center shrink-0">
+                                {pIdx + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-sm text-foreground truncate">{sNome}</p>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="text-[11px] text-foreground/50">Executado por:</span>
+                                  <select
+                                    value={proc.profissional_id}
+                                    onChange={e => handleProcedimentoProfissional(proc.id, e.target.value)}
+                                    className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded px-2 py-0.5 text-xs text-gold font-bold focus:outline-none focus:border-gold"
+                                  >
+                                    {profissionais.filter(p => p.ativo).map(p => (
+                                      <option key={p.id} value={p.id}>{p.nome}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                              <div className="text-right">
+                                <p className="text-[10px] text-foreground/40 uppercase font-semibold">Tabela</p>
+                                <p className={`font-mono text-sm font-bold ${temDesconto ? 'line-through text-foreground/40' : 'text-foreground'}`}>
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
+                                </p>
+                              </div>
+                              {checkoutProcedimentos.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removerProcedimentoComanda(proc.id)}
+                                  className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                                  title="Remover procedimento da comanda"
+                                >
+                                  <X size={15} />
+                                </button>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                            <div className="text-right">
-                              <p className="text-[10px] text-foreground/40 uppercase font-semibold">Tabela</p>
-                              <p className={`font-mono text-sm font-bold ${temDesconto ? 'line-through text-foreground/40' : 'text-foreground'}`}>
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
-                              </p>
+                          {/* BLOCO DE DESCONTO INDIVIDUAL DO PROFISSIONAL NESTE PROCEDIMENTO */}
+                          <div className="p-2.5 bg-foreground/[0.02] border border-border-subtle/70 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                                <Tag size={12} /> Desconto do Profissional ({pNome}):
+                              </span>
+                              {temDesconto ? (
+                                <span className="text-[11px] text-emerald-900 dark:text-emerald-300 font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/60">
+                                  -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)} ({proc.desconto_pct.toFixed(0)}%)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-foreground/40">Sem desconto aplicado</span>
+                              )}
                             </div>
-                            {checkoutProcedimentos.length > 1 && (
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                              <div className="sm:col-span-3">
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    placeholder="0"
+                                    value={proc.desconto_pct || ''}
+                                    onChange={e => handleProcedimentoDescontoPct(proc.id, e.target.value)}
+                                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs font-mono text-center focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
+                                </div>
+                              </div>
+
+                              <div className="sm:col-span-4">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    placeholder="0.00"
+                                    value={proc.desconto_valor || ''}
+                                    onChange={e => handleProcedimentoDescontoValor(proc.id, e.target.value)}
+                                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="sm:col-span-5">
+                                <input
+                                  type="text"
+                                  placeholder="Motivo (opcional, ex: Cliente fidelidade...)"
+                                  value={proc.desconto_motivo || ''}
+                                  onChange={e => handleProcedimentoDescontoMotivo(proc.id, e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 px-2 text-xs focus:outline-none focus:border-emerald-500 placeholder:text-foreground/30"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Atalhos rápidos de % para este profissional */}
+                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                              <span className="text-[10px] text-foreground/40 mr-1">Atalhos:</span>
+                              {['0', '5', '10', '15', '20', '30'].map(pctVal => (
+                                <button
+                                  key={pctVal}
+                                  type="button"
+                                  onClick={() => handleProcedimentoDescontoPct(proc.id, pctVal)}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${(pctVal === '0' && proc.desconto_pct === 0) || (proc.desconto_pct === parseFloat(pctVal))
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-bold'
+                                      : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
+                                    }`}
+                                >
+                                  {pctVal === '0' ? 'Sem desc.' : `${pctVal}%`}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Valor Final a Cobrar deste Procedimento */}
+                            <div className="flex justify-between items-center pt-1 border-t border-[var(--border-subtle)] text-xs">
+                              <span className="text-foreground/60">Subtotal deste procedimento:</span>
+                              <span className="font-mono font-bold text-sm text-gold">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ADICIONAR OUTRO PROCEDIMENTO / PROFISSIONAL */}
+                  <div className="p-3 bg-[var(--background)]/60 border border-dashed border-[var(--border-subtle)] rounded-xl space-y-2">
+                    <p className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
+                      <Plus size={14} className="text-gold" /> Adicionar Outro Procedimento / Profissional à Comanda:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                      <div className="sm:col-span-6">
+                        <select
+                          value={novoProcServicoId}
+                          onChange={e => setNovoProcServicoId(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                        >
+                          <option value="">Selecione o serviço...</option>
+                          {servicos.filter(s => s.ativo).map(s => (
+                            <option key={s.id} value={s.id}>{s.nome} — R$ {s.preco.toFixed(2)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-4">
+                        <select
+                          value={novoProcProfId}
+                          onChange={e => setNovoProcProfId(e.target.value)}
+                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
+                        >
+                          <option value="">Quem executou?</option>
+                          {profissionais.filter(p => p.ativo).map(p => (
+                            <option key={p.id} value={p.id}>{p.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!novoProcServicoId || !novoProcProfId}
+                          onClick={adicionarProcedimentoComanda}
+                          className="w-full text-xs h-[34px] py-1 border-gold/40 text-gold hover:bg-gold/10"
+                        >
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* INSUMOS DO PROCEDIMENTO (Lançamento por Gramas / ml por Etapa e Profissional) */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Scale size={16} className="text-amber-700" />
+                      Produtos Utilizados no Procedimento (Cobrança por Grama)
+                    </h4>
+                    {checkoutInsumos.length > 0 && (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 font-bold border border-amber-300 font-mono">
+                        {checkoutInsumos.length} {checkoutInsumos.length === 1 ? 'lançamento' : 'lançamentos'}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-foreground/70 font-medium">
+                    Lançamento de cada produto consumido por etapa (ex: descoloração, tonalização, tratamento) e quem realizou. O custo por grama é calculado automaticamente.
+                  </p>
+
+                  {/* Formulário de Adicionar Insumo da Etapa */}
+                  <div className="p-3 bg-[var(--background)] border border-amber-500/30 rounded-lg space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Etapa do Serviço</label>
+                        <input
+                          type="text"
+                          value={insumoEtapa}
+                          onChange={e => setInsumoEtapa(e.target.value)}
+                          placeholder="Ex: Etapa 1 - Mechas / Descoloração"
+                          className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Profissional que Executou a Etapa</label>
+                        <select
+                          value={insumoProfissionalId}
+                          onChange={e => setInsumoProfissionalId(e.target.value)}
+                          className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
+                        >
+                          <option value={checkoutAppt.profissional_id}>
+                            {getProfissionalNome(checkoutAppt.profissional_id, profissionais)} (Titular)
+                          </option>
+                          {(checkoutAppt.auxiliares_ids || []).map(aid => (
+                            <option key={aid} value={aid}>
+                              {getProfissionalNome(aid, profissionais)} (Auxiliar)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Atalhos de Etapas Frequentes */}
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] text-foreground/50 self-center mr-1 font-medium">Atalhos:</span>
+                      {[
+                        '1. Descoloração',
+                        '2. Tonalização / Matização',
+                        '3. Lavatório / Tratamento',
+                        '4. Finalização / Escova'
+                      ].map(etp => (
+                        <button
+                          key={etp}
+                          type="button"
+                          onClick={() => setInsumoEtapa(etp)}
+                          className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${insumoEtapa === etp
+                              ? 'bg-amber-100 text-amber-950 border-amber-400 font-bold'
+                              : 'border-[var(--border-subtle)] text-foreground/70 hover:text-foreground font-medium'
+                            }`}
+                        >
+                          {etp}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-[var(--border-subtle)]">
+                      <div className="sm:col-span-7">
+                        <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Produto do Estoque</label>
+                        <ProductSearchSelect
+                          mode="procedure"
+                          products={estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale) && (p.stock_qty ?? 0) > 0)}
+                          value={insumoNovoProdutoId}
+                          onChange={(id) => setInsumoNovoProdutoId(id)}
+                          placeholder="Digitar nome do produto utilizado..."
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="text-[11px] font-bold text-foreground/70 mb-1 block">
+                          Qtd. Usada ({estoque.find(e => e.id === insumoNovoProdutoId)?.unit || 'g/ml'})
+                        </label>
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.5"
+                          placeholder="Ex: 30"
+                          value={insumoNovoQtdG}
+                          onChange={e => setInsumoNovoQtdG(e.target.value)}
+                          className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-amber-400 font-mono"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 flex items-end">
+                        <button
+                          type="button"
+                          onClick={adicionarInsumoPorGrama}
+                          disabled={!insumoNovoProdutoId || !insumoNovoQtdG}
+                          className="w-full h-[34px] bg-amber-500 hover:bg-amber-400 text-background font-bold rounded-lg text-xs transition-colors disabled:opacity-40 flex items-center justify-center gap-1 shadow-sm"
+                        >
+                          <Plus size={14} /> Lançar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lista de Produtos Lançados por Grama */}
+                  {checkoutInsumos.length > 0 ? (
+                    <div className="space-y-2 mt-2">
+                      {checkoutInsumos.map((ins, idx) => {
+                        const profNome = getProfissionalNome(ins.profissional_id || '', profissionais);
+                        const isTitular = ins.profissional_id === checkoutAppt.profissional_id;
+                        return (
+                          <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--background)] border border-amber-500/30 rounded-lg text-xs">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                <span className="font-bold text-foreground truncate">{ins.name}</span>
+                                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-mono font-bold text-[10px] border border-amber-200">
+                                  {ins.qty_used} {ins.unit}
+                                </span>
+                                <span className="text-[10px] text-stone-500 font-mono font-medium">
+                                  (R$ {ins.price_per_gram.toFixed(4)}/{ins.unit})
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-foreground/60 flex flex-wrap items-center gap-2">
+                                {ins.etapa && <span className="text-foreground/80 font-medium">📍 {ins.etapa}</span>}
+                                {profNome && (
+                                  <span className={isTitular ? 'text-gold font-bold' : 'text-foreground/80 font-semibold'}>
+                                    👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="font-black font-mono text-amber-800 text-sm">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ins.custo_total)}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => removerProcedimentoComanda(proc.id)}
-                                className="p-1 rounded text-red-400 hover:bg-red-500/10 transition-colors"
-                                title="Remover procedimento da comanda"
+                                onClick={() => removerInsumoPorGrama(idx)}
+                                className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                title="Remover este produto"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      <div className="p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-lg flex items-center justify-between text-xs font-bold">
+                        <span className="text-foreground/90 flex items-center gap-1.5">
+                          <Beaker size={14} className="text-amber-700" />
+                          Total Custo de Produtos do Atendimento:
+                        </span>
+                        <span className="text-amber-900 font-black font-mono text-sm">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center border border-dashed border-[var(--border-subtle)] rounded-lg text-xs text-foreground/40">
+                      Nenhum produto lançado por grama ainda. Selecione o produto acima para registrar o custo da etapa.
+                    </div>
+                  )}
+                </div>
+
+                {/* PRODUTOS DO SALÃO (Venda / Upsell / Balcão) */}
+                <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ShoppingBag size={16} className="text-gold" />
+                      Produtos do Salão (Venda / Balcão)
+                    </h4>
+                    {checkoutProdutos.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-semibold">
+                        {checkoutProdutos.length} {checkoutProdutos.length === 1 ? 'item' : 'itens'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Lista de Produtos Adicionados */}
+                  {checkoutProdutos.length > 0 && (
+                    <div className="space-y-2">
+                      {checkoutProdutos.map((prod, idx) => {
+                        const itemEstoque = estoque.find(e => e.id === prod.inventory_id);
+                        const subOriginal = (prod.precoOriginal ?? prod.preco) * prod.qty;
+                        const subFinal = prod.preco * prod.qty;
+                        const temDesc = (prod.descontoValor != null && prod.descontoValor > 0) || subOriginal > subFinal;
+
+                        return (
+                          <div key={prod.id} className="flex justify-between items-center p-3 bg-gold/5 border border-gold/15 rounded-lg text-sm">
+                            <div className="flex-1 min-w-0 pr-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-foreground truncate">{itemEstoque?.name || 'Produto'}</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold font-mono">{prod.qty}x</span>
+                                {(prod.profissional_nome || prod.profissional_id) && (
+                                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-foreground/5 text-foreground/70 border border-[var(--border-subtle)]">
+                                    Vendido por: <strong>{prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais)}</strong>
+                                  </span>
+                                )}
+                              </div>
+                              {temDesc ? (
+                                <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
+                                  <span className="line-through">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal)}</span>
+                                  <span className="text-emerald-800 dark:text-emerald-400 font-semibold">
+                                    Desc: {prod.descontoPct ? `${prod.descontoPct.toFixed(0)}%` : ''} (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal - subFinal)})
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-foreground/40 mt-0.5">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.preco)} un.
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-gold font-mono">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subFinal)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setCheckoutProdutos(checkoutProdutos.filter((_, i) => i !== idx))}
+                                className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                title="Remover produto"
                               >
                                 <X size={15} />
                               </button>
-                            )}
+                            </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Adicionar Produto no Checkout */}
+                  <div className="p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg space-y-2.5">
+                    <p className="text-xs font-semibold text-foreground/70">Adicionar produto ao atendimento:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                      <div className="sm:col-span-8">
+                        <ProductSearchSelect
+                          mode="sale"
+                          products={estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0)}
+                          value={checkoutNovoProdId}
+                          onChange={(pid) => {
+                            setCheckoutNovoProdId(pid);
+                            if (checkoutNovoProdDescPct) {
+                              const p = estoque.find(x => x.id === pid);
+                              const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(checkoutNovoProdQty) || 1));
+                              const pct = parseFloat(checkoutNovoProdDescPct) || 0;
+                              const val = (sub * pct) / 100;
+                              setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
+                            }
+                          }}
+                          placeholder="Digitar nome do produto para venda..."
+                        />
+                      </div>
+                      <div className="sm:col-span-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-foreground/50 whitespace-nowrap">Qtd:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={checkoutNovoProdQty}
+                            onChange={(e) => {
+                              const q = e.target.value;
+                              setCheckoutNovoProdQty(q);
+                              if (checkoutNovoProdDescPct) {
+                                const p = estoque.find(x => x.id === checkoutNovoProdId);
+                                const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
+                                const pct = parseFloat(checkoutNovoProdDescPct) || 0;
+                                const val = (sub * pct) / 100;
+                                setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
+                              }
+                            }}
+                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-gold font-mono"
+                          />
                         </div>
+                      </div>
+                    </div>
 
-                        {/* BLOCO DE DESCONTO INDIVIDUAL DO PROFISSIONAL NESTE PROCEDIMENTO */}
-                        <div className="p-2.5 bg-foreground/[0.02] border border-border-subtle/70 rounded-lg space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
-                              <Tag size={12} /> Desconto do Profissional ({pNome}):
-                            </span>
-                            {temDesconto ? (
-                              <span className="text-[11px] text-emerald-900 dark:text-emerald-300 font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/60">
-                                -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)} ({proc.desconto_pct.toFixed(0)}%)
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-foreground/40">Sem desconto aplicado</span>
-                            )}
-                          </div>
+                    {/* Campos de Desconto do Produto adicionado */}
+                    {checkoutNovoProdId && (() => {
+                      const prodSel = estoque.find(p => p.id === checkoutNovoProdId);
+                      const qSel = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
+                      const subItem = (prodSel?.sale_price || 0) * qSel;
+                      const descValItem = Math.min(subItem, Math.max(0, parseFloat(checkoutNovoProdDescValor) || 0));
+                      const totalItemFinal = Math.max(0, subItem - descValItem);
 
-                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                            <div className="sm:col-span-3">
+                      return (
+                        <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (%)</label>
                               <div className="relative">
                                 <input
                                   type="number"
                                   min="0"
                                   max="100"
-                                  step="1"
+                                  step="0.5"
                                   placeholder="0"
-                                  value={proc.desconto_pct || ''}
-                                  onChange={e => handleProcedimentoDescontoPct(proc.id, e.target.value)}
-                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs font-mono text-center focus:outline-none focus:border-emerald-500"
+                                  value={checkoutNovoProdDescPct}
+                                  onChange={(e) => handleCheckoutNovoProdDescPct(e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
                                 />
                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
                               </div>
                             </div>
-
-                            <div className="sm:col-span-4">
+                            <div>
+                              <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (R$)</label>
                               <div className="relative">
                                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
                                 <input
@@ -3716,1066 +4108,643 @@ function AgendaContent() {
                                   min="0"
                                   step="0.5"
                                   placeholder="0.00"
-                                  value={proc.desconto_valor || ''}
-                                  onChange={e => handleProcedimentoDescontoValor(proc.id, e.target.value)}
-                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                                  value={checkoutNovoProdDescValor}
+                                  onChange={(e) => handleCheckoutNovoProdDescValor(e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
                                 />
                               </div>
                             </div>
-
-                            <div className="sm:col-span-5">
-                              <input
-                                type="text"
-                                placeholder="Motivo (opcional, ex: Cliente fidelidade...)"
-                                value={proc.desconto_motivo || ''}
-                                onChange={e => handleProcedimentoDescontoMotivo(proc.id, e.target.value)}
-                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 px-2 text-xs focus:outline-none focus:border-emerald-500 placeholder:text-foreground/30"
-                              />
-                            </div>
                           </div>
 
-                          {/* Atalhos rápidos de % para este profissional */}
-                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                            <span className="text-[10px] text-foreground/40 mr-1">Atalhos:</span>
-                            {['0', '5', '10', '15', '20', '30'].map(pctVal => (
-                              <button
-                                key={pctVal}
-                                type="button"
-                                onClick={() => handleProcedimentoDescontoPct(proc.id, pctVal)}
-                                className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-                                  (pctVal === '0' && proc.desconto_pct === 0) || (proc.desconto_pct === parseFloat(pctVal))
-                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-bold'
-                                    : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
-                                }`}
-                              >
-                                {pctVal === '0' ? 'Sem desc.' : `${pctVal}%`}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Valor Final a Cobrar deste Procedimento */}
-                          <div className="flex justify-between items-center pt-1 border-t border-[var(--border-subtle)] text-xs">
-                            <span className="text-foreground/60">Subtotal deste procedimento:</span>
-                            <span className="font-mono font-bold text-sm text-gold">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}
+                          <div className="flex justify-between items-center text-xs pt-1">
+                            <span className="text-foreground/60">
+                              Total do item: <strong className="text-foreground font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItemFinal)}</strong>
+                              {descValItem > 0 && <span className="text-emerald-800 dark:text-emerald-400 ml-1.5 font-semibold">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
                             </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* ADICIONAR OUTRO PROCEDIMENTO / PROFISSIONAL */}
-                <div className="p-3 bg-[var(--background)]/60 border border-dashed border-[var(--border-subtle)] rounded-xl space-y-2">
-                  <p className="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
-                    <Plus size={14} className="text-gold" /> Adicionar Outro Procedimento / Profissional à Comanda:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-6">
-                      <select
-                        value={novoProcServicoId}
-                        onChange={e => setNovoProcServicoId(e.target.value)}
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                      >
-                        <option value="">Selecione o serviço...</option>
-                        {servicos.filter(s => s.ativo).map(s => (
-                          <option key={s.id} value={s.id}>{s.nome} — R$ {s.preco.toFixed(2)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-4">
-                      <select
-                        value={novoProcProfId}
-                        onChange={e => setNovoProcProfId(e.target.value)}
-                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-gold"
-                      >
-                        <option value="">Quem executou?</option>
-                        {profissionais.filter(p => p.ativo).map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={!novoProcServicoId || !novoProcProfId}
-                        onClick={adicionarProcedimentoComanda}
-                        className="w-full text-xs h-[34px] py-1 border-gold/40 text-gold hover:bg-gold/10"
-                      >
-                        Adicionar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* INSUMOS DO PROCEDIMENTO (Lançamento por Gramas / ml por Etapa e Profissional) */}
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Scale size={16} className="text-amber-700" />
-                    Produtos Utilizados no Procedimento (Cobrança por Grama)
-                  </h4>
-                  {checkoutInsumos.length > 0 && (
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 font-bold border border-amber-300 font-mono">
-                      {checkoutInsumos.length} {checkoutInsumos.length === 1 ? 'lançamento' : 'lançamentos'}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-xs text-foreground/70 font-medium">
-                  Lançamento de cada produto consumido por etapa (ex: descoloração, tonalização, tratamento) e quem realizou. O custo por grama é calculado automaticamente.
-                </p>
-
-                {/* Formulário de Adicionar Insumo da Etapa */}
-                <div className="p-3 bg-[var(--background)] border border-amber-500/30 rounded-lg space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Etapa do Serviço</label>
-                      <input
-                        type="text"
-                        value={insumoEtapa}
-                        onChange={e => setInsumoEtapa(e.target.value)}
-                        placeholder="Ex: Etapa 1 - Mechas / Descoloração"
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Profissional que Executou a Etapa</label>
-                      <select
-                        value={insumoProfissionalId}
-                        onChange={e => setInsumoProfissionalId(e.target.value)}
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-amber-500 font-medium"
-                      >
-                        <option value={checkoutAppt.profissional_id}>
-                          {getProfissionalNome(checkoutAppt.profissional_id, profissionais)} (Titular)
-                        </option>
-                        {(checkoutAppt.auxiliares_ids || []).map(aid => (
-                          <option key={aid} value={aid}>
-                            {getProfissionalNome(aid, profissionais)} (Auxiliar)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Atalhos de Etapas Frequentes */}
-                  <div className="flex flex-wrap gap-1">
-                    <span className="text-[10px] text-foreground/50 self-center mr-1 font-medium">Atalhos:</span>
-                    {[
-                      '1. Descoloração',
-                      '2. Tonalização / Matização',
-                      '3. Lavatório / Tratamento',
-                      '4. Finalização / Escova'
-                    ].map(etp => (
-                      <button
-                        key={etp}
-                        type="button"
-                        onClick={() => setInsumoEtapa(etp)}
-                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-                          insumoEtapa === etp 
-                            ? 'bg-amber-100 text-amber-950 border-amber-400 font-bold'
-                            : 'border-[var(--border-subtle)] text-foreground/70 hover:text-foreground font-medium'
-                        }`}
-                      >
-                        {etp}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-[var(--border-subtle)]">
-                    <div className="sm:col-span-7">
-                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">Produto do Estoque</label>
-                      <ProductSearchSelect
-                        mode="procedure"
-                        products={estoque.filter(p => p.active && (p.allow_procedure_use || !p.allow_sale) && (p.stock_qty ?? 0) > 0)}
-                        value={insumoNovoProdutoId}
-                        onChange={(id) => setInsumoNovoProdutoId(id)}
-                        placeholder="Digitar nome do produto utilizado..."
-                      />
-                    </div>
-
-                    <div className="sm:col-span-3">
-                      <label className="text-[11px] font-bold text-foreground/70 mb-1 block">
-                        Qtd. Usada ({estoque.find(e => e.id === insumoNovoProdutoId)?.unit || 'g/ml'})
-                      </label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.5"
-                        placeholder="Ex: 30"
-                        value={insumoNovoQtdG}
-                        onChange={e => setInsumoNovoQtdG(e.target.value)}
-                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-amber-400 font-mono"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 flex items-end">
-                      <button
-                        type="button"
-                        onClick={adicionarInsumoPorGrama}
-                        disabled={!insumoNovoProdutoId || !insumoNovoQtdG}
-                        className="w-full h-[34px] bg-amber-500 hover:bg-amber-400 text-background font-bold rounded-lg text-xs transition-colors disabled:opacity-40 flex items-center justify-center gap-1 shadow-sm"
-                      >
-                        <Plus size={14} /> Lançar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lista de Produtos Lançados por Grama */}
-                {checkoutInsumos.length > 0 ? (
-                  <div className="space-y-2 mt-2">
-                    {checkoutInsumos.map((ins, idx) => {
-                      const profNome = getProfissionalNome(ins.profissional_id || '', profissionais);
-                      const isTitular = ins.profissional_id === checkoutAppt.profissional_id;
-                      return (
-                        <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--background)] border border-amber-500/30 rounded-lg text-xs">
-                          <div className="flex-1 min-w-0 pr-2">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                              <span className="font-bold text-foreground truncate">{ins.name}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-mono font-bold text-[10px] border border-amber-200">
-                                {ins.qty_used} {ins.unit}
-                              </span>
-                              <span className="text-[10px] text-stone-500 font-mono font-medium">
-                                (R$ {ins.price_per_gram.toFixed(4)}/{ins.unit})
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-foreground/60 flex flex-wrap items-center gap-2">
-                              {ins.etapa && <span className="text-foreground/80 font-medium">📍 {ins.etapa}</span>}
-                              {profNome && (
-                                <span className={isTitular ? 'text-gold font-bold' : 'text-foreground/80 font-semibold'}>
-                                  👤 {profNome} ({isTitular ? 'Titular' : 'Auxiliar'})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-black font-mono text-amber-800 text-sm">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ins.custo_total)}
-                            </span>
-                            <button
+                            <Button
+                              variant="primary"
+                              size="sm"
                               type="button"
-                              onClick={() => removerInsumoPorGrama(idx)}
-                              className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-500/10 transition-colors"
-                              title="Remover este produto"
+                              onClick={adicionarProdutoAoCheckout}
+                              className="text-xs py-1 px-3"
                             >
-                              <X size={14} />
-                            </button>
+                              <ShoppingBag size={12} className="mr-1" /> Adicionar
+                            </Button>
                           </div>
                         </div>
                       );
-                    })}
-
-                    <div className="p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-lg flex items-center justify-between text-xs font-bold">
-                      <span className="text-foreground/90 flex items-center gap-1.5">
-                        <Beaker size={14} className="text-amber-700" />
-                        Total Custo de Produtos do Atendimento:
-                      </span>
-                      <span className="text-amber-900 font-black font-mono text-sm">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0))}
-                      </span>
-                    </div>
+                    })()}
                   </div>
-                ) : (
-                  <div className="p-3 text-center border border-dashed border-[var(--border-subtle)] rounded-lg text-xs text-foreground/40">
-                    Nenhum produto lançado por grama ainda. Selecione o produto acima para registrar o custo da etapa.
-                  </div>
-                )}
-              </div>
-
-              {/* PRODUTOS DO SALÃO (Venda / Upsell / Balcão) */}
-              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <ShoppingBag size={16} className="text-gold" />
-                    Produtos do Salão (Venda / Balcão)
-                  </h4>
-                  {checkoutProdutos.length > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gold/15 text-gold font-semibold">
-                      {checkoutProdutos.length} {checkoutProdutos.length === 1 ? 'item' : 'itens'}
-                    </span>
-                  )}
-                </div>
-
-                {/* Lista de Produtos Adicionados */}
-                {checkoutProdutos.length > 0 && (
-                  <div className="space-y-2">
-                    {checkoutProdutos.map((prod, idx) => {
-                      const itemEstoque = estoque.find(e => e.id === prod.inventory_id);
-                      const subOriginal = (prod.precoOriginal ?? prod.preco) * prod.qty;
-                      const subFinal = prod.preco * prod.qty;
-                      const temDesc = (prod.descontoValor != null && prod.descontoValor > 0) || subOriginal > subFinal;
-
-                      return (
-                        <div key={prod.id} className="flex justify-between items-center p-3 bg-gold/5 border border-gold/15 rounded-lg text-sm">
-                          <div className="flex-1 min-w-0 pr-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-foreground truncate">{itemEstoque?.name || 'Produto'}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold font-mono">{prod.qty}x</span>
-                              {(prod.profissional_nome || prod.profissional_id) && (
-                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-foreground/5 text-foreground/70 border border-[var(--border-subtle)]">
-                                  Vendido por: <strong>{prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais)}</strong>
-                                </span>
-                              )}
-                            </div>
-                            {temDesc ? (
-                              <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
-                                <span className="line-through">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal)}</span>
-                                <span className="text-emerald-800 dark:text-emerald-400 font-semibold">
-                                  Desc: {prod.descontoPct ? `${prod.descontoPct.toFixed(0)}%` : ''} (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal - subFinal)})
-                                </span>
-                              </p>
-                            ) : (
-                              <p className="text-xs text-foreground/40 mt-0.5">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.preco)} un.
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-gold font-mono">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subFinal)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutProdutos(checkoutProdutos.filter((_, i) => i !== idx))}
-                              className="text-red-400 hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
-                              title="Remover produto"
-                            >
-                              <X size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Adicionar Produto no Checkout */}
-                <div className="p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg space-y-2.5">
-                  <p className="text-xs font-semibold text-foreground/70">Adicionar produto ao atendimento:</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-8">
-                      <ProductSearchSelect
-                        mode="sale"
-                        products={estoque.filter(p => p.allow_sale && p.active && (p.stock_qty ?? 0) > 0)}
-                        value={checkoutNovoProdId}
-                        onChange={(pid) => {
-                          setCheckoutNovoProdId(pid);
-                          if (checkoutNovoProdDescPct) {
-                            const p = estoque.find(x => x.id === pid);
-                            const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(checkoutNovoProdQty) || 1));
-                            const pct = parseFloat(checkoutNovoProdDescPct) || 0;
-                            const val = (sub * pct) / 100;
-                            setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
-                          }
-                        }}
-                        placeholder="Digitar nome do produto para venda..."
-                      />
-                    </div>
-                    <div className="sm:col-span-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-foreground/50 whitespace-nowrap">Qtd:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={checkoutNovoProdQty}
-                          onChange={(e) => {
-                            const q = e.target.value;
-                            setCheckoutNovoProdQty(q);
-                            if (checkoutNovoProdDescPct) {
-                              const p = estoque.find(x => x.id === checkoutNovoProdId);
-                              const sub = (p?.sale_price || 0) * (Math.max(1, parseInt(q) || 1));
-                              const pct = parseFloat(checkoutNovoProdDescPct) || 0;
-                              const val = (sub * pct) / 100;
-                              setCheckoutNovoProdDescValor(val > 0 ? val.toFixed(2) : '');
-                            }
-                          }}
-                          className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-center focus:outline-none focus:border-gold font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Campos de Desconto do Produto adicionado */}
-                  {checkoutNovoProdId && (() => {
-                    const prodSel = estoque.find(p => p.id === checkoutNovoProdId);
-                    const qSel = Math.max(1, parseInt(checkoutNovoProdQty) || 1);
-                    const subItem = (prodSel?.sale_price || 0) * qSel;
-                    const descValItem = Math.min(subItem, Math.max(0, parseFloat(checkoutNovoProdDescValor) || 0));
-                    const totalItemFinal = Math.max(0, subItem - descValItem);
-
-                    return (
-                      <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (%)</label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                                placeholder="0"
-                                value={checkoutNovoProdDescPct}
-                                onChange={(e) => handleCheckoutNovoProdDescPct(e.target.value)}
-                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-[11px] text-foreground/50 block mb-1">Desc. no Produto (R$)</label>
-                            <div className="relative">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                placeholder="0.00"
-                                value={checkoutNovoProdDescValor}
-                                onChange={(e) => handleCheckoutNovoProdDescValor(e.target.value)}
-                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg py-1.5 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center text-xs pt-1">
-                          <span className="text-foreground/60">
-                            Total do item: <strong className="text-foreground font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItemFinal)}</strong>
-                            {descValItem > 0 && <span className="text-emerald-800 dark:text-emerald-400 ml-1.5 font-semibold">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
-                          </span>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            type="button"
-                            onClick={adicionarProdutoAoCheckout}
-                            className="text-xs py-1 px-3"
-                          >
-                            <ShoppingBag size={12} className="mr-1" /> Adicionar
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
-            </div>
 
-            {/* COLUNA DIREITA: Forma de Pagamento, Repartição Gestão e Resumo Financeiro */}
-            <div className="lg:col-span-5 space-y-4 min-w-0 flex flex-col">
-              {/* FORMA DE PAGAMENTO */}
-              <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
+              {/* COLUNA DIREITA: Forma de Pagamento, Repartição Gestão e Resumo Financeiro */}
+              <div className="lg:col-span-5 space-y-4 min-w-0 flex flex-col">
+                {/* FORMA DE PAGAMENTO */}
+                <div className="p-4 bg-[var(--background)] border border-[var(--border-subtle)] rounded-xl space-y-3">
                   <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                     <CreditCard size={15} className="text-blue-400" />
                     Forma de Pagamento
                   </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                  {([
-                    ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-700 dark:text-emerald-400 border-emerald-400 dark:border-emerald-500/40'],
-                    ['PIX', 'PIX', Smartphone, 'text-blue-700 dark:text-blue-400 border-blue-400 dark:border-blue-500/40'],
-                    ['DEBITO', 'Débito', CreditCard, 'text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/40'],
-                    ['CREDITO', 'Crédito', CreditCard, 'text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-500/40'],
-                  ] as const).map(([val, label, Icon, cor]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => { setCheckoutPagamento(val); if (val !== 'CREDITO') setCheckoutParcelas(1); }}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 text-xs font-medium transition-all ${
-                        checkoutPagamento === val
-                          ? `${cor} bg-foreground/5`
-                          : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
-                      }`}
-                    >
-                      <Icon size={18} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                
-                {/* Parcelas — apenas para crédito */}
-                {checkoutPagamento === 'CREDITO' && (
-                  <div>
-                    <p className="text-xs text-foreground/60 mb-2">Número de parcelas:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
-                        <button key={n} type="button"
-                          onClick={() => setCheckoutParcelas(n)}
-                          className={`w-10 h-10 rounded-lg text-sm font-bold border-2 transition-all ${
-                            checkoutParcelas === n
-                              ? 'border-amber-400 bg-amber-400/15 text-amber-400'
-                              : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    {([
+                      ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-700 dark:text-emerald-400 border-emerald-400 dark:border-emerald-500/40'],
+                      ['PIX', 'PIX', Smartphone, 'text-blue-700 dark:text-blue-400 border-blue-400 dark:border-blue-500/40'],
+                      ['DEBITO', 'Débito', CreditCard, 'text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/40'],
+                      ['CREDITO', 'Crédito', CreditCard, 'text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-500/40'],
+                    ] as const).map(([val, label, Icon, cor]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => { setCheckoutPagamento(val); if (val !== 'CREDITO') setCheckoutParcelas(1); }}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 text-xs font-medium transition-all ${checkoutPagamento === val
+                            ? `${cor} bg-foreground/5`
+                            : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
                           }`}
-                        >
-                          {n}x
-                        </button>
-                      ))}
-                    </div>
+                      >
+                        <Icon size={18} />
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
 
-              {/* TOTAL + REPARTIÇÃO MULTI-PROFISSIONAL DISCRIMINADA */}
-              {(() => {
-                const subtotalProcedimentosTabela = checkoutProcedimentos.reduce((sum, p) => sum + p.preco_tabela, 0);
-                const totalDescontosProcedimentos = checkoutProcedimentos.reduce((sum, p) => sum + p.desconto_valor, 0);
-                const totalProcedimentosLiquido = checkoutProcedimentos.reduce((sum, p) => sum + p.valor_final, 0);
-                const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
-                const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
-                
-                // O valor cobrado da cliente é a soma dos procedimentos líquidos + produtos de balcão
-                const subtotalCobradoCliente = totalProcedimentosLiquido + totalProdutos;
-                
-                // Desconto global adicional (opcional, caso a gerência queira arredondar ou conceder extra)
-                const valorDescontoGeral = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
-                const totalCobradoClienteFinal = checkoutValorFinalManual !== ''
-    ? Math.max(0, parseFloat(checkoutValorFinalManual.replace(',', '.')) || 0)
-    : Math.max(0, subtotalCobradoCliente - valorDescontoGeral);
-                const totalDescontosGerais = totalDescontosProcedimentos + valorDescontoGeral;
-                
-                const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
-                const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalCobradoClienteFinal, taxasPagamento);
-                
-                // === REPARTIÇÃO POR PROFISSIONAL INDIVIDUAL (SERVIÇOS + AUXILIARES + PRODUTOS VENDIDOS) ===
-                const porProfissional: Record<string, {
-                  procedimentos: ProcedimentoComanda[];
-                  subtotalTabela: number;
-                  totalDesconto: number;
-                  valorLiquido: number;
-                  insumosCusto: number;
-                  pctComissao: number;
-                  comissaoServicos: number;
-                  produtosVendidos: Array<{
-                    inventory_id: string;
-                    name: string;
-                    qty: number;
-                    subtotal: number;
+                  {/* Parcelas — apenas para crédito */}
+                  {checkoutPagamento === 'CREDITO' && (
+                    <div>
+                      <p className="text-xs text-foreground/60 mb-2">Número de parcelas:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[1, 2, 3, 4, 5, 6, 10, 12].map(n => (
+                          <button key={n} type="button"
+                            onClick={() => setCheckoutParcelas(n)}
+                            className={`w-10 h-10 rounded-lg text-sm font-bold border-2 transition-all ${checkoutParcelas === n
+                                ? 'border-amber-400 bg-amber-400/15 text-amber-400'
+                                : 'border-[var(--border-subtle)] text-foreground/50 hover:border-foreground/20'
+                              }`}
+                          >
+                            {n}x
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* TOTAL + REPARTIÇÃO MULTI-PROFISSIONAL DISCRIMINADA */}
+                {(() => {
+                  const subtotalProcedimentosTabela = checkoutProcedimentos.reduce((sum, p) => sum + p.preco_tabela, 0);
+                  const totalDescontosProcedimentos = checkoutProcedimentos.reduce((sum, p) => sum + p.desconto_valor, 0);
+                  const totalProcedimentosLiquido = checkoutProcedimentos.reduce((sum, p) => sum + p.valor_final, 0);
+                  const totalInsumos = checkoutInsumos.reduce((acc, i) => acc + i.custo_total, 0);
+                  const totalProdutos = checkoutProdutos.reduce((acc, p) => acc + (p.preco * p.qty), 0);
+
+                  // O valor cobrado da cliente é a soma dos procedimentos líquidos + produtos de balcão
+                  const subtotalCobradoCliente = totalProcedimentosLiquido + totalProdutos;
+
+                  // Desconto global adicional (opcional, caso a gerência queira arredondar ou conceder extra)
+                  const valorDescontoGeral = Math.min(subtotalCobradoCliente, Math.max(0, parseFloat(checkoutDescontoValor) || 0));
+                  const totalCobradoClienteFinal = checkoutValorFinalManual !== ''
+                    ? Math.max(0, parseFloat(checkoutValorFinalManual.replace(',', '.')) || 0)
+                    : Math.max(0, subtotalCobradoCliente - valorDescontoGeral);
+                  const totalDescontosGerais = totalDescontosProcedimentos + valorDescontoGeral;
+
+                  const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
+                  const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalCobradoClienteFinal, taxasPagamento);
+
+                  // === REPARTIÇÃO POR PROFISSIONAL INDIVIDUAL (SERVIÇOS + AUXILIARES + PRODUTOS VENDIDOS) ===
+                  const porProfissional: Record<string, {
+                    procedimentos: ProcedimentoComanda[];
+                    subtotalTabela: number;
+                    totalDesconto: number;
+                    valorLiquido: number;
+                    insumosCusto: number;
                     pctComissao: number;
-                    valorComissao: number;
-                  }>;
-                  comissaoProdutos: number;
-                  comissaoEstimada: number;
-                }> = {};
+                    comissaoServicos: number;
+                    produtosVendidos: Array<{
+                      inventory_id: string;
+                      name: string;
+                      qty: number;
+                      subtotal: number;
+                      pctComissao: number;
+                      valorComissao: number;
+                    }>;
+                    comissaoProdutos: number;
+                    comissaoEstimada: number;
+                  }> = {};
 
-                const ensureProfEntry = (pid: string, servicoIdRef?: string) => {
-                  if (!porProfissional[pid]) {
-                    const profObj = profissionais.find(pr => pr.id === pid);
-                    const regra = regrasComissao.find(r => r.professional_id === pid && ((servicoIdRef && r.service_id === servicoIdRef) || !r.service_id) && r.active);
-                    const pct = regra?.commission_pct ?? profObj?.comissao_padrao ?? 50;
-                    porProfissional[pid] = {
-                      procedimentos: [],
-                      subtotalTabela: 0,
-                      totalDesconto: 0,
-                      valorLiquido: 0,
-                      insumosCusto: 0,
-                      pctComissao: pct,
-                      comissaoServicos: 0,
-                      produtosVendidos: [],
-                      comissaoProdutos: 0,
-                      comissaoEstimada: 0,
-                    };
-                  }
-                  return porProfissional[pid];
-                };
-
-                checkoutProcedimentos.forEach(p => {
-                  const entry = ensureProfEntry(p.profissional_id, p.servico_id);
-                  entry.procedimentos.push(p);
-                  entry.subtotalTabela += p.preco_tabela;
-                  entry.totalDesconto += p.desconto_valor;
-                  entry.valorLiquido += p.valor_final;
-                });
-
-                // Atribuir insumos a cada profissional
-                checkoutInsumos.forEach(ins => {
-                  const pid = ins.profissional_id || checkoutAppt.profissional_id;
-                  const entry = ensureProfEntry(pid, checkoutAppt.servico_id);
-                  entry.insumosCusto += ins.custo_total;
-                });
-
-                // Calcular comissão de serviços de cada profissional (incluindo divisão com auxiliares no agendamento principal)
-                const auxIdsPrincipais = (checkoutAppt.auxiliares_ids || []).filter(id => id && id !== checkoutAppt.profissional_id);
-                const agnaldoRecebe = checkoutAppt.agnaldo_recebe_comissao !== false;
-
-                Object.keys(porProfissional).forEach(pid => {
-                  const item = porProfissional[pid];
-                  const baseComissao = Math.max(0, item.valorLiquido - item.insumosCusto);
-                  const comissaoBrutaProc = Number(((baseComissao * item.pctComissao) / 100).toFixed(2));
-
-                  if (pid === checkoutAppt.profissional_id && auxIdsPrincipais.length > 0) {
-                    const todosCadeira = [checkoutAppt.profissional_id, ...auxIdsPrincipais];
-                    const titularNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
-                    const isAgnaldoTitular = titularNome.toLowerCase().includes('agnaldo');
-
-                    if (isAgnaldoTitular && !agnaldoRecebe) {
-                      item.comissaoServicos = 0;
-                      const valorPorAux = Number((comissaoBrutaProc / auxIdsPrincipais.length).toFixed(2));
-                      auxIdsPrincipais.forEach((auxId, idx) => {
-                        const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
-                        const valAux = idx === 0
-                          ? Number((comissaoBrutaProc - valorPorAux * (auxIdsPrincipais.length - 1)).toFixed(2))
-                          : valorPorAux;
-                        auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valAux).toFixed(2));
-                      });
-                    } else {
-                      const valorPorPessoa = Number((comissaoBrutaProc / todosCadeira.length).toFixed(2));
-                      item.comissaoServicos = Number((comissaoBrutaProc - valorPorPessoa * auxIdsPrincipais.length).toFixed(2));
-                      auxIdsPrincipais.forEach(auxId => {
-                        const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
-                        auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valorPorPessoa).toFixed(2));
-                      });
+                  const ensureProfEntry = (pid: string, servicoIdRef?: string) => {
+                    if (!porProfissional[pid]) {
+                      const profObj = profissionais.find(pr => pr.id === pid);
+                      const regra = regrasComissao.find(r => r.professional_id === pid && ((servicoIdRef && r.service_id === servicoIdRef) || !r.service_id) && r.active);
+                      const pct = regra?.commission_pct ?? profObj?.comissao_padrao ?? 50;
+                      porProfissional[pid] = {
+                        procedimentos: [],
+                        subtotalTabela: 0,
+                        totalDesconto: 0,
+                        valorLiquido: 0,
+                        insumosCusto: 0,
+                        pctComissao: pct,
+                        comissaoServicos: 0,
+                        produtosVendidos: [],
+                        comissaoProdutos: 0,
+                        comissaoEstimada: 0,
+                      };
                     }
-                  } else {
-                    item.comissaoServicos = Number((item.comissaoServicos + comissaoBrutaProc).toFixed(2));
-                  }
-                });
+                    return porProfissional[pid];
+                  };
 
-                // Calcular comissão de venda de produtos (Upsell / Home Care) para o profissional que realizou a venda
-                checkoutProdutos.forEach(prod => {
-                  const vendId = prod.profissional_id || checkoutAppt.profissional_id;
-                  const vendObj = profissionais.find(pr => pr.id === vendId);
-                  const pctProd = (vendObj?.product_commission_pct != null && Number(vendObj.product_commission_pct) > 0)
-                    ? Number(vendObj.product_commission_pct)
-                    : 10;
-                  const prodEstoque = estoque.find(e => e.id === prod.inventory_id);
-                  const subtotalProd = Number((prod.preco * prod.qty).toFixed(2));
-                  const comissaoProd = Number(((subtotalProd * pctProd) / 100).toFixed(2));
-
-                  const entry = ensureProfEntry(vendId, checkoutAppt.servico_id);
-                  entry.produtosVendidos.push({
-                    inventory_id: prod.inventory_id,
-                    name: prodEstoque?.name || 'Produto',
-                    qty: prod.qty,
-                    subtotal: subtotalProd,
-                    pctComissao: pctProd,
-                    valorComissao: comissaoProd,
+                  checkoutProcedimentos.forEach(p => {
+                    const entry = ensureProfEntry(p.profissional_id, p.servico_id);
+                    entry.procedimentos.push(p);
+                    entry.subtotalTabela += p.preco_tabela;
+                    entry.totalDesconto += p.desconto_valor;
+                    entry.valorLiquido += p.valor_final;
                   });
-                  entry.comissaoProdutos = Number((entry.comissaoProdutos + comissaoProd).toFixed(2));
-                });
 
-                // Somar comissão final estimada (Serviço + Produto) de cada profissional
-                Object.keys(porProfissional).forEach(pid => {
-                  const item = porProfissional[pid];
-                  item.comissaoEstimada = Number((item.comissaoServicos + item.comissaoProdutos).toFixed(2));
-                });
+                  // Atribuir insumos a cada profissional
+                  checkoutInsumos.forEach(ins => {
+                    const pid = ins.profissional_id || checkoutAppt.profissional_id;
+                    const entry = ensureProfEntry(pid, checkoutAppt.servico_id);
+                    entry.insumosCusto += ins.custo_total;
+                  });
 
-                const comissaoTotalEquipe = Number(Object.values(porProfissional).reduce((sum, item) => sum + item.comissaoEstimada, 0).toFixed(2));
-                const fundoReservaProdutos = Number(totalInsumos.toFixed(2));
-                const faturamentoLiquidoSalao = Number(Math.max(0, totalCobradoClienteFinal - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0)).toFixed(2));
+                  // Calcular comissão de serviços de cada profissional (incluindo divisão com auxiliares no agendamento principal)
+                  const auxIdsPrincipais = (checkoutAppt.auxiliares_ids || []).filter(id => id && id !== checkoutAppt.profissional_id);
+                  const agnaldoRecebe = checkoutAppt.agnaldo_recebe_comissao !== false;
 
-                return (
-                  <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
-                    {/* DESCONTO GLOBAL ADICIONAL (OPCIONAL) */}
-                    <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <Percent size={14} className="text-emerald-700 dark:text-emerald-400" />
-                          <span className="text-xs font-bold text-foreground">Desconto Geral Adicional na Conta <span className="text-foreground/40 font-normal">(opcional)</span></span>
+                  Object.keys(porProfissional).forEach(pid => {
+                    const item = porProfissional[pid];
+                    const baseComissao = Math.max(0, item.valorLiquido - item.insumosCusto);
+                    const comissaoBrutaProc = Number(((baseComissao * item.pctComissao) / 100).toFixed(2));
+
+                    if (pid === checkoutAppt.profissional_id && auxIdsPrincipais.length > 0) {
+                      const todosCadeira = [checkoutAppt.profissional_id, ...auxIdsPrincipais];
+                      const titularNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
+                      const isAgnaldoTitular = titularNome.toLowerCase().includes('agnaldo');
+
+                      if (isAgnaldoTitular && !agnaldoRecebe) {
+                        item.comissaoServicos = 0;
+                        const valorPorAux = Number((comissaoBrutaProc / auxIdsPrincipais.length).toFixed(2));
+                        auxIdsPrincipais.forEach((auxId, idx) => {
+                          const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
+                          const valAux = idx === 0
+                            ? Number((comissaoBrutaProc - valorPorAux * (auxIdsPrincipais.length - 1)).toFixed(2))
+                            : valorPorAux;
+                          auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valAux).toFixed(2));
+                        });
+                      } else {
+                        const valorPorPessoa = Number((comissaoBrutaProc / todosCadeira.length).toFixed(2));
+                        item.comissaoServicos = Number((comissaoBrutaProc - valorPorPessoa * auxIdsPrincipais.length).toFixed(2));
+                        auxIdsPrincipais.forEach(auxId => {
+                          const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
+                          auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valorPorPessoa).toFixed(2));
+                        });
+                      }
+                    } else {
+                      item.comissaoServicos = Number((item.comissaoServicos + comissaoBrutaProc).toFixed(2));
+                    }
+                  });
+
+                  // Calcular comissão de venda de produtos (Upsell / Home Care) para o profissional que realizou a venda
+                  checkoutProdutos.forEach(prod => {
+                    const vendId = prod.profissional_id || checkoutAppt.profissional_id;
+                    const vendObj = profissionais.find(pr => pr.id === vendId);
+                    const pctProd = (vendObj?.product_commission_pct != null && Number(vendObj.product_commission_pct) > 0)
+                      ? Number(vendObj.product_commission_pct)
+                      : 10;
+                    const prodEstoque = estoque.find(e => e.id === prod.inventory_id);
+                    const subtotalProd = Number((prod.preco * prod.qty).toFixed(2));
+                    const comissaoProd = Number(((subtotalProd * pctProd) / 100).toFixed(2));
+
+                    const entry = ensureProfEntry(vendId, checkoutAppt.servico_id);
+                    entry.produtosVendidos.push({
+                      inventory_id: prod.inventory_id,
+                      name: prodEstoque?.name || 'Produto',
+                      qty: prod.qty,
+                      subtotal: subtotalProd,
+                      pctComissao: pctProd,
+                      valorComissao: comissaoProd,
+                    });
+                    entry.comissaoProdutos = Number((entry.comissaoProdutos + comissaoProd).toFixed(2));
+                  });
+
+                  // Somar comissão final estimada (Serviço + Produto) de cada profissional
+                  Object.keys(porProfissional).forEach(pid => {
+                    const item = porProfissional[pid];
+                    item.comissaoEstimada = Number((item.comissaoServicos + item.comissaoProdutos).toFixed(2));
+                  });
+
+                  const comissaoTotalEquipe = Number(Object.values(porProfissional).reduce((sum, item) => sum + item.comissaoEstimada, 0).toFixed(2));
+                  const fundoReservaProdutos = Number(totalInsumos.toFixed(2));
+                  const faturamentoLiquidoSalao = Number(Math.max(0, totalCobradoClienteFinal - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0)).toFixed(2));
+
+                  return (
+                    <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
+                      {/* DESCONTO GLOBAL ADICIONAL (OPCIONAL) */}
+                      <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Percent size={14} className="text-emerald-700 dark:text-emerald-400" />
+                            <span className="text-xs font-bold text-foreground">Desconto Geral Adicional na Conta <span className="text-foreground/40 font-normal">(opcional)</span></span>
+                          </div>
+                          {valorDescontoGeral > 0 && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold font-mono border border-emerald-300 dark:border-emerald-700/60">
+                              -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}
+                            </span>
+                          )}
                         </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="Desc. Geral (%)"
+                              value={checkoutDescontoPct}
+                              onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalCobradoCliente)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Desc. Geral (R$)"
+                              value={checkoutDescontoValor}
+                              onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalCobradoCliente)}
+                              className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO (Aparece SOMENTE para Gestora / Admin; 100% oculto para Secretária) */}
+                      {isGestoraOuAdmin && (
+                        <div className="p-4 bg-gradient-to-br from-gold/10 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={18} className="text-gold" />
+                              <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
+                                Demonstrativo Discriminado para a Gestora do Salão
+                              </h4>
+                            </div>
+                            <span className="text-[11px] text-gold font-bold px-2.5 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
+                              {Object.keys(porProfissional).length} {Object.keys(porProfissional).length === 1 ? 'Profissional' : 'Profissionais Envolvidos'}
+                            </span>
+                          </div>
+
+                          {/* Lista de Procedimentos e Comissões por Profissional */}
+                          <div className="space-y-2">
+                            {Object.entries(porProfissional).map(([pid, dados]) => {
+                              const pNome = getProfissionalNome(pid, profissionais);
+                              const fmtMoeda = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+                              return (
+                                <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
+                                  <div className="flex flex-wrap items-center justify-between border-b border-border-subtle/50 pb-1.5 gap-2">
+                                    <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                      👤 {pNome}
+                                    </span>
+                                    <div className="text-right">
+                                      <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)] whitespace-nowrap">
+                                        Comissão Total: {fmtMoeda(dados.comissaoEstimada)}
+                                      </span>
+                                      {(dados.comissaoServicos > 0 && dados.comissaoProdutos > 0) && (
+                                        <span className="block text-[10px] text-foreground/60 font-mono mt-0.5">
+                                          Serv. ({dados.pctComissao}%): {fmtMoeda(dados.comissaoServicos)} + Prod. ({dados.produtosVendidos[0]?.pctComissao ?? 10}%): {fmtMoeda(dados.comissaoProdutos)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Procedimentos deste profissional */}
+                                  {dados.procedimentos.length > 0 && (
+                                    <div className="space-y-1 text-foreground/80">
+                                      {dados.procedimentos.map(proc => (
+                                        <div key={proc.id} className="flex flex-wrap justify-between items-center text-[11px] gap-1">
+                                          <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
+                                          <span className="font-mono whitespace-nowrap">
+                                            {fmtMoeda(proc.preco_tabela)}
+                                            {proc.desconto_valor > 0 && (
+                                              <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
+                                                (-{fmtMoeda(proc.desconto_valor)})
+                                              </span>
+                                            )}
+                                            {' = '}
+                                            <strong className="text-foreground">{fmtMoeda(proc.valor_final)}</strong>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Produtos vendidos por este profissional */}
+                                  {dados.produtosVendidos.length > 0 && (
+                                    <div className="space-y-1 pt-1 border-t border-border-subtle/30">
+                                      <span className="text-[10px] font-bold uppercase text-gold block">
+                                        Produtos Vendidos (Comissão {dados.produtosVendidos[0]?.pctComissao ?? 10}% = {fmtMoeda(dados.comissaoProdutos)}):
+                                      </span>
+                                      {dados.produtosVendidos.map((pv, pvIdx) => {
+                                        const prodEst = estoque.find(e => e.id === pv.inventory_id);
+                                        return (
+                                          <div key={pvIdx} className="flex flex-wrap justify-between items-center text-[11px] text-foreground/80 gap-1">
+                                            <span className="truncate pr-2">🛍️ {prodEst?.name || pv.name || 'Produto'} ({pv.qty}x)</span>
+                                            <span className="font-mono whitespace-nowrap">
+                                              Venda: <strong>{fmtMoeda(pv.subtotal)}</strong> • Comissão: <strong className="text-gold">{fmtMoeda(pv.valorComissao)}</strong>
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Insumos deste profissional */}
+                                  {dados.insumosCusto > 0 && (
+                                    <div className="flex flex-wrap justify-between items-center text-[11px] text-amber-800 dark:text-amber-400 pt-1 border-t border-border-subtle/30 font-bold gap-1">
+                                      <span>Produtos/Insumos aplicados por {pNome}:</span>
+                                      <span className="font-mono whitespace-nowrap">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                            <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
+                              <div className="flex items-center justify-between text-amber-800 dark:text-amber-400 text-[11px] font-bold uppercase">
+                                <span><Beaker size={12} className="inline mr-1 text-amber-700" /> Fundo Produtos</span>
+                                <span className="text-[10px] font-mono">Reserva</span>
+                              </div>
+                              <p className="text-base font-black font-mono text-amber-800 dark:text-amber-300">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
+                              </p>
+                              <p className="text-[9px] text-foreground/60 font-medium">Custo de estoque consumido no serviço.</p>
+                            </div>
+
+                            <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
+                              <div className="flex items-center justify-between text-foreground/80 text-[11px] font-bold uppercase">
+                                <span><Users size={12} className="inline mr-1 text-gold" /> Total Comissões</span>
+                                <span className="text-[10px] font-mono">Equipe</span>
+                              </div>
+                              <p className="text-base font-black font-mono text-foreground">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
+                              </p>
+                              <p className="text-[9px] text-foreground/60 font-medium">Serviços executados + venda de produtos.</p>
+                            </div>
+
+                            <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
+                              <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
+                                <span><DollarSign size={12} className="inline mr-1" /> Salão Líquido</span>
+                                <span className="text-[10px] font-mono">Receita</span>
+                              </div>
+                              <p className="text-base font-black font-mono text-emerald-800 dark:text-emerald-300">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
+                              </p>
+                              <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Breakdown Financeiro da Comanda (Visão Resumida e Completa para Liberação da Cliente) */}
+                      <div className="space-y-2 text-sm bg-foreground/[0.02] p-4 rounded-xl border border-[var(--border-subtle)]">
+                        <div className="flex justify-between items-center text-foreground/80 font-medium">
+                          <span>Subtotal dos Procedimentos (Tabela)</span>
+                          <span className="font-mono font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
+                        </div>
+                        {totalDescontosProcedimentos > 0 && (
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
+                            <span>Descontos Concedidos pelos Profissionais</span>
+                            <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
+                          </div>
+                        )}
                         {valorDescontoGeral > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold font-mono border border-emerald-300 dark:border-emerald-700/60">
-                            -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}
-                          </span>
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
+                            <span>Desconto Adicional da Recepção</span>
+                            <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
+                          </div>
+                        )}
+                        {totalProdutos > 0 && (
+                          <div className="flex justify-between items-center text-gold font-bold">
+                            <span>Produtos de Salão (Venda / Balcão)</span>
+                            <span className="font-mono">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
+                          </div>
+                        )}
+                        {taxaMaq.valorTaxa > 0 && isGestoraOuAdmin && (
+                          <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
+                            <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
+                            <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
+                          </div>
+                        )}
+                        {totalInsumos > 0 && (
+                          <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                            <span>Insumos Utilizados no Atendimento ({checkoutInsumos.length} itens)</span>
+                            <span className="font-mono">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
+                          </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            placeholder="Desc. Geral (%)"
-                            value={checkoutDescontoPct}
-                            onChange={(e) => handleCheckoutDescontoPct(e.target.value, subtotalCobradoCliente)}
-                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-2 pr-6 text-xs focus:outline-none focus:border-emerald-500 font-mono"
-                          />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">%</span>
-                        </div>
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40 text-[10px] font-bold">R$</span>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="Desc. Geral (R$)"
-                            value={checkoutDescontoValor}
-                            onChange={(e) => handleCheckoutDescontoValor(e.target.value, subtotalCobradoCliente)}
-                            className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded py-1 pl-7 pr-2 text-xs focus:outline-none focus:border-emerald-500 font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* CARD EXCLUSIVO DE DEMONSTRATIVO PARA A GESTORA DO SALÃO (Aparece SOMENTE para Gestora / Admin; 100% oculto para Secretária) */}
-                    {isGestoraOuAdmin && (
-                      <div className="p-4 bg-gradient-to-br from-gold/10 to-background border-2 border-gold/40 rounded-2xl space-y-3 shadow-lg">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gold/20 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <Sparkles size={18} className="text-gold" />
-                            <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
-                              Demonstrativo Discriminado para a Gestora do Salão
-                            </h4>
+                      {/* Card de Valor Total e Ações Finais: Total Destaque + Botões 100% Visíveis */}
+                      <div className="space-y-3 pt-1">
+                        <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <p className="text-[11px] text-foreground/60 uppercase tracking-wider font-bold">Valor Total a Pagar pela Cliente</p>
+                            {numParcelas > 1 && (
+                              <p className="text-xs text-amber-800 dark:text-amber-400 font-bold mt-0.5">
+                                {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
+                              </p>
+                            )}
                           </div>
-                          <span className="text-[11px] text-gold font-bold px-2.5 py-0.5 bg-gold/15 rounded-full border border-gold/30 w-fit">
-                            {Object.keys(porProfissional).length} {Object.keys(porProfissional).length === 1 ? 'Profissional' : 'Profissionais Envolvidos'}
-                          </span>
-                        </div>
-
-                        {/* Lista de Procedimentos e Comissões por Profissional */}
-                        <div className="space-y-2">
-                          {Object.entries(porProfissional).map(([pid, dados]) => {
-                            const pNome = getProfissionalNome(pid, profissionais);
-                            const pctProdRef = dados.produtosVendidos[0]?.pctComissao ?? 10;
-                            const fmtMoeda = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-                            return (
-                              <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
-                                <div className="flex flex-wrap items-center justify-between border-b border-border-subtle/50 pb-1.5 gap-2">
-                                  <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                                    👤 {pNome}
-                                  </span>
-                                  <div className="text-right">
-                                    <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)] whitespace-nowrap">
-                                      Comissão Total: {fmtMoeda(dados.comissaoEstimada)}
-                                    </span>
-                                    {(dados.comissaoServicos > 0 && dados.comissaoProdutos > 0) && (
-                                      <span className="block text-[10px] text-foreground/60 font-mono mt-0.5">
-                                        Serv. ({dados.pctComissao}%): {fmtMoeda(dados.comissaoServicos)} + Prod. ({pctProdRef}%): {fmtMoeda(dados.comissaoProdutos)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                {/* Procedimentos deste profissional */}
-                                {dados.procedimentos.length > 0 && (
-                                  <div className="space-y-1 text-foreground/80">
-                                    {dados.procedimentos.map(proc => (
-                                      <div key={proc.id} className="flex flex-wrap justify-between items-center text-[11px] gap-1">
-                                        <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
-                                        <span className="font-mono whitespace-nowrap">
-                                          {fmtMoeda(proc.preco_tabela)}
-                                          {proc.desconto_valor > 0 && (
-                                            <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
-                                              (-{fmtMoeda(proc.desconto_valor)})
-                                            </span>
-                                          )}
-                                          {' = '}
-                                          <strong className="text-foreground">{fmtMoeda(proc.valor_final)}</strong>
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Produtos vendidos por este profissional */}
-                                {dados.produtosVendidos.length > 0 && (
-                                  <div className="space-y-1 pt-1 border-t border-border-subtle/30">
-                                    <span className="text-[10px] font-bold uppercase text-gold block">
-                                      Produtos Vendidos (Comissão {pctProdRef}% = {fmtMoeda(dados.comissaoProdutos)}):
-                                    </span>
-                                    {dados.produtosVendidos.map((pv, pvIdx) => {
-                                      const prodEst = estoque.find(e => e.id === pv.inventory_id);
-                                      return (
-                                        <div key={pvIdx} className="flex flex-wrap justify-between items-center text-[11px] text-foreground/80 gap-1">
-                                          <span className="truncate pr-2">🛍️ {pv.name || prodEst?.name || 'Produto'} ({pv.qty}x)</span>
-                                          <span className="font-mono whitespace-nowrap">
-                                            Venda: <strong>{fmtMoeda(pv.subtotal)}</strong> • Comissão: <strong className="text-gold">{fmtMoeda(pv.valorComissao)}</strong>
-                                          </span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-
-                                {/* Insumos deste profissional */}
-                                {dados.insumosCusto > 0 && (
-                                  <div className="flex flex-wrap justify-between items-center text-[11px] text-amber-800 dark:text-amber-400 pt-1 border-t border-border-subtle/30 font-bold gap-1">
-                                    <span>Produtos/Insumos aplicados por {pNome}:</span>
-                                    <span className="font-mono whitespace-nowrap">- R$ {dados.insumosCusto.toFixed(2)} (deduzido da base)</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Repartição Macro: Produtos, Comissões Equipe, Líquido Salão */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
-                          <div className="p-2.5 bg-[var(--background)]/80 border border-amber-500/30 rounded-xl space-y-0.5">
-                            <div className="flex items-center justify-between text-amber-800 dark:text-amber-400 text-[11px] font-bold uppercase">
-                              <span><Beaker size={12} className="inline mr-1 text-amber-700"/> Fundo Produtos</span>
-                              <span className="text-[10px] font-mono">Reserva</span>
-                            </div>
-                            <p className="text-base font-black font-mono text-amber-800 dark:text-amber-300">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fundoReservaProdutos)}
-                            </p>
-                            <p className="text-[9px] text-foreground/60 font-medium">Custo de estoque consumido no serviço.</p>
-                          </div>
-
-                          <div className="p-2.5 bg-[var(--background)]/80 border border-[var(--border-subtle)] rounded-xl space-y-0.5">
-                            <div className="flex items-center justify-between text-foreground/80 text-[11px] font-bold uppercase">
-                              <span><Users size={12} className="inline mr-1 text-gold"/> Total Comissões</span>
-                              <span className="text-[10px] font-mono">Equipe</span>
-                            </div>
-                            <p className="text-base font-black font-mono text-foreground">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
-                            </p>
-                            <p className="text-[9px] text-foreground/60 font-medium">Serviços executados + venda de produtos.</p>
-                          </div>
-
-                          <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
-                            <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
-                              <span><DollarSign size={12} className="inline mr-1"/> Salão Líquido</span>
-                              <span className="text-[10px] font-mono">Receita</span>
-                            </div>
-                            <p className="text-base font-black font-mono text-emerald-800 dark:text-emerald-300">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
-                            </p>
-                            <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
+                          <div className="text-right">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={checkoutValorFinalManual || totalCobradoClienteFinal}
+                              onChange={(e) => setCheckoutValorFinalManual(e.target.value)}
+                              className="w-40 text-right text-2xl sm:text-3xl font-extrabold font-serif text-gold bg-[var(--background)] border border-gold/40 rounded-lg px-2 py-1 focus:outline-none focus:border-gold"
+                            />
                           </div>
                         </div>
-                      </div>
-                    )}
 
-                    {/* Breakdown Financeiro da Comanda (Visão Resumida e Completa para Liberação da Cliente) */}
-                    <div className="space-y-2 text-sm bg-foreground/[0.02] p-4 rounded-xl border border-[var(--border-subtle)]">
-                      <div className="flex justify-between items-center text-foreground/80 font-medium">
-                        <span>Subtotal dos Procedimentos (Tabela)</span>
-                        <span className="font-mono font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
-                      </div>
-                      {totalDescontosProcedimentos > 0 && (
-                        <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
-                          <span>Descontos Concedidos pelos Profissionais</span>
-                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
-                        </div>
-                      )}
-                      {valorDescontoGeral > 0 && (
-                        <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
-                          <span>Desconto Adicional da Recepção</span>
-                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
-                        </div>
-                      )}
-                      {totalProdutos > 0 && (
-                        <div className="flex justify-between items-center text-gold font-bold">
-                          <span>Produtos de Salão (Venda / Balcão)</span>
-                          <span className="font-mono">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProdutos)}</span>
-                        </div>
-                      )}
-                      {taxaMaq.valorTaxa > 0 && isGestoraOuAdmin && (
-                        <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-bold pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Taxa Maquininha ({taxaMaq.regraNome} {taxaMaq.feePercentage}%)</span>
-                          <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxaMaq.valorTaxa)}</span>
-                        </div>
-                      )}
-                      {totalInsumos > 0 && (
-                        <div className="flex justify-between items-center text-amber-800 dark:text-amber-400 text-xs font-semibold pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Insumos Utilizados no Atendimento ({checkoutInsumos.length} itens)</span>
-                          <span className="font-mono">R$ {totalInsumos.toFixed(2)} (absorvido no serviço)</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Card de Valor Total e Ações Finais: Total Destaque + Botões 100% Visíveis */}
-                    <div className="space-y-3 pt-1">
-                      <div className="p-3.5 bg-gold/10 border border-gold/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <p className="text-[11px] text-foreground/60 uppercase tracking-wider font-bold">Valor Total a Pagar pela Cliente</p>
-                          {numParcelas > 1 && (
-                            <p className="text-xs text-amber-800 dark:text-amber-400 font-bold mt-0.5">
-                              {numParcelas}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal / numParcelas)}
-                            </p>
-                          )}
-                        </div>
-                         <div className="text-right">
-                           <input
-                             type="number"
-                             step="0.01"
-                             min="0"
-                             value={checkoutValorFinalManual || totalCobradoClienteFinal}
-                             onChange={(e) => setCheckoutValorFinalManual(e.target.value)}
-                             className="w-40 text-right text-2xl sm:text-3xl font-extrabold font-serif text-gold bg-[var(--background)] border border-gold/40 rounded-lg px-2 py-1 focus:outline-none focus:border-gold"
-                           />
-                         </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          className="sm:w-32 py-3 text-xs sm:text-sm font-semibold text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 justify-center" 
-                          onClick={fecharCheckout}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="primary" 
-                          className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold bg-gold hover:bg-gold-dim text-white shadow-md justify-center text-center whitespace-normal leading-snug" 
-                          onClick={async () => {
-                          const nomeCliente = getClienteNome(checkoutAppt.cliente_id, clientes);
-                          const produtosFormatadosVenda = checkoutProdutos.map(p => {
-                            const prodEstoque = estoque.find(e => e.id === p.inventory_id);
-                            const vendId = p.profissional_id || checkoutAppt.profissional_id;
-                            const vendObj = profissionais.find(pr => pr.id === vendId);
-                            const pctProd = (vendObj?.product_commission_pct && vendObj.product_commission_pct > 0)
-                              ? vendObj.product_commission_pct
-                              : 10;
-                            const valProdTotal = p.preco * p.qty;
-                            const comProdVal = Number(((valProdTotal * pctProd) / 100).toFixed(2));
-                            return {
-                              inventory_id: p.inventory_id,
-                              name: prodEstoque?.name || 'Produto',
-                              qty: p.qty,
-                              precoOriginal: p.precoOriginal,
-                              preco: p.preco,
-                              descontoValor: p.descontoValor,
-                              profissional_id: vendId,
-                              profissional_nome: p.profissional_nome || vendObj?.nome || getProfissionalNome(vendId, profissionais),
-                              comissao_pct: pctProd,
-                              comissao_valor: comProdVal,
-                            };
-                          });
-
-                          // Objeto completo da comanda unificada para persistência
-                          const comandaObj: ComandaMultiProfissional = {
-                            cliente_id: checkoutAppt.cliente_id,
-                            cliente_nome: nomeCliente,
-                            data: checkoutAppt.data,
-                            procedimentos: checkoutProcedimentos,
-                            insumos: checkoutInsumos,
-                            produtos_venda: produtosFormatadosVenda,
-                            produtos_comprados: produtosFormatadosVenda.map(pv => ({
-                              inventory_id: pv.inventory_id,
-                              nome: pv.name,
-                              quantidade: pv.qty,
-                              preco_unitario: pv.preco,
-                              total: Number((pv.preco * pv.qty).toFixed(2)),
-                              profissional_id: pv.profissional_id,
-                              profissional_nome: pv.profissional_nome,
-                              comissao_pct: pv.comissao_pct,
-                              comissao_valor: pv.comissao_valor,
-                            })),
-                            total_bruto_servicos: subtotalProcedimentosTabela,
-                            total_descontos_servicos: totalDescontosGerais,
-                            total_liquido_servicos: totalProcedimentosLiquido,
-                            total_produtos_venda: totalProdutos,
-                            total_insumos: totalInsumos,
-                            total_pago_cliente: totalCobradoClienteFinal,
-                            payment_method: checkoutPagamento,
-                            installments: numParcelas,
-                            agendamentos_unificados_ids: agendamentosUnificadosIds,
-                            fechado_em: new Date().toISOString(),
-                          };
-
-                          // 1. Finalizar o atendimento principal com a comanda unificada
-                          await finalizarRecebimentoAgendamento({
-                            id: checkoutAppt.id,
-                            paymentMethod: checkoutPagamento,
-                            installments: numParcelas,
-                            totalAmount: totalCobradoClienteFinal,
-                            productCost: fundoReservaProdutos,
-                            insumosDetalhes: checkoutInsumos,
-                            comandaUnificada: comandaObj,
-                            financialStatus: 'PENDING_CONFIRMATION',
-                          });
-                          await mudarStatus(checkoutAppt.id, 'concluido');
-                          
-                          // 2. Se múltiplos agendamentos da mesma cliente no dia foram unificados, marcá-los como concluídos vinculados
-                          const outrosIds = agendamentosUnificadosIds.filter(id => id !== checkoutAppt.id);
-                          for (const outroId of outrosIds) {
-                            await finalizarRecebimentoAgendamento({
-                              id: outroId,
-                              paymentMethod: checkoutPagamento,
-                              installments: 1,
-                              totalAmount: 0, // Zerado para não duplicar faturamento no caixa
-                              unificadoEmId: checkoutAppt.id,
-                              financialStatus: 'PENDING_CONFIRMATION',
-                            });
-                            await mudarStatus(outroId, 'concluido');
-                          }
-                          
-                          // 3. Baixar insumos do estoque caso ainda não tenham horário registrado em tempo real
-                          for (const insumo of checkoutInsumos) {
-                            if (insumo.qty_used > 0 && !insumo.horario) {
-                              const profInsumoNome = getProfissionalNome(insumo.profissional_id || checkoutAppt.profissional_id, profissionais);
-                              await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
-                                appointmentId: checkoutAppt.id,
-                                notes: `Comanda [${nomeCliente}] - Etapa: ${insumo.etapa || 'Procedimento'} (${insumo.qty_used}${insumo.unit}) - Executado por: ${profInsumoNome}`,
-                                createdBy: profInsumoNome,
-                              });
-                            }
-                          }
-                          
-                          // 3.5. Baixar produtos vendidos (Upsell / Salão)
-                          const profAtendimentoNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
-                          for (const prod of checkoutProdutos) {
-                            if (prod.qty > 0) {
-                              const vendedorNome = prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais) || profAtendimentoNome;
-                              const descNote = prod.descontoValor && prod.descontoValor > 0 
-                                ? ` (Desc: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.descontoValor)})` 
-                                : '';
-                              await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
-                                appointmentId: checkoutAppt.id,
-                                notes: `Venda Comanda [${nomeCliente}]: ${prod.qty}x un.${descNote} - Vendido por: ${vendedorNome}`,
-                                createdBy: vendedorNome,
-                              });
-                            }
-                          }
-
-                          // 4. Sincronizar comissões individuais para CADA profissional (Serviços + Venda de Produtos)
-                          await sincronizarComissoesDoAgendamento({
-                            appointmentId: checkoutAppt.id,
-                            appointmentDate: checkoutAppt.data,
-                            serviceId: checkoutAppt.servico_id,
-                            paymentMethod: checkoutPagamento,
-                            installments: numParcelas,
-                            taxasCustom: taxasPagamento,
-                            comissoes: Object.entries(porProfissional)
-                              .filter(([, dados]) => dados.comissaoEstimada > 0)
-                              .map(([profId, dados]) => {
-                                const servicoIdRef = dados.procedimentos[0]?.servico_id || checkoutAppt.servico_id;
-                                const partesNota: string[] = [];
-                                if (dados.procedimentos.length > 0) {
-                                  const procStr = dados.procedimentos.map(p => {
-                                    const dStr = p.desconto_valor > 0 ? ` (desc: -R$${p.desconto_valor.toFixed(2)})` : '';
-                                    return `${p.servico_nome || getServicoNome(p.servico_id, servicos)}: R$${p.valor_final.toFixed(2)}${dStr}`;
-                                  }).join(' + ');
-                                  partesNota.push(`Serviço: ${procStr} (Comissão: R$${dados.comissaoServicos.toFixed(2)})`);
-                                }
-                                if (dados.produtosVendidos.length > 0) {
-                                  const pctProdRef = dados.produtosVendidos[0]?.pctComissao ?? 10;
-                                  const prodStr = dados.produtosVendidos.map(pv => {
-                                    const pEst = estoque.find(e => e.id === pv.inventory_id);
-                                    return `${pv.qty}x ${pv.name || pEst?.name || 'Produto'} (R$${pv.subtotal.toFixed(2)})`;
-                                  }).join(' + ');
-                                  partesNota.push(`Venda Produto: ${prodStr} (Comissão ${pctProdRef}%: R$${dados.comissaoProdutos.toFixed(2)})`);
-                                }
-                                const totalBaseProf = dados.valorLiquido + dados.produtosVendidos.reduce((s, pv) => s + pv.subtotal, 0);
+                        <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="sm:w-32 py-3 text-xs sm:text-sm font-semibold text-foreground/70 border-[var(--border-subtle)] hover:bg-foreground/5 justify-center"
+                            onClick={fecharCheckout}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold bg-gold hover:bg-gold-dim text-white shadow-md justify-center text-center whitespace-normal leading-snug"
+                            onClick={async () => {
+                              const nomeCliente = getClienteNome(checkoutAppt.cliente_id, clientes);
+                              const produtosFormatadosVenda = checkoutProdutos.map(p => {
+                                const prodEstoque = estoque.find(e => e.id === p.inventory_id);
+                                const vendId = p.profissional_id || checkoutAppt.profissional_id;
+                                const vendObj = profissionais.find(pr => pr.id === vendId);
+                                const pctProd = (vendObj?.product_commission_pct && vendObj.product_commission_pct > 0)
+                                  ? vendObj.product_commission_pct
+                                  : 10;
+                                const valProdTotal = p.preco * p.qty;
+                                const comProdVal = Number(((valProdTotal * pctProd) / 100).toFixed(2));
                                 return {
-                                  professionalId: profId,
-                                  serviceId: servicoIdRef,
-                                  totalAmount: totalBaseProf > 0 ? totalBaseProf : totalCobradoClienteFinal,
-                                  commissionAmount: dados.comissaoEstimada,
-                                  commissionPct: dados.pctComissao,
-                                  notes: `Comanda [${nomeCliente}] — ${partesNota.join(' | ')}`,
+                                  inventory_id: p.inventory_id,
+                                  name: prodEstoque?.name || 'Produto',
+                                  qty: p.qty,
+                                  precoOriginal: p.precoOriginal,
+                                  preco: p.preco,
+                                  descontoValor: p.descontoValor,
+                                  profissional_id: vendId,
+                                  profissional_nome: p.profissional_nome || vendObj?.nome || getProfissionalNome(vendId, profissionais),
+                                  comissao_pct: pctProd,
+                                  comissao_valor: comProdVal,
                                 };
-                              }),
-                          });
-                          
-                          fecharCheckout();
-                          fetchAgendamentos().then(setAgendamentos);
-                          alert(`Comanda Fechada com Sucesso!\n\nCliente liberada no caixa da recepção.\nCliente: ${nomeCliente}\nTotal Cobrado: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\n\nO atendimento foi enviado para a Gestora do Studio fechar e auditar o financeiro na aba "Financeiro e Caixa".`);
-                        }}>
-                          <CheckCircle2 size={16} className="inline mr-1.5 shrink-0" />
-                          Liberar Cliente (Enviar p/ Gestão)
-                        </Button>
+                              });
+
+                              // Objeto completo da comanda unificada para persistência
+                              const comandaObj: ComandaMultiProfissional = {
+                                cliente_id: checkoutAppt.cliente_id,
+                                cliente_nome: nomeCliente,
+                                data: checkoutAppt.data,
+                                procedimentos: checkoutProcedimentos,
+                                insumos: checkoutInsumos,
+                                produtos_venda: produtosFormatadosVenda,
+                                produtos_comprados: produtosFormatadosVenda.map(pv => ({
+                                  inventory_id: pv.inventory_id,
+                                  nome: pv.name,
+                                  quantidade: pv.qty,
+                                  preco_unitario: pv.preco,
+                                  total: Number((pv.preco * pv.qty).toFixed(2)),
+                                  profissional_id: pv.profissional_id,
+                                  profissional_nome: pv.profissional_nome,
+                                  comissao_pct: pv.comissao_pct,
+                                  comissao_valor: pv.comissao_valor,
+                                })),
+                                total_bruto_servicos: subtotalProcedimentosTabela,
+                                total_descontos_servicos: totalDescontosGerais,
+                                total_liquido_servicos: totalProcedimentosLiquido,
+                                total_produtos_venda: totalProdutos,
+                                total_insumos: totalInsumos,
+                                total_pago_cliente: totalCobradoClienteFinal,
+                                payment_method: checkoutPagamento,
+                                installments: numParcelas,
+                                agendamentos_unificados_ids: agendamentosUnificadosIds,
+                                fechado_em: new Date().toISOString(),
+                              };
+
+                              // 1. Finalizar o atendimento principal com a comanda unificada
+                              await finalizarRecebimentoAgendamento({
+                                id: checkoutAppt.id,
+                                paymentMethod: checkoutPagamento,
+                                installments: numParcelas,
+                                totalAmount: totalCobradoClienteFinal,
+                                productCost: fundoReservaProdutos,
+                                insumosDetalhes: checkoutInsumos,
+                                comandaUnificada: comandaObj,
+                                financialStatus: 'PENDING_CONFIRMATION',
+                              });
+                              await mudarStatus(checkoutAppt.id, 'concluido');
+
+                              // 2. Se múltiplos agendamentos da mesma cliente no dia foram unificados, marcá-los como concluídos vinculados
+                              const outrosIds = agendamentosUnificadosIds.filter(id => id !== checkoutAppt.id);
+                              for (const outroId of outrosIds) {
+                                await finalizarRecebimentoAgendamento({
+                                  id: outroId,
+                                  paymentMethod: checkoutPagamento,
+                                  installments: 1,
+                                  totalAmount: 0, // Zerado para não duplicar faturamento no caixa
+                                  unificadoEmId: checkoutAppt.id,
+                                  financialStatus: 'PENDING_CONFIRMATION',
+                                });
+                                await mudarStatus(outroId, 'concluido');
+                              }
+
+                              // 3. Baixar insumos do estoque caso ainda não tenham horário registrado em tempo real
+                              for (const insumo of checkoutInsumos) {
+                                if (insumo.qty_used > 0 && !insumo.horario) {
+                                  const profInsumoNome = getProfissionalNome(insumo.profissional_id || checkoutAppt.profissional_id, profissionais);
+                                  await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
+                                    appointmentId: checkoutAppt.id,
+                                    notes: `Comanda [${nomeCliente}] - Etapa: ${insumo.etapa || 'Procedimento'} (${insumo.qty_used}${insumo.unit}) - Executado por: ${profInsumoNome}`,
+                                    createdBy: profInsumoNome,
+                                  });
+                                }
+                              }
+
+                              // 3.5. Baixar produtos vendidos (Upsell / Salão)
+                              const profAtendimentoNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
+                              for (const prod of checkoutProdutos) {
+                                if (prod.qty > 0) {
+                                  const vendedorNome = prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais) || profAtendimentoNome;
+                                  const descNote = prod.descontoValor && prod.descontoValor > 0
+                                    ? ` (Desc: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.descontoValor)})`
+                                    : '';
+                                  await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
+                                    appointmentId: checkoutAppt.id,
+                                    notes: `Venda Comanda [${nomeCliente}]: ${prod.qty}x un.${descNote} - Vendido por: ${vendedorNome}`,
+                                    createdBy: vendedorNome,
+                                  });
+                                }
+                              }
+
+                              // 4. Sincronizar comissões individuais para CADA profissional (Serviços + Venda de Produtos)
+                              await sincronizarComissoesDoAgendamento({
+                                appointmentId: checkoutAppt.id,
+                                appointmentDate: checkoutAppt.data,
+                                serviceId: checkoutAppt.servico_id,
+                                paymentMethod: checkoutPagamento,
+                                installments: numParcelas,
+                                taxasCustom: taxasPagamento,
+                                comissoes: Object.entries(porProfissional)
+                                  .filter(([, dados]) => dados.comissaoEstimada > 0)
+                                  .map(([profId, dados]) => {
+                                    const servicoIdRef = dados.procedimentos[0]?.servico_id || checkoutAppt.servico_id;
+                                    const partesNota: string[] = [];
+                                    if (dados.procedimentos.length > 0) {
+                                      const procStr = dados.procedimentos.map(p => {
+                                        const dStr = p.desconto_valor > 0 ? ` (desc: -R$${p.desconto_valor.toFixed(2)})` : '';
+                                        return `${p.servico_nome || getServicoNome(p.servico_id, servicos)}: R$${p.valor_final.toFixed(2)}${dStr}`;
+                                      }).join(' + ');
+                                      partesNota.push(`Serviço: ${procStr} (Comissão: R$${dados.comissaoServicos.toFixed(2)})`);
+                                    }
+                                    if (dados.produtosVendidos.length > 0) {
+                                      const prodStr = dados.produtosVendidos.map(pv => {
+                                        const pEst = estoque.find(e => e.id === pv.inventory_id);
+                                        return `${pv.qty}x ${pEst?.name || pv.name || 'Produto'} (R$${pv.subtotal.toFixed(2)})`;
+                                      }).join(' + ');
+                                      partesNota.push(`Venda Produto: ${prodStr} (Comissão ${dados.produtosVendidos[0]?.pctComissao ?? 10}%: R$${dados.comissaoProdutos.toFixed(2)})`);
+                                    }
+                                    const totalBaseProf = dados.valorLiquido + dados.produtosVendidos.reduce((s, pv) => s + pv.subtotal, 0);
+                                    return {
+                                      professionalId: profId,
+                                      serviceId: servicoIdRef,
+                                      totalAmount: totalBaseProf > 0 ? totalBaseProf : totalCobradoClienteFinal,
+                                      commissionAmount: dados.comissaoEstimada,
+                                      commissionPct: dados.pctComissao,
+                                      notes: `Comanda [${nomeCliente}] — ${partesNota.join(' | ')}`,
+                                    };
+                                  }),
+                              });
+
+                              fecharCheckout();
+                              fetchAgendamentos().then(setAgendamentos);
+                              alert(`Comanda Fechada com Sucesso!\n\nCliente liberada no caixa da recepção.\nCliente: ${nomeCliente}\nTotal Cobrado: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCobradoClienteFinal)}\n\nO atendimento foi enviado para a Gestora do Studio fechar e auditar o financeiro na aba "Financeiro e Caixa".`);
+                            }}>
+                            <CheckCircle2 size={16} className="inline mr-1.5 shrink-0" />
+                            Liberar Cliente (Enviar p/ Gestão)
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
               </div>
             </div>
           </CardGlass>
@@ -4799,7 +4768,7 @@ function AgendaContent() {
                 <X size={24} />
               </button>
             </div>
-            
+
             <form onSubmit={handleSalvarAgendamento} className="space-y-4">
               {/* 1. Cliente com Busca e Seleção Inteligente */}
               <div ref={clienteSearchContainerRef} className="space-y-1.5">
@@ -5054,7 +5023,7 @@ function AgendaContent() {
                   </span>
                   {categoriaFiltro !== 'todas' && !isRestrictedProfissional && (
                     <span className="text-[10px] text-gold font-medium">
-                      Filtro ativo: {categoriaFiltro === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                      Filtro ativo: {getCategoriaIconAgenda(categoriaFiltro)} {categoriaFiltro}
                     </span>
                   )}
                 </label>
@@ -5073,14 +5042,14 @@ function AgendaContent() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-foreground truncate">{meuProfissional.nome}</div>
-                      <div className="text-xs text-foreground/60">{getCategoriaProfissional(meuProfissional) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'} • Titular do Atendimento</div>
+                      <div className="text-xs text-foreground/60">{getCategoriaIconAgenda(getCategoriaProfissional(meuProfissional))} {getCategoriaProfissional(meuProfissional)} • Titular do Atendimento</div>
                     </div>
                     <span className="text-[10px] font-bold text-gold uppercase tracking-wider px-2 py-1 bg-gold/20 border border-gold/30 rounded-lg">
                       Sua Agenda
                     </span>
                   </div>
                 ) : (
-                  <select 
+                  <select
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold font-semibold"
                     value={formData.profissional_id}
                     onChange={e => {
@@ -5090,27 +5059,13 @@ function AgendaContent() {
                     required
                   >
                     <option value="">Selecione quem irá atender</option>
-                    {profissionais.some(p => getCategoriaProfissional(p) === 'Cabelo') && (
-                      <optgroup label="✂️ Cabelo">
-                        {profissionais.filter(p => getCategoriaProfissional(p) === 'Cabelo').map(p => (
+                    {categoriasAgenda.map(cat => (
+                      <optgroup key={cat} label={`${getCategoriaIconAgenda(cat)} ${cat}`}>
+                        {profissionais.filter(p => getCategoriaProfissional(p) === cat).map(p => (
                           <option key={p.id} value={p.id}>{p.nome}</option>
                         ))}
                       </optgroup>
-                    )}
-                    {profissionais.some(p => getCategoriaProfissional(p) === 'Unhas') && (
-                      <optgroup label="💅 Unhas">
-                        {profissionais.filter(p => getCategoriaProfissional(p) === 'Unhas').map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {profissionais.some(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))) && (
-                      <optgroup label="Outras Categorias">
-                        {profissionais.filter(p => !['Cabelo', 'Unhas'].includes(getCategoriaProfissional(p))).map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}</option>
-                        ))}
-                      </optgroup>
-                    )}
+                    ))}
                   </select>
                 )}
               </div>
@@ -5149,16 +5104,15 @@ function AgendaContent() {
                           onClick={() => {
                             setFormData(f => ({
                               ...f,
-                              auxiliares_ids: isSelected 
+                              auxiliares_ids: isSelected
                                 ? f.auxiliares_ids.filter(id => id !== p.id)
                                 : [...f.auxiliares_ids, p.id]
                             }));
                           }}
-                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${
-                            isSelected
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-medium ${isSelected
                               ? 'bg-gold/15 border-gold text-foreground font-bold shadow-xs'
                               : 'border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40 hover:text-foreground bg-[var(--background)]'
-                          }`}
+                            }`}
                         >
                           {isSelected ? <Check size={12} className="text-gold" /> : <Plus size={12} className="text-foreground/40" />}
                           <span>{p.nome}</span>
@@ -5192,7 +5146,7 @@ function AgendaContent() {
                     </span>
                   )}
                 </label>
-                <select 
+                <select
                   className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm text-foreground focus:outline-none focus:border-gold disabled:opacity-50"
                   value={formData.servico_id}
                   onChange={e => {
@@ -5205,11 +5159,11 @@ function AgendaContent() {
                   required
                 >
                   <option value="">
-                    {!formData.profissional_id 
-                      ? '← Selecione o profissional primeiro' 
+                    {!formData.profissional_id
+                      ? '← Selecione o profissional primeiro'
                       : (servicosDoProfissional.length === 0
-                          ? 'Nenhum procedimento vinculado a este profissional'
-                          : 'Selecione o procedimento')}
+                        ? 'Nenhum procedimento vinculado a este profissional'
+                        : 'Selecione o procedimento')}
                   </option>
                   {servicosDoProfissional.map(s => (
                     <option key={s.id} value={s.id}>
@@ -5232,8 +5186,8 @@ function AgendaContent() {
                     {formData.sub_servicos.map((subItem, index) => {
                       const subId = typeof subItem === 'string' ? subItem : subItem.id;
                       const isFree = typeof subItem === 'object' ? subItem.is_free : false;
-                      const opcoesSub = servicosDoProfissional.filter(srv => 
-                        srv.id !== formData.servico_id && 
+                      const opcoesSub = servicosDoProfissional.filter(srv =>
+                        srv.id !== formData.servico_id &&
                         (!formData.sub_servicos.some(s => (typeof s === 'string' ? s : s.id) === srv.id) || srv.id === subId)
                       );
 
@@ -5269,15 +5223,15 @@ function AgendaContent() {
                           </div>
                           {subId && (
                             <label className="flex items-center gap-2 text-xs font-semibold text-foreground/70 cursor-pointer w-fit pl-1">
-                              <input 
-                                type="checkbox" 
-                                checked={isFree} 
+                              <input
+                                type="checkbox"
+                                checked={isFree}
                                 onChange={e => {
                                   const novasubs = [...formData.sub_servicos];
                                   novasubs[index] = { id: subId, is_free: e.target.checked };
                                   setFormData(f => ({ ...f, sub_servicos: novasubs }));
                                 }}
-                                className="accent-gold w-3.5 h-3.5" 
+                                className="accent-gold w-3.5 h-3.5"
                               />
                               Marcar como Brinde (R$ 0 na comanda)
                             </label>
@@ -5302,8 +5256,8 @@ function AgendaContent() {
                   </div>
                 </div>
               )}
-              
-              
+
+
               {/* Edição de Tempo */}
               {formData.servico_id && (
                 <div>
@@ -5311,7 +5265,7 @@ function AgendaContent() {
                     <span>Tempo Exato (Minutos) *</span>
                     <span className="text-[11px] font-normal text-gold font-mono">Pode ser ajustado</span>
                   </label>
-                  <input 
+                  <input
                     type="number"
                     value={formData.duracao_min}
                     onChange={e => setFormData(f => ({ ...f, duracao_min: e.target.value }))}
@@ -5326,7 +5280,7 @@ function AgendaContent() {
               {!editingApptId && (
                 <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
+                    <input
                       type="checkbox"
                       checked={formData.is_fixed}
                       onChange={e => setFormData(f => ({ ...f, is_fixed: e.target.checked }))}
@@ -5334,7 +5288,7 @@ function AgendaContent() {
                     />
                     <span className="text-sm font-bold text-foreground">Este é um horário fixo/recorrente do cliente?</span>
                   </label>
-                  
+
                   {formData.is_fixed && (
                     <div className="pl-6 animate-in fade-in slide-in-from-top-2">
                       <label className="block text-xs font-bold text-foreground/70 mb-1.5">Frequência</label>
@@ -5347,7 +5301,7 @@ function AgendaContent() {
                       {formData.recurrence_type === 'CUSTOM' && (
                         <div className="mt-3">
                           <label className="block text-[11px] font-bold text-foreground/70 mb-1">Qual o dia fixo do mês? (1 a 31)</label>
-                          <input 
+                          <input
                             type="number"
                             min="1"
                             max="31"
@@ -5369,7 +5323,7 @@ function AgendaContent() {
               {editingApptId && (
                 <div className="pt-4 border-t border-[var(--border-subtle)] space-y-2 bg-gold/5 -mx-6 px-6 py-3.5 rounded-lg border border-gold/25">
                   <label className="flex items-start gap-2.5 cursor-pointer">
-                    <input 
+                    <input
                       type="checkbox"
                       checked={formData.replicate_to_future}
                       onChange={e => setFormData(f => ({ ...f, replicate_to_future: e.target.checked }))}
@@ -5415,7 +5369,7 @@ function AgendaContent() {
               {/* Permitir sobreposição (Encaixe) */}
               <div className="pt-4 border-t border-[var(--border-subtle)] space-y-2 bg-gold/5 -mx-6 px-6 py-3 rounded-lg border border-gold/20">
                 <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input 
+                  <input
                     type="checkbox"
                     checked={formData.allow_overlap}
                     onChange={e => setFormData(f => ({ ...f, allow_overlap: e.target.checked }))}
@@ -5439,7 +5393,7 @@ function AgendaContent() {
                       <CalendarDays size={14} className="text-gold" />
                       4. Data do Atendimento *
                     </label>
-                    <input 
+                    <input
                       type="date"
                       value={formData.data}
                       onChange={e => setFormData(f => ({ ...f, data: e.target.value }))}
@@ -5459,7 +5413,7 @@ function AgendaContent() {
                       <Clock size={14} className="text-gold" />
                       5. Horário Disponível *
                     </label>
-                    
+
                     {horariosDisponiveis.length > 0 ? (
                       <select
                         value={formData.hora_inicio}
@@ -5477,8 +5431,8 @@ function AgendaContent() {
                             }
                           }
                           return (
-                            <option 
-                              key={slot.hora} 
+                            <option
+                              key={slot.hora}
                               value={slot.hora}
                             >
                               {slot.hora} {labelTexto}
@@ -5487,7 +5441,7 @@ function AgendaContent() {
                         })}
                       </select>
                     ) : (
-                      <input 
+                      <input
                         type="time"
                         value={formData.hora_inicio}
                         onChange={e => setFormData(f => ({ ...f, hora_inicio: e.target.value }))}
@@ -5500,11 +5454,10 @@ function AgendaContent() {
 
                 {/* Status do Salão vs Profissional */}
                 {statusDiaInfo && (
-                  <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
-                    statusDiaInfo.tipo === 'aberto' 
+                  <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${statusDiaInfo.tipo === 'aberto'
                       ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                       : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  }`}>
+                    }`}>
                     {statusDiaInfo.tipo === 'aberto' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
                     <span>{statusDiaInfo.texto}</span>
                   </div>

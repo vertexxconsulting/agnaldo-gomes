@@ -62,24 +62,21 @@ const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: any; cor: 
   BOLETO: { label: 'Boleto', icon: Banknote, cor: 'text-gray-500', badge: 'D+3' },
 };
 
-function getCategoriaProfissional(p: Profissional): 'Cabelo' | 'Unhas' | string {
-  if (p.categoria) {
-    const catNorm = p.categoria.trim().toLowerCase();
-    if (catNorm.includes('unha') || catNorm.includes('manicure') || catNorm.includes('pedic')) return 'Unhas';
-    if (catNorm.includes('cabelo') || catNorm.includes('capilar')) return 'Cabelo';
-    return p.categoria;
+function getCategoriaProfissional(p: Profissional): string {
+  if (p.categoria && p.categoria.trim()) {
+    return p.categoria.trim();
   }
   if (p.especialidades && p.especialidades.length > 0) {
     const tags = p.especialidades.map(e => e.toLowerCase()).join(' ');
     if (tags.includes('unha') || tags.includes('manicure') || tags.includes('pedicure') || tags.includes('esmalte') || tags.includes('podolog')) {
-      return 'Unhas';
+      return 'Manicure';
     }
   }
   const nomeLower = (p.nome || '').toLowerCase();
   if (nomeLower.includes('unha') || nomeLower.includes('manicure') || nomeLower.includes('camila')) {
-    return 'Unhas';
+    return 'Manicure';
   }
-  return 'Cabelo';
+  return 'Cabeleireiro(a)';
 }
 
 export default function MeuPainelPage() {

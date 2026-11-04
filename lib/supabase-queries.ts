@@ -101,19 +101,32 @@ function mapProfissional(r: Row): Profissional {
   const sched = (r.weekly_schedule ?? {}) as any;
   const metaPin = sched?._meta?.stock_pin;
   const metaPeriodo = sched?._meta?.periodo_recebimento;
+  const rawCat = r.categoria ?? r.category ?? null;
+  const dbCategoria = typeof rawCat === 'string' && rawCat.trim() ? rawCat.trim() : null;
   const cargoVal = r.cargo ?? r.role_title ?? sched?._meta?.role_title ?? sched?._meta?.cargo ?? null;
-  const isAux = Boolean(
-    r.is_auxiliar ||
-    sched?._meta?.is_auxiliar ||
-    (typeof cargoVal === 'string' && cargoVal.toLowerCase().includes('auxiliar')) ||
-    (Array.isArray(r.specialties) && r.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+  const catIsExplicitNonAux = Boolean(
+    dbCategoria &&
+    dbCategoria.toLowerCase() !== 'cabelo' &&
+    !dbCategoria.toLowerCase().includes('auxiliar')
   );
+  const isAux = Boolean(
+    (dbCategoria && dbCategoria.toLowerCase().includes('auxiliar')) ||
+    (!catIsExplicitNonAux && (
+      r.is_auxiliar ||
+      sched?._meta?.is_auxiliar ||
+      (typeof cargoVal === 'string' && cargoVal.toLowerCase().includes('auxiliar')) ||
+      (Array.isArray(r.specialties) && r.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+    ))
+  );
+  const finalCategoria = dbCategoria
+    ? (isAux && dbCategoria.toLowerCase() === 'cabelo' ? 'Auxiliar (Cabelo)' : dbCategoria)
+    : (isAux ? 'Auxiliar (Cabelo)' : null);
   return {
     id: r.id,
     nome: r.name ?? r.nome ?? '',
     foto_url: r.photo_url ?? r.foto_url ?? r.avatar_url ?? null,
     avatar_url: r.avatar_url ?? r.photo_url ?? r.foto_url ?? null,
-    categoria: r.categoria ?? r.category ?? (isAux ? 'Cabelo' : null),
+    categoria: finalCategoria,
     especialidades: r.specialties ?? r.especialidades ?? [],
     ativo: r.active ?? r.ativo ?? true,
     jornada_semanal: sched as Profissional['jornada_semanal'],
@@ -123,8 +136,8 @@ function mapProfissional(r: Row): Profissional {
     atualizado_em: r.updated_at ?? undefined,
     user_id: r.user_id ?? null,
     email: r.email ?? null,
-    cargo: isAux ? 'Auxiliar (Cabelo)' : cargoVal,
-    role_title: r.role_title ?? (isAux ? 'Auxiliar (Cabelo)' : cargoVal),
+    cargo: isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || cargoVal),
+    role_title: r.role_title ?? (isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || cargoVal)),
     is_auxiliar: isAux,
     comissao_padrao: r.comissao_padrao != null ? Number(r.comissao_padrao) : undefined,
     product_commission_pct: (r.product_commission_pct != null && Number(r.product_commission_pct) > 0) ? Number(r.product_commission_pct) : 10,

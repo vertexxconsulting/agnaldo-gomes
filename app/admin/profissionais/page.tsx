@@ -27,6 +27,34 @@ import {
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+function getCategoriaIcon(cat?: string | null, isAux?: boolean): string {
+  const c = (cat || '').toLowerCase();
+  if (isAux || c.includes('auxiliar')) return '🤝';
+  if (c.includes('unha') || c.includes('manicure') || c.includes('pedic') || c.includes('podolog')) return '💅';
+  if (c.includes('barb')) return '💈';
+  return '✂️';
+}
+
+function getCategoriaLabel(prof: Profissional): string {
+  const rawCat = (prof.categoria || '').trim();
+  const isAux = Boolean(
+    rawCat.toLowerCase().includes('auxiliar') ||
+    (!rawCat && (
+      prof.is_auxiliar ||
+      prof.cargo?.toLowerCase().includes('auxiliar') ||
+      prof.role_title?.toLowerCase().includes('auxiliar')
+    ))
+  );
+  if (isAux) {
+    return rawCat && rawCat.toLowerCase().includes('auxiliar') ? rawCat : 'Auxiliar (Cabelo)';
+  }
+  if (rawCat) return rawCat;
+  if (prof.especialidades?.some(e => e.toLowerCase().includes('unha') || e.toLowerCase().includes('manicure'))) {
+    return 'Manicure';
+  }
+  return 'Cabeleireiro(a)';
+}
+
 export default function ProfissionaisPage() {
   const { isReadOnly } = useModulePermission('profissionais');
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
@@ -45,9 +73,22 @@ export default function ProfissionaisPage() {
   const [nomeEditando, setNomeEditando] = useState('');
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<'Cabelo' | 'Unhas' | string>('Cabelo');
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Cabeleireiro(a)');
   const [isAuxiliarSelecionado, setIsAuxiliarSelecionado] = useState<boolean>(false);
+  const [modoOutraCategoria, setModoOutraCategoria] = useState<boolean>(false);
   const [periodoRecebimento, setPeriodoRecebimento] = useState<PeriodoRecebimentoComissao>('semanal');
+
+  // Lista dinâmica de categorias vinda do banco (com fallback para os padrões do salão)
+  const categoriasOpcoes = Array.from(
+    new Set([
+      ...profissionais
+        .map(p => (p.categoria || '').trim())
+        .filter(Boolean),
+      'Cabeleireiro(a)',
+      'Auxiliar (Cabelo)',
+      'Manicure',
+    ])
+  );
 
   // Estados para Acesso ao Sistema
   const [criarAcesso, setCriarAcesso] = useState(false);
@@ -177,15 +218,17 @@ export default function ProfissionaisPage() {
     }
 
     const pinDigitado = (form.get('stock_pin') as string)?.trim() || '1234';
+    const catFinal = (categoriaSelecionada || '').trim() || (isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : 'Cabeleireiro(a)');
+    const isAuxFinal = Boolean(isAuxiliarSelecionado || catFinal.toLowerCase().includes('auxiliar'));
 
     const profissionalData = {
       nome: editando ? nomeEditando : (form.get('nome') as string),
       foto_url: finalFotoUrl,
-      categoria: isAuxiliarSelecionado ? 'Cabelo' : categoriaSelecionada,
-      cargo: isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : (editando?.cargo || 'Cabeleireiro(a)'),
-      role_title: isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : (editando?.role_title || null),
-      is_auxiliar: isAuxiliarSelecionado,
-      especialidades: isAuxiliarSelecionado
+      categoria: catFinal,
+      cargo: isAuxFinal ? 'Auxiliar (Cabelo)' : catFinal,
+      role_title: isAuxFinal ? 'Auxiliar (Cabelo)' : catFinal,
+      is_auxiliar: isAuxFinal,
+      especialidades: isAuxFinal
         ? Array.from(new Set(['Auxiliar (Cabelo)', ...especialidadesSelecionadas]))
         : especialidadesSelecionadas.filter(e => e !== 'Auxiliar (Cabelo)'),
       ativo: true,
@@ -289,9 +332,11 @@ export default function ProfissionaisPage() {
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
-      const isAux = Boolean(prof.is_auxiliar || prof.cargo?.toLowerCase().includes('auxiliar') || prof.role_title?.toLowerCase().includes('auxiliar') || prof.especialidades?.some(e => e?.toLowerCase()?.includes('auxiliar')));
+      const catLabel = getCategoriaLabel(prof);
+      const isAux = catLabel.toLowerCase().includes('auxiliar');
       setIsAuxiliarSelecionado(isAux);
-      setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e?.toLowerCase()?.includes('unha')) ? 'Unhas' : 'Cabelo'));
+      setCategoriaSelecionada(catLabel);
+      setModoOutraCategoria(false);
       setPeriodoRecebimento(prof.periodo_recebimento || 'semanal');
     } else {
       setEditando(null);
@@ -301,7 +346,8 @@ export default function ProfissionaisPage() {
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
       setIsAuxiliarSelecionado(false);
-      setCategoriaSelecionada('Cabelo');
+      setCategoriaSelecionada(categoriasOpcoes[0] || 'Cabeleireiro(a)');
+      setModoOutraCategoria(false);
       setPeriodoRecebimento('semanal');
       setDiasAtivos([]);
       setCriarAcesso(false);
@@ -381,58 +427,63 @@ export default function ProfissionaisPage() {
                   <label className="block text-xs text-foreground/60 mb-1">Categoria / Função Principal *</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2 flex-wrap">
+                      {categoriasOpcoes.map(catOpcao => {
+                        const isAuxOpcao = catOpcao.toLowerCase().includes('auxiliar');
+                        const selecionada = !modoOutraCategoria && categoriaSelecionada === catOpcao;
+                        return (
+                          <button
+                            key={catOpcao}
+                            type="button"
+                            onClick={() => {
+                              setModoOutraCategoria(false);
+                              setCategoriaSelecionada(catOpcao);
+                              setIsAuxiliarSelecionado(isAuxOpcao);
+                              if (isAuxOpcao) {
+                                setAcessoData(prev => ({ ...prev, role: 'studio_auxiliar' as Role }));
+                              }
+                            }}
+                            className={`flex-1 min-w-[115px] py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 ${
+                              selecionada
+                                ? isAuxOpcao
+                                  ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                                  : 'bg-gold border-gold text-background shadow-sm'
+                                : isAuxOpcao
+                                  ? 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-blue-500/40'
+                                  : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
+                            }`}
+                          >
+                            <span>{getCategoriaIcon(catOpcao, isAuxOpcao)}</span> {catOpcao}
+                          </button>
+                        );
+                      })}
                       <button
                         type="button"
-                        onClick={() => { setCategoriaSelecionada('Cabelo'); setIsAuxiliarSelecionado(false); }}
-                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                          categoriaSelecionada === 'Cabelo' && !isAuxiliarSelecionado
+                        onClick={() => {
+                          setModoOutraCategoria(true);
+                          setIsAuxiliarSelecionado(false);
+                        }}
+                        className={`py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                          modoOutraCategoria
                             ? 'bg-gold border-gold text-background shadow-sm'
                             : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
                         }`}
                       >
-                        <span>✂️</span> Cabelo
+                        + Outra
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { setCategoriaSelecionada('Cabelo'); setIsAuxiliarSelecionado(true); setAcessoData(prev => ({ ...prev, role: 'studio_auxiliar' as Role })); }}
-                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                          isAuxiliarSelecionado
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
-                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-blue-500/40'
-                        }`}
-                      >
-                        <span>🤝</span> Auxiliar (Cabelo)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setCategoriaSelecionada('Unhas'); setIsAuxiliarSelecionado(false); }}
-                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                          categoriaSelecionada === 'Unhas' && !isAuxiliarSelecionado
-                            ? 'bg-gold border-gold text-background shadow-sm'
-                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
-                        }`}
-                      >
-                        <span>💅</span> Unhas
-                      </button>
-                      {(categoriaSelecionada === 'Cabelo' || categoriaSelecionada === 'Unhas') && (
-                         <button 
-                           type="button" 
-                           onClick={() => { setCategoriaSelecionada(''); setIsAuxiliarSelecionado(false); }} 
-                           className="py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
-                         >
-                           + Outra
-                         </button>
-                      )}
                     </div>
-                    {categoriaSelecionada !== 'Cabelo' && categoriaSelecionada !== 'Unhas' && (
-                       <input 
-                         type="text" 
-                         value={categoriaSelecionada} 
-                         onChange={e => setCategoriaSelecionada(e.target.value)}
-                         placeholder="Digite a nova categoria..."
-                         required
-                         className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
-                       />
+                    {(modoOutraCategoria || !categoriasOpcoes.includes(categoriaSelecionada)) && (
+                      <input
+                        type="text"
+                        value={categoriaSelecionada}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setCategoriaSelecionada(val);
+                          setIsAuxiliarSelecionado(val.toLowerCase().includes('auxiliar'));
+                        }}
+                        placeholder="Digite ou edite o nome da categoria..."
+                        required
+                        className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold"
+                      />
                     )}
                   </div>
                 </div>
@@ -758,19 +809,23 @@ export default function ProfissionaisPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold text-lg truncate">{prof.nome}</h3>
-                      {Boolean(prof.is_auxiliar || prof.cargo?.toLowerCase().includes('auxiliar') || prof.role_title?.toLowerCase().includes('auxiliar') || prof.especialidades?.some(e => e.toLowerCase().includes('auxiliar'))) ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                          🤝 Auxiliar (Cabelo)
-                        </span>
-                      ) : (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
-                            ? 'bg-purple-100 text-purple-950 border border-purple-300'
-                            : 'bg-gold/15 text-gold-dim border border-gold/40'
-                        }`}>
-                          {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
-                        </span>
-                      )}
+                      {(() => {
+                        const catLabel = getCategoriaLabel(prof);
+                        const catLower = catLabel.toLowerCase();
+                        const isAux = catLower.includes('auxiliar');
+                        const isUnha = catLower.includes('unha') || catLower.includes('manicure') || catLower.includes('pedic') || catLower.includes('podolog');
+                        return (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isAux
+                              ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
+                              : isUnha
+                                ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                                : 'bg-gold/15 text-gold-dim border border-gold/40'
+                          }`}>
+                            {getCategoriaIcon(catLabel, isAux)} {catLabel}
+                          </span>
+                        );
+                      })()}
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${prof.ativo ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-red-100 text-red-900 border-red-300'}`}>
                         {prof.ativo ? 'Ativo' : 'Inativo'}
                       </span>

@@ -82,7 +82,7 @@ export async function GET() {
           user_id: auxProfile.id,
           email: auxProfile.email || null,
           photo_url: auxProfile.avatar_url || null,
-          categoria: 'Cabelo',
+          categoria: 'Auxiliar (Cabelo)',
           role_title: 'Auxiliar (Cabelo)',
           specialties: ['Auxiliar (Cabelo)'],
           active: true,
@@ -111,7 +111,7 @@ export async function GET() {
         matched.is_auxiliar = true;
         matched.cargo = 'Auxiliar (Cabelo)';
         matched.role_title = 'Auxiliar (Cabelo)';
-        if (!matched.categoria) matched.categoria = 'Cabelo';
+        if (!matched.categoria || matched.categoria === 'Cabelo') matched.categoria = 'Auxiliar (Cabelo)';
 
         if (!matched.user_id || matched.role_title !== 'Auxiliar (Cabelo)') {
           const sched = (matched.weekly_schedule && typeof matched.weekly_schedule === 'object')
@@ -123,7 +123,7 @@ export async function GET() {
             .update({
               user_id: matched.user_id || auxProfile.id,
               role_title: 'Auxiliar (Cabelo)',
-              categoria: matched.categoria || 'Cabelo',
+              categoria: matched.categoria || 'Auxiliar (Cabelo)',
               weekly_schedule: sched,
             })
             .eq('id', matched.id);
@@ -131,21 +131,34 @@ export async function GET() {
       }
     }
 
-    // Enriquecer todos os profissionais com flags de função (Auxiliar (Cabelo))
+    // Enriquecer todos os profissionais respeitando a coluna `categoria` do banco de dados
     const enrichedProfs = profsList.map((sp: any) => {
       const sched = (sp.weekly_schedule || {}) as any;
+      const dbCategoria = typeof sp.categoria === 'string' && sp.categoria.trim() ? sp.categoria.trim() : null;
       const roleTitle = sp.role_title || sp.cargo || sched?._meta?.role_title || sched?._meta?.cargo || null;
-      const isAux = Boolean(
-        sp.is_auxiliar ||
-        sched?._meta?.is_auxiliar ||
-        (typeof roleTitle === 'string' && roleTitle.toLowerCase().includes('auxiliar')) ||
-        (Array.isArray(sp.specialties) && sp.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+      const catIsExplicitNonAux = Boolean(
+        dbCategoria &&
+        dbCategoria.toLowerCase() !== 'cabelo' &&
+        !dbCategoria.toLowerCase().includes('auxiliar')
       );
+      const isAux = Boolean(
+        (dbCategoria && dbCategoria.toLowerCase().includes('auxiliar')) ||
+        (!catIsExplicitNonAux && (
+          sp.is_auxiliar ||
+          sched?._meta?.is_auxiliar ||
+          (typeof roleTitle === 'string' && roleTitle.toLowerCase().includes('auxiliar')) ||
+          (Array.isArray(sp.specialties) && sp.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+        ))
+      );
+      const finalCategoria = dbCategoria
+        ? (isAux && dbCategoria.toLowerCase() === 'cabelo' ? 'Auxiliar (Cabelo)' : dbCategoria)
+        : (isAux ? 'Auxiliar (Cabelo)' : 'Cabeleireiro(a)');
       return {
         ...sp,
+        categoria: finalCategoria,
         is_auxiliar: isAux,
-        cargo: isAux ? 'Auxiliar (Cabelo)' : roleTitle,
-        role_title: isAux ? 'Auxiliar (Cabelo)' : roleTitle,
+        cargo: isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || roleTitle),
+        role_title: isAux ? 'Auxiliar (Cabelo)' : (sp.role_title || dbCategoria || roleTitle),
       };
     });
 
