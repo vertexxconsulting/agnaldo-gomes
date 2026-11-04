@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, X, Check, Package, Beaker, ShoppingBag, ChevronDown } from 'lucide-react';
-import { getTipoProdutoLabel } from '@/lib/gestao-types';
 
 export interface ProductOption {
   id: string;
@@ -35,7 +34,6 @@ export interface ProductSearchSelectProps {
   id?: string;
   autoFocus?: boolean;
   required?: boolean;
-  showStockBadge?: boolean;
 }
 
 /**
@@ -49,14 +47,6 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-function tipoProdutoLabel(prod: ProductOption): string {
-  const insumo = prod.allow_procedure_use === true;
-  const revenda = prod.allow_sale === true;
-  if (insumo && revenda) return 'Insumo + Revenda';
-  if (insumo) return 'Insumo';
-  return 'Revenda';
-}
-
 export function ProductSearchSelect({
   products,
   value,
@@ -67,7 +57,6 @@ export function ProductSearchSelect({
   className = '',
   id,
   autoFocus = false,
-  showStockBadge = true,
 }: ProductSearchSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -226,22 +215,8 @@ export function ProductSearchSelect({
                     ({selectedProduct.brand})
                   </span>
                 )}
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${
-                  selectedProduct.allow_procedure_use && selectedProduct.allow_sale
-                    ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                    : selectedProduct.allow_procedure_use
-                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                    : 'bg-blue-100 text-blue-700 border border-blue-200'
-                }`}>
-                  {tipoProdutoLabel(selectedProduct)}
-                </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-foreground/60 mt-0.5">
-                {showStockBadge && (
-                  <span className="font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
-                    {getProductInfo(selectedProduct).stock} {getProductInfo(selectedProduct).unit} em estoque
-                  </span>
-                )}
                 <span className="text-foreground/30">•</span>
                 {mode === 'procedure' ? (
                   <span className="font-mono text-gold font-bold">
@@ -350,22 +325,8 @@ export function ProductSearchSelect({
                                 ({prod.brand})
                               </span>
                             )}
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${
-                              prod.allow_procedure_use && prod.allow_sale
-                                ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                                : prod.allow_procedure_use
-                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                : 'bg-blue-100 text-blue-700 border border-blue-200'
-                            }`}>
-                              {tipoProdutoLabel(prod)}
-                            </span>
                           </div>
                           <div className="flex items-center gap-2 text-[10px] text-foreground/60 mt-0.5">
-                            {showStockBadge && (
-                              <span className="font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
-                                {info.stock} {info.unit} em estoque
-                              </span>
-                            )}
                             <span className="text-foreground/30">•</span>
                             {mode === 'procedure' ? (
                               <span className="font-mono text-gold font-bold">
