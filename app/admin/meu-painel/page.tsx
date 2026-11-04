@@ -1437,25 +1437,25 @@ export default function MeuPainelPage() {
                   <CardGlass key={ag.id} className="p-0 overflow-hidden relative border-[var(--border-subtle)]">
                     <div className="absolute top-0 left-0 w-1 h-full bg-green-500" />
                     
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
+                    <div className="p-5 sm:p-6">
+                      <div className="flex justify-between items-start gap-4 mb-4">
+                        <div className="min-w-0 flex-1">
                           {isAuxiliar && (
                             <span className="px-2 py-0.5 rounded bg-gold/15 text-gold-dim dark:text-gold font-bold text-[10px] border border-gold/30 flex items-center gap-1 w-fit mb-1.5">
-                              <Users size={11} className="text-gold" /> Auxiliar de {titularNome}
+                              <Users size={11} className="text-gold shrink-0" /> Auxiliar de {titularNome}
                             </span>
                           )}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-2xl font-bold text-foreground">
+                            <h3 className="text-xl sm:text-2xl font-bold text-foreground leading-tight break-words">
                               {getClienteNome(ag.cliente_id)}
                             </h3>
                             {ag.descontado_pacote && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-bold text-xs border border-purple-500/30 flex items-center gap-1">
+                              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-bold text-xs border border-purple-500/30 flex items-center gap-1 shrink-0">
                                 <Package size={12} /> {ag.pacote_nome || 'Pacote Pré-Pago'}
                               </span>
                             )}
                           </div>
-                          <p className="text-foreground/70 font-medium mt-0.5">
+                          <p className="text-foreground/70 font-medium mt-1 text-sm sm:text-base">
                             {getServicoNome(ag.servico_id)}
                             {Array.isArray(ag.sub_servicos) && ag.sub_servicos.length > 0 && (
                               <span className="text-xs text-foreground/50 ml-1">
@@ -1464,40 +1464,41 @@ export default function MeuPainelPage() {
                             )}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-foreground/50">Iniciado às</p>
-                          <p className="text-xl font-mono text-foreground font-bold">{ag.hora_inicio}</p>
+                        <div className="text-right shrink-0 pl-2">
+                          <p className="text-xs text-foreground/50 whitespace-nowrap">Iniciado às</p>
+                          <p className="text-xl font-mono text-foreground font-bold whitespace-nowrap">{ag.hora_inicio}</p>
                           {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                            <p className="text-xs font-mono text-emerald-500 font-bold mt-1 flex items-center justify-end gap-1">
-                              <Beaker size={12} /> R$ {Number(ag.product_cost).toFixed(2)}
+                            <p className="text-xs font-mono text-emerald-500 font-bold mt-1 flex items-center justify-end gap-1 whitespace-nowrap">
+                              <Beaker size={12} className="shrink-0" /> {fmt(Number(ag.product_cost))}
                             </p>
                           )}
                         </div>
                       </div>
 
                       {/* AS 4 OPÇÕES DA CADEIRA: PRODUTO (INSUMOS), SERVIÇO, AGENDA E PACOTE */}
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
                         {/* OPÇÃO 1: PRODUTO (INSUMOS) - sempre primeiro */}
                         <button
                           type="button"
                           onClick={() => abrirModalInsumos(ag)}
-                          className="p-3 rounded-lg border border-emerald-500/30 hover:border-emerald-500 hover:bg-emerald-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                          className="p-3.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500 hover:bg-emerald-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-background/60"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-                              <Beaker size={14} /> Produto (Insumos)
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 min-w-0">
+                              <Beaker size={14} className="shrink-0" />
+                              <span className="truncate">Produto (Insumos)</span>
                             </span>
                             {ag.insumos_detalhes && ag.insumos_detalhes.length > 0 && (
-                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400">
-                                {ag.insumos_detalhes.length} itens
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 shrink-0 whitespace-nowrap">
+                                {ag.insumos_detalhes.length} {ag.insumos_detalhes.length === 1 ? 'item' : 'itens'}
                               </span>
                             )}
                           </div>
-                          <div className="mt-2">
-                            <p className="text-sm font-semibold text-foreground">
+                          <div className="mt-2.5">
+                            <p className="text-sm font-bold text-foreground truncate">
                               {ag.product_cost && Number(ag.product_cost) > 0 ? fmt(Number(ag.product_cost)) : 'Nenhum lançado'}
                             </p>
-                            <p className="text-[11px] text-foreground/50">Lançar produtos da etapa e pesar</p>
+                            <p className="text-[11px] text-foreground/50 mt-0.5 truncate">Lançar produtos da etapa e pesar</p>
                           </div>
                         </button>
 
@@ -1505,17 +1506,18 @@ export default function MeuPainelPage() {
                         <button
                           type="button"
                           onClick={() => abrirModalServico(ag)}
-                          className="p-3 rounded-lg border border-gold/30 hover:border-gold hover:bg-gold/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                          className="p-3.5 rounded-xl border border-gold/30 hover:border-gold hover:bg-gold/10 text-left transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-background/60"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                              <Clock size={14} /> Serviço / Tempo
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5 min-w-0">
+                              <Clock size={14} className="shrink-0" />
+                              <span className="truncate">Serviço / Tempo</span>
                             </span>
-                            <Pencil size={13} className="text-foreground/40 group-hover:text-gold" />
+                            <Pencil size={13} className="text-foreground/40 group-hover:text-gold shrink-0" />
                           </div>
-                          <div className="mt-2">
-                            <p className="text-sm font-semibold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
-                            <p className="text-[11px] text-foreground/50">
+                          <div className="mt-2.5">
+                            <p className="text-sm font-bold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
+                            <p className="text-[11px] text-foreground/50 mt-0.5 truncate">
                               {ag.total_amount != null && ag.total_amount > 0 ? fmt(ag.total_amount) : 'Preço de Tabela'} • Alterar/Ajustar
                             </p>
                           </div>
@@ -1525,25 +1527,26 @@ export default function MeuPainelPage() {
                         <button
                           type="button"
                           onClick={() => abrirModalAgendaConfig(ag)}
-                          className="p-3 rounded-lg border border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                          className="p-3.5 rounded-xl border border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-background/60"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                              <LinkIcon size={14} /> Agenda / Auxiliar
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-xs font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400 flex items-center gap-1.5 min-w-0">
+                              <LinkIcon size={14} className="shrink-0" />
+                              <span className="truncate">Agenda / Auxiliar</span>
                             </span>
                             {ag.allow_overlap ? (
-                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-600 dark:text-blue-300 shrink-0 whitespace-nowrap">
                                 Encaixe ON
                               </span>
                             ) : null}
                           </div>
-                          <div className="mt-2">
-                            <p className="text-sm font-semibold text-foreground truncate">
+                          <div className="mt-2.5">
+                            <p className="text-sm font-bold text-foreground truncate">
                               {ag.auxiliares_ids && ag.auxiliares_ids.length > 0
                                 ? ag.auxiliares_ids.map(id => profissionais.find(p => p.id === id)?.nome).filter(Boolean).join(', ')
                                 : 'Sem auxiliar'}
                             </p>
-                            <p className="text-[11px] text-foreground/50">
+                            <p className="text-[11px] text-foreground/50 mt-0.5 truncate">
                               {ag.allow_overlap ? 'Encaixe liberado' : 'Sem sobreposição'} • Alterar auxiliar
                             </p>
                           </div>
@@ -1553,57 +1556,60 @@ export default function MeuPainelPage() {
                         <button
                           type="button"
                           onClick={() => abrirModalPacotes(ag)}
-                          className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between group cursor-pointer ${
+                          className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-background/60 ${
                             ag.descontado_pacote 
                               ? 'border-purple-500 bg-purple-500/15 ring-1 ring-purple-500/40' 
                               : 'border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                              <Package size={14} /> Pacote
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-xs font-bold uppercase tracking-wider text-purple-500 dark:text-purple-400 flex items-center gap-1.5 min-w-0">
+                              <Package size={14} className="shrink-0" />
+                              <span className="truncate">Pacote</span>
                             </span>
                             {ag.descontado_pacote ? (
-                              <CheckCircle2 size={15} className="text-purple-400" />
+                              <CheckCircle2 size={15} className="text-purple-400 shrink-0" />
                             ) : (
-                              <span className="text-[10px] text-foreground/40 font-mono">Pré-pago</span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] text-purple-500 dark:text-purple-300 bg-purple-500/10 font-mono font-semibold shrink-0 whitespace-nowrap">
+                                Pré-pago
+                              </span>
                             )}
                           </div>
-                          <div className="mt-2">
-                            <p className="text-sm font-semibold text-foreground truncate">
+                          <div className="mt-2.5">
+                            <p className="text-sm font-bold text-foreground truncate">
                               {ag.descontado_pacote ? (ag.pacote_nome || 'Pacote Abatido') : 'Consultar Pacote'}
                             </p>
-                            <p className="text-[11px] text-foreground/50">
+                            <p className="text-[11px] text-foreground/50 mt-0.5 truncate">
                               {ag.descontado_pacote ? 'Sessão descontada ✓' : 'Descontar sessão pré-paga'}
                             </p>
                           </div>
                         </button>
                       </div>
 
-                      {/* BOTÕES DE VENDER PRODUTO & PRÉ-FECHAMENTO */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                      {/* BOTÕES DE VENDER PRODUTO, EXCLUIR & PRÉ-FECHAMENTO */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 pt-4 border-t border-[var(--border-subtle)]">
                         <Button 
                           variant="secondary" 
                           onClick={() => abrirModalUpsell(ag)}
-                          className="border border-[var(--border-subtle)] hover:border-gold/40 flex items-center gap-2"
+                          className="w-full justify-center border border-[var(--border-subtle)] hover:border-gold/40 flex items-center gap-2 py-2.5 text-xs sm:text-sm font-semibold"
                         >
-                          <ShoppingBag size={16} className="text-gold" /> Vender Produto (Upsell)
+                          <ShoppingBag size={16} className="text-gold shrink-0" /> Vender Produto (Upsell)
                         </Button>
 
                         <Button 
                           variant="outline"
                           onClick={() => abrirModalExcluirAgendamento(ag)}
-                          className="border border-red-500/30 hover:border-red-500 hover:bg-red-500/10 text-red-500 dark:text-red-400 flex items-center gap-2"
+                          className="w-full justify-center border border-red-500/30 hover:border-red-500 hover:bg-red-500/10 text-red-500 dark:text-red-400 flex items-center gap-2 py-2.5 text-xs sm:text-sm font-semibold"
                         >
-                          <Trash2 size={16} /> Excluir Agendamento
+                          <Trash2 size={16} className="shrink-0" /> Excluir Agendamento
                         </Button>
 
                         <Button 
                           variant="primary" 
                           onClick={() => abrirPreFechamento(ag)}
-                          className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center gap-2 px-5 py-2.5 shadow-md"
+                          className="sm:col-span-2 w-full justify-center bg-gold hover:bg-gold-dim text-white font-bold flex items-center gap-2 px-5 py-3 shadow-md text-sm"
                         >
-                          <CheckCircle2 size={16} /> Encerrar Atendimento (Pré-Fechamento)
+                          <CheckCircle2 size={17} className="shrink-0" /> Encerrar Atendimento (Pré-Fechamento)
                         </Button>
                       </div>
                     </div>
@@ -1960,7 +1966,7 @@ export default function MeuPainelPage() {
                         disabled={isReadOnly}
                         title={isReadOnly ? 'Ação bloqueada: somente leitura' : 'Excluir ou Cancelar Atendimento'}
                         onClick={isReadOnly ? undefined : () => abrirModalExcluirAgendamento(ag)}
-                        className={`flex-1 p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center gap-1 ${isReadOnly ? 'opacity-50 cursor-not-allowed border-red-500/10 text-foreground/40' : ''}`}
+                        className={`shrink-0 px-2.5 py-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center ${isReadOnly ? 'opacity-50 cursor-not-allowed border-red-500/10 text-foreground/40' : ''}`}
                       >
                         <Trash2 size={14} />
                       </button>
