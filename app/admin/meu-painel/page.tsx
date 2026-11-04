@@ -2740,6 +2740,16 @@ export default function MeuPainelPage() {
 
         const custoInsumos = Number(activeAgendamento.product_cost || 0);
 
+        // Valor fracionado usado dos insumos (custo unitário × quantidade usada), não o custo total do produto
+        const custoInsumosUsado = Number(
+          (Array.isArray(activeAgendamento.insumos_detalhes)
+            ? activeAgendamento.insumos_detalhes.reduce(
+                (acc, item) => acc + Number(item.custo_unitario || item.price_per_gram || 0) * Number(item.qty_used || 0),
+                0
+              )
+            : 0).toFixed(2)
+        );
+
         // Itens de produto de balcão (upsell)
         const itensUpsell = comandaAtual.filter(i => i.type === 'PRODUTO');
         const totalUpsell = itensUpsell.reduce((acc, i) => acc + (i.price * i.qty), 0);
@@ -3059,11 +3069,11 @@ export default function MeuPainelPage() {
                   <>
                     <div className="flex justify-between items-center text-sm mb-1">
                       <span className="text-foreground/60">Insumos Utilizados</span>
-                      <span className="font-mono font-bold text-emerald-500">{fmt(custoInsumos)}</span>
+                      <span className="font-mono font-bold text-emerald-500">{fmt(custoInsumosUsado)}</span>
                     </div>
                     <div className="space-y-1 ml-4">
                       {activeAgendamento.insumos_detalhes.map((item, idx) => {
-                        const itemTotal = Number((Number(item.custo_total || 0) * Number(item.qty_used || 0)).toFixed(2));
+                        const itemTotal = Number((Number(item.custo_unitario || item.price_per_gram || 0) * Number(item.qty_used || 0)).toFixed(2));
                         const itemUnit = Number((item.custo_unitario || item.price_per_gram || 0).toFixed(4));
                         return (
                           <div key={idx} className="flex justify-between items-center text-xs text-foreground/80">
@@ -3079,7 +3089,7 @@ export default function MeuPainelPage() {
                 {/* Subtotal */}
                 <div className="flex justify-between items-center text-sm border-t border-[var(--border-subtle)] pt-2">
                   <span className="text-foreground font-medium">Subtotal (Serviço + Insumos)</span>
-                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico + custoInsumos)}</span>
+                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico + custoInsumosUsado)}</span>
                 </div>
 
                 {/* Desconto */}
@@ -3095,7 +3105,7 @@ export default function MeuPainelPage() {
                 {/* Total Final */}
                 <div className="flex justify-between items-center text-base border-t border-[var(--border-subtle)] pt-2 mt-2">
                   <span className="text-foreground font-bold">TOTAL FINAL</span>
-                  <span className="font-black font-mono text-gold text-lg">{fmt(Math.max(0, precoBaseServico + custoInsumos - descValor))}</span>
+                  <span className="font-black font-mono text-gold text-lg">{fmt(Math.max(0, precoBaseServico + custoInsumosUsado - descValor))}</span>
                 </div>
               </div>
 
@@ -3149,7 +3159,7 @@ export default function MeuPainelPage() {
                         <span className="text-right">Total</span>
                       </div>
                       {activeAgendamento.insumos_detalhes.map((item, idx) => {
-                        const itemTotal = Number((Number(item.custo_total || 0) * Number(item.qty_used || 0)).toFixed(2));
+                        const itemTotal = Number((Number(item.custo_unitario || item.price_per_gram || 0) * Number(item.qty_used || 0)).toFixed(2));
                         const itemUnit = Number((item.custo_unitario || item.price_per_gram || 0).toFixed(4));
                         return (
                           <div key={idx} className="flex justify-between items-center text-xs text-foreground/80 py-0.5">
@@ -3162,7 +3172,7 @@ export default function MeuPainelPage() {
                       })}
                       <div className="flex justify-between items-center text-[10px] font-bold text-foreground border-t border-[var(--border-subtle)] pt-1 mt-1">
                         <span>Total Insumos</span>
-                        <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {custoInsumos.toFixed(2)}</span>
+                        <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {custoInsumosUsado.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
