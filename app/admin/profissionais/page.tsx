@@ -42,6 +42,7 @@ export default function ProfissionaisPage() {
   const [viewMode, setViewMode] = useState<string>('grid');
   const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
   const [diasAtivos, setDiasAtivos] = useState<number[]>([]);
+  const [nomeEditando, setNomeEditando] = useState('');
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<'Cabelo' | 'Unhas' | string>('Cabelo');
@@ -178,7 +179,7 @@ export default function ProfissionaisPage() {
     const pinDigitado = (form.get('stock_pin') as string)?.trim() || '1234';
 
     const profissionalData = {
-      nome: form.get('nome') as string,
+      nome: editando ? nomeEditando : (form.get('nome') as string),
       foto_url: finalFotoUrl,
       categoria: isAuxiliarSelecionado ? 'Cabelo' : categoriaSelecionada,
       cargo: isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : (editando?.cargo || 'Cabeleireiro(a)'),
@@ -284,6 +285,7 @@ export default function ProfissionaisPage() {
       setEditando(prof);
       setFotoLocal(prof.foto_url ?? null);
       setFotoFile(null);
+      setNomeEditando(prof.nome);
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
@@ -295,6 +297,7 @@ export default function ProfissionaisPage() {
       setEditando(null);
       setFotoLocal(null);
       setFotoFile(null);
+      setNomeEditando('');
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
       setIsAuxiliarSelecionado(false);
@@ -366,7 +369,13 @@ export default function ProfissionaisPage() {
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
                 <div className="sm:col-span-12">
                   <label className="block text-xs text-foreground/60 mb-1">Nome</label>
-                  <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
+                  <input 
+                    name="nome" 
+                    required
+                    value={editando?.nome ?? ''}
+                    onChange={e => setNomeEditando(e.target.value)}
+                    className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" 
+                  />
                 </div>
                 <div className="sm:col-span-6">
                   <label className="block text-xs text-foreground/60 mb-1">Categoria / Função Principal *</label>
