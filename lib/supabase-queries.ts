@@ -603,10 +603,27 @@ export async function atualizarProcedimentoCadeiraAgendamento(params: {
     console.warn('[atualizarProcedimentoCadeiraAgendamento] API server falhou:', err);
   }
 
+  // Buscar agendamento atual para preservar _meta (insumos_procedimento) nos sub_services
+  let metaItems: any[] = [];
+  try {
+    const { data: current } = await supabase
+      .from(TBL.agendamentos)
+      .select('sub_services')
+      .eq('id', params.id)
+      .maybeSingle();
+    if (current?.sub_services && Array.isArray(current.sub_services)) {
+      metaItems = current.sub_services.filter((s: any) => s?._meta);
+    }
+  } catch (err) {
+    console.warn('[atualizarProcedimentoCadeiraAgendamento] não foi possível ler _meta atual:', err);
+  }
+
+  const subServicosComMeta = params.sub_servicos ? [...params.sub_servicos, ...metaItems] : undefined;
+
   const patch: Row = {
     service_id: params.servico_id,
   };
-  if (params.sub_servicos) patch.sub_services = params.sub_servicos;
+  if (subServicosComMeta) patch.sub_services = subServicosComMeta;
   if (params.total_amount != null) patch.total_amount = params.total_amount;
   if (params.product_cost != null) patch.product_cost = params.product_cost;
 
