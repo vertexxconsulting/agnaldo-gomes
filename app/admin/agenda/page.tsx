@@ -49,10 +49,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#64748b',
     cardClass: 'bg-slate-400 dark:bg-slate-700 border-slate-600 dark:border-slate-800 shadow-sm',
     ongoingClass: 'bg-slate-400 dark:bg-slate-700 border-slate-600 dark:border-slate-800 shadow-sm',
-    badgeClass: 'bg-slate-800 dark:bg-slate-600 text-white dark:text-white border-slate-600 dark:border-slate-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold',
-    textHora: 'text-slate-100 dark:text-slate-200',
+    badgeClass: 'bg-slate-200 dark:bg-slate-600 text-black dark:text-white border-slate-400 dark:border-slate-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold',
+    textHora: 'text-black/800 dark:text-slate-200',
   },
   confirmado: {
     label: 'Pra Atender',
@@ -60,10 +60,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#ca8a04',
     cardClass: 'bg-amber-400 dark:bg-amber-700 border-amber-600 dark:border-amber-800 shadow-sm',
     ongoingClass: 'bg-amber-400 dark:bg-amber-700 border-amber-600 dark:border-amber-800 shadow-sm',
-    badgeClass: 'bg-amber-800 dark:bg-amber-600 text-white dark:text-white border-amber-600 dark:border-amber-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold',
-    textHora: 'text-amber-100 dark:text-amber-200',
+    badgeClass: 'bg-amber-200 dark:bg-amber-600 text-black dark:text-white border-amber-400 dark:border-amber-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold',
+    textHora: 'text-black/800 dark:text-amber-200',
   },
   em_atendimento: {
     label: 'Em Atendimento',
@@ -71,10 +71,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#059669',
     cardClass: 'bg-emerald-400 dark:bg-emerald-700 border-emerald-600 dark:border-emerald-800 shadow-sm',
     ongoingClass: 'bg-emerald-400 dark:bg-emerald-700 border-emerald-600 dark:border-emerald-800 shadow-sm',
-    badgeClass: 'bg-emerald-800 dark:bg-emerald-600 text-white dark:text-white border-emerald-600 dark:border-emerald-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold',
-    textHora: 'text-emerald-100 dark:text-emerald-200',
+    badgeClass: 'bg-emerald-200 dark:bg-emerald-600 text-black dark:text-white border-emerald-400 dark:border-emerald-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold',
+    textHora: 'text-black/800 dark:text-emerald-200',
   },
   concluido: {
     label: 'Pagamento',
@@ -82,10 +82,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#2563eb',
     cardClass: 'bg-blue-400 dark:bg-blue-700 border-blue-600 dark:border-blue-800 shadow-sm',
     ongoingClass: 'bg-blue-400 dark:bg-blue-700 border-blue-600 dark:border-blue-800 shadow-sm',
-    badgeClass: 'bg-blue-800 dark:bg-blue-600 text-white dark:text-white border-blue-600 dark:border-blue-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold',
-    textHora: 'text-blue-100 dark:text-blue-200',
+    badgeClass: 'bg-blue-200 dark:bg-blue-600 text-black dark:text-white border-blue-400 dark:border-blue-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold',
+    textHora: 'text-black/800 dark:text-blue-200',
   },
   cancelado: {
     label: 'Cancelado',
@@ -93,10 +93,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#dc2626',
     cardClass: 'bg-red-500 dark:bg-red-700 border-red-700 dark:border-red-900 shadow-sm',
     ongoingClass: 'bg-red-500 dark:bg-red-700 border-red-700 dark:border-red-900 shadow-sm',
-    badgeClass: 'bg-red-800 dark:bg-red-600 text-white dark:text-white border-red-600 dark:border-red-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold line-through',
-    textHora: 'text-red-100 dark:text-red-200 font-mono',
+    badgeClass: 'bg-red-200 dark:bg-red-600 text-black dark:text-white border-red-400 dark:border-red-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold line-through',
+    textHora: 'text-black/800 dark:text-red-200 font-mono',
   },
   no_show: {
     label: 'No-Show',
@@ -104,10 +104,10 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     dotColor: '#9333ea',
     cardClass: 'bg-purple-500 dark:bg-purple-700 border-purple-700 dark:border-purple-900 shadow-sm',
     ongoingClass: 'bg-purple-500 dark:bg-purple-700 border-purple-700 dark:border-purple-900 shadow-sm',
-    badgeClass: 'bg-purple-800 dark:bg-purple-600 text-white dark:text-white border-purple-600 dark:border-purple-400',
-    servicoClass: 'text-white dark:text-white',
-    textCliente: 'text-white dark:text-white font-bold line-through',
-    textHora: 'text-purple-100 dark:text-purple-200 font-mono',
+    badgeClass: 'bg-purple-200 dark:bg-purple-600 text-black dark:text-white border-purple-400 dark:border-purple-600',
+    servicoClass: 'text-black dark:text-white',
+    textCliente: 'text-black dark:text-white font-bold line-through',
+    textHora: 'text-black/800 dark:text-purple-200 font-mono',
   },
 };
 
@@ -2737,7 +2737,7 @@ function AgendaContent() {
                                                 <span className="whitespace-nowrap">{estilo.label}</span>
                                               </div>
                                               {a.allow_overlap && (
-                                                <span className="text-[8px] font-semibold text-gold/80 bg-gold/10 px-1.5 py-0.5 rounded border border-gold/20 whitespace-nowrap shrink-0">
+                                                <span className="text-[8px] font-bold text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 whitespace-nowrap shrink-0">
                                                   Pausa liberada
                                                 </span>
                                               )}
