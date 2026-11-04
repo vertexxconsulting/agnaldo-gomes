@@ -8,7 +8,7 @@ import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
 import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
 import { useModulePermission } from '@/lib/use-module-permission';
-import { fetchProfissionais } from '@/lib/supabase-queries';
+import { fetchProfissionais, criarProfissional } from '@/lib/supabase-queries';
 import type { Profissional } from '@/lib/gestao-types';
 
 import { 
@@ -263,6 +263,23 @@ export default function TeamManagementPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: newUser.email, nickname: newUser.nickname.trim() }),
         }).catch(err => console.warn('Aviso ao registrar nickname:', err));
+      }
+
+      // Se for auxiliar e não tem profissional vinculado, criar automaticamente na tabela de profissionais
+      if (tipoAcesso === 'auxiliar' && !newUser.professional_id && !selectedProfissionalId) {
+        try {
+          await criarProfissional({
+            nome: newUser.full_name,
+            categoria: 'Cabelo',
+            especialidades: [],
+            ativo: true,
+            jornada_semanal: {},
+            product_commission_pct: 0,
+            periodo_recebimento: 'semanal',
+          });
+        } catch (err: any) {
+          console.warn('[equipe] Aviso: não foi possível criar registro de profissional para auxiliar:', err);
+        }
       }
 
       alert('Usuário criado com sucesso!');

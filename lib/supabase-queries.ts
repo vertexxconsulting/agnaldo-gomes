@@ -2592,6 +2592,27 @@ export async function salvarItemComanda(
 }
 
 /**
+ * Remove um item da comanda de um agendamento.
+ */
+export async function excluirItemComanda(itemId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from(TBL.appointment_items)
+      .delete()
+      .eq('id', itemId);
+
+    if (error) {
+      logSupabaseError('[excluirItemComanda]', error);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  } catch (err: any) {
+    logSupabaseError('[excluirItemComanda]', err);
+    return { ok: false, error: err?.message || 'Erro ao excluir item' };
+  }
+}
+
+/**
  * Salva um insumo aplicado em TEMPO REAL durante o procedimento (direto pelo profissional ou auxiliar).
  * Atualiza o _meta.insumos_procedimento do agendamento, dá baixa no estoque e sincroniza a comanda.
  */
