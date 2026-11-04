@@ -614,6 +614,30 @@ export async function atualizarProcedimentoCadeiraAgendamento(params: {
   return !error;
 }
 
+export async function atualizarConfiguracaoAgendamentoCadeira(params: {
+  id: string;
+  allow_overlap?: boolean;
+  auxiliares_ids?: string[];
+}): Promise<boolean> {
+  try {
+    const res = await fetch('/api/agendamentos/admin', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: params.id, allow_overlap: params.allow_overlap, auxiliares_ids: params.auxiliares_ids }),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    console.warn('[atualizarConfiguracaoAgendamentoCadeira] API server falhou:', err);
+  }
+
+  const patch: Row = {};
+  if (params.allow_overlap !== undefined) patch.allow_overlap = params.allow_overlap;
+  if (params.auxiliares_ids !== undefined) patch.assistant_ids = params.auxiliares_ids;
+
+  const { error } = await supabase.from(TBL.agendamentos).update(patch).eq('id', params.id);
+  return !error;
+}
+
 export async function excluirAgendamentoAdmin(id: string): Promise<boolean> {
   try {
     const res = await fetch('/api/agendamentos/admin', {

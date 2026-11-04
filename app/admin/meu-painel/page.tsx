@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   Clock, CheckCircle2, Play, Plus, X, ShoppingBag, Share2, Beaker, DollarSign, CalendarDays, Percent, Users, Sparkles, Trash2, User2, Pencil,
-  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight, Scissors, Package, Check, ChevronRight, ChevronLeft, Calendar, AlertTriangle
+  CreditCard, Banknote, Smartphone, RefreshCw, ShieldAlert, ArrowUpRight, Scissors, Package, Check, ChevronRight, ChevronLeft, Calendar, AlertTriangle, Link as LinkIcon
 } from 'lucide-react';
 import { SectionHeader, Panel } from '@/components/ui/Panel';
 import { CardGlass } from '@/components/CardGlass';
@@ -23,6 +23,7 @@ import {
   fetchItensComanda,
   atualizarStatusAgendamento,
   atualizarProcedimentoCadeiraAgendamento,
+  atualizarConfiguracaoAgendamentoCadeira,
   excluirAgendamentoAdmin,
   criarAgendamento,
   finalizarRecebimentoAgendamento,
@@ -104,9 +105,11 @@ export default function MeuPainelPage() {
   const [comandaAtual, setComandaAtual] = useState<ItemComanda[]>([]);
   const [insumoSelecionado, setInsumoSelecionado] = useState('');
   const [insumoQty, setInsumoQty] = useState('');
-  const [insumoEtapa, setInsumoEtapa] = useState('Etapa 1 - Descoloração / Mechas');
   const [insumoProfId, setInsumoProfId] = useState('');
   const [insumoLoading, setInsumoLoading] = useState(false);
+  const [agendaConfigOpen, setAgendaConfigOpen] = useState(false);
+  const [agendaConfigAllowOverlap, setAgendaConfigAllowOverlap] = useState(false);
+  const [agendaConfigAuxiliares, setAgendaConfigAuxiliares] = useState<string[]>([]);
   const [editingInsumoIndex, setEditingInsumoIndex] = useState<number | null>(null);
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [produtoQty, setProdutoQty] = useState('1');
@@ -798,7 +801,6 @@ export default function MeuPainelPage() {
   const abrirModalInsumos = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
     setEditingInsumoIndex(null);
-    setInsumoEtapa('Etapa 1 - Descoloração / Mechas');
     setInsumoProfId(selectedProfId || ag.profissional_id);
     setInsumoSelecionado('');
     setInsumoQty('');
@@ -814,11 +816,45 @@ export default function MeuPainelPage() {
     setUpsellModalOpen(true);
   };
 
+  const abrirModalAgendaConfig = (ag: Agendamento) => {
+    setActiveAgendamento(ag);
+    setAgendaConfigAllowOverlap(Boolean(ag.allow_overlap));
+    setAgendaConfigAuxiliares(Array.isArray(ag.auxiliares_ids) ? [...ag.auxiliares_ids] : []);
+    setAgendaConfigOpen(true);
+  };
+
+  const handleSalvarAgendaConfig = async () => {
+    if (!activeAgendamento) return;
+    setInsumoLoading(true);
+    try {
+      const ok = await atualizarConfiguracaoAgendamentoCadeira({
+        id: activeAgendamento.id,
+        allow_overlap: agendaConfigAllowOverlap,
+        auxiliares_ids: agendaConfigAuxiliares.length > 0 ? agendaConfigAuxiliares : [],
+      });
+      if (ok) {
+        const updated: Agendamento = {
+          ...activeAgendamento,
+          allow_overlap: agendaConfigAllowOverlap,
+          auxiliares_ids: agendaConfigAuxiliares.length > 0 ? agendaConfigAuxiliares : [],
+        };
+        setActiveAgendamento(updated);
+        setAgendamentos(prev => prev.map(a => a.id === updated.id ? updated : a));
+        setAgendaConfigOpen(false);
+      } else {
+        alert('Erro ao atualizar configuração da agenda.');
+      }
+    } catch (err: any) {
+      alert('Erro: ' + (err.message || 'Falha ao salvar'));
+    } finally {
+      setInsumoLoading(false);
+    }
+  };
+
   const handleEditarInsumo = (index: number) => {
     if (!activeAgendamento || !activeAgendamento.insumos_detalhes?.[index]) return;
     const item = activeAgendamento.insumos_detalhes[index];
     setEditingInsumoIndex(index);
-    setInsumoEtapa(item.etapa || 'Etapa 1 - Descoloração / Mechas');
     setInsumoProfId(item.profissional_id || activeAgendamento.profissional_id);
     setInsumoSelecionado(item.inventory_id);
     setInsumoQty(String(item.qty_used));
@@ -859,7 +895,6 @@ export default function MeuPainelPage() {
       custo_unitario: custoUn,
       qty_used: qtyNum,
       custo_total: Number((custoUn * qtyNum).toFixed(2)),
-      etapa: insumoEtapa,
       profissional_id: profId,
       horario: itemEditando?.horario || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
@@ -1258,9 +1293,9 @@ export default function MeuPainelPage() {
                         </div>
                       </div>
 
-                      {/* AS 3 OPÇÕES DA CADEIRA: SERVIÇO, PRODUTO (INSUMOS) E PACOTE */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
-                        {/* OPÇÃO 1: SERVIÇO */}
+                      {/* AS 4 OPÇÕES DA CADEIRA: SERVIÇO, PRODUTO (INSUMOS), AGENDA E PACOTE */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
+                        {/* OPÇÃO 1: SERVIÇO (tempo/serviço) */}
                         <button
                           type="button"
                           onClick={() => abrirModalServico(ag)}
@@ -1268,7 +1303,7 @@ export default function MeuPainelPage() {
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                              <Scissors size={14} /> Serviço
+                              <Clock size={14} /> Serviço / Tempo
                             </span>
                             <Pencil size={13} className="text-foreground/40 group-hover:text-gold" />
                           </div>
@@ -1304,7 +1339,35 @@ export default function MeuPainelPage() {
                           </div>
                         </button>
 
-                        {/* OPÇÃO 3: PACOTE */}
+                        {/* OPÇÃO 3: AGENDA (encaixe / auxiliar) */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalAgendaConfig(ag)}
+                          className="p-3 rounded-lg border border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                              <LinkIcon size={14} /> Agenda / Auxiliar
+                            </span>
+                            {ag.allow_overlap ? (
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400">
+                                Encaixe ON
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {ag.auxiliares_ids && ag.auxiliares_ids.length > 0
+                                ? ag.auxiliares_ids.map(id => profissionais.find(p => p.id === id)?.nome).filter(Boolean).join(', ')
+                                : 'Sem auxiliar'}
+                            </p>
+                            <p className="text-[11px] text-foreground/50">
+                              {ag.allow_overlap ? 'Encaixe liberado' : 'Sem sobreposição'} • Alterar auxiliar
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* OPÇÃO 4: PACOTE */}
                         <button
                           type="button"
                           onClick={() => abrirModalPacotes(ag)}
@@ -1796,44 +1859,7 @@ export default function MeuPainelPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* 1. Etapa */}
-                <div>
-                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Etapa:</label>
-                  <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-gold"
-                    value={insumoEtapa}
-                    onChange={e => setInsumoEtapa(e.target.value)}
-                  >
-                    <option value="Etapa 1 - Descoloração / Mechas">Etapa 1 - Descoloração / Mechas</option>
-                    <option value="Etapa 2 - Tonalização / Matização">Etapa 2 - Tonalização / Matização</option>
-                    <option value="Etapa 3 - Lavatório / Tratamento">Etapa 3 - Lavatório / Tratamento</option>
-                    <option value="Etapa 4 - Escova / Modelagem">Etapa 4 - Escova / Modelagem</option>
-                    <option value="Etapa 5 - Finalização / Óleos">Etapa 5 - Finalização / Óleos</option>
-                  </select>
-                </div>
-
-                {/* 2. Quem Aplicou */}
-                <div>
-                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Quem Aplicou:</label>
-                  <select
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-gold"
-                    value={insumoProfId}
-                    onChange={e => setInsumoProfId(e.target.value)}
-                  >
-                    <option value={activeAgendamento.profissional_id}>
-                      ⭐ {profissionais.find(p => p.id === activeAgendamento.profissional_id)?.nome || 'Titular'} (Titular)
-                    </option>
-                    {Array.isArray(activeAgendamento.auxiliares_ids) && activeAgendamento.auxiliares_ids.map(aid => (
-                      <option key={aid} value={aid}>
-                        👥 {profissionais.find(p => p.id === aid)?.nome || 'Auxiliar'} (Auxiliar)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* 3. Produto e Quantidade */}
+              {/* Produto e Quantidade */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                 <div className="md:col-span-8">
                   <label className="text-xs font-semibold text-foreground/70 mb-1 block">Produto (Estoque):</label>
@@ -1877,6 +1903,27 @@ export default function MeuPainelPage() {
                       {insumoLoading ? '...' : (editingInsumoIndex !== null ? 'Salvar Edição' : '+ Lançar')}
                     </Button>
                   </div>
+                </div>
+              </div>
+
+              {/* Quem Aplicou */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">Quem Aplicou:</label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-gold"
+                    value={insumoProfId}
+                    onChange={e => setInsumoProfId(e.target.value)}
+                  >
+                    <option value={activeAgendamento.profissional_id}>
+                      ⭐ {profissionais.find(p => p.id === activeAgendamento.profissional_id)?.nome || 'Titular'} (Titular)
+                    </option>
+                    {Array.isArray(activeAgendamento.auxiliares_ids) && activeAgendamento.auxiliares_ids.map(aid => (
+                      <option key={aid} value={aid}>
+                        👥 {profissionais.find(p => p.id === aid)?.nome || 'Auxiliar'} (Auxiliar)
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1966,6 +2013,100 @@ export default function MeuPainelPage() {
             <Button variant="outline" className="w-full text-xs font-semibold" onClick={() => setInsumosModalOpen(false)}>
               Fechar e Continuar Atendimento
             </Button>
+          </CardGlass>
+        </div>
+      )}
+
+      {/* MODAL AGENDA CONFIG (ENCAIXE / AUXILIAR) */}
+      {agendaConfigOpen && activeAgendamento && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <CardGlass className="w-full max-w-md p-6 border border-blue-500/30 shadow-2xl">
+            <div className="flex justify-between items-start mb-4 border-b border-[var(--border-subtle)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                  <LinkIcon size={20} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold font-serif text-foreground">Configurar Agenda</h3>
+                  <p className="text-xs text-foreground/60">
+                    Encaixe, sobreposição e auxiliar deste atendimento
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setAgendaConfigOpen(false)} className="text-foreground/50 hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Encaixe */}
+              <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-foreground/[0.02]">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase text-foreground/70 block">Encaixe / Sobreposição</label>
+                  <button
+                    type="button"
+                    onClick={() => setAgendaConfigAllowOverlap(prev => !prev)}
+                    className={`p-1 rounded transition-all ${agendaConfigAllowOverlap ? 'bg-blue-500 text-white border-blue-500' : 'text-foreground/40 border-foreground/20 border'}`}
+                  >
+                    {agendaConfigAllowOverlap ? <Check size={14} /> : <X size={14} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-foreground/50">
+                  {agendaConfigAllowOverlap
+                    ? 'Este horário poderá ser sobreposto por outro agendamento.'
+                    : 'Este horário ficará bloqueado para sobreposição.'}
+                </p>
+              </div>
+
+              {/* Auxiliar */}
+              <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-foreground/[0.02]">
+                <label className="text-xs font-bold uppercase text-foreground/70 block mb-3">Auxiliar na Cadeira</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-foreground/5 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={agendaConfigAuxiliares.length === 0}
+                      onChange={() => setAgendaConfigAuxiliares([])}
+                      className="accent-blue-500"
+                    />
+                    <span className="text-sm text-foreground">Nenhum (somente titular)</span>
+                  </label>
+                  {profissionais.map(p => {
+                    if (p.id === activeAgendamento?.profissional_id) return null;
+                    const isSelected = agendaConfigAuxiliares.includes(p.id);
+                    return (
+                      <label key={p.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-foreground/5 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            if (isSelected) {
+                              setAgendaConfigAuxiliares(agendaConfigAuxiliares.filter(id => id !== p.id));
+                            } else {
+                              setAgendaConfigAuxiliares([...agendaConfigAuxiliares, p.id]);
+                            }
+                          }}
+                          className="accent-blue-500"
+                        />
+                        <span className="text-sm text-foreground">{p.nome}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border-subtle)] flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setAgendaConfigOpen(false)}>Cancelar</Button>
+                <Button
+                  variant="primary"
+                  disabled={insumoLoading}
+                  onClick={handleSalvarAgendaConfig}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2"
+                >
+                  {insumoLoading ? '...' : 'Salvar Configuração'}
+                </Button>
+              </div>
+            </div>
           </CardGlass>
         </div>
       )}
