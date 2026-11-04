@@ -343,9 +343,9 @@ export default function MeuPainelPage() {
       if (isAuxiliarUser) {
         setIsAuxiliarCabelo(true);
         setIsRestrictedProfissional(false);
-        const profsCabelo = (profs || []).filter(p => p.ativo && getCategoriaProfissional(p) === 'Cabelo');
-        setProfissionais(profsCabelo);
-        const targetId = profsCabelo.length > 0 ? profsCabelo[0].id : '';
+        const profsAtivos = (profs || []).filter(p => p.ativo);
+        setProfissionais(profsAtivos);
+        const targetId = profsAtivos.length > 0 ? profsAtivos[0].id : '';
         setSelectedProfId(prev => prev || targetId);
         if (targetId) {
           carregarComissoesProf(targetId);
