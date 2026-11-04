@@ -34,10 +34,11 @@ import {
   editarInsumoTempoRealProcedimento,
   atualizarPeriodoRecebimentoProfissional,
   fetchComissoes,
-  fetchParcelasPendentes
+  fetchParcelasPendentes,
+  sincronizarComissoesDoAgendamento
 } from '@/lib/supabase-queries';
 import { fetchPacotesClientes, salvarPacoteCliente, abaterSessaoPacote, estornarSessaoPacote } from '@/lib/pacotes';
-import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento, PacoteCliente, RegraComissao } from '@/lib/gestao-types';
+import type { Cliente, Agendamento, Servico, ProdutoEstoque, ItemComanda, Profissional, InsumoAtendimento, PeriodoRecebimentoComissao, Comissao, FormaPagamento, PacoteCliente, RegraComissao, ComandaMultiProfissional } from '@/lib/gestao-types';
 import { supabase } from '@/lib/supabase';
 import { getUserRole, isOwner, ROLES } from '@/lib/auth';
 
@@ -728,7 +729,9 @@ export default function MeuPainelPage() {
   const abrirPreFechamento = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
     const srv = servicos.find(s => s.id === ag.servico_id);
-    const precoBase = (ag.total_amount != null && ag.total_amount > 0)
+    const precoBase = (ag.comanda_unificada?.total_bruto_servicos != null && ag.comanda_unificada.total_bruto_servicos > 0)
+      ? Number(ag.comanda_unificada.total_bruto_servicos)
+      : (ag.total_amount != null && ag.total_amount > 0 && !ag.pre_fechado_em)
       ? Number(ag.total_amount)
       : (srv?.preco || 0);
     setPreFechamentoPrecoServico(precoBase);
@@ -2988,11 +2991,10 @@ export default function MeuPainelPage() {
       {preFechamentoModalOpen && activeAgendamento && (() => {
         const precoBaseServico = preFechamentoPrecoServico;
         const descValor = Math.max(0, parseFloat(preFechamentoDescontoValor) || 0);
+        const descPctEfetivo = parseFloat(preFechamentoDescontoPct) || (precoBaseServico > 0 ? Number(((descValor / precoBaseServico) * 100).toFixed(1)) : 0);
         const valorServicoLiquido = activeAgendamento.descontado_pacote 
           ? 0 
           : Math.max(0, precoBaseServico - descValor);
-
-        const custoInsumos = Number(activeAgendamento.product_cost || 0);
 
         // Valor fracionado usado dos insumos (custo unitário × quantidade usada), não o custo total do produto
         const custoInsumosUsado = Number(
@@ -3003,18 +3005,19 @@ export default function MeuPainelPage() {
               )
             : 0).toFixed(2)
         );
+        const custoInsumos = custoInsumosUsado > 0 ? custoInsumosUsado : Number(activeAgendamento.product_cost || 0);
 
         // Itens de produto de balcão (upsell)
         const itensUpsell = comandaAtual.filter(i => i.type === 'PRODUTO');
-        const totalUpsell = itensUpsell.reduce((acc, i) => acc + (i.price * i.qty), 0);
+        const totalUpsell = Number(itensUpsell.reduce((acc, i) => acc + (i.price * i.qty), 0).toFixed(2));
 
         // TOTAL COBRADO DA CLIENTE NO CAIXA
-        const totalCobradoCliente = valorServicoLiquido + totalUpsell;
+        const totalCobradoCliente = Number((valorServicoLiquido + totalUpsell).toFixed(2));
 
         // 1ª PARTE: INSUMOS (RECOMPRA DE ESTOQUE)
         const parte1InsumosRecompra = custoInsumos;
 
-        // Base para cálculo da comissão: Valor Líquido do Serviço - Insumos
+        // Base para cálculo da comissão do serviço: Valor Líquido do Serviço - Insumos
         const baseCalculoComissao = Math.max(0, (activeAgendamento.descontado_pacote ? precoBaseServico : valorServicoLiquido) - custoInsumos);
 
         // Identificação dos profissionais envolvidos:
@@ -3036,19 +3039,22 @@ export default function MeuPainelPage() {
         const auxiliares = (activeAgendamento.auxiliares_ids || []);
         const temAuxiliares = auxiliares.length > 0;
 
-        // Regras de comissão
+        // Regras de comissão do serviço
         const regraTitular = regrasComissao.find(r => r.professional_id === activeAgendamento.profissional_id && (r.service_id === activeAgendamento.servico_id || !r.service_id) && r.active);
-        const pctComissaoBase = regraTitular?.commission_pct ?? titular?.comissao_padrao ?? 40;
+        const pctComissaoBase = regraTitular?.commission_pct ?? titular?.comissao_padrao ?? 50;
 
         const totalComissaoBancada = Number(((baseCalculoComissao * pctComissaoBase) / 100).toFixed(2));
 
-        // Divisão entre os profissionais:
+        // Divisão entre os profissionais (Serviço + Produtos Vendidos):
         const comissoesIndividuais: Array<{
           profissionalId: string;
           nome: string;
           isAgnaldo: boolean;
           isAuxiliar: boolean;
           pct: number;
+          valorServico: number;
+          valorProduto: number;
+          pctProduto?: number;
           valor: number;
           observacao?: string;
         }> = [];
@@ -3057,14 +3063,16 @@ export default function MeuPainelPage() {
           const pid = titularesEAuxiliares[0];
           const pNome = profissionais.find(p => p.id === pid)?.nome || 'Profissional';
           const isAg = pNome.toLowerCase().includes('agnaldo');
-          const val = (isAg && !preFechamentoAgnaldoRecebe) ? 0 : totalComissaoBancada;
+          const valSrv = (isAg && !preFechamentoAgnaldoRecebe) ? 0 : totalComissaoBancada;
           comissoesIndividuais.push({
             profissionalId: pid,
             nome: pNome,
             isAgnaldo: isAg,
             isAuxiliar: false,
             pct: (isAg && !preFechamentoAgnaldoRecebe) ? 0 : pctComissaoBase,
-            valor: val,
+            valorServico: valSrv,
+            valorProduto: 0,
+            valor: valSrv,
             observacao: (!preFechamentoAgnaldoRecebe && isAg) ? 'Comissão não retida' : undefined,
           });
         } else {
@@ -3077,19 +3085,24 @@ export default function MeuPainelPage() {
               isAgnaldo: true,
               isAuxiliar: false,
               pct: 0,
+              valorServico: 0,
+              valorProduto: 0,
               valor: 0,
               observacao: 'Cedeu a comissão para o(s) auxiliar(es)',
             });
             const valorPorAux = Number((totalComissaoBancada / auxiliares.length).toFixed(2));
             auxiliares.forEach((auxId, idx) => {
               const auxNome = profissionais.find(p => p.id === auxId)?.nome || 'Auxiliar';
+              const valAux = idx === 0 ? Number((totalComissaoBancada - valorPorAux * (auxiliares.length - 1)).toFixed(2)) : valorPorAux;
               comissoesIndividuais.push({
                 profissionalId: auxId,
                 nome: auxNome,
                 isAgnaldo: false,
                 isAuxiliar: true,
                 pct: pctComissaoBase,
-                valor: idx === 0 ? Number((totalComissaoBancada - valorPorAux * (auxiliares.length - 1)).toFixed(2)) : valorPorAux,
+                valorServico: valAux,
+                valorProduto: 0,
+                valor: valAux,
                 observacao: 'Recebe a comissão integral repassada',
               });
             });
@@ -3105,16 +3118,68 @@ export default function MeuPainelPage() {
                 isAgnaldo: isAg,
                 isAuxiliar: isAux,
                 pct: Number((pctComissaoBase / titularesEAuxiliares.length).toFixed(1)),
+                valorServico: valorCom,
+                valorProduto: 0,
                 valor: valorCom,
               });
             });
           }
         }
 
-        const parte2ComissoesTotal = comissoesIndividuais.reduce((sum, c) => sum + c.valor, 0);
+        // Contabilizar comissão sobre venda de produtos (Upsell) para o profissional vendedor de cada item
+        let totalComissaoProdutos = 0;
+        const produtosVendaDetalhados = itensUpsell.map(item => {
+          const prodEstoque = estoque.find(e => e.id === item.inventory_id);
+          const vendId = item.profissional_id || activeAgendamento.profissional_id;
+          const vendObj = profissionais.find(p => p.id === vendId);
+          const vendNome = item.profissional_nome || vendObj?.nome || 'Profissional';
+          const pctProd = (vendObj?.product_commission_pct != null && Number(vendObj.product_commission_pct) > 0)
+            ? Number(vendObj.product_commission_pct)
+            : 10;
+          const subtotalItem = Number((item.price * item.qty).toFixed(2));
+          const comissaoItem = Number(((subtotalItem * pctProd) / 100).toFixed(2));
+          totalComissaoProdutos = Number((totalComissaoProdutos + comissaoItem).toFixed(2));
 
-        // 3ª PARTE: SALÃO / STUDIO
-        const parte3Salao = Number(Math.max(0, valorServicoLiquido - parte1InsumosRecompra - parte2ComissoesTotal + (totalUpsell * 0.4)).toFixed(2));
+          const existente = comissoesIndividuais.find(c => c.profissionalId === vendId);
+          if (existente) {
+            existente.valorProduto = Number((existente.valorProduto + comissaoItem).toFixed(2));
+            existente.pctProduto = pctProd;
+            existente.valor = Number((existente.valorServico + existente.valorProduto).toFixed(2));
+          } else {
+            comissoesIndividuais.push({
+              profissionalId: vendId,
+              nome: vendNome,
+              isAgnaldo: vendNome.toLowerCase().includes('agnaldo'),
+              isAuxiliar: vendId !== activeAgendamento.profissional_id,
+              pct: 0,
+              valorServico: 0,
+              valorProduto: comissaoItem,
+              pctProduto: pctProd,
+              valor: comissaoItem,
+              observacao: `Comissão venda de produto (${pctProd}%)`,
+            });
+          }
+
+          return {
+            inventory_id: item.inventory_id,
+            name: prodEstoque?.name || 'Produto',
+            nome: prodEstoque?.name || 'Produto',
+            qty: item.qty,
+            quantidade: item.qty,
+            precoOriginal: prodEstoque?.sale_price || item.price,
+            preco: item.price,
+            preco_unitario: item.price,
+            profissional_id: vendId,
+            profissional_nome: vendNome,
+            comissao_pct: pctProd,
+            comissao_valor: comissaoItem,
+          };
+        });
+
+        const parte2ComissoesTotal = Number(comissoesIndividuais.reduce((sum, c) => sum + c.valor, 0).toFixed(2));
+
+        // 3ª PARTE: SALÃO / STUDIO (Total cobrado - 1ª Parte Insumos - 2ª Parte Comissões Serviço + Produtos)
+        const parte3Salao = Number(Math.max(0, totalCobradoCliente - parte1InsumosRecompra - parte2ComissoesTotal).toFixed(2));
 
         const handleConfirmar = async () => {
           setPreFechamentoLoading(true);
@@ -3124,17 +3189,74 @@ export default function MeuPainelPage() {
               splitCustom[c.profissionalId] = c.valor;
             });
 
+            const nomeCliente = getClienteNome(activeAgendamento.cliente_id);
+            const nomeServico = getServicoNome(activeAgendamento.servico_id);
+
+            const comandaObj: ComandaMultiProfissional = {
+              cliente_id: activeAgendamento.cliente_id,
+              cliente_nome: nomeCliente,
+              data: activeAgendamento.data,
+              procedimentos: [
+                {
+                  id: 'proc_principal_' + activeAgendamento.id,
+                  servico_id: activeAgendamento.servico_id,
+                  servico_nome: nomeServico,
+                  profissional_id: activeAgendamento.profissional_id,
+                  profissional_nome: titularNome,
+                  preco_tabela: precoBaseServico,
+                  desconto_valor: descValor,
+                  desconto_pct: descPctEfetivo,
+                  valor_final: valorServicoLiquido,
+                  insumos_custo: parte1InsumosRecompra,
+                  agendamento_id: activeAgendamento.id,
+                },
+              ],
+              insumos: activeAgendamento.insumos_detalhes || [],
+              produtos_venda: produtosVendaDetalhados.map(p => ({
+                inventory_id: p.inventory_id,
+                name: p.name,
+                qty: p.qty,
+                precoOriginal: p.precoOriginal,
+                preco: p.preco,
+                profissional_id: p.profissional_id,
+                profissional_nome: p.profissional_nome,
+                comissao_pct: p.comissao_pct,
+                comissao_valor: p.comissao_valor,
+              })),
+              produtos_comprados: produtosVendaDetalhados.map(p => ({
+                inventory_id: p.inventory_id,
+                nome: p.nome,
+                quantidade: p.quantidade,
+                preco_unitario: p.preco_unitario,
+                profissional_id: p.profissional_id,
+                profissional_nome: p.profissional_nome,
+                comissao_pct: p.comissao_pct,
+                comissao_valor: p.comissao_valor,
+              })),
+              total_bruto_servicos: precoBaseServico,
+              total_descontos_servicos: descValor,
+              total_liquido_servicos: valorServicoLiquido,
+              total_produtos_venda: totalUpsell,
+              total_insumos: parte1InsumosRecompra,
+              total_pago_cliente: totalCobradoCliente,
+              payment_method: activeAgendamento.descontado_pacote ? 'PACOTE' : (activeAgendamento.payment_method || 'DINHEIRO'),
+              installments: 1,
+              agendamentos_unificados_ids: [activeAgendamento.id],
+              fechado_em: new Date().toISOString(),
+            };
+
             const ok = await finalizarRecebimentoAgendamento({
               id: activeAgendamento.id,
-              paymentMethod: activeAgendamento.descontado_pacote ? 'PACOTE' : 'DINHEIRO',
+              paymentMethod: activeAgendamento.descontado_pacote ? 'PACOTE' : (activeAgendamento.payment_method || 'DINHEIRO'),
               totalAmount: totalCobradoCliente,
               productCost: parte1InsumosRecompra,
               insumosDetalhes: activeAgendamento.insumos_detalhes,
               splitComissao: splitCustom,
               auxiliaresIds: activeAgendamento.auxiliares_ids,
+              comandaUnificada: comandaObj,
               financialStatus: 'PENDING_CONFIRMATION',
               descontoValor: descValor,
-              descontoPct: parseFloat(preFechamentoDescontoPct) || 0,
+              descontoPct: descPctEfetivo,
               pacoteUtilizadoId: activeAgendamento.pacote_utilizado_id || undefined,
               pacoteNome: activeAgendamento.pacote_nome || undefined,
               descontadoPacote: activeAgendamento.descontado_pacote || false,
@@ -3143,6 +3265,32 @@ export default function MeuPainelPage() {
             });
 
             if (ok) {
+              await sincronizarComissoesDoAgendamento({
+                appointmentId: activeAgendamento.id,
+                appointmentDate: activeAgendamento.data,
+                serviceId: activeAgendamento.servico_id,
+                paymentMethod: activeAgendamento.descontado_pacote ? 'DINHEIRO' : (activeAgendamento.payment_method || 'DINHEIRO'),
+                installments: 1,
+                comissoes: comissoesIndividuais
+                  .filter(c => c.valor > 0)
+                  .map(c => {
+                    const partesNota: string[] = [];
+                    if (c.valorServico > 0) {
+                      partesNota.push(`Serviço (${nomeServico}): R$ ${c.valorServico.toFixed(2)}`);
+                    }
+                    if (c.valorProduto > 0) {
+                      partesNota.push(`Venda de Produto (${c.pctProduto ?? 10}%): R$ ${c.valorProduto.toFixed(2)}`);
+                    }
+                    return {
+                      professionalId: c.profissionalId,
+                      totalAmount: totalCobradoCliente,
+                      commissionAmount: c.valor,
+                      commissionPct: c.pct || (c.pctProduto ?? 10),
+                      notes: `Pré-Fechamento [${nomeCliente}]: ${partesNota.join(' + ')}`,
+                    };
+                  }),
+              });
+
               setPreFechamentoModalOpen(false);
               await carregarAgendamentosData(selectedDate);
               if (selectedProfId) {
@@ -3306,7 +3454,7 @@ export default function MeuPainelPage() {
                 </div>
               </div>
 
-              {/* DETALHAMENTO DE VALORES: SERVIÇO + INSUMOS + DESCONTO = TOTAL FINAL */}
+              {/* DETALHAMENTO DE VALORES: SERVIÇO - DESCONTO + PRODUTOS BALCÃO = TOTAL FINAL */}
               <div className="p-4 rounded-xl bg-foreground/[0.03] border border-[var(--border-subtle)] space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center gap-1.5">
                   <DollarSign size={14} className="text-gold" /> Resumo de Valores do Atendimento
@@ -3314,52 +3462,117 @@ export default function MeuPainelPage() {
 
                 {/* Valor do Serviço */}
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-foreground/60">Valor do Serviço</span>
+                  <span className="text-foreground/60">Valor do Serviço (Tabela)</span>
                   <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico)}</span>
                 </div>
 
-                {/* Detalhe dos Insumos */}
-                {activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0 && (
-                  <>
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="text-foreground/60">Insumos Utilizados</span>
-                      <span className="font-mono font-bold text-emerald-500">{fmt(custoInsumosUsado)}</span>
-                    </div>
-                    <div className="space-y-1 ml-4">
-                      {activeAgendamento.insumos_detalhes.map((item, idx) => {
-                        const itemTotal = Number((Number(item.custo_unitario || item.price_per_gram || 0) * Number(item.qty_used || 0)).toFixed(2));
-                        const itemUnit = Number((item.custo_unitario || item.price_per_gram || 0).toFixed(4));
-                        return (
-                          <div key={idx} className="flex justify-between items-center text-xs text-foreground/80">
-                            <span className="truncate max-w-[60%]">{item.name} ({Number(item.qty_used || 0)}){item.unit}</span>
-                            <span className="font-mono">{fmt(itemTotal)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                {/* Desconto */}
+                {descValor > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-foreground/60">
+                      Desconto no Serviço {descPctEfetivo > 0 ? `(${descPctEfetivo}%)` : ''}
+                    </span>
+                    <span className="font-mono font-bold text-red-500">
+                      - {fmt(descValor)}
+                    </span>
+                  </div>
                 )}
 
-                {/* Subtotal */}
+                {/* Valor Líquido do Serviço */}
                 <div className="flex justify-between items-center text-sm border-t border-[var(--border-subtle)] pt-2">
-                  <span className="text-foreground font-medium">Subtotal (Serviço + Insumos)</span>
-                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico + custoInsumosUsado)}</span>
+                  <span className="text-foreground font-medium">Valor Líquido do Serviço</span>
+                  <span className="font-mono font-bold text-foreground">{fmt(valorServicoLiquido)}</span>
                 </div>
 
-                {/* Desconto */}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-foreground/60">
-                    Desconto {descValor > 0 ? `(${descValor.toFixed(2)}%)` : ''}
-                  </span>
-                  <span className={`font-mono font-bold ${descValor > 0 ? 'text-red-500' : 'text-foreground/50'}`}>
-                    {descValor > 0 ? `- ${fmt(descValor)}` : 'R$ 0,00'}
-                  </span>
-                </div>
+                {/* Produtos Balcão / Home Care */}
+                {totalUpsell > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-foreground/60">Produtos Vendidos (Balcão / Home Care)</span>
+                    <span className="font-mono font-bold text-gold">+ {fmt(totalUpsell)}</span>
+                  </div>
+                )}
+
+                {/* Detalhe dos Insumos (1ª Parte - Absorvido no Serviço) */}
+                {parte1InsumosRecompra > 0 && (
+                  <div className="flex justify-between items-center text-xs text-emerald-500 pt-1 border-t border-[var(--border-subtle)]">
+                    <span>Insumos Utilizados (1ª Parte • Absorvido no serviço)</span>
+                    <span className="font-mono font-bold">{fmt(parte1InsumosRecompra)} (deduzido da base de comissão)</span>
+                  </div>
+                )}
 
                 {/* Total Final */}
                 <div className="flex justify-between items-center text-base border-t border-[var(--border-subtle)] pt-2 mt-2">
-                  <span className="text-foreground font-bold">TOTAL FINAL</span>
-                  <span className="font-black font-mono text-gold text-lg">{fmt(Math.max(0, precoBaseServico + custoInsumosUsado - descValor))}</span>
+                  <span className="text-foreground font-bold">TOTAL FINAL A COBRAR</span>
+                  <span className="font-black font-mono text-gold text-lg">{fmt(totalCobradoCliente)}</span>
+                </div>
+              </div>
+
+              {/* ✨ DEMONSTRATIVO DA DIVISÃO EM 3 PARTES (INSUMOS + COMISSÕES + SALÃO) */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-gold/10 via-foreground/[0.02] to-background border border-gold/30 space-y-3">
+                <div className="flex justify-between items-center border-b border-gold/20 pb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                    <Sparkles size={14} /> Demonstrativo da Divisão em 3 Partes
+                  </h4>
+                  <span className="text-[11px] text-foreground/60 font-mono">
+                    Total: {fmt(totalCobradoCliente)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-emerald-500/30 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-emerald-500 block">1ª Parte • Insumos</span>
+                    <p className="text-sm font-bold font-mono text-emerald-500">{fmt(parte1InsumosRecompra)}</p>
+                    <p className="text-[10px] text-foreground/50">Recompra de estoque usado</p>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-blue-500/30 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-blue-500 block">2ª Parte • Comissões</span>
+                    <p className="text-sm font-bold font-mono text-blue-500">{fmt(parte2ComissoesTotal)}</p>
+                    <p className="text-[10px] text-foreground/50">
+                      Serviço ({fmt(totalComissaoBancada)})
+                      {totalComissaoProdutos > 0 ? ` + Prod. (${fmt(totalComissaoProdutos)})` : ''}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-gold/30 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-gold block">3ª Parte • Salão</span>
+                    <p className="text-sm font-bold font-mono text-gold">{fmt(parte3Salao)}</p>
+                    <p className="text-[10px] text-foreground/50">Receita líquida do Studio</p>
+                  </div>
+                </div>
+
+                {/* Distribuição por profissional (Serviço + Venda de Produto) */}
+                <div className="space-y-1.5 pt-2 border-t border-gold/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60 block">
+                    Comissão por Profissional (Serviço + Venda de Produtos):
+                  </span>
+                  {comissoesIndividuais.map((c, idx) => (
+                    <div key={idx} className="flex flex-wrap justify-between items-center text-xs p-2 rounded-lg bg-foreground/[0.03] border border-[var(--border-subtle)] gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Users size={13} className="text-gold" />
+                        <span className="font-bold text-foreground">{c.nome}</span>
+                        {c.isAuxiliar && (
+                          <span className="px-1.5 py-0.2 rounded bg-gold/15 text-gold text-[9px] font-bold">Auxiliar</span>
+                        )}
+                        {c.observacao && (
+                          <span className="text-[10px] text-amber-500 font-medium">({c.observacao})</span>
+                        )}
+                      </div>
+                      <div className="text-right font-mono">
+                        <span className="font-bold text-foreground">{fmt(c.valor)}</span>
+                        {(c.valorServico > 0 && c.valorProduto > 0) && (
+                          <span className="block text-[10px] text-foreground/60">
+                            Serv.: {fmt(c.valorServico)} + Prod. ({c.pctProduto ?? 10}%): {fmt(c.valorProduto)}
+                          </span>
+                        )}
+                        {(c.valorServico === 0 && c.valorProduto > 0) && (
+                          <span className="block text-[10px] text-gold">
+                            Venda Produto ({c.pctProduto ?? 10}%): {fmt(c.valorProduto)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

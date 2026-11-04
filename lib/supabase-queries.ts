@@ -127,7 +127,7 @@ function mapProfissional(r: Row): Profissional {
     role_title: r.role_title ?? (isAux ? 'Auxiliar (Cabelo)' : cargoVal),
     is_auxiliar: isAux,
     comissao_padrao: r.comissao_padrao != null ? Number(r.comissao_padrao) : undefined,
-    product_commission_pct: r.product_commission_pct != null ? Number(r.product_commission_pct) : undefined,
+    product_commission_pct: (r.product_commission_pct != null && Number(r.product_commission_pct) > 0) ? Number(r.product_commission_pct) : 10,
   };
 }
 
@@ -1059,7 +1059,7 @@ export async function criarProfissional(payload: {
     specialties: payload.especialidades ?? [],
     active: payload.ativo ?? true,
     weekly_schedule: sched,
-    product_commission_pct: payload.product_commission_pct ?? 0,
+    product_commission_pct: payload.product_commission_pct ?? 10,
   };
   if (payload.role_title || payload.cargo || payload.is_auxiliar) {
     insert.role_title = payload.is_auxiliar ? 'Auxiliar (Cabelo)' : (payload.role_title || payload.cargo);
@@ -2169,6 +2169,82 @@ export async function criarComissao(params: {
   if (parcErr) { logSupabaseError('[criarComissao parcelas]', parcErr); }
 
   return { ok: true, commissionId: com.id };
+}
+
+/**
+ * Sincroniza (cria ou atualiza sem duplicar) as comissões de serviço + venda de produtos de um agendamento.
+ * Preserva comissões já pagas (PAID) e substitui comissões pendentes (PENDING) caso o fechamento seja ajustado.
+ */
+export async function sincronizarComissoesDoAgendamento(params: {
+  appointmentId: string;
+  appointmentDate: string;
+  serviceId: string;
+  paymentMethod: FormaPagamento | string;
+  installments?: number;
+  taxasCustom?: PaymentFee[];
+  comissoes: Array<{
+    professionalId: string;
+    serviceId?: string;
+    totalAmount: number;
+    commissionAmount: number;
+    commissionPct: number;
+    notes?: string;
+  }>;
+}): Promise<{ ok: boolean }> {
+  try {
+    // 1. Verificar comissões existentes deste agendamento
+    const { data: existentes } = await supabase
+      .from(TBL_COM.commissions)
+      .select('id, professional_id, status')
+      .eq('appointment_id', params.appointmentId);
+
+    const pendentesIds = (existentes ?? [])
+      .filter((c: any) => c.status === 'PENDING')
+      .map((c: any) => c.id);
+    const pagosProfIds = new Set(
+      (existentes ?? [])
+        .filter((c: any) => c.status === 'PAID' || c.status === 'PARTIAL')
+        .map((c: any) => c.professional_id)
+    );
+
+    if (pendentesIds.length > 0) {
+      await supabase.from(TBL_COM.installments).delete().in('commission_id', pendentesIds);
+      await supabase.from(TBL_COM.commissions).delete().in('id', pendentesIds);
+    }
+
+    const normMethod = String(params.paymentMethod || 'DINHEIRO').toUpperCase();
+    const metodoFinal: FormaPagamento = normMethod.includes('CREDITO') || normMethod.includes('CRÉDITO')
+      ? 'CREDITO'
+      : normMethod.includes('DEBITO') || normMethod.includes('DÉBITO')
+      ? 'DEBITO'
+      : normMethod.includes('PIX')
+      ? 'PIX'
+      : 'DINHEIRO';
+
+    for (const item of params.comissoes) {
+      if (!item.professionalId || item.commissionAmount <= 0) continue;
+      if (pagosProfIds.has(item.professionalId)) continue;
+
+      await criarComissao({
+        appointmentId: params.appointmentId,
+        professionalId: item.professionalId,
+        serviceId: item.serviceId || params.serviceId,
+        totalAmount: item.totalAmount,
+        paymentMethod: metodoFinal,
+        installments: params.installments || 1,
+        appointmentDate: params.appointmentDate,
+        taxasCustom: params.taxasCustom,
+        customCommissionAmount: item.commissionAmount,
+        customPct: item.commissionPct,
+        notes: item.notes,
+      });
+    }
+
+    return { ok: true };
+  } catch (err) {
+    logSupabaseError('[sincronizarComissoesDoAgendamento]', err);
+    return { ok: false };
+  }
 }
 
 /** 

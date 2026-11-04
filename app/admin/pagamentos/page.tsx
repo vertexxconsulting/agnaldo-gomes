@@ -13,7 +13,7 @@ import { Button } from '@/components/Button';
 import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
 import { useModulePermission } from '@/lib/use-module-permission';
 import { supabase } from '@/lib/supabase';
-import { fetchAgendamentos, fetchClientes, fetchServicos, fetchProfissionais, confirmarFechamentoGestao, fetchRegrasComissao } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchClientes, fetchServicos, fetchProfissionais, confirmarFechamentoGestao, fetchRegrasComissao, sincronizarComissoesDoAgendamento } from '@/lib/supabase-queries';
 import { getServicoNome, getProfissionalNome, getServicoPreco, STATUS_LABELS } from '@/lib/mock-data';
 import type { Agendamento, Cliente, Servico, Profissional, RegraComissao } from '@/lib/gestao-types';
 
@@ -32,11 +32,28 @@ function calcularDemonstrativo3Partes(
   profissionais: Profissional[],
   regrasComissao: RegraComissao[]
 ) {
-  const custoInsumos = Number(ag.product_cost || 0);
-  const numItensInsumos = ag.insumos_detalhes?.length || (custoInsumos > 0 ? 1 : 0);
+  const custoInsumos = Number(ag.product_cost ?? ag.comanda_unificada?.total_insumos ?? 0);
+  const numItensInsumos = ag.insumos_detalhes?.length || ag.comanda_unificada?.insumos?.length || (custoInsumos > 0 ? 1 : 0);
 
-  // Base líquida para comissão: Valor Total - Insumos
-  const baseLiquida = Math.max(0, valorTotalEfetivo - custoInsumos);
+  // Produtos vendidos (Balcão / Home Care) na comanda
+  const produtosVendidos: any[] =
+    (ag.comanda_unificada?.produtos_venda && ag.comanda_unificada.produtos_venda.length > 0)
+      ? ag.comanda_unificada.produtos_venda
+      : (ag.comanda_unificada?.produtos_comprados || []);
+
+  const totalProdutos = Number(
+    produtosVendidos.reduce((acc: number, p: any) => {
+      const precoUnit = Number(p.preco ?? p.preco_unitario ?? 0);
+      const qtd = Number(p.qty ?? p.quantidade ?? 1);
+      return acc + precoUnit * qtd;
+    }, 0).toFixed(2)
+  );
+
+  // Valor líquido do(s) serviço(s) (descontando produtos vendidos no balcão)
+  const valorServicoLiquido = Math.max(0, Number((valorTotalEfetivo - totalProdutos).toFixed(2)));
+
+  // Base líquida para comissão do serviço: Valor Líquido do Serviço - Insumos
+  const baseLiquida = Math.max(0, Number((valorServicoLiquido - custoInsumos).toFixed(2)));
 
   const titular = profissionais.find(p => p.id === ag.profissional_id);
   const titularNome = titular?.nome || 'Titular';
@@ -54,7 +71,6 @@ function calcularDemonstrativo3Partes(
     return p?.nome?.toLowerCase().includes('agnaldo');
   });
   const auxiliares = ag.auxiliares_ids || [];
-  const temAuxiliares = auxiliares.length > 0;
   const agnaldoRecebe = ag.agnaldo_recebe_comissao !== false;
 
   const regraTitular = regrasComissao.find(r => r.professional_id === ag.profissional_id && (r.service_id === ag.servico_id || !r.service_id) && r.active);
@@ -68,45 +84,73 @@ function calcularDemonstrativo3Partes(
     isAgnaldo: boolean;
     isAuxiliar: boolean;
     pct: number;
+    valorServico: number;
+    valorProduto: number;
+    pctProduto?: number;
     valor: number;
     observacao?: string;
   }> = [];
 
-  if (ag.split_comissao && Object.keys(ag.split_comissao).length > 0) {
-    Object.entries(ag.split_comissao).forEach(([pid, val]) => {
-      const p = profissionais.find(pr => pr.id === pid);
-      const pNome = p?.nome || (pid === ag.profissional_id ? titularNome : 'Profissional');
-      const isAg = pNome.toLowerCase().includes('agnaldo');
-      const isAux = pid !== ag.profissional_id;
-      const numVal = Number(val || 0);
-      const pctIndiv = baseLiquida > 0 ? Number(((numVal / baseLiquida) * 100).toFixed(1)) : 0;
-      let obs: string | undefined;
-      if (isAg && !agnaldoRecebe) obs = 'Cedeu a comissão para o(s) auxiliar(es)';
-      else if (isAux && !agnaldoRecebe && isAgnaldoEnvolvido) obs = 'Recebeu repasse do Agnaldo';
+  const procsMulti = ag.comanda_unificada?.procedimentos || [];
+  if (procsMulti.length > 1) {
+    // Comanda com múltiplos procedimentos executados por profissionais distintos
+    procsMulti.forEach((proc, idx) => {
+      const pId = proc.profissional_id || ag.profissional_id;
+      const pObj = profissionais.find(pr => pr.id === pId);
+      const pNome = proc.profissional_nome || pObj?.nome || 'Profissional';
+      const regraProc = regrasComissao.find(r => r.professional_id === pId && r.service_id === proc.servico_id && r.active)
+        || regrasComissao.find(r => r.professional_id === pId && !r.service_id && r.active);
+      const pctProc = regraProc?.commission_pct ?? pObj?.comissao_padrao ?? 50;
+      const valProcLiq = Number(proc.valor_final ?? (proc.preco_tabela - proc.desconto_valor));
+      const insProc = Number(proc.insumos_custo ?? 0);
+      const baseProc = Math.max(0, valProcLiq - insProc);
+      const comProcTotal = Number(((baseProc * pctProc) / 100).toFixed(2));
 
-      comissoesIndividuais.push({
-        profissionalId: pid,
-        nome: pNome,
-        isAgnaldo: isAg,
-        isAuxiliar: isAux,
-        pct: pctIndiv,
-        valor: numVal,
-        observacao: obs,
+      const participantesProc = (idx === 0 && pId === ag.profissional_id && auxiliares.length > 0)
+        ? [pId, ...auxiliares]
+        : [pId];
+
+      participantesProc.forEach(partId => {
+        const partObj = profissionais.find(pr => pr.id === partId);
+        const partNome = partObj?.nome || 'Profissional';
+        const isAg = partNome.toLowerCase().includes('agnaldo');
+        const isAux = partId !== pId;
+        const valShare = Number((comProcTotal / participantesProc.length).toFixed(2));
+        const pctShare = Number((pctProc / participantesProc.length).toFixed(1));
+        const existente = comissoesIndividuais.find(c => c.profissionalId === partId);
+        if (existente) {
+          existente.valorServico = Number((existente.valorServico + valShare).toFixed(2));
+          existente.valor = Number((existente.valorServico + existente.valorProduto).toFixed(2));
+        } else {
+          comissoesIndividuais.push({
+            profissionalId: partId,
+            nome: partNome,
+            isAgnaldo: isAg,
+            isAuxiliar: isAux,
+            pct: pctShare,
+            valorServico: valShare,
+            valorProduto: 0,
+            valor: valShare,
+          });
+        }
       });
     });
   } else {
+    // Procedimento único (com ou sem auxiliares na cadeira)
     if (titularesEAuxiliares.length <= 1) {
       const pid = ag.profissional_id;
       const pNome = titularNome;
       const isAg = pNome.toLowerCase().includes('agnaldo');
-      const val = (isAg && !agnaldoRecebe) ? 0 : totalComissaoBancada;
+      const valSrv = (isAg && !agnaldoRecebe) ? 0 : totalComissaoBancada;
       comissoesIndividuais.push({
         profissionalId: pid,
         nome: pNome,
         isAgnaldo: isAg,
         isAuxiliar: false,
         pct: (isAg && !agnaldoRecebe) ? 0 : pctComissaoBase,
-        valor: val,
+        valorServico: valSrv,
+        valorProduto: 0,
+        valor: valSrv,
         observacao: (!agnaldoRecebe && isAg) ? 'Comissão não retida' : undefined,
       });
     } else {
@@ -118,19 +162,24 @@ function calcularDemonstrativo3Partes(
           isAgnaldo: true,
           isAuxiliar: false,
           pct: 0,
+          valorServico: 0,
+          valorProduto: 0,
           valor: 0,
           observacao: 'Cedeu a comissão para o(s) auxiliar(es)',
         });
         const valorPorAux = Number((totalComissaoBancada / auxiliares.length).toFixed(2));
         auxiliares.forEach((auxId, idx) => {
           const auxNome = profissionais.find(p => p.id === auxId)?.nome || 'Auxiliar';
+          const valAux = idx === 0 ? Number((totalComissaoBancada - valorPorAux * (auxiliares.length - 1)).toFixed(2)) : valorPorAux;
           comissoesIndividuais.push({
             profissionalId: auxId,
             nome: auxNome,
             isAgnaldo: false,
             isAuxiliar: true,
             pct: pctComissaoBase,
-            valor: idx === 0 ? Number((totalComissaoBancada - valorPorAux * (auxiliares.length - 1)).toFixed(2)) : valorPorAux,
+            valorServico: valAux,
+            valorProduto: 0,
+            valor: valAux,
             observacao: 'Recebe a comissão integral repassada',
           });
         });
@@ -146,6 +195,8 @@ function calcularDemonstrativo3Partes(
             isAgnaldo: isAg,
             isAuxiliar: isAux,
             pct: Number((pctComissaoBase / titularesEAuxiliares.length).toFixed(1)),
+            valorServico: valorCom,
+            valorProduto: 0,
             valor: valorCom,
           });
         });
@@ -153,14 +204,59 @@ function calcularDemonstrativo3Partes(
     }
   }
 
-  const parte2ComissaoTotal = comissoesIndividuais.reduce((sum, c) => sum + c.valor, 0);
+  // Contabilizar comissão de venda de produtos (Upsell / Home Care) para o profissional vendedor
+  let totalComissaoProdutos = 0;
+  produtosVendidos.forEach((prod: any) => {
+    const vendId = prod.profissional_id || ag.profissional_id;
+    const vendObj = profissionais.find(p => p.id === vendId);
+    const vendNome = prod.profissional_nome || vendObj?.nome || 'Profissional';
+    const pctProd = Number(prod.comissao_pct) || (
+      vendObj?.product_commission_pct && Number(vendObj.product_commission_pct) > 0
+        ? Number(vendObj.product_commission_pct)
+        : 10
+    );
+    const precoUnit = Number(prod.preco ?? prod.preco_unitario ?? 0);
+    const qtd = Number(prod.qty ?? prod.quantidade ?? 1);
+    const subtotalProd = Number((precoUnit * qtd).toFixed(2));
+    const comissaoProd = prod.comissao_valor != null
+      ? Number(prod.comissao_valor)
+      : Number(((subtotalProd * pctProd) / 100).toFixed(2));
+    totalComissaoProdutos = Number((totalComissaoProdutos + comissaoProd).toFixed(2));
+
+    const existente = comissoesIndividuais.find(c => c.profissionalId === vendId);
+    if (existente) {
+      existente.valorProduto = Number((existente.valorProduto + comissaoProd).toFixed(2));
+      existente.pctProduto = pctProd;
+      existente.valor = Number((existente.valorServico + existente.valorProduto).toFixed(2));
+    } else {
+      comissoesIndividuais.push({
+        profissionalId: vendId,
+        nome: vendNome,
+        isAgnaldo: vendNome.toLowerCase().includes('agnaldo'),
+        isAuxiliar: vendId !== ag.profissional_id,
+        pct: 0,
+        valorServico: 0,
+        valorProduto: comissaoProd,
+        pctProduto: pctProd,
+        valor: comissaoProd,
+        observacao: `Venda de produto (${pctProd}%)`,
+      });
+    }
+  });
+
+  const totalComissaoServicos = Number(comissoesIndividuais.reduce((sum, c) => sum + c.valorServico, 0).toFixed(2));
+  const parte2ComissaoTotal = Number(comissoesIndividuais.reduce((sum, c) => sum + c.valor, 0).toFixed(2));
   const parte3Salao = Number(Math.max(0, valorTotalEfetivo - custoInsumos - parte2ComissaoTotal).toFixed(2));
 
   return {
     custoInsumos,
     numItensInsumos,
+    totalProdutos,
+    valorServicoLiquido,
     baseLiquida,
     pctComissaoBase,
+    totalComissaoServicos,
+    totalComissaoProdutos,
     parte2ComissaoTotal,
     parte3Salao,
     comissoesIndividuais,
@@ -397,6 +493,37 @@ export default function AdminFinanceiro() {
         return;
       }
 
+      // Sincroniza as comissões (Serviço + Venda de Produtos) de todos os profissionais envolvidos
+      const demoConfirmacao = calcularDemonstrativo3Partes(ag, finalValor, profissionais, regrasComissao);
+      const cliObj = clientes.find(c => c.id === ag.cliente_id);
+      const nomeCli = cliObj?.nome || 'Cliente';
+      const nomeSrv = getServicoNome(ag.servico_id, servicos);
+      await sincronizarComissoesDoAgendamento({
+        appointmentId: ag.id,
+        appointmentDate: ag.data,
+        serviceId: ag.servico_id,
+        paymentMethod: finalMetodo,
+        installments: ag.comanda_unificada?.installments || 1,
+        comissoes: demoConfirmacao.comissoesIndividuais
+          .filter(c => c.valor > 0)
+          .map(c => {
+            const partesNota: string[] = [];
+            if (c.valorServico > 0) {
+              partesNota.push(`Serviço (${nomeSrv}): R$ ${c.valorServico.toFixed(2)}`);
+            }
+            if (c.valorProduto > 0) {
+              partesNota.push(`Venda Produto (${c.pctProduto ?? 10}%): R$ ${c.valorProduto.toFixed(2)}`);
+            }
+            return {
+              professionalId: c.profissionalId,
+              totalAmount: finalValor,
+              commissionAmount: c.valor,
+              commissionPct: c.pct || c.pctProduto || 10,
+              notes: `Contabilizado Gestão [${nomeCli}] — ${partesNota.join(' + ')}`,
+            };
+          }),
+      });
+
       // Se foi em DINHEIRO e o caixa físico estiver aberto, sincroniza no caixa
       if (finalMetodo.toUpperCase() === 'DINHEIRO' && caixaAberto && finalValor > 0) {
         try {
@@ -452,6 +579,36 @@ export default function AdminFinanceiro() {
           totalAmount: val,
           confirmedBy: 'Gestão do Salão',
           agendamentosUnificadosIds: unificadosIds,
+        });
+
+        // Sincronizar comissões (Serviço + Venda de Produtos) de cada agendamento confirmado em lote
+        const demoLote = calcularDemonstrativo3Partes(ag, val, profissionais, regrasComissao);
+        const cliLote = clientes.find(c => c.id === ag.cliente_id);
+        const srvLote = getServicoNome(ag.servico_id, servicos);
+        await sincronizarComissoesDoAgendamento({
+          appointmentId: ag.id,
+          appointmentDate: ag.data,
+          serviceId: ag.servico_id,
+          paymentMethod: met,
+          installments: ag.comanda_unificada?.installments || 1,
+          comissoes: demoLote.comissoesIndividuais
+            .filter(c => c.valor > 0)
+            .map(c => {
+              const partesNota: string[] = [];
+              if (c.valorServico > 0) {
+                partesNota.push(`Serviço (${srvLote}): R$ ${c.valorServico.toFixed(2)}`);
+              }
+              if (c.valorProduto > 0) {
+                partesNota.push(`Venda Produto (${c.pctProduto ?? 10}%): R$ ${c.valorProduto.toFixed(2)}`);
+              }
+              return {
+                professionalId: c.profissionalId,
+                totalAmount: val,
+                commissionAmount: c.valor,
+                commissionPct: c.pct || c.pctProduto || 10,
+                notes: `Contabilizado Gestão [${cliLote?.nome || 'Cliente'}] — ${partesNota.join(' + ')}`,
+              };
+            }),
         });
 
         if (met.toUpperCase() === 'DINHEIRO' && caixaAberto && val > 0) {
@@ -1031,9 +1188,9 @@ export default function AdminFinanceiro() {
                                   </div>
                                 ))}
                               </div>
-                              {ag.comanda_unificada!.produtos_comprados && ag.comanda_unificada!.produtos_comprados.length > 0 && (
+                              {((ag.comanda_unificada!.produtos_venda && ag.comanda_unificada!.produtos_venda.length > 0) || (ag.comanda_unificada!.produtos_comprados && ag.comanda_unificada!.produtos_comprados.length > 0)) && (
                                 <p className="text-[11px] text-teal-800 font-bold font-mono flex items-center gap-1 pt-0.5">
-                                  <ShoppingBag size={11} /> {ag.comanda_unificada!.produtos_comprados.length} produto(s) Home Care inclusos
+                                  <ShoppingBag size={11} /> {(ag.comanda_unificada!.produtos_venda?.length || ag.comanda_unificada!.produtos_comprados?.length || 0)} produto(s) vendidos no balcão inclusos
                                 </p>
                               )}
                               {ag.product_cost != null && Number(ag.product_cost) > 0 && (
@@ -1275,9 +1432,11 @@ export default function AdminFinanceiro() {
 
         const subtotalServicos = procedimentos.reduce((acc: number, p) => acc + p.preco_tabela, 0);
         const totalDescontos = procedimentos.reduce((acc: number, p) => acc + p.desconto_valor, 0);
-        const produtosComprados = comanda?.produtos_comprados || [];
-        const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario || prod.preco || 0) * Number(prod.quantidade || prod.qty || 1)), 0);
-        const totalInsumos = procedimentos.reduce((acc: number, p: any) => acc + (Number(p.insumos_custo) || 0), 0) + (Number(ag.product_cost) || 0);
+        const produtosComprados = (comanda?.produtos_venda && comanda.produtos_venda.length > 0)
+          ? comanda.produtos_venda
+          : (comanda?.produtos_comprados || []);
+        const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario ?? prod.preco ?? 0) * Number(prod.quantidade ?? prod.qty ?? 1)), 0);
+        const totalInsumos = Number(ag.product_cost ?? comanda?.total_insumos ?? 0);
         const valorFinalCliente = valorFinalEditado !== ''
           ? (parseFloat(valorFinalEditado.replace(',', '.')) || 0)
           : ((ag.total_amount != null && Number(ag.total_amount) > 0)
@@ -1453,17 +1612,26 @@ export default function AdminFinanceiro() {
                     {produtosComprados.length > 0 && (
                       <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
-                          <ShoppingBag size={14} className="text-teal-400" /> Produtos Comprados (Home Care)
+                          <ShoppingBag size={14} className="text-teal-400" /> Produtos Vendidos (Balcão / Home Care)
                         </div>
                         <div className="space-y-1 pt-1">
-                          {produtosComprados.map((prod: any, pIdx: number) => (
-                            <div key={pIdx} className="flex items-center justify-between text-xs">
-                              <span className="text-stone-200 font-medium">{prod.nome || prod.name} (x{prod.quantidade || prod.qty || 1})</span>
-                              <span className="font-mono text-teal-300 font-bold">
-                                R$ {((Number(prod.preco_unitario || prod.preco || 0)) * (Number(prod.quantidade || prod.qty || 1))).toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
+                          {produtosComprados.map((prod: any, pIdx: number) => {
+                            const vendId = prod.profissional_id || ag.profissional_id;
+                            const vendNome = prod.profissional_nome || getProfissionalNome(vendId, profissionais);
+                            const qtd = Number(prod.quantidade ?? prod.qty ?? 1);
+                            const unit = Number(prod.preco_unitario ?? prod.preco ?? 0);
+                            return (
+                              <div key={pIdx} className="flex items-center justify-between text-xs gap-2">
+                                <span className="text-stone-200 font-medium truncate">
+                                  {prod.nome || prod.name} (x{qtd})
+                                  {vendNome && <span className="text-[10px] text-teal-300/80 ml-1">• Por: {vendNome}</span>}
+                                </span>
+                                <span className="font-mono text-teal-300 font-bold shrink-0">
+                                  R$ {(unit * qtd).toFixed(2)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1493,10 +1661,11 @@ export default function AdminFinanceiro() {
 
                     {/* 2ª PARTE • COMISSÃO */}
                     <div className="p-3 rounded-lg bg-black/40 border border-blue-500/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissão</span>
+                      <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissões</span>
                       <p className="text-base font-bold font-mono text-blue-300">R$ {demoExtrato.parte2ComissaoTotal.toFixed(2)}</p>
                       <p className="text-[10px] text-stone-400 leading-tight">
-                        Base líquida (R$ {demoExtrato.baseLiquida.toFixed(2)}) × {demoExtrato.pctComissaoBase}%
+                        Serviço: R$ {demoExtrato.totalComissaoServicos.toFixed(2)}
+                        {demoExtrato.totalComissaoProdutos > 0 ? ` + Prod.: R$ ${demoExtrato.totalComissaoProdutos.toFixed(2)}` : ` (${demoExtrato.pctComissaoBase}%)`}
                       </p>
                     </div>
 
@@ -1513,11 +1682,11 @@ export default function AdminFinanceiro() {
                   {/* DISTRIBUIÇÃO DA COMISSÃO ENTRE PROFISSIONAIS */}
                   <div className="space-y-1.5 pt-2 border-t border-gold/20">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                      Distribuição da Comissão entre Profissionais:
+                      Distribuição da Comissão entre Profissionais (Serviço + Venda de Produtos):
                     </span>
                     {demoExtrato.comissoesIndividuais.map((c, i) => (
-                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/[0.04] border border-white/10">
-                        <div className="flex items-center gap-2">
+                      <div key={i} className="flex flex-wrap justify-between items-center text-xs p-2 rounded-lg bg-white/[0.04] border border-white/10 gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Users size={13} className="text-gold" />
                           <span className="font-semibold text-stone-100">{c.nome}</span>
                           {c.isAuxiliar && (
@@ -1527,9 +1696,22 @@ export default function AdminFinanceiro() {
                             <span className="text-[10px] text-amber-400 font-medium italic">({c.observacao})</span>
                           )}
                         </div>
-                        <span className="font-mono font-bold text-stone-100">
-                          R$ {c.valor.toFixed(2)} <span className="text-stone-400 font-normal">({c.pct}%)</span>
-                        </span>
+                        <div className="text-right font-mono">
+                          <span className="font-bold text-stone-100">
+                            R$ {c.valor.toFixed(2)}
+                          </span>
+                          {(c.valorServico > 0 && c.valorProduto > 0) && (
+                            <span className="block text-[10px] text-stone-400">
+                              Serv. ({c.pct}%): R$ {c.valorServico.toFixed(2)} + Prod. ({c.pctProduto ?? 10}%): R$ {c.valorProduto.toFixed(2)}
+                            </span>
+                          )}
+                          {(c.valorServico > 0 && c.valorProduto === 0) && (
+                            <span className="text-stone-400 font-normal ml-1">({c.pct}%)</span>
+                          )}
+                          {(c.valorServico === 0 && c.valorProduto > 0) && (
+                            <span className="text-teal-300 font-normal ml-1">(Prod. {c.pctProduto ?? 10}%)</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1601,7 +1783,7 @@ export default function AdminFinanceiro() {
                       variant="primary"
                       size="sm"
                       disabled={actionLoadingId === ag.id}
-                      onClick={() => handleConfirmarGestao(ag)}
+                      onClick={() => handleConfirmarGestao(ag, undefined, valorFinalCliente)}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30"
                     >
                       <CheckCircle2 size={16} />
@@ -1701,10 +1883,11 @@ export default function AdminFinanceiro() {
 
                     {/* 2ª PARTE • COMISSÃO */}
                     <div className="p-3 rounded-lg bg-black/40 border border-blue-500/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissão</span>
+                      <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissões</span>
                       <p className="text-base font-bold font-mono text-blue-300">R$ {demo.parte2ComissaoTotal.toFixed(2)}</p>
                       <p className="text-[10px] text-stone-400 leading-tight">
-                        Base líquida (R$ {demo.baseLiquida.toFixed(2)}) × {demo.pctComissaoBase}%
+                        Serviço: R$ {demo.totalComissaoServicos.toFixed(2)}
+                        {demo.totalComissaoProdutos > 0 ? ` + Prod.: R$ ${demo.totalComissaoProdutos.toFixed(2)}` : ` (${demo.pctComissaoBase}%)`}
                       </p>
                     </div>
 
@@ -1721,11 +1904,11 @@ export default function AdminFinanceiro() {
                   {/* DISTRIBUIÇÃO DA COMISSÃO ENTRE PROFISSIONAIS */}
                   <div className="space-y-1.5 pt-2 border-t border-gold/20">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                      Distribuição da Comissão entre Profissionais:
+                      Distribuição da Comissão entre Profissionais (Serviço + Venda de Produtos):
                     </span>
                     {demo.comissoesIndividuais.map((c, i) => (
-                      <div key={i} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/[0.04] border border-white/10">
-                        <div className="flex items-center gap-2">
+                      <div key={i} className="flex flex-wrap justify-between items-center text-xs p-2 rounded-lg bg-white/[0.04] border border-white/10 gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Users size={13} className="text-gold" />
                           <span className="font-semibold text-stone-100">{c.nome}</span>
                           {c.isAuxiliar && (
@@ -1735,9 +1918,22 @@ export default function AdminFinanceiro() {
                             <span className="text-[10px] text-amber-400 font-medium italic">({c.observacao})</span>
                           )}
                         </div>
-                        <span className="font-mono font-bold text-stone-100">
-                          R$ {c.valor.toFixed(2)} <span className="text-stone-400 font-normal">({c.pct}%)</span>
-                        </span>
+                        <div className="text-right font-mono">
+                          <span className="font-bold text-stone-100">
+                            R$ {c.valor.toFixed(2)}
+                          </span>
+                          {(c.valorServico > 0 && c.valorProduto > 0) && (
+                            <span className="block text-[10px] text-stone-400">
+                              Serv. ({c.pct}%): R$ {c.valorServico.toFixed(2)} + Prod. ({c.pctProduto ?? 10}%): R$ {c.valorProduto.toFixed(2)}
+                            </span>
+                          )}
+                          {(c.valorServico > 0 && c.valorProduto === 0) && (
+                            <span className="text-stone-400 font-normal ml-1">({c.pct}%)</span>
+                          )}
+                          {(c.valorServico === 0 && c.valorProduto > 0) && (
+                            <span className="text-teal-300 font-normal ml-1">(Prod. {c.pctProduto ?? 10}%)</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

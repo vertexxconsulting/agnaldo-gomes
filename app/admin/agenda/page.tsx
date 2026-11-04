@@ -10,7 +10,7 @@ import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ViewToggle } from '@/components/ViewToggle';
 import { ProductSearchSelect } from '@/components/ProductSearchSelect';
-import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento, editarInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
+import { fetchAgendamentos, fetchProfissionais, fetchBloqueios, fetchClientes, fetchServicos, fetchProfissionalServico, fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, criarComissao, criarComissoesAtendimentoCompartilhado, sincronizarComissoesDoAgendamento, fetchItensComanda, fetchTaxasPagamento, calcularTaxaMaquininha, finalizarRecebimentoAgendamento, fetchRegrasComissao, salvarInsumoTempoRealProcedimento, removerInsumoTempoRealProcedimento, editarInsumoTempoRealProcedimento } from '@/lib/supabase-queries';
 import {
   STATUS_LABELS, STATUS_COLORS, getServicoDuracao, getServicoPreco,
   getClienteNome, getServicoNome, getProfissionalNome
@@ -1448,8 +1448,21 @@ function AgendaContent() {
     setNovoProcServicoId('');
     setNovoProcProfId(appt.profissional_id);
 
-    // 1. Montar lista de procedimentos a partir do agendamento principal
-    const precoPrincipal = getServicoPreco(appt.servico_id, servicos);
+    // 1. Montar lista de procedimentos a partir do agendamento principal (respeitando valores do Pré-Fechamento se houver)
+    const procPreFechado = appt.comanda_unificada?.procedimentos?.[0];
+    const precoPrincipal = (procPreFechado?.preco_tabela != null && Number(procPreFechado.preco_tabela) > 0)
+      ? Number(procPreFechado.preco_tabela)
+      : getServicoPreco(appt.servico_id, servicos);
+    const descValPrincipal = procPreFechado?.desconto_valor != null
+      ? Number(procPreFechado.desconto_valor)
+      : (appt.desconto_valor != null ? Number(appt.desconto_valor) : 0);
+    const descPctPrincipal = procPreFechado?.desconto_pct != null
+      ? Number(procPreFechado.desconto_pct)
+      : (appt.desconto_pct != null ? Number(appt.desconto_pct) : 0);
+    const valorFinalPrincipal = appt.descontado_pacote
+      ? 0
+      : Math.max(0, precoPrincipal - descValPrincipal);
+
     const listaProcedimentos: ProcedimentoComanda[] = [
       {
         id: 'proc_principal_' + appt.id,
@@ -1458,10 +1471,10 @@ function AgendaContent() {
         profissional_id: appt.profissional_id,
         profissional_nome: getProfissionalNome(appt.profissional_id, profissionais),
         preco_tabela: precoPrincipal,
-        desconto_valor: 0,
-        desconto_pct: 0,
-        desconto_motivo: '',
-        valor_final: precoPrincipal,
+        desconto_valor: descValPrincipal,
+        desconto_pct: descPctPrincipal,
+        desconto_motivo: procPreFechado?.desconto_motivo || '',
+        valor_final: valorFinalPrincipal,
         agendamento_id: appt.id,
       }
     ];
@@ -4226,7 +4239,7 @@ function AgendaContent() {
                 const numParcelas = checkoutPagamento === 'CREDITO' ? checkoutParcelas : 1;
                 const taxaMaq = calcularTaxaMaquininha(checkoutPagamento, numParcelas, totalCobradoClienteFinal, taxasPagamento);
                 
-                // === REPARTIÇÃO POR PROFISSIONAL INDIVIDUAL ===
+                // === REPARTIÇÃO POR PROFISSIONAL INDIVIDUAL (SERVIÇOS + AUXILIARES + PRODUTOS VENDIDOS) ===
                 const porProfissional: Record<string, {
                   procedimentos: ProcedimentoComanda[];
                   subtotalTabela: number;
@@ -4234,48 +4247,124 @@ function AgendaContent() {
                   valorLiquido: number;
                   insumosCusto: number;
                   pctComissao: number;
+                  comissaoServicos: number;
+                  produtosVendidos: Array<{
+                    inventory_id: string;
+                    name: string;
+                    qty: number;
+                    subtotal: number;
+                    pctComissao: number;
+                    valorComissao: number;
+                  }>;
+                  comissaoProdutos: number;
                   comissaoEstimada: number;
                 }> = {};
 
-                checkoutProcedimentos.forEach(p => {
-                  if (!porProfissional[p.profissional_id]) {
-                    const regra = regrasComissao.find(r => r.professional_id === p.profissional_id && (r.service_id === p.servico_id || !r.service_id) && r.active);
-                    const pct = regra?.commission_pct ?? 50;
-                    porProfissional[p.profissional_id] = {
+                const ensureProfEntry = (pid: string, servicoIdRef?: string) => {
+                  if (!porProfissional[pid]) {
+                    const profObj = profissionais.find(pr => pr.id === pid);
+                    const regra = regrasComissao.find(r => r.professional_id === pid && ((servicoIdRef && r.service_id === servicoIdRef) || !r.service_id) && r.active);
+                    const pct = regra?.commission_pct ?? profObj?.comissao_padrao ?? 50;
+                    porProfissional[pid] = {
                       procedimentos: [],
                       subtotalTabela: 0,
                       totalDesconto: 0,
                       valorLiquido: 0,
                       insumosCusto: 0,
                       pctComissao: pct,
+                      comissaoServicos: 0,
+                      produtosVendidos: [],
+                      comissaoProdutos: 0,
                       comissaoEstimada: 0,
                     };
                   }
-                  porProfissional[p.profissional_id].procedimentos.push(p);
-                  porProfissional[p.profissional_id].subtotalTabela += p.preco_tabela;
-                  porProfissional[p.profissional_id].totalDesconto += p.desconto_valor;
-                  porProfissional[p.profissional_id].valorLiquido += p.valor_final;
+                  return porProfissional[pid];
+                };
+
+                checkoutProcedimentos.forEach(p => {
+                  const entry = ensureProfEntry(p.profissional_id, p.servico_id);
+                  entry.procedimentos.push(p);
+                  entry.subtotalTabela += p.preco_tabela;
+                  entry.totalDesconto += p.desconto_valor;
+                  entry.valorLiquido += p.valor_final;
                 });
 
                 // Atribuir insumos a cada profissional
                 checkoutInsumos.forEach(ins => {
                   const pid = ins.profissional_id || checkoutAppt.profissional_id;
-                  if (porProfissional[pid]) {
-                    porProfissional[pid].insumosCusto += ins.custo_total;
-                  }
+                  const entry = ensureProfEntry(pid, checkoutAppt.servico_id);
+                  entry.insumosCusto += ins.custo_total;
                 });
 
-                // Calcular comissão individual de cada profissional
+                // Calcular comissão de serviços de cada profissional (incluindo divisão com auxiliares no agendamento principal)
+                const auxIdsPrincipais = (checkoutAppt.auxiliares_ids || []).filter(id => id && id !== checkoutAppt.profissional_id);
+                const agnaldoRecebe = checkoutAppt.agnaldo_recebe_comissao !== false;
+
                 Object.keys(porProfissional).forEach(pid => {
                   const item = porProfissional[pid];
                   const baseComissao = Math.max(0, item.valorLiquido - item.insumosCusto);
-                  item.comissaoEstimada = Number(((baseComissao * item.pctComissao) / 100).toFixed(2));
+                  const comissaoBrutaProc = Number(((baseComissao * item.pctComissao) / 100).toFixed(2));
+
+                  if (pid === checkoutAppt.profissional_id && auxIdsPrincipais.length > 0) {
+                    const todosCadeira = [checkoutAppt.profissional_id, ...auxIdsPrincipais];
+                    const titularNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
+                    const isAgnaldoTitular = titularNome.toLowerCase().includes('agnaldo');
+
+                    if (isAgnaldoTitular && !agnaldoRecebe) {
+                      item.comissaoServicos = 0;
+                      const valorPorAux = Number((comissaoBrutaProc / auxIdsPrincipais.length).toFixed(2));
+                      auxIdsPrincipais.forEach((auxId, idx) => {
+                        const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
+                        const valAux = idx === 0
+                          ? Number((comissaoBrutaProc - valorPorAux * (auxIdsPrincipais.length - 1)).toFixed(2))
+                          : valorPorAux;
+                        auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valAux).toFixed(2));
+                      });
+                    } else {
+                      const valorPorPessoa = Number((comissaoBrutaProc / todosCadeira.length).toFixed(2));
+                      item.comissaoServicos = Number((comissaoBrutaProc - valorPorPessoa * auxIdsPrincipais.length).toFixed(2));
+                      auxIdsPrincipais.forEach(auxId => {
+                        const auxEntry = ensureProfEntry(auxId, checkoutAppt.servico_id);
+                        auxEntry.comissaoServicos = Number((auxEntry.comissaoServicos + valorPorPessoa).toFixed(2));
+                      });
+                    }
+                  } else {
+                    item.comissaoServicos = Number((item.comissaoServicos + comissaoBrutaProc).toFixed(2));
+                  }
+                });
+
+                // Calcular comissão de venda de produtos (Upsell / Home Care) para o profissional que realizou a venda
+                checkoutProdutos.forEach(prod => {
+                  const vendId = prod.profissional_id || checkoutAppt.profissional_id;
+                  const vendObj = profissionais.find(pr => pr.id === vendId);
+                  const pctProd = (vendObj?.product_commission_pct != null && Number(vendObj.product_commission_pct) > 0)
+                    ? Number(vendObj.product_commission_pct)
+                    : 10;
+                  const prodEstoque = estoque.find(e => e.id === prod.inventory_id);
+                  const subtotalProd = Number((prod.preco * prod.qty).toFixed(2));
+                  const comissaoProd = Number(((subtotalProd * pctProd) / 100).toFixed(2));
+
+                  const entry = ensureProfEntry(vendId, checkoutAppt.servico_id);
+                  entry.produtosVendidos.push({
+                    inventory_id: prod.inventory_id,
+                    name: prodEstoque?.name || 'Produto',
+                    qty: prod.qty,
+                    subtotal: subtotalProd,
+                    pctComissao: pctProd,
+                    valorComissao: comissaoProd,
+                  });
+                  entry.comissaoProdutos = Number((entry.comissaoProdutos + comissaoProd).toFixed(2));
+                });
+
+                // Somar comissão final estimada (Serviço + Produto) de cada profissional
+                Object.keys(porProfissional).forEach(pid => {
+                  const item = porProfissional[pid];
+                  item.comissaoEstimada = Number((item.comissaoServicos + item.comissaoProdutos).toFixed(2));
                 });
 
                 const comissaoTotalEquipe = Number(Object.values(porProfissional).reduce((sum, item) => sum + item.comissaoEstimada, 0).toFixed(2));
                 const fundoReservaProdutos = Number(totalInsumos.toFixed(2));
-                const margemProdutosVenda = totalProdutos > 0 ? (totalProdutos * 0.4) : 0;
-                const faturamentoLiquidoSalao = Number(Math.max(0, totalProcedimentosLiquido - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0) + margemProdutosVenda).toFixed(2));
+                const faturamentoLiquidoSalao = Number(Math.max(0, totalCobradoClienteFinal - fundoReservaProdutos - comissaoTotalEquipe - (taxaMaq.valorTaxa || 0)).toFixed(2));
 
                 return (
                   <div className="border-t border-[var(--border-subtle)] pt-4 space-y-4">
@@ -4339,35 +4428,66 @@ function AgendaContent() {
                         <div className="space-y-2">
                           {Object.entries(porProfissional).map(([pid, dados]) => {
                             const pNome = getProfissionalNome(pid, profissionais);
+                            const pctProdRef = dados.produtosVendidos[0]?.pctComissao ?? 10;
+                            const fmtMoeda = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
                             return (
                               <div key={pid} className="p-3 bg-[var(--background)]/90 border border-gold/25 rounded-xl space-y-2 text-xs">
                                 <div className="flex flex-wrap items-center justify-between border-b border-border-subtle/50 pb-1.5 gap-2">
                                   <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
                                     👤 {pNome}
                                   </span>
-                                  <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)] whitespace-nowrap">
-                                    Comissão Líquida: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dados.comissaoEstimada)} ({dados.pctComissao}%)
-                                  </span>
+                                  <div className="text-right">
+                                    <span className="text-foreground font-mono font-bold text-xs bg-foreground/5 px-2.5 py-1 rounded border border-[var(--border-subtle)] whitespace-nowrap">
+                                      Comissão Total: {fmtMoeda(dados.comissaoEstimada)}
+                                    </span>
+                                    {(dados.comissaoServicos > 0 && dados.comissaoProdutos > 0) && (
+                                      <span className="block text-[10px] text-foreground/60 font-mono mt-0.5">
+                                        Serv. ({dados.pctComissao}%): {fmtMoeda(dados.comissaoServicos)} + Prod. ({pctProdRef}%): {fmtMoeda(dados.comissaoProdutos)}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 
                                 {/* Procedimentos deste profissional */}
-                                <div className="space-y-1 text-foreground/80">
-                                  {dados.procedimentos.map(proc => (
-                                    <div key={proc.id} className="flex flex-wrap justify-between items-center text-[11px] gap-1">
-                                      <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
-                                      <span className="font-mono whitespace-nowrap">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.preco_tabela)}
-                                        {proc.desconto_valor > 0 && (
-                                          <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
-                                            (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)})
+                                {dados.procedimentos.length > 0 && (
+                                  <div className="space-y-1 text-foreground/80">
+                                    {dados.procedimentos.map(proc => (
+                                      <div key={proc.id} className="flex flex-wrap justify-between items-center text-[11px] gap-1">
+                                        <span className="truncate pr-2">• {proc.servico_nome || getServicoNome(proc.servico_id, servicos)}</span>
+                                        <span className="font-mono whitespace-nowrap">
+                                          {fmtMoeda(proc.preco_tabela)}
+                                          {proc.desconto_valor > 0 && (
+                                            <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
+                                              (-{fmtMoeda(proc.desconto_valor)})
+                                            </span>
+                                          )}
+                                          {' = '}
+                                          <strong className="text-foreground">{fmtMoeda(proc.valor_final)}</strong>
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Produtos vendidos por este profissional */}
+                                {dados.produtosVendidos.length > 0 && (
+                                  <div className="space-y-1 pt-1 border-t border-border-subtle/30">
+                                    <span className="text-[10px] font-bold uppercase text-gold block">
+                                      Produtos Vendidos (Comissão {pctProdRef}% = {fmtMoeda(dados.comissaoProdutos)}):
+                                    </span>
+                                    {dados.produtosVendidos.map((pv, pvIdx) => {
+                                      const prodEst = estoque.find(e => e.id === pv.inventory_id);
+                                      return (
+                                        <div key={pvIdx} className="flex flex-wrap justify-between items-center text-[11px] text-foreground/80 gap-1">
+                                          <span className="truncate pr-2">🛍️ {pv.name || prodEst?.name || 'Produto'} ({pv.qty}x)</span>
+                                          <span className="font-mono whitespace-nowrap">
+                                            Venda: <strong>{fmtMoeda(pv.subtotal)}</strong> • Comissão: <strong className="text-gold">{fmtMoeda(pv.valorComissao)}</strong>
                                           </span>
-                                        )}
-                                        {' = '}
-                                        <strong className="text-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.valor_final)}</strong>
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
 
                                 {/* Insumos deste profissional */}
                                 {dados.insumosCusto > 0 && (
@@ -4402,7 +4522,7 @@ function AgendaContent() {
                             <p className="text-base font-black font-mono text-foreground">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comissaoTotalEquipe)}
                             </p>
-                            <p className="text-[9px] text-foreground/60 font-medium">Sobre o procedimento de cada profissional.</p>
+                            <p className="text-[9px] text-foreground/60 font-medium">Serviços executados + venda de produtos.</p>
                           </div>
 
                           <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
@@ -4495,7 +4615,29 @@ function AgendaContent() {
                           className="flex-1 py-3 px-4 text-xs sm:text-sm font-bold bg-gold hover:bg-gold-dim text-white shadow-md justify-center text-center whitespace-normal leading-snug" 
                           onClick={async () => {
                           const nomeCliente = getClienteNome(checkoutAppt.cliente_id, clientes);
-                          
+                          const produtosFormatadosVenda = checkoutProdutos.map(p => {
+                            const prodEstoque = estoque.find(e => e.id === p.inventory_id);
+                            const vendId = p.profissional_id || checkoutAppt.profissional_id;
+                            const vendObj = profissionais.find(pr => pr.id === vendId);
+                            const pctProd = (vendObj?.product_commission_pct && vendObj.product_commission_pct > 0)
+                              ? vendObj.product_commission_pct
+                              : 10;
+                            const valProdTotal = p.preco * p.qty;
+                            const comProdVal = Number(((valProdTotal * pctProd) / 100).toFixed(2));
+                            return {
+                              inventory_id: p.inventory_id,
+                              name: prodEstoque?.name || 'Produto',
+                              qty: p.qty,
+                              precoOriginal: p.precoOriginal,
+                              preco: p.preco,
+                              descontoValor: p.descontoValor,
+                              profissional_id: vendId,
+                              profissional_nome: p.profissional_nome || vendObj?.nome || getProfissionalNome(vendId, profissionais),
+                              comissao_pct: pctProd,
+                              comissao_valor: comProdVal,
+                            };
+                          });
+
                           // Objeto completo da comanda unificada para persistência
                           const comandaObj: ComandaMultiProfissional = {
                             cliente_id: checkoutAppt.cliente_id,
@@ -4503,18 +4645,18 @@ function AgendaContent() {
                             data: checkoutAppt.data,
                             procedimentos: checkoutProcedimentos,
                             insumos: checkoutInsumos,
-                            produtos_venda: checkoutProdutos.map(p => {
-                              const prodEstoque = estoque.find(e => e.id === p.inventory_id);
-                              return {
-                                inventory_id: p.inventory_id,
-                                name: prodEstoque?.name || 'Produto',
-                                qty: p.qty,
-                                precoOriginal: p.precoOriginal,
-                                preco: p.preco,
-                                descontoValor: p.descontoValor,
-                                profissional_id: p.profissional_id || checkoutAppt.profissional_id,
-                              };
-                            }),
+                            produtos_venda: produtosFormatadosVenda,
+                            produtos_comprados: produtosFormatadosVenda.map(pv => ({
+                              inventory_id: pv.inventory_id,
+                              nome: pv.name,
+                              quantidade: pv.qty,
+                              preco_unitario: pv.preco,
+                              total: Number((pv.preco * pv.qty).toFixed(2)),
+                              profissional_id: pv.profissional_id,
+                              profissional_nome: pv.profissional_nome,
+                              comissao_pct: pv.comissao_pct,
+                              comissao_valor: pv.comissao_valor,
+                            })),
                             total_bruto_servicos: subtotalProcedimentosTabela,
                             total_descontos_servicos: totalDescontosGerais,
                             total_liquido_servicos: totalProcedimentosLiquido,
@@ -4554,9 +4696,9 @@ function AgendaContent() {
                             await mudarStatus(outroId, 'concluido');
                           }
                           
-                          // 3. Baixar insumos do estoque registrando a etapa e profissional
+                          // 3. Baixar insumos do estoque caso ainda não tenham horário registrado em tempo real
                           for (const insumo of checkoutInsumos) {
-                            if (insumo.qty_used > 0) {
+                            if (insumo.qty_used > 0 && !insumo.horario) {
                               const profInsumoNome = getProfissionalNome(insumo.profissional_id || checkoutAppt.profissional_id, profissionais);
                               await registrarMovimentacao(insumo.inventory_id, 'OUT_PROCEDURE', insumo.qty_used, {
                                 appointmentId: checkoutAppt.id,
@@ -4582,29 +4724,45 @@ function AgendaContent() {
                             }
                           }
 
-                          // 4. Gerar comissões individuais para CADA profissional com base nos procedimentos por ele executados
-                          for (const [profId, dados] of Object.entries(porProfissional)) {
-                            if (dados.comissaoEstimada > 0) {
-                              const servicoIdRef = dados.procedimentos[0]?.servico_id || checkoutAppt.servico_id;
-                              const detalhesDesc = dados.procedimentos.map(p => {
-                                const dStr = p.desconto_valor > 0 ? ` (desc: -R$${p.desconto_valor.toFixed(2)})` : '';
-                                return `${p.servico_nome || getServicoNome(p.servico_id, servicos)}: R$${p.valor_final.toFixed(2)}${dStr}`;
-                              }).join(' + ');
-
-                              await criarComissao({
-                                appointmentId: checkoutAppt.id,
-                                professionalId: profId,
-                                serviceId: servicoIdRef,
-                                totalAmount: dados.valorLiquido,
-                                paymentMethod: checkoutPagamento,
-                                installments: numParcelas,
-                                appointmentDate: checkoutAppt.data,
-                                customCommissionAmount: dados.comissaoEstimada,
-                                notes: `Comanda Multi-Profissional [${nomeCliente}]: ${detalhesDesc}`,
-                                taxasCustom: taxasPagamento,
-                              });
-                            }
-                          }
+                          // 4. Sincronizar comissões individuais para CADA profissional (Serviços + Venda de Produtos)
+                          await sincronizarComissoesDoAgendamento({
+                            appointmentId: checkoutAppt.id,
+                            appointmentDate: checkoutAppt.data,
+                            serviceId: checkoutAppt.servico_id,
+                            paymentMethod: checkoutPagamento,
+                            installments: numParcelas,
+                            taxasCustom: taxasPagamento,
+                            comissoes: Object.entries(porProfissional)
+                              .filter(([, dados]) => dados.comissaoEstimada > 0)
+                              .map(([profId, dados]) => {
+                                const servicoIdRef = dados.procedimentos[0]?.servico_id || checkoutAppt.servico_id;
+                                const partesNota: string[] = [];
+                                if (dados.procedimentos.length > 0) {
+                                  const procStr = dados.procedimentos.map(p => {
+                                    const dStr = p.desconto_valor > 0 ? ` (desc: -R$${p.desconto_valor.toFixed(2)})` : '';
+                                    return `${p.servico_nome || getServicoNome(p.servico_id, servicos)}: R$${p.valor_final.toFixed(2)}${dStr}`;
+                                  }).join(' + ');
+                                  partesNota.push(`Serviço: ${procStr} (Comissão: R$${dados.comissaoServicos.toFixed(2)})`);
+                                }
+                                if (dados.produtosVendidos.length > 0) {
+                                  const pctProdRef = dados.produtosVendidos[0]?.pctComissao ?? 10;
+                                  const prodStr = dados.produtosVendidos.map(pv => {
+                                    const pEst = estoque.find(e => e.id === pv.inventory_id);
+                                    return `${pv.qty}x ${pv.name || pEst?.name || 'Produto'} (R$${pv.subtotal.toFixed(2)})`;
+                                  }).join(' + ');
+                                  partesNota.push(`Venda Produto: ${prodStr} (Comissão ${pctProdRef}%: R$${dados.comissaoProdutos.toFixed(2)})`);
+                                }
+                                const totalBaseProf = dados.valorLiquido + dados.produtosVendidos.reduce((s, pv) => s + pv.subtotal, 0);
+                                return {
+                                  professionalId: profId,
+                                  serviceId: servicoIdRef,
+                                  totalAmount: totalBaseProf > 0 ? totalBaseProf : totalCobradoClienteFinal,
+                                  commissionAmount: dados.comissaoEstimada,
+                                  commissionPct: dados.pctComissao,
+                                  notes: `Comanda [${nomeCliente}] — ${partesNota.join(' | ')}`,
+                                };
+                              }),
+                          });
                           
                           fecharCheckout();
                           fetchAgendamentos().then(setAgendamentos);

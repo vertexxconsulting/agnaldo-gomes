@@ -299,11 +299,19 @@ export interface ComandaMultiProfissional {
     preco: number;
     descontoValor?: number;
     profissional_id?: UUID;
+    profissional_nome?: string;
+    comissao_pct?: number;
+    comissao_valor?: number;
   }>;
   produtos_comprados?: Array<{
+    inventory_id?: UUID;
     nome: string;
     quantidade: number;
     preco_unitario: number;
+    profissional_id?: UUID;
+    profissional_nome?: string;
+    comissao_pct?: number;
+    comissao_valor?: number;
   }>;
   total_bruto_servicos: number;
   total_descontos_servicos: number;
