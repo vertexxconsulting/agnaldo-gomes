@@ -1409,6 +1409,14 @@ export default function MeuPainelPage() {
                         </Button>
 
                         <Button 
+                          variant="outline"
+                          onClick={() => abrirModalExcluirAgendamento(ag)}
+                          className="border border-red-500/30 hover:border-red-500 hover:bg-red-500/10 text-red-500 dark:text-red-400 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} /> Excluir Agendamento
+                        </Button>
+
+                        <Button 
                           variant="primary" 
                           onClick={() => abrirPreFechamento(ag)}
                           className="bg-gold hover:bg-gold-dim text-white font-bold flex items-center gap-2 px-5 py-2.5 shadow-md"
@@ -3007,6 +3015,63 @@ export default function MeuPainelPage() {
                 </div>
               </div>
 
+              {/* DETALHAMENTO DE VALORES: SERVIÇO + INSUMOS + DESCONTO = TOTAL FINAL */}
+              <div className="p-4 rounded-xl bg-foreground/[0.03] border border-[var(--border-subtle)] space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center gap-1.5">
+                  <DollarSign size={14} className="text-gold" /> Resumo de Valores do Atendimento
+                </h4>
+
+                {/* Valor do Serviço */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-foreground/60">Valor do Serviço</span>
+                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico)}</span>
+                </div>
+
+                {/* Detalhe dos Insumos */}
+                {activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="text-foreground/60">Insumos Utilizados</span>
+                      <span className="font-mono font-bold text-emerald-500">{fmt(custoInsumos)}</span>
+                    </div>
+                    <div className="space-y-1 ml-4">
+                      {activeAgendamento.insumos_detalhes.map((item, idx) => {
+                        const itemTotal = Number((Number(item.custo_total || 0) * Number(item.qty_used || 0)).toFixed(2));
+                        const itemUnit = Number((item.custo_unitario || item.price_per_gram || 0).toFixed(4));
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs text-foreground/80">
+                            <span className="truncate max-w-[60%]">{item.name} ({Number(item.qty_used || 0)}){item.unit}</span>
+                            <span className="font-mono">{fmt(itemTotal)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Subtotal */}
+                <div className="flex justify-between items-center text-sm border-t border-[var(--border-subtle)] pt-2">
+                  <span className="text-foreground font-medium">Subtotal (Serviço + Insumos)</span>
+                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico + custoInsumos)}</span>
+                </div>
+
+                {/* Desconto */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-foreground/60">
+                    Desconto {descValor > 0 ? `(${descValor.toFixed(2)}%)` : ''}
+                  </span>
+                  <span className={`font-mono font-bold ${descValor > 0 ? 'text-red-500' : 'text-foreground/50'}`}>
+                    {descValor > 0 ? `- ${fmt(descValor)}` : 'R$ 0,00'}
+                  </span>
+                </div>
+
+                {/* Total Final */}
+                <div className="flex justify-between items-center text-base border-t border-[var(--border-subtle)] pt-2 mt-2">
+                  <span className="text-foreground font-bold">TOTAL FINAL</span>
+                  <span className="font-black font-mono text-gold text-lg">{fmt(Math.max(0, precoBaseServico + custoInsumos - descValor))}</span>
+                </div>
+              </div>
+
               {/* CENÁRIO ESPECIAL: AGNALDO + AUXILIAR */}
               {isAgnaldoEnvolvido && temAuxiliares && (
                 <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 space-y-2.5">
@@ -3042,28 +3107,59 @@ export default function MeuPainelPage() {
                 </div>
               )}
 
-              {/* RESUMO SIMPLES DE INSUMOS E PRODUTOS (SEM DETALHAMENTO DE SALÃO/MARGEM) */}
+              {/* DETALHAMENTO DE INSUMOS E PRODUTOS DO ATENDIMENTO */}
               {((activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0) || itensUpsell.length > 0) && (
                 <div className="p-3.5 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] space-y-2 text-xs">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/60 block">
                     Produtos e Insumos do Atendimento
                   </span>
                   {activeAgendamento.insumos_detalhes && activeAgendamento.insumos_detalhes.length > 0 && (
-                    <div className="flex items-center justify-between text-foreground/80">
-                      <span className="flex items-center gap-1.5">
-                        <Beaker size={13} className="text-emerald-500" />
-                        Insumos de Apoio / Procedimento ({activeAgendamento.insumos_detalhes.length} itens aplicados)
-                      </span>
-                      <span className="font-semibold text-emerald-500 text-[11px]">Lançado na comanda</span>
+                    <div className="space-y-1.5 mt-1">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-foreground/60 border-b border-[var(--border-subtle)] pb-1 mb-1">
+                        <span>Insumo</span>
+                        <span className="text-right">Qtd</span>
+                        <span className="text-right">Valor Unit.</span>
+                        <span className="text-right">Total</span>
+                      </div>
+                      {activeAgendamento.insumos_detalhes.map((item, idx) => {
+                        const itemTotal = Number((Number(item.custo_total || 0) * Number(item.qty_used || 0)).toFixed(2));
+                        const itemUnit = Number((item.custo_unitario || item.price_per_gram || 0).toFixed(4));
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs text-foreground/80 py-0.5">
+                            <span className="truncate max-w-[40%]">{item.name}</span>
+                            <span className="text-right w-12 font-mono">{Number(item.qty_used || 0)}{item.unit}</span>
+                            <span className="text-right w-16 font-mono text-foreground/60">R$ {itemUnit.toFixed(2)}</span>
+                            <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {itemTotal.toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center text-[10px] font-bold text-foreground border-t border-[var(--border-subtle)] pt-1 mt-1">
+                        <span>Total Insumos</span>
+                        <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {custoInsumos.toFixed(2)}</span>
+                      </div>
                     </div>
                   )}
                   {itensUpsell.length > 0 && (
-                    <div className="flex items-center justify-between text-foreground/80 pt-1 border-t border-[var(--border-subtle)]">
-                      <span className="flex items-center gap-1.5">
-                        <ShoppingBag size={13} className="text-gold" />
-                        Produtos de Balcão (Venda Upsell - {itensUpsell.length} item(s))
-                      </span>
-                      <span className="font-mono font-bold text-gold">+{fmt(totalUpsell)}</span>
+                    <div className="space-y-1 mt-2 pt-2 border-t border-[var(--border-subtle)]">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-foreground/60 border-b border-[var(--border-subtle)] pb-1 mb-1">
+                        <span>Produto Balcão</span>
+                        <span className="text-right">Qtd</span>
+                        <span className="text-right">Total</span>
+                      </div>
+                      {itensUpsell.map((item, idx) => {
+                        const prod = estoque.find(p => p.id === item.inventory_id);
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs text-foreground/80 py-0.5">
+                            <span className="truncate max-w-[40%]">{prod?.name || 'Produto'}</span>
+                            <span className="text-right w-12 font-mono">{item.qty}</span>
+                            <span className="text-right w-16 font-mono font-bold text-gold">R$ {(item.price * item.qty).toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center text-[10px] font-bold text-foreground border-t border-[var(--border-subtle)] pt-1 mt-1">
+                        <span>Total Balcão</span>
+                        <span className="text-right w-16 font-mono font-bold text-gold">R$ {totalUpsell.toFixed(2)}</span>
+                      </div>
                     </div>
                   )}
                 </div>
