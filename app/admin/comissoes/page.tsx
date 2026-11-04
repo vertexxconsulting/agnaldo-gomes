@@ -2792,33 +2792,17 @@ export default function ComissoesPage() {
                   </table>
                 </div>
               </div>
-            )}
+            )            )}
 
-
-
-              <div className="flex gap-2 w-full sm:w-auto">
-                {reciboModalData.statusFechamento === 'PENDENTE' && !isRestrictedProfissional && !isReadOnly && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      handleFecharCaixaProfissional(reciboModalData);
-                      setReciboModalData(null);
-                    }}
-                    className="flex-1 sm:flex-none text-xs"
-                  >
-                    <CheckCircle2 size={14} className="mr-1.5" /> Dar Baixa e Quitar ({periodoNome})
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setReciboModalData(null)}
-                  className="flex-1 sm:flex-none text-xs"
-                >
-                  Fechar
-                </Button>
-              </div>
+            <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border-subtle)] print:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReciboModalData(null)}
+                className="flex-1 sm:flex-none text-xs"
+              >
+                Fechar
+              </Button>
             </div>
           </CardGlass>
         </div>
