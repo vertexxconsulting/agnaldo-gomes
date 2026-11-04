@@ -127,6 +127,7 @@ export default function MeuPainelPage() {
   const [servicoEditandoId, setServicoEditandoId] = useState('');
   const [servicoPrecoEditado, setServicoPrecoEditado] = useState('');
   const [subServicosEditados, setSubServicosEditados] = useState<any[]>([]);
+  const [subServicoBuscaId, setSubServicoBuscaId] = useState('');
   const [salvandoServico, setSalvandoServico] = useState(false);
 
   // 2. Modal de Pacote
@@ -1084,7 +1085,7 @@ export default function MeuPainelPage() {
           </div>
           <div>
             <label className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider block">
-              {isAuxiliarCabelo ? 'Cadeira em Atendimento (Auxiliar de Cabelo):' : 'Profissional / Cadeira Atuante:'}
+              Profissional / Cadeira Atuante:
             </label>
             {isRestrictedProfissional ? (
               <div className="bg-[var(--background)] border border-gold/40 rounded-lg px-3 py-1.5 text-sm font-bold text-foreground flex items-center gap-2">
@@ -1101,7 +1102,7 @@ export default function MeuPainelPage() {
               >
                 {profissionais.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.nome} {isAuxiliarCabelo ? '✂️' : ''}
+                    {p.nome}
                   </option>
                 ))}
               </select>
@@ -1293,29 +1294,9 @@ export default function MeuPainelPage() {
                         </div>
                       </div>
 
-                      {/* AS 4 OPÇÕES DA CADEIRA: SERVIÇO, PRODUTO (INSUMOS), AGENDA E PACOTE */}
+                      {/* AS 4 OPÇÕES DA CADEIRA: PRODUTO (INSUMOS), SERVIÇO, AGENDA E PACOTE */}
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] mt-4">
-                        {/* OPÇÃO 1: SERVIÇO (tempo/serviço) */}
-                        <button
-                          type="button"
-                          onClick={() => abrirModalServico(ag)}
-                          className="p-3 rounded-lg border border-gold/30 hover:border-gold hover:bg-gold/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                              <Clock size={14} /> Serviço / Tempo
-                            </span>
-                            <Pencil size={13} className="text-foreground/40 group-hover:text-gold" />
-                          </div>
-                          <div className="mt-2">
-                            <p className="text-sm font-semibold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
-                            <p className="text-[11px] text-foreground/50">
-                              {ag.total_amount != null && ag.total_amount > 0 ? fmt(ag.total_amount) : 'Preço de Tabela'} • Alterar/Ajustar
-                            </p>
-                          </div>
-                        </button>
-
-                        {/* OPÇÃO 2: PRODUTO (INSUMOS) */}
+                        {/* OPÇÃO 1: PRODUTO (INSUMOS) - sempre primeiro */}
                         <button
                           type="button"
                           onClick={() => abrirModalInsumos(ag)}
@@ -1336,6 +1317,26 @@ export default function MeuPainelPage() {
                               {ag.product_cost && Number(ag.product_cost) > 0 ? fmt(Number(ag.product_cost)) : 'Nenhum lançado'}
                             </p>
                             <p className="text-[11px] text-foreground/50">Lançar produtos da etapa e pesar</p>
+                          </div>
+                        </button>
+
+                        {/* OPÇÃO 2: SERVIÇO (tempo/serviço) */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalServico(ag)}
+                          className="p-3 rounded-lg border border-gold/30 hover:border-gold hover:bg-gold/10 text-left transition-all flex flex-col justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                              <Clock size={14} /> Serviço / Tempo
+                            </span>
+                            <Pencil size={13} className="text-foreground/40 group-hover:text-gold" />
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-sm font-semibold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
+                            <p className="text-[11px] text-foreground/50">
+                              {ag.total_amount != null && ag.total_amount > 0 ? fmt(ag.total_amount) : 'Preço de Tabela'} • Alterar/Ajustar
+                            </p>
                           </div>
                         </button>
 
@@ -1430,9 +1431,8 @@ export default function MeuPainelPage() {
               })}
             </div>
           )}
-
-          {(!isAuxiliarCabelo && (
-            <>
+          
+          <>
               <h2 className="text-xl font-bold mt-8">Vitrine de Afiliado</h2>
               <CardGlass className="p-6">
                 <p className="text-sm text-foreground/70 mb-4">
@@ -1444,11 +1444,7 @@ export default function MeuPainelPage() {
                   </Button>
                 </div>
               </CardGlass>
-            </>
-          ))}
 
-          {(!isAuxiliarCabelo && (
-            <>
               <h2 className="text-xl font-bold mt-8 flex items-center gap-2">
                 <DollarSign className="text-gold" />
                 Minhas Comissões & Fechamento
@@ -1708,7 +1704,6 @@ export default function MeuPainelPage() {
                 </div>
               </CardGlass>
             </>
-          ))}
         </div>
 
         {/* COLUNA DIREITA: Atendimentos da Data */}
@@ -2424,38 +2419,69 @@ export default function MeuPainelPage() {
 
               {/* Sub-serviços adicionais */}
               <div className="pt-2 border-t border-[var(--border-subtle)]">
-                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1.5">
-                  Procedimentos Adicionais / Sub-serviços
-                </label>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                      {servicos.filter(s => s.id !== servicoEditandoId).map(s => {
-                        const isAdded = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === s.id : sub?.id === s.id));
-                        return (
-                          <label 
-                            key={s.id} 
-                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''} ${isAdded ? 'bg-gold/15 border-gold text-foreground' : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/70 hover:bg-foreground/[0.05]'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={isAdded}
-                                onChange={isReadOnly ? undefined : (e) => {
-                                  if (e.target.checked) {
-                                    setSubServicosEditados(prev => [...prev, { id: s.id, nome: s.nome, preco: s.preco }]);
-                                  } else {
-                                    setSubServicosEditados(prev => prev.filter(sub => (typeof sub === 'string' ? sub !== s.id : sub?.id !== s.id)));
-                                  }
-                                }}
-                                disabled={isReadOnly}
-                                className="rounded accent-gold"
-                              />
-                              <span className="font-semibold">{s.nome}</span>
-                            </div>
-                            <span className="font-mono text-gold font-bold">+{fmt(s.preco)}</span>
-                          </label>
-                        );
-                      })}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">
+                    Procedimentos Adicionais / Sub-serviços
+                  </label>
+                  {!isReadOnly && (
+                    <span className="text-[10px] text-foreground/40 font-mono">
+                      {subServicosEditados.length} selecionado(s)
+                    </span>
+                  )}
                 </div>
+
+                {/* Campo de busca pronto para digitar */}
+                <ProductSearchSelect
+                  mode="auto"
+                  products={servicos.filter(s => s.id !== servicoEditandoId).map(s => ({
+                    id: s.id,
+                    name: s.nome,
+                    price: s.preco,
+                  }))}
+                  value={subServicoBuscaId}
+                  onChange={(pid, prod) => {
+                    if (!pid) return;
+                    const existe = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === pid : sub?.id === pid));
+                    if (!existe && prod) {
+                      setSubServicosEditados(prev => [...prev, { id: prod.id, nome: prod.name, preco: prod.price }]);
+                    }
+                    setSubServicoBuscaId('');
+                  }}
+                  placeholder="Buscar procedimento adicional..."
+                  autoFocus
+                  className="w-full"
+                  disabled={isReadOnly}
+                />
+
+                {/* Chips dos sub-serviços selecionados */}
+                {subServicosEditados.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {subServicosEditados.map((sub, idx) => {
+                      const sId = typeof sub === 'string' ? sub : sub.id;
+                      const s = servicos.find(srv => srv.id === sId);
+                      return (
+                        <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold/20 border border-gold/30 text-xs">
+                          <span className="font-semibold text-foreground truncate max-w-[120px]">
+                            {sub.nome || (s?.nome || 'Procedimento')}
+                          </span>
+                          <span className="font-mono text-gold font-bold">+{fmt(typeof sub === 'string' ? (s?.preco || 0) : sub.preco)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSubServicosEditados(prev => prev.filter((_, i) => i !== idx))}
+                            className="p-0.5 text-foreground/40 hover:text-red-500 rounded hover:bg-red-500/10 transition-colors"
+                            title="Remover"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!isReadOnly && subServicosEditados.length === 0 && (
+                  <p className="text-[11px] text-foreground/50 mt-2">Nenhum procedimento adicional selecionado. Digite acima para buscar e adicionar.</p>
+                )}
               </div>
             </div>
 
