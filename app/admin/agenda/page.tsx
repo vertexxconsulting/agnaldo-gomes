@@ -2635,10 +2635,13 @@ function AgendaContent() {
                       {profAtende && slots.map(time => {
                         const slotMin = timeToMinutes(time);
 
-                        // Agendamentos que INICIAM exatamente neste slot (Titular ou Auxiliar)
-                        const startingAppts = agendamentosFiltrados.filter(
-                          a => (a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id))) && a.hora_inicio === time && a.status !== 'cancelado'
-                        );
+                        // Agendamentos que INICIAM dentro deste slot (ex: 13:00 ou 13:12 dentro de 13:00-13:30)
+                        const startingAppts = agendamentosFiltrados.filter(a => {
+                          const isEnvolvido = a.profissional_id === prof.id || (Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(prof.id));
+                          if (!isEnvolvido || a.status === 'cancelado') return false;
+                          const aInicioMin = timeToMinutes(a.hora_inicio);
+                          return aInicioMin >= slotMin && aInicioMin < slotMin + interval;
+                        });
 
                         // Agendamentos em ANDAMENTO (iniciaram antes e terminam depois deste slot)
                         const ongoingAppts = agendamentosFiltrados.filter(a => {
@@ -2749,11 +2752,11 @@ function AgendaContent() {
                                                   title={
                                                     invasao.tipo === 'invade_proximo'
                                                       ? `Atenção: Invade o agendamento de ${invasao.proximoClienteNome} às ${invasao.proximaHoraInicio} em ${invasao.minutosInvasao} min (término previsto: ${invasao.horaFimCalculada})`
-                                                      : `Horário compartilhado/sobreposto com ${invasao.proximoClienteNome}`
+                                                      : `Encaixe / Horário compartilhado com ${invasao.proximoClienteNome}`
                                                   }
                                                 >
                                                   <AlertTriangle size={9} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : 'Sobreposição'}</span>
+                                                  <span>{invasao.tipo === 'invade_proximo' ? `Invade próx. (${invasao.proximaHoraInicio})` : '⚡ Encaixe'}</span>
                                                 </span>
                                               )}
                                             </div>

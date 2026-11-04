@@ -249,8 +249,9 @@ export async function POST(req: Request) {
       .neq('status', 'CANCELLED');
 
     // Mapeia os payloads e detecta sobreposição usando minutos exatos (evitando conflitos falsos por causa de segundos na string)
-    // Na gestão/recepção, NUNCA bloqueamos a secretária com erro 409: se houver invasão ou encaixe, permitimos o agendamento
-    // com allow_overlap: true para ser exibido e sinalizado na agenda com alerta visual.
+    // Na gestão/recepção/meu-painel, se houver invasão ou sobreposição com cliente na cadeira/agenda,
+    // adicionamos automaticamente como encaixe (allow_overlap: true) tanto no novo agendamento quanto no existente.
+    const existingIdsToMarkOverlap = new Set<string>();
     const payloadsToInsert = payloads.map(p => {
       const conflictsForDate = allConflicts?.filter((c: any) => {
         if (c.date !== p.date) return false;
@@ -261,7 +262,7 @@ export async function POST(req: Request) {
         return profsToCheck.some(pid => cAllProfs.includes(pid));
       }) || [];
 
-      const hasOverlap = conflictsForDate.some((app: any) => {
+      const overlappingApps = conflictsForDate.filter((app: any) => {
         const startA = timeToMinutes(p.start_time);
         const endA = timeToMinutes(p.end_time);
         const startB = timeToMinutes(app.start_time);
@@ -269,14 +270,45 @@ export async function POST(req: Request) {
         return startA < endB && endA > startB;
       });
 
+      const hasOverlap = overlappingApps.length > 0;
+      if (hasOverlap) {
+        overlappingApps.forEach((app: any) => {
+          if (app?.id && !appointmentAllowsOverlap(app)) {
+            existingIdsToMarkOverlap.add(app.id);
+          }
+        });
+      }
+
       if (hasOverlap || p.allow_overlap || allow_overlap) {
+        const currentSubs = Array.isArray(p.sub_services) ? [...p.sub_services] : [];
+        const existingMeta = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+        const updatedMeta = { ...existingMeta, _meta: true, allow_overlap: true };
+        const updatedSubs = [...currentSubs.filter((s: any) => !s?._meta), updatedMeta];
         return {
           ...p,
           allow_overlap: true,
+          sub_services: updatedSubs,
         };
       }
       return p;
     });
+
+    // Se o novo agendamento sobrepôs algum atendimento existente (ex: cliente já na cadeira),
+    // atualiza o atendimento existente para também constar com encaixe/sobreposição liberada
+    if (existingIdsToMarkOverlap.size > 0) {
+      for (const conflictId of existingIdsToMarkOverlap) {
+        const targetConflict = allConflicts?.find((c: any) => c.id === conflictId);
+        if (targetConflict) {
+          const cSubs = Array.isArray(targetConflict.sub_services) ? [...targetConflict.sub_services] : [];
+          const cMeta = cSubs.find((s: any) => s?._meta) || { _meta: true };
+          const nextSubs = [...cSubs.filter((s: any) => !s?._meta), { ...cMeta, _meta: true, allow_overlap: true }];
+          await supabase
+            .from('salon_appointments')
+            .update({ allow_overlap: true, sub_services: nextSubs })
+            .eq('id', conflictId);
+        }
+      }
+    }
 
     let agendamentosResult: any = null;
     const { data: agendamentos, error } = await supabase

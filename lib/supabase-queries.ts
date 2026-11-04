@@ -529,7 +529,11 @@ export async function criarAgendamento(payload: {
   hora_inicio: string;
   hora_fim: string;
   canal?: 'online' | 'recepcao';
-}): Promise<{ id: string } | null> {
+  status?: StatusAgendamento | string;
+  allow_overlap?: boolean;
+  auxiliares_ids?: string[];
+  sub_servicos?: any[];
+}): Promise<{ id: string; allow_overlap?: boolean } | null> {
   try {
     const res = await fetch('/api/agendamentos/admin', {
       method: 'POST',
@@ -538,29 +542,62 @@ export async function criarAgendamento(payload: {
     });
     if (res.ok) {
       const resp = await res.json();
-      if (resp?.agendamento?.id) return { id: resp.agendamento.id };
-      if (Array.isArray(resp?.agendamentos) && resp.agendamentos[0]?.id) return { id: resp.agendamentos[0].id };
+      if (resp?.agendamento?.id) {
+        return {
+          id: resp.agendamento.id,
+          allow_overlap: Boolean(resp.agendamento.allow_overlap ?? payload.allow_overlap),
+        };
+      }
+      if (Array.isArray(resp?.agendamentos) && resp.agendamentos[0]?.id) {
+        return {
+          id: resp.agendamentos[0].id,
+          allow_overlap: Boolean(resp.agendamentos[0].allow_overlap ?? payload.allow_overlap),
+        };
+      }
     }
   } catch (err) {
     console.warn('[criarAgendamento] API server falhou, tentando client-side:', err);
   }
 
-  const { data, error } = await supabase.from(TBL.agendamentos).insert({
+  const dbStatus = payload.status
+    ? (STATUS_TO_DB[payload.status as StatusAgendamento] ?? payload.status)
+    : 'CONFIRMED';
+
+  const insertRow: Row = {
     customer_id: payload.cliente_id,
     professional_id: payload.profissional_id,
     service_id: payload.servico_id,
     date: payload.data,
     start_time: payload.hora_inicio,
     end_time: payload.hora_fim,
-    channel: CANAL_TO_DB[payload.canal || 'online'],
-    status: 'PENDING',
-  }).select('id').single();
+    channel: CANAL_TO_DB[payload.canal || 'recepcao'],
+    status: dbStatus,
+    allow_overlap: Boolean(payload.allow_overlap),
+  };
+
+  if (Array.isArray(payload.auxiliares_ids) && payload.auxiliares_ids.length > 0) {
+    insertRow.assistant_ids = payload.auxiliares_ids;
+  }
+
+  if (payload.allow_overlap || (Array.isArray(payload.auxiliares_ids) && payload.auxiliares_ids.length > 0)) {
+    const subs = Array.isArray(payload.sub_servicos) ? [...payload.sub_servicos] : [];
+    const meta: Record<string, any> = { _meta: true };
+    if (payload.allow_overlap) meta.allow_overlap = true;
+    if (Array.isArray(payload.auxiliares_ids) && payload.auxiliares_ids.length > 0) {
+      meta.auxiliares_ids = payload.auxiliares_ids;
+    }
+    insertRow.sub_services = [...subs.filter((s: any) => !s?._meta), meta];
+  } else if (Array.isArray(payload.sub_servicos) && payload.sub_servicos.length > 0) {
+    insertRow.sub_services = payload.sub_servicos;
+  }
+
+  const { data, error } = await supabase.from(TBL.agendamentos).insert(insertRow).select('id').single();
 
   if (error) {
     logSupabaseError('[supabase] criarAgendamento error:', error);
     return null;
   }
-  return data;
+  return { id: data.id, allow_overlap: Boolean(payload.allow_overlap) };
 }
 
 export async function atualizarStatusAgendamento(id: string, status: string): Promise<boolean> {

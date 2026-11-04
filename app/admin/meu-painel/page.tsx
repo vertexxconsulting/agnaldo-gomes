@@ -150,12 +150,19 @@ export default function MeuPainelPage() {
   const [preFechamentoAgnaldoRecebe, setPreFechamentoAgnaldoRecebe] = useState<boolean>(true);
   const [preFechamentoLoading, setPreFechamentoLoading] = useState(false);
 
-  // 4. Modal de Novo Agendamento pelo Profissional
+  // 4. Modal de Novo Agendamento Rápido pelo Profissional
   const [novoAgModalOpen, setNovoAgModalOpen] = useState(false);
   const [novoAgClienteId, setNovoAgClienteId] = useState('');
   const [novoAgServicoId, setNovoAgServicoId] = useState('');
   const [novoAgData, setNovoAgData] = useState(new Date().toISOString().split('T')[0]);
   const [novoAgHoraInicio, setNovoAgHoraInicio] = useState('10:00');
+  const [novoAgDuracaoMin, setNovoAgDuracaoMin] = useState('60');
+  const [novoAgBuscaCliente, setNovoAgBuscaCliente] = useState('');
+  const [novoAgCadastrandoCliente, setNovoAgCadastrandoCliente] = useState(false);
+  const [novoAgNovoCliNome, setNovoAgNovoCliNome] = useState('');
+  const [novoAgNovoCliTel, setNovoAgNovoCliTel] = useState('');
+  const [novoAgSalvandoCliente, setNovoAgSalvandoCliente] = useState(false);
+  const [novoAgIniciarNaCadeira, setNovoAgIniciarNaCadeira] = useState(false);
   const [novoAgLoading, setNovoAgLoading] = useState(false);
 
   // 5. Modal de Excluir Agendamento
@@ -732,14 +739,137 @@ export default function MeuPainelPage() {
     setPreFechamentoModalOpen(true);
   };
 
-  // --- HANDLERS: AGENDA DO PROFISSIONAL (MARCAR & EXCLUIR) ---
+  // --- HANDLERS: AGENDA DO PROFISSIONAL (SISTEMA RÁPIDO DE AGENDAMENTO & ENCAIXE AUTOMÁTICO) ---
+  const obterHorarioAtualFormatado = () => {
+    const agora = new Date();
+    const h = String(agora.getHours()).padStart(2, '0');
+    const m = String(agora.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
   const abrirModalNovoAgendamento = () => {
-    setNovoAgData(selectedDate);
-    setNovoAgHoraInicio('10:00');
+    const horaAtual = obterHorarioAtualFormatado();
+    const firstServ = servicos[0];
+    setNovoAgData(selectedDate || hoje);
+    setNovoAgHoraInicio(horaAtual);
     setNovoAgClienteId(clientes[0]?.id || '');
-    setNovoAgServicoId(servicos[0]?.id || '');
+    setNovoAgServicoId(firstServ?.id || '');
+    setNovoAgDuracaoMin(String(firstServ?.duracao_min || 60));
+    setNovoAgBuscaCliente('');
+    setNovoAgCadastrandoCliente(false);
+    setNovoAgNovoCliNome('');
+    setNovoAgNovoCliTel('');
+    setNovoAgIniciarNaCadeira(false);
     setNovoAgModalOpen(true);
   };
+
+  const ajustarHorarioNovoAg = (deltaMinutos: number) => {
+    const [h, m] = (novoAgHoraInicio || obterHorarioAtualFormatado()).split(':').map(Number);
+    const total = Math.max(0, Math.min(23 * 60 + 59, (h || 0) * 60 + (m || 0) + deltaMinutos));
+    const nh = String(Math.floor(total / 60)).padStart(2, '0');
+    const nm = String(total % 60).padStart(2, '0');
+    setNovoAgHoraInicio(`${nh}:${nm}`);
+  };
+
+  const handleCadastrarClienteRapidoPainel = async () => {
+    const nome = novoAgNovoCliNome.trim();
+    const telefone = novoAgNovoCliTel.trim();
+    if (!nome || !telefone) {
+      alert('Informe o nome e o telefone do cliente.');
+      return;
+    }
+    setNovoAgSalvandoCliente(true);
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao cadastrar cliente');
+      const novoCli: Cliente = {
+        id: data.cliente?.id || `cli_${Date.now()}`,
+        nome: data.cliente?.nome || data.cliente?.name || nome,
+        telefone: data.cliente?.telefone || data.cliente?.phone || telefone,
+        criado_em: new Date().toISOString(),
+      };
+      setClientes(prev => [novoCli, ...prev]);
+      setNovoAgClienteId(novoCli.id);
+      setNovoAgCadastrandoCliente(false);
+      setNovoAgNovoCliNome('');
+      setNovoAgNovoCliTel('');
+      setNovoAgBuscaCliente('');
+    } catch (err: any) {
+      alert('Erro ao cadastrar cliente: ' + (err.message || 'Tente novamente'));
+    } finally {
+      setNovoAgSalvandoCliente(false);
+    }
+  };
+
+  const clientesFiltradosNovoAg = useMemo(() => {
+    const termo = novoAgBuscaCliente.toLowerCase().trim();
+    const digitos = termo.replace(/\D/g, '');
+    if (!termo) return clientes;
+    return clientes.filter(c => {
+      const n = (c.nome || '').toLowerCase().includes(termo);
+      const t = digitos
+        ? (c.telefone || '').replace(/\D/g, '').includes(digitos)
+        : (c.telefone || '').toLowerCase().includes(termo);
+      return n || t;
+    });
+  }, [clientes, novoAgBuscaCliente]);
+
+  // Calcula término previsto e detecta automaticamente se o horário está livre (normal)
+  // ou se sobrepõe a um cliente na cadeira / horário já agendado (encaixe automático)
+  const analiseHorarioNovoAg = useMemo(() => {
+    const toMins = (t?: string | null) => {
+      if (!t) return 0;
+      const [hh, mm] = String(t).slice(0, 5).split(':').map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    const fromMins = (total: number) => {
+      const clamped = ((total % 1440) + 1440) % 1440;
+      const hh = String(Math.floor(clamped / 60)).padStart(2, '0');
+      const mm = String(clamped % 60).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    const srv = servicos.find(s => s.id === novoAgServicoId);
+    const durMin = Math.max(5, parseInt(novoAgDuracaoMin) || srv?.duracao_min || 60);
+    const inicioMin = toMins(novoAgHoraInicio);
+    const fimMin = inicioMin + durMin;
+    const horaFim = fromMins(fimMin);
+
+    const agsDoProfNoDia = agendamentos.filter(a => {
+      if (a.data !== (novoAgData || selectedDate)) return false;
+      if (a.status === 'cancelado' || a.status === 'no_show' || a.status === 'concluido') return false;
+      const isTitular = a.profissional_id === selectedProfId;
+      const isAux = Array.isArray(a.auxiliares_ids) && a.auxiliares_ids.includes(selectedProfId);
+      return isTitular || isAux;
+    });
+
+    const sobrepostos = agsDoProfNoDia.filter(a => {
+      const aIni = toMins(a.hora_inicio);
+      let aFim = toMins(a.hora_fim);
+      if (!aFim || aFim <= aIni) {
+        const aSrv = servicos.find(s => s.id === a.servico_id);
+        aFim = aIni + (aSrv?.duracao_min || 60);
+      }
+      return inicioMin < aFim && fimMin > aIni;
+    });
+
+    const clienteNaCadeiraSobreposto = sobrepostos.find(a => a.status === 'em_atendimento') || null;
+    const isEncaixe = sobrepostos.length > 0;
+
+    return {
+      durMin,
+      horaFim,
+      isEncaixe,
+      sobrepostos,
+      clienteNaCadeiraSobreposto,
+      principalConflito: clienteNaCadeiraSobreposto || sobrepostos[0] || null,
+    };
+  }, [novoAgHoraInicio, novoAgDuracaoMin, novoAgServicoId, novoAgData, selectedDate, agendamentos, selectedProfId, servicos]);
 
   const handleCriarNovoAgendamento = async () => {
     if (!novoAgClienteId || !novoAgServicoId || !novoAgHoraInicio || !selectedProfId) {
@@ -748,26 +878,42 @@ export default function MeuPainelPage() {
     }
     setNovoAgLoading(true);
     try {
-      const srv = servicos.find(s => s.id === novoAgServicoId);
-      const durMin = srv?.duracao_min || 60;
-      const [h, m] = novoAgHoraInicio.split(':').map(Number);
-      const dt = new Date();
-      dt.setHours(h, (m || 0) + durMin, 0);
-      const horaFim = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const { horaFim, isEncaixe, sobrepostos } = analiseHorarioNovoAg;
+      const dataTarget = novoAgData || selectedDate || hoje;
+      const statusInicial = novoAgIniciarNaCadeira ? 'em_atendimento' : 'confirmado';
 
       const res = await criarAgendamento({
         cliente_id: novoAgClienteId,
         profissional_id: selectedProfId,
         servico_id: novoAgServicoId,
-        data: novoAgData || hoje,
+        data: dataTarget,
         hora_inicio: novoAgHoraInicio,
         hora_fim: horaFim,
         canal: 'recepcao',
+        status: statusInicial,
+        allow_overlap: isEncaixe,
       });
 
       if (res?.id) {
+        // Se foi reconhecido como encaixe sobre um agendamento que ainda não estava com allow_overlap,
+        // garante a marcação de encaixe no atendimento existente também
+        if (isEncaixe && sobrepostos.length > 0) {
+          for (const agConflito of sobrepostos) {
+            if (!agConflito.allow_overlap) {
+              await atualizarConfiguracaoAgendamentoCadeira({
+                id: agConflito.id,
+                allow_overlap: true,
+                auxiliares_ids: agConflito.auxiliares_ids || [],
+              });
+            }
+          }
+        }
+
+        if (dataTarget !== selectedDate) {
+          setSelectedDate(dataTarget);
+        }
         setNovoAgModalOpen(false);
-        const ags = await fetchAgendamentos({ data: novoAgData || hoje });
+        const ags = await fetchAgendamentos({ data: dataTarget });
         setAgendamentos(ags);
       } else {
         alert('Não foi possível criar o agendamento.');
@@ -1759,14 +1905,21 @@ export default function MeuPainelPage() {
               </p>
             ) : (
               proximos.map(ag => (
-                <CardGlass key={ag.id} className="p-4 hover:border-foreground/20 transition-colors">
+                  <CardGlass key={ag.id} className="p-4 hover:border-foreground/20 transition-colors">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
                       <div className="text-center font-mono text-sm text-foreground/50 font-bold shrink-0">
                         {ag.hora_inicio}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold truncate text-sm">{getClienteNome(ag.cliente_id)}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold truncate text-sm">{getClienteNome(ag.cliente_id)}</p>
+                          {ag.allow_overlap && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9px] font-extrabold uppercase tracking-wider shrink-0">
+                              ⚡ Encaixe
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-foreground/50 truncate">{getServicoNome(ag.servico_id)}</p>
                       </div>
                     </div>
@@ -3294,19 +3447,19 @@ export default function MeuPainelPage() {
         );
       })()}
 
-      {/* 4. MODAL NOVO AGENDAMENTO PELO PROFISSIONAL (LIBERDADE DE AGENDA) */}
+      {/* 4. MODAL NOVO AGENDAMENTO RÁPIDO PELO PROFISSIONAL (HORÁRIO ATUAL + DETECÇÃO AUTOMÁTICA DE ENCAIXE) */}
       {novoAgModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <CardGlass className="w-full max-w-md p-6 max-h-[90vh] overflow-y-auto border border-gold/30 shadow-2xl space-y-4">
+          <CardGlass className="w-full max-w-lg p-6 max-h-[92vh] overflow-y-auto border border-gold/30 shadow-2xl space-y-4">
             <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/30">
                   <CalendarDays size={20} />
                 </span>
                 <div>
-                  <h3 className="text-xl font-bold font-serif text-foreground">Marcar Cliente na Minha Agenda</h3>
+                  <h3 className="text-xl font-bold font-serif text-foreground">Agendamento Rápido na Cadeira</h3>
                   <p className="text-xs text-foreground/60">
-                    Adicione um horário diretamente para você
+                    Abre no horário atual • Reconhece horário livre ou encaixe automaticamente
                   </p>
                 </div>
               </div>
@@ -3315,64 +3468,272 @@ export default function MeuPainelPage() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Cliente</label>
-                <select
-                  value={novoAgClienteId}
-                  onChange={e => setNovoAgClienteId(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
-                >
-                  {clientes.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome} ({c.telefone || 'Sem tel'})</option>
-                  ))}
-                </select>
+            <div className="space-y-4">
+              {/* 1. CLIENTE (BUSCA RÁPIDA + CADASTRO INSTANTÂNEO) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase text-foreground/70">1. Cliente</label>
+                  <button
+                    type="button"
+                    onClick={() => setNovoAgCadastrandoCliente(prev => !prev)}
+                    className="text-[11px] font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {novoAgCadastrandoCliente ? 'Selecionar cliente existente' : '+ Cadastrar Novo Cliente'}
+                  </button>
+                </div>
+
+                {novoAgCadastrandoCliente ? (
+                  <div className="p-3 rounded-xl bg-gold/5 border border-gold/30 space-y-2.5">
+                    <p className="text-[11px] font-bold text-gold uppercase">Cadastro Rápido de Cliente</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nome da cliente *"
+                        value={novoAgNovoCliNome}
+                        onChange={e => setNovoAgNovoCliNome(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-semibold text-foreground focus:outline-none focus:border-gold"
+                      />
+                      <input
+                        type="text"
+                        placeholder="WhatsApp / Telefone *"
+                        value={novoAgNovoCliTel}
+                        onChange={e => setNovoAgNovoCliTel(e.target.value)}
+                        className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono text-foreground focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setNovoAgCadastrandoCliente(false)}
+                        className="text-xs"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        disabled={novoAgSalvandoCliente}
+                        onClick={handleCadastrarClienteRapidoPainel}
+                        className="bg-gold hover:bg-gold-dim text-white text-xs font-bold"
+                      >
+                        {novoAgSalvandoCliente ? 'Salvando...' : 'Salvar e Selecionar'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <input
+                      type="text"
+                      placeholder="Buscar cliente por nome ou telefone..."
+                      value={novoAgBuscaCliente}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setNovoAgBuscaCliente(val);
+                        const termo = val.toLowerCase().trim();
+                        if (termo) {
+                          const match = clientes.find(c =>
+                            (c.nome || '').toLowerCase().includes(termo) ||
+                            (c.telefone || '').includes(termo)
+                          );
+                          if (match) setNovoAgClienteId(match.id);
+                        }
+                      }}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-gold"
+                    />
+                    <select
+                      value={novoAgClienteId}
+                      onChange={e => setNovoAgClienteId(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                    >
+                      {clientesFiltradosNovoAg.length === 0 ? (
+                        <option value="">Nenhum cliente encontrado</option>
+                      ) : (
+                        clientesFiltradosNovoAg.map(c => (
+                          <option key={c.id} value={c.id}>{c.nome} ({c.telefone || 'Sem tel'})</option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Serviço</label>
-                <select
-                  value={novoAgServicoId}
-                  onChange={e => setNovoAgServicoId(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
-                >
-                  {servicos.map(s => (
-                    <option key={s.id} value={s.id}>{s.nome} — {fmt(s.preco)}</option>
-                  ))}
-                </select>
+              {/* 2. SERVIÇO E DURAÇÃO */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">2. Serviço / Procedimento</label>
+                  <select
+                    value={novoAgServicoId}
+                    onChange={e => {
+                      const sid = e.target.value;
+                      setNovoAgServicoId(sid);
+                      const srv = servicos.find(s => s.id === sid);
+                      if (srv?.duracao_min) {
+                        setNovoAgDuracaoMin(String(srv.duracao_min));
+                      }
+                    }}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer"
+                  >
+                    {servicos.map(s => (
+                      <option key={s.id} value={s.id}>{s.nome} — {fmt(s.preco)} ({s.duracao_min || 60} min)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Duração (min)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    step="5"
+                    value={novoAgDuracaoMin}
+                    onChange={e => setNovoAgDuracaoMin(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-mono font-bold text-center text-foreground focus:outline-none focus:border-gold"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Data</label>
-                  <input
-                    type="date"
-                    value={novoAgData}
-                    onChange={e => setNovoAgData(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
-                  />
+              {/* 3. DATA E HORÁRIO COM AJUSTE RÁPIDO A PARTIR DO HORÁRIO ATUAL */}
+              <div className="p-3 rounded-xl bg-foreground/[0.02] border border-[var(--border-subtle)] space-y-2.5">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">3. Data</label>
+                    <input
+                      type="date"
+                      value={novoAgData}
+                      onChange={e => {
+                        const novaData = e.target.value;
+                        setNovoAgData(novaData);
+                        if (novaData) setSelectedDate(novaData);
+                      }}
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold uppercase text-foreground/70">Horário de Início</label>
+                      <span className="text-[10px] font-mono text-foreground/50">
+                        Fim: <strong>{analiseHorarioNovoAg.horaFim}</strong>
+                      </span>
+                    </div>
+                    <input
+                      type="time"
+                      value={novoAgHoraInicio}
+                      onChange={e => setNovoAgHoraInicio(e.target.value)}
+                      className="w-full bg-[var(--background)] border border-gold/50 rounded-lg p-2 text-sm font-mono font-bold text-foreground focus:outline-none focus:border-gold"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-bold uppercase text-foreground/70 block mb-1">Horário de Início</label>
-                  <input
-                    type="time"
-                    value={novoAgHoraInicio}
-                    onChange={e => setNovoAgHoraInicio(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs font-mono font-bold text-foreground focus:outline-none focus:border-gold"
-                  />
+
+                {/* Botões de ajuste rápido de horário */}
+                <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] font-semibold text-foreground/50 uppercase">Ajuste rápido:</span>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setNovoAgHoraInicio(obterHorarioAtualFormatado())}
+                      className="px-2 py-1 rounded bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      Agora ({obterHorarioAtualFormatado()})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => ajustarHorarioNovoAg(-15)}
+                      className="px-2 py-1 rounded bg-foreground/5 hover:bg-foreground/10 text-foreground/80 border border-[var(--border-subtle)] text-[10px] font-mono font-semibold transition-colors cursor-pointer"
+                    >
+                      -15m
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => ajustarHorarioNovoAg(15)}
+                      className="px-2 py-1 rounded bg-foreground/5 hover:bg-foreground/10 text-foreground/80 border border-[var(--border-subtle)] text-[10px] font-mono font-semibold transition-colors cursor-pointer"
+                    >
+                      +15m
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => ajustarHorarioNovoAg(30)}
+                      className="px-2 py-1 rounded bg-foreground/5 hover:bg-foreground/10 text-foreground/80 border border-[var(--border-subtle)] text-[10px] font-mono font-semibold transition-colors cursor-pointer"
+                    >
+                      +30m
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {/* 4. RECONHECIMENTO AUTOMÁTICO: HORÁRIO LIVRE (NORMAL) VS. ENCAIXE AUTOMÁTICO */}
+              {analiseHorarioNovoAg.isEncaixe ? (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <Sparkles size={15} /> ⚡ Encaixe Automático Reconhecido
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      {novoAgHoraInicio} às {analiseHorarioNovoAg.horaFim}
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/80 leading-relaxed">
+                    {analiseHorarioNovoAg.clienteNaCadeiraSobreposto ? (
+                      <>
+                        Você já está com <strong>{getClienteNomeSimples(analiseHorarioNovoAg.clienteNaCadeiraSobreposto.cliente_id)}</strong> na cadeira ({analiseHorarioNovoAg.clienteNaCadeiraSobreposto.hora_inicio} às {analiseHorarioNovoAg.clienteNaCadeiraSobreposto.hora_fim}). Este agendamento será inserido automaticamente como <strong>Encaixe</strong> na sua agenda!
+                      </>
+                    ) : (
+                      <>
+                        Horário sobreposto ao atendimento de <strong>{getClienteNomeSimples(analiseHorarioNovoAg.principalConflito?.cliente_id || '')}</strong> ({analiseHorarioNovoAg.principalConflito?.hora_inicio} às {analiseHorarioNovoAg.principalConflito?.hora_fim}). Será adicionado automaticamente como <strong>Encaixe</strong> na agenda!
+                      </>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        Horário Livre na Agenda ({novoAgHoraInicio} às {analiseHorarioNovoAg.horaFim})
+                      </p>
+                      <p className="text-[11px] text-foreground/60">
+                        Será inserido normalmente na sua agenda.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OPÇÃO RÁPIDA: JÁ COLOCAR NA CADEIRA AGORA */}
+              <label className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-subtle)] bg-foreground/[0.02] hover:bg-foreground/[0.04] cursor-pointer transition-colors">
+                <div>
+                  <span className="text-xs font-bold text-foreground block">Iniciar atendimento na cadeira imediatamente?</span>
+                  <span className="text-[11px] text-foreground/50">
+                    {novoAgIniciarNaCadeira
+                      ? 'A cliente entrará direto em "Na Cadeira Agora" (Em Atendimento).'
+                      : 'A cliente ficará em "Próximos Hoje" aguardando você clicar em Puxar.'}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={novoAgIniciarNaCadeira}
+                  onChange={e => setNovoAgIniciarNaCadeira(e.target.checked)}
+                  className="w-4 h-4 accent-gold rounded cursor-pointer shrink-0"
+                />
+              </label>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
               <Button variant="outline" onClick={() => setNovoAgModalOpen(false)}>Cancelar</Button>
               <Button
                 variant="primary"
-                disabled={novoAgLoading}
+                disabled={novoAgLoading || !novoAgClienteId || !novoAgServicoId}
                 onClick={handleCriarNovoAgendamento}
-                className="bg-gold hover:bg-gold-dim text-white font-bold"
+                className="bg-gold hover:bg-gold-dim text-white font-bold px-5"
               >
-                {novoAgLoading ? 'Salvando...' : 'Agendar Cliente'}
+                {novoAgLoading
+                  ? 'Salvando...'
+                  : analiseHorarioNovoAg.isEncaixe
+                    ? '⚡ Agendar como Encaixe'
+                    : 'Agendar Cliente'}
               </Button>
             </div>
           </CardGlass>
