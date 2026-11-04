@@ -489,7 +489,9 @@ function AgendaContent() {
     precoOriginal: number;
     preco: number; 
     descontoPct?: number; 
-    descontoValor?: number; 
+    descontoValor?: number;
+    profissional_id?: string;
+    profissional_nome?: string;
   }>>([]);
   // Pagamento e comissão
   const [checkoutPagamento, setCheckoutPagamento] = useState<FormaPagamento>('DINHEIRO');
@@ -1551,13 +1553,12 @@ function AgendaContent() {
       setSplitComissaoCustom(initialSplit);
     }
 
-    // Carregar insumos existentes salvos no agendamento, se houver
+    // Carregar insumos e produtos existentes salvos na comanda / agendamento
+    const itens = await fetchItensComanda(appt.id);
     let insumosCarregados: InsumoAtendimento[] = [];
     if (Array.isArray(appt.insumos_detalhes) && appt.insumos_detalhes.length > 0) {
       insumosCarregados = [...appt.insumos_detalhes];
     } else {
-      const itens = await fetchItensComanda(appt.id);
-      
       // Insumos da comanda
       const insumosDaComanda = itens.filter(i => i.type === 'INSUMO');
       insumosCarregados = insumosDaComanda.map(i => {
@@ -1577,24 +1578,26 @@ function AgendaContent() {
           profissional_id: appt.profissional_id,
         };
       });
-
-      // Produtos (Upsell)
-      const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
-      const mapProdutos = produtosDaComanda.map(i => {
-        const prod = estoque.find(p => p.id === i.inventory_id);
-        const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
-        return {
-          id: Date.now().toString() + i.id,
-          inventory_id: i.inventory_id,
-          qty: i.qty,
-          precoOriginal: precoBase,
-          preco: precoBase,
-          descontoPct: 0,
-          descontoValor: 0,
-        };
-      });
-      setCheckoutProdutos(mapProdutos);
     }
+
+    // Produtos (Upsell) lançados no Meu Painel
+    const produtosDaComanda = itens.filter(i => i.type === 'PRODUTO');
+    const mapProdutos = produtosDaComanda.map(i => {
+      const prod = estoque.find(p => p.id === i.inventory_id);
+      const precoBase = i.price > 0 ? i.price : (prod?.sale_price || 0);
+      return {
+        id: Date.now().toString() + i.id,
+        inventory_id: i.inventory_id,
+        qty: i.qty,
+        precoOriginal: prod?.sale_price || precoBase,
+        preco: precoBase,
+        descontoPct: 0,
+        descontoValor: 0,
+        profissional_id: i.profissional_id || appt.profissional_id,
+        profissional_nome: i.profissional_nome || getProfissionalNome(i.profissional_id || appt.profissional_id, profissionais),
+      };
+    });
+    setCheckoutProdutos(mapProdutos);
 
     // Se outros agendamentos unificados tinham insumos, agrega também!
     outrosDaCliente.forEach(outro => {
@@ -3996,9 +3999,14 @@ function AgendaContent() {
                       return (
                         <div key={prod.id} className="flex justify-between items-center p-3 bg-gold/5 border border-gold/15 rounded-lg text-sm">
                           <div className="flex-1 min-w-0 pr-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-foreground truncate">{itemEstoque?.name || 'Produto'}</span>
                               <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold font-mono">{prod.qty}x</span>
+                              {(prod.profissional_nome || prod.profissional_id) && (
+                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-foreground/5 text-foreground/70 border border-[var(--border-subtle)]">
+                                  Vendido por: <strong>{prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais)}</strong>
+                                </span>
+                              )}
                             </div>
                             {temDesc ? (
                               <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
@@ -4504,7 +4512,7 @@ function AgendaContent() {
                                 precoOriginal: p.precoOriginal,
                                 preco: p.preco,
                                 descontoValor: p.descontoValor,
-                                profissional_id: checkoutAppt.profissional_id,
+                                profissional_id: p.profissional_id || checkoutAppt.profissional_id,
                               };
                             }),
                             total_bruto_servicos: subtotalProcedimentosTabela,
@@ -4562,13 +4570,14 @@ function AgendaContent() {
                           const profAtendimentoNome = getProfissionalNome(checkoutAppt.profissional_id, profissionais);
                           for (const prod of checkoutProdutos) {
                             if (prod.qty > 0) {
+                              const vendedorNome = prod.profissional_nome || getProfissionalNome(prod.profissional_id || checkoutAppt.profissional_id, profissionais) || profAtendimentoNome;
                               const descNote = prod.descontoValor && prod.descontoValor > 0 
                                 ? ` (Desc: -${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(prod.descontoValor)})` 
                                 : '';
                               await registrarMovimentacao(prod.inventory_id, 'OUT_SALE', prod.qty, {
                                 appointmentId: checkoutAppt.id,
-                                notes: `Venda Comanda [${nomeCliente}]: ${prod.qty}x un.${descNote}`,
-                                createdBy: profAtendimentoNome,
+                                notes: `Venda Comanda [${nomeCliente}]: ${prod.qty}x un.${descNote} - Vendido por: ${vendedorNome}`,
+                                createdBy: vendedorNome,
                               });
                             }
                           }

@@ -2620,7 +2620,8 @@ export async function pagarLoteParcelas(parcelaIds: string[]): Promise<{ ok: boo
 
 // ── COMANDA DIGITAL (PAINEL DO PROFISSIONAL) ───────────────
 
-function mapItemComanda(r: Row): ItemComanda {
+function mapItemComanda(r: Row, vendedoresMap?: Record<string, { profissional_id?: string; profissional_nome?: string }>, defaultProfId?: string): ItemComanda {
+  const vend = vendedoresMap?.[r.inventory_id];
   return {
     id: r.id,
     appointment_id: r.appointment_id,
@@ -2628,19 +2629,32 @@ function mapItemComanda(r: Row): ItemComanda {
     type: r.type,
     qty: Number(r.qty),
     price: Number(r.price),
+    profissional_id: vend?.profissional_id || r.profissional_id || r.professional_id || defaultProfId,
+    profissional_nome: vend?.profissional_nome || r.profissional_nome,
   };
 }
 
 export async function fetchItensComanda(appointmentId: string): Promise<ItemComanda[]> {
-  const { data, error } = await supabase
-    .from(TBL.appointment_items)
-    .select('*')
-    .eq('appointment_id', appointmentId);
+  const [{ data, error }, { data: apptData }] = await Promise.all([
+    supabase
+      .from(TBL.appointment_items)
+      .select('*')
+      .eq('appointment_id', appointmentId),
+    supabase
+      .from(TBL.agendamentos)
+      .select('sub_services, professional_id')
+      .eq('id', appointmentId)
+      .maybeSingle(),
+  ]);
   if (error) {
     logSupabaseError('[fetchItensComanda]', error);
     return [];
   }
-  return (data ?? []).map(mapItemComanda);
+  const currentSubs = Array.isArray(apptData?.sub_services) ? apptData.sub_services : [];
+  const metaObj = currentSubs.find((s: any) => s?._meta) || {};
+  const vendedoresMap = metaObj.produtos_vendedores || {};
+  const defaultProfId = apptData?.professional_id || undefined;
+  return (data ?? []).map((r: Row) => mapItemComanda(r, vendedoresMap, defaultProfId));
 }
 
 export async function salvarItemComanda(
@@ -2664,6 +2678,35 @@ export async function salvarItemComanda(
     logSupabaseError('[salvarItemComanda]', error);
     return { ok: false, error: error.message };
   }
+
+  // Persistir profissional vendedor em _meta.produtos_vendedores no agendamento
+  if (item.type === 'PRODUTO' && item.profissional_id) {
+    try {
+      const { data: current } = await supabase
+        .from(TBL.agendamentos)
+        .select('sub_services')
+        .eq('id', appointmentId)
+        .maybeSingle();
+      const currentSubs = Array.isArray(current?.sub_services) ? current.sub_services : [];
+      const metaObj = currentSubs.find((s: any) => s?._meta) || { _meta: true };
+      metaObj.produtos_vendedores = {
+        ...(metaObj.produtos_vendedores || {}),
+        [item.inventory_id]: {
+          profissional_id: item.profissional_id,
+          profissional_nome: item.profissional_nome || undefined,
+        },
+      };
+      const cleanSubs = currentSubs.filter((s: any) => !s?._meta);
+      cleanSubs.push(metaObj);
+      await supabase
+        .from(TBL.agendamentos)
+        .update({ sub_services: cleanSubs })
+        .eq('id', appointmentId);
+    } catch (metaErr) {
+      logSupabaseError('[salvarItemComanda meta update]', metaErr);
+    }
+  }
+
   return { ok: true };
 }
 

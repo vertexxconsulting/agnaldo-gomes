@@ -188,6 +188,8 @@ export interface ItemComanda {
   type: 'INSUMO' | 'PRODUTO';
   qty: number;
   price: number;
+  profissional_id?: string;
+  profissional_nome?: string;
 }
 
 /** Produto do estoque interno do salão (insumo e/ou venda) */

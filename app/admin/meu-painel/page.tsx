@@ -115,6 +115,7 @@ export default function MeuPainelPage() {
   const [editingInsumoIndex, setEditingInsumoIndex] = useState<number | null>(null);
   const [produtoSelecionado, setProdutoSelecionado] = useState('');
   const [produtoQty, setProdutoQty] = useState('1');
+  const [produtoProfId, setProdutoProfId] = useState('');
   const [produtoDescPct, setProdutoDescPct] = useState('');
   const [produtoDescValor, setProdutoDescValor] = useState('');
   const [salvandoPeriodo, setSalvandoPeriodo] = useState(false);
@@ -962,6 +963,11 @@ export default function MeuPainelPage() {
 
   const abrirModalUpsell = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
+    setProdutoProfId(selectedProfId || ag.profissional_id);
+    setProdutoSelecionado('');
+    setProdutoQty('1');
+    setProdutoDescPct('');
+    setProdutoDescValor('');
     const itens = await fetchItensComanda(ag.id);
     setComandaAtual(itens);
     setUpsellModalOpen(true);
@@ -1194,12 +1200,16 @@ export default function MeuPainelPage() {
     const sub = precoBase * finalQty;
     const descVal = Math.min(sub, Math.max(0, parseFloat(produtoDescValor) || 0));
     const precoFinalUnit = (sub - descVal) / finalQty;
+    const vendedorId = produtoProfId || selectedProfId || activeAgendamento.profissional_id;
+    const vendedorNome = profissionais.find(p => p.id === vendedorId)?.nome || 'Profissional';
 
     await salvarItemComanda(activeAgendamento.id, {
       inventory_id: produtoSelecionado,
       type: 'PRODUTO',
       qty: finalQty,
-      price: precoFinalUnit
+      price: precoFinalUnit,
+      profissional_id: vendedorId,
+      profissional_nome: vendedorNome,
     });
 
     const itens = await fetchItensComanda(activeAgendamento.id);
@@ -2318,11 +2328,42 @@ export default function MeuPainelPage() {
               <button onClick={() => setUpsellModalOpen(false)}><X className="text-foreground/50 hover:text-foreground" /></button>
             </div>
             <p className="text-sm text-foreground/60 mb-4">
-              A comissão da venda será lançada na sua conta após a cliente pagar no caixa.
+              A comissão da venda será lançada na conta do profissional selecionado após a cliente pagar no caixa.
             </p>
             
             <div className="space-y-4 mb-6">
               <div className="space-y-3 p-3 bg-foreground/[0.02] border border-[var(--border-subtle)] rounded-lg">
+                <div>
+                  <label className="text-xs font-semibold text-foreground/70 mb-1 block">
+                    Profissional que está realizando a venda:
+                  </label>
+                  <select
+                    className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-xs font-semibold text-foreground focus:outline-none focus:border-gold"
+                    value={produtoProfId || activeAgendamento.profissional_id}
+                    onChange={e => setProdutoProfId(e.target.value)}
+                  >
+                    <option value={activeAgendamento.profissional_id}>
+                      ⭐ {profissionais.find(p => p.id === activeAgendamento.profissional_id)?.nome || 'Titular'} (Titular)
+                    </option>
+                    {Array.isArray(activeAgendamento.auxiliares_ids) && activeAgendamento.auxiliares_ids.map(aid => (
+                      <option key={aid} value={aid}>
+                        👥 {profissionais.find(p => p.id === aid)?.nome || 'Auxiliar'} (Auxiliar na Cadeira)
+                      </option>
+                    ))}
+                    {profissionais
+                      .filter(p => p.ativo !== false && p.id !== activeAgendamento.profissional_id && !(activeAgendamento.auxiliares_ids || []).includes(p.id))
+                      .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+                      .map(p => {
+                        const isAux = Boolean(p.is_auxiliar || p.cargo?.toLowerCase().includes('auxiliar') || p.role_title?.toLowerCase().includes('auxiliar') || p.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                        return (
+                          <option key={p.id} value={p.id}>
+                            👤 {p.nome} ({isAux ? 'Auxiliar' : (p.cargo || p.role_title || getCategoriaProfissional(p))})
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+
                 <div className="flex gap-2">
                   <ProductSearchSelect
                     mode="sale"
@@ -2448,16 +2489,20 @@ export default function MeuPainelPage() {
               {comandaAtual.filter(i => i.type === 'PRODUTO').length > 0 && (
                 <div className="border border-[var(--border-subtle)] rounded-lg overflow-hidden">
                   <div className="bg-foreground/5 p-2 text-xs font-bold uppercase text-foreground/60">Itens na Comanda</div>
-                      {comandaAtual.filter(i => i.type === 'PRODUTO').map(item => {
+                  {comandaAtual.filter(i => i.type === 'PRODUTO').map(item => {
                     const prod = estoque.find(p => p.id === item.inventory_id);
                     const precoOrig = prod?.sale_price || 0;
                     const temDesc = precoOrig > item.price;
+                    const vendedorNome = item.profissional_nome || profissionais.find(p => p.id === (item.profissional_id || activeAgendamento.profissional_id))?.nome || 'Profissional';
                     return (
                       <div key={item.id} className="p-2.5 text-sm border-t border-[var(--border-subtle)] flex justify-between items-center">
                         <div className="flex-1 pr-2">
                           <span className="flex items-center gap-2 font-medium">
                             <ShoppingBag size={14} className="text-gold"/> {prod?.name}
                           </span>
+                          <p className="text-[11px] text-foreground/60 ml-5 mt-0.5">
+                            Vendido por: <strong className="text-foreground/80">{vendedorNome}</strong>
+                          </p>
                           {temDesc && (
                             <p className="text-xs text-foreground/50 ml-5 mt-0.5 flex items-center gap-1.5">
                               <span className="line-through">R$ {precoOrig.toFixed(2)}</span>
@@ -3394,9 +3439,12 @@ export default function MeuPainelPage() {
                       </div>
                       {itensUpsell.map((item, idx) => {
                         const prod = estoque.find(p => p.id === item.inventory_id);
+                        const vendedorNome = item.profissional_nome || profissionais.find(p => p.id === (item.profissional_id || activeAgendamento.profissional_id))?.nome || 'Profissional';
                         return (
                           <div key={idx} className="flex justify-between items-center text-xs text-foreground/80 py-0.5">
-                            <span className="truncate max-w-[40%]">{prod?.name || 'Produto'}</span>
+                            <span className="truncate max-w-[55%]">
+                              {prod?.name || 'Produto'} <span className="text-[10px] text-foreground/50">(Por: {vendedorNome})</span>
+                            </span>
                             <span className="text-right w-12 font-mono">{item.qty}</span>
                             <span className="text-right w-16 font-mono font-bold text-gold">R$ {(item.price * item.qty).toFixed(2)}</span>
                           </div>
