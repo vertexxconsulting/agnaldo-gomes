@@ -1460,8 +1460,11 @@ function AgendaContent() {
 
     // 1. Montar lista de procedimentos a partir do agendamento principal (respeitando valores do Pré-Fechamento se houver)
     const procPreFechado = appt.comanda_unificada?.procedimentos?.[0];
-    const precoPrincipal = (procPreFechado?.preco_tabela != null && Number(procPreFechado.preco_tabela) > 0)
-      ? Number(procPreFechado.preco_tabela)
+    const jaIncluiSubServicosNoPreFechamento = Boolean(
+      procPreFechado?.preco_tabela != null && Number(procPreFechado.preco_tabela) > 0
+    );
+    const precoPrincipal = jaIncluiSubServicosNoPreFechamento
+      ? Number(procPreFechado!.preco_tabela)
       : getServicoPreco(appt.servico_id, servicos);
     const descValPrincipal = procPreFechado?.desconto_valor != null
       ? Number(procPreFechado.desconto_valor)
@@ -1477,7 +1480,7 @@ function AgendaContent() {
       {
         id: 'proc_principal_' + appt.id,
         servico_id: appt.servico_id,
-        servico_nome: getServicoNome(appt.servico_id, servicos),
+        servico_nome: procPreFechado?.servico_nome || getServicoNome(appt.servico_id, servicos),
         profissional_id: appt.profissional_id,
         profissional_nome: getProfissionalNome(appt.profissional_id, profissionais),
         preco_tabela: precoPrincipal,
@@ -1489,17 +1492,21 @@ function AgendaContent() {
       }
     ];
 
-    // Se houver sub_serviços no agendamento, adicionar como procedimentos
-    if (Array.isArray(appt.sub_servicos) && appt.sub_servicos.length > 0) {
+    // Se houver sub_serviços no agendamento e ainda não estiverem consolidados no Pré-Fechamento, adicionar como procedimentos
+    if (!jaIncluiSubServicosNoPreFechamento && Array.isArray(appt.sub_servicos) && appt.sub_servicos.length > 0) {
       appt.sub_servicos.forEach((sub, sIdx) => {
         const subId = typeof sub === 'string' ? sub : sub?.id;
         const subProfId = (typeof sub === 'object' && sub?.profissional_id) ? sub.profissional_id : appt.profissional_id;
-        const subPreco = (typeof sub === 'object' && sub?.is_free) ? 0 : getServicoPreco(subId, servicos);
+        const subPreco = (typeof sub === 'object' && sub?.is_free)
+          ? 0
+          : (typeof sub === 'object' && sub?.preco != null && Number(sub.preco) > 0)
+            ? Number(sub.preco)
+            : getServicoPreco(subId, servicos);
         if (subId) {
           listaProcedimentos.push({
             id: 'sub_' + sIdx + '_' + subId,
             servico_id: subId,
-            servico_nome: getServicoNome(subId, servicos),
+            servico_nome: (typeof sub === 'object' && sub?.nome) ? sub.nome : getServicoNome(subId, servicos),
             profissional_id: subProfId,
             profissional_nome: getProfissionalNome(subProfId, profissionais),
             preco_tabela: subPreco,

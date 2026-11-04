@@ -582,13 +582,50 @@ export default function MeuPainelPage() {
   };
 
   // --- HANDLERS: SERVIÇO NA CADEIRA ---
+  const getSubServicoPreco = (sub: any): number => {
+    if (!sub) return 0;
+    if (typeof sub === 'string') {
+      const s = servicos.find(srv => srv.id === sub);
+      return Number(s?.preco || 0);
+    }
+    if (sub.is_free) return 0;
+    if (sub.preco != null && Number(sub.preco) > 0) return Number(sub.preco);
+    const s = servicos.find(srv => srv.id === sub.id);
+    return Number(s?.preco || 0);
+  };
+
+  const calcularSomaSubServicos = (subs?: any[]): number => {
+    if (!Array.isArray(subs) || subs.length === 0) return 0;
+    return Number(subs.reduce((acc, sub) => acc + getSubServicoPreco(sub), 0).toFixed(2));
+  };
+
+  const calcularValorTotalServicosAgendamento = (ag: Agendamento): number => {
+    if (ag.comanda_unificada?.total_bruto_servicos != null && Number(ag.comanda_unificada.total_bruto_servicos) > 0) {
+      return Number(ag.comanda_unificada.total_bruto_servicos);
+    }
+    const srvPrincipal = servicos.find(s => s.id === ag.servico_id);
+    const precoPrincipalTabela = Number(srvPrincipal?.preco || 0);
+    const somaSubs = calcularSomaSubServicos(ag.sub_servicos);
+    const totalTabela = Number((precoPrincipalTabela + somaSubs).toFixed(2));
+
+    if (ag.total_amount != null && Number(ag.total_amount) > 0) {
+      const savedTotal = Number(ag.total_amount);
+      // Se houver sub-serviços e o total salvo era apenas o valor do serviço principal isolado, soma os adicionais
+      if (somaSubs > 0 && Math.abs(savedTotal - precoPrincipalTabela) < 0.01) {
+        return totalTabela;
+      }
+      return savedTotal;
+    }
+    return totalTabela;
+  };
+
   const abrirModalServico = (ag: Agendamento) => {
     setActiveAgendamento(ag);
     setServicoEditandoId(ag.servico_id);
-    const srvAtual = servicos.find(s => s.id === ag.servico_id);
-    const precoAtual = (ag.total_amount != null && ag.total_amount > 0) ? ag.total_amount : (srvAtual?.preco || 0);
+    const subs = Array.isArray(ag.sub_servicos) ? [...ag.sub_servicos] : [];
+    setSubServicosEditados(subs);
+    const precoAtual = calcularValorTotalServicosAgendamento(ag);
     setServicoPrecoEditado(String(precoAtual));
-    setSubServicosEditados(Array.isArray(ag.sub_servicos) ? [...ag.sub_servicos] : []);
     setServicoModalOpen(true);
   };
 
@@ -725,12 +762,7 @@ export default function MeuPainelPage() {
   // --- HANDLERS: PRÉ-FECHAMENTO DA CADEIRA ---
   const abrirPreFechamento = async (ag: Agendamento) => {
     setActiveAgendamento(ag);
-    const srv = servicos.find(s => s.id === ag.servico_id);
-    const precoBase = (ag.comanda_unificada?.total_bruto_servicos != null && ag.comanda_unificada.total_bruto_servicos > 0)
-      ? Number(ag.comanda_unificada.total_bruto_servicos)
-      : (ag.total_amount != null && ag.total_amount > 0 && !ag.pre_fechado_em)
-      ? Number(ag.total_amount)
-      : (srv?.preco || 0);
+    const precoBase = calcularValorTotalServicosAgendamento(ag);
     setPreFechamentoPrecoServico(precoBase);
     setPreFechamentoDescontoValor(ag.desconto_valor ? String(ag.desconto_valor) : '');
     setPreFechamentoDescontoPct(ag.desconto_pct ? String(ag.desconto_pct) : '');
@@ -1513,9 +1545,12 @@ export default function MeuPainelPage() {
                             <Pencil size={13} className="text-foreground/40 group-hover:text-gold shrink-0" />
                           </div>
                           <div className="mt-2.5">
-                            <p className="text-sm font-bold text-foreground truncate">{getServicoNome(ag.servico_id)}</p>
+                            <p className="text-sm font-bold text-foreground truncate">
+                              {getServicoNome(ag.servico_id)}
+                              {Array.isArray(ag.sub_servicos) && ag.sub_servicos.length > 0 ? ` (+${ag.sub_servicos.length})` : ''}
+                            </p>
                             <p className="text-[11px] text-foreground/50 mt-0.5 truncate">
-                              {ag.total_amount != null && ag.total_amount > 0 ? fmt(ag.total_amount) : 'Preço de Tabela'} • Alterar/Ajustar
+                              {fmt(calcularValorTotalServicosAgendamento(ag))} • Alterar/Ajustar
                             </p>
                           </div>
                         </button>
@@ -2635,7 +2670,8 @@ export default function MeuPainelPage() {
                     const novoId = e.target.value;
                     setServicoEditandoId(novoId);
                     const s = servicos.find(srv => srv.id === novoId);
-                    if (s) setServicoPrecoEditado(String(s.preco || 0));
+                    const somaAdicionais = calcularSomaSubServicos(subServicosEditados);
+                    if (s) setServicoPrecoEditado(String(Number(((s.preco || 0) + somaAdicionais).toFixed(2))));
                   }}
                   disabled={isReadOnly}
                   className={`w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-gold cursor-pointer ${isReadOnly ? 'opacity-50 cursor-not-allowed bg-foreground/[0.05]' : ''}`}
@@ -2704,7 +2740,12 @@ export default function MeuPainelPage() {
                     if (!pid) return;
                     const existe = subServicosEditados.some(sub => (typeof sub === 'string' ? sub === pid : sub?.id === pid));
                     if (!existe && prod) {
-                      setSubServicosEditados(prev => [...prev, { id: prod.id, nome: prod.name, preco: prod.price }]);
+                      const precoAdicional = Number(prod.price || 0);
+                      setSubServicosEditados(prev => [...prev, { id: prod.id, nome: prod.name, preco: precoAdicional }]);
+                      setServicoPrecoEditado(prev => {
+                        const atual = parseFloat(prev) || 0;
+                        return String(Number((atual + precoAdicional).toFixed(2)));
+                      });
                     }
                     setSubServicoBuscaId('');
                   }}
@@ -2716,28 +2757,46 @@ export default function MeuPainelPage() {
 
                 {/* Chips dos sub-serviços selecionados */}
                 {subServicosEditados.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {subServicosEditados.map((sub, idx) => {
-                      const sId = typeof sub === 'string' ? sub : sub.id;
-                      const s = servicos.find(srv => srv.id === sId);
-                      return (
-                        <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold/20 border border-gold/30 text-xs">
-                          <span className="font-semibold text-foreground truncate max-w-[120px]">
-                            {sub.nome || (s?.nome || 'Procedimento')}
-                          </span>
-                          <span className="font-mono text-gold font-bold">+{fmt(typeof sub === 'string' ? (s?.preco || 0) : sub.preco)}</span>
-                          <button
-                            type="button"
-                            onClick={() => setSubServicosEditados(prev => prev.filter((_, i) => i !== idx))}
-                            className="p-0.5 text-foreground/40 hover:text-red-500 rounded hover:bg-red-500/10 transition-colors"
-                            title="Remover"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {subServicosEditados.map((sub, idx) => {
+                        const sId = typeof sub === 'string' ? sub : sub.id;
+                        const s = servicos.find(srv => srv.id === sId);
+                        const precoChip = getSubServicoPreco(sub);
+                        return (
+                          <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold/20 border border-gold/30 text-xs">
+                            <span className="font-semibold text-foreground truncate max-w-[120px]">
+                              {sub.nome || (s?.nome || 'Procedimento')}
+                            </span>
+                            <span className="font-mono text-gold font-bold">+{fmt(precoChip)}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const precoRemover = getSubServicoPreco(sub);
+                                setSubServicosEditados(prev => prev.filter((_, i) => i !== idx));
+                                setServicoPrecoEditado(prev => {
+                                  const atual = parseFloat(prev) || 0;
+                                  return String(Math.max(0, Number((atual - precoRemover).toFixed(2))));
+                                });
+                              }}
+                              className="p-0.5 text-foreground/40 hover:text-red-500 rounded hover:bg-red-500/10 transition-colors"
+                              title="Remover"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2.5 p-2.5 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-between text-xs">
+                      <span className="text-foreground/70 font-medium">
+                        Principal ({fmt(servicos.find(s => s.id === servicoEditandoId)?.preco || 0)}) + Adicionais ({fmt(calcularSomaSubServicos(subServicosEditados))})
+                      </span>
+                      <span className="font-mono font-bold text-gold">
+                        Total: {fmt(parseFloat(servicoPrecoEditado) || 0)}
+                      </span>
+                    </div>
+                  </>
                 )}
 
                 {!isReadOnly && subServicosEditados.length === 0 && (
@@ -3193,7 +3252,12 @@ export default function MeuPainelPage() {
             });
 
             const nomeCliente = getClienteNome(activeAgendamento.cliente_id);
-            const nomeServico = getServicoNome(activeAgendamento.servico_id);
+            const subNomes = Array.isArray(activeAgendamento.sub_servicos)
+              ? activeAgendamento.sub_servicos.map(s => typeof s === 'string' ? getServicoNome(s) : (s.nome || getServicoNome(s.id))).filter(Boolean)
+              : [];
+            const nomeServico = subNomes.length > 0
+              ? `${getServicoNome(activeAgendamento.servico_id)} + ${subNomes.join(' + ')}`
+              : getServicoNome(activeAgendamento.servico_id);
 
             const comandaObj: ComandaMultiProfissional = {
               cliente_id: activeAgendamento.cliente_id,
