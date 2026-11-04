@@ -393,6 +393,7 @@ function AgendaContent() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [bloqueiosDia, setBloqueiosDia] = useState<BloqueioAgenda[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [todosProfissionais, setTodosProfissionais] = useState<Profissional[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [meuProfissional, setMeuProfissional] = useState<Profissional | null>(null);
   const [isRestrictedProfissional, setIsRestrictedProfissional] = useState(false);
@@ -676,6 +677,7 @@ function AgendaContent() {
       setServicoProdutos(spData);
       setTaxasPagamento(taxasData.taxas);
       setRegrasComissao(regrasData);
+      setTodosProfissionais(profissionaisData.filter((p: Profissional) => p.ativo));
 
       // Identificar o papel do usuário logado (ex: Agnaldo = Admin vê todos; Edinaldo/Elen/Erica/Walison = vê apenas a si mesmo)
       try {
@@ -4958,10 +4960,18 @@ function AgendaContent() {
                   Selecione os profissionais que farão parte das etapas deste atendimento (ex: mechas, lavatório, finalização). A agenda de cada auxiliar será ocupada automaticamente por este atendimento e a comissão poderá ser repartida no fechamento.
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {profissionais
+                  {[...(todosProfissionais.length > 0 ? todosProfissionais : profissionais)]
                     .filter(p => p.id !== formData.profissional_id && p.ativo)
+                    .sort((a, b) => {
+                      const aAux = Boolean(a.is_auxiliar || a.cargo?.toLowerCase().includes('auxiliar') || a.role_title?.toLowerCase().includes('auxiliar') || a.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                      const bAux = Boolean(b.is_auxiliar || b.cargo?.toLowerCase().includes('auxiliar') || b.role_title?.toLowerCase().includes('auxiliar') || b.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                      if (aAux && !bAux) return -1;
+                      if (!aAux && bAux) return 1;
+                      return (a.nome || '').localeCompare(b.nome || '');
+                    })
                     .map(p => {
                       const isSelected = formData.auxiliares_ids.includes(p.id);
+                      const isAuxCabelo = Boolean(p.is_auxiliar || p.cargo?.toLowerCase().includes('auxiliar') || p.role_title?.toLowerCase().includes('auxiliar') || p.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
                       return (
                         <button
                           key={p.id}
@@ -4982,7 +4992,12 @@ function AgendaContent() {
                         >
                           {isSelected ? <Check size={12} className="text-gold" /> : <Plus size={12} className="text-foreground/40" />}
                           <span>{p.nome}</span>
-                          {isSelected && <span className="text-[10px] text-gold font-normal">(Auxiliar)</span>}
+                          {isAuxCabelo && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-bold">
+                              Auxiliar (Cabelo)
+                            </span>
+                          )}
+                          {isSelected && !isAuxCabelo && <span className="text-[10px] text-gold font-normal">(Auxiliar)</span>}
                         </button>
                       );
                     })}
@@ -4991,7 +5006,7 @@ function AgendaContent() {
                   <div className="p-2 bg-gold/10 border border-gold/25 rounded-lg text-[11px] text-foreground flex items-center gap-2">
                     <Sparkles size={14} className="shrink-0 text-gold" />
                     <span>
-                      <strong>Equipe do Procedimento:</strong> {getProfissionalNome(formData.profissional_id, profissionais)} (Titular) + {formData.auxiliares_ids.map(id => getProfissionalNome(id, profissionais)).join(', ')} (Auxiliares).
+                      <strong>Equipe do Procedimento:</strong> {getProfissionalNome(formData.profissional_id, todosProfissionais.length > 0 ? todosProfissionais : profissionais)} (Titular) + {formData.auxiliares_ids.map(id => getProfissionalNome(id, todosProfissionais.length > 0 ? todosProfissionais : profissionais)).join(', ')} (Auxiliares).
                     </span>
                   </div>
                 )}

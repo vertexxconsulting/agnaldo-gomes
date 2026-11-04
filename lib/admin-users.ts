@@ -73,6 +73,83 @@ export async function getAllProfiles(excludeRole?: Role) {
   }
 }
 
+async function syncAuxiliarProfessionalRecord(
+  supabaseAdmin: any,
+  params: {
+    userId: string;
+    fullName?: string;
+    email?: string;
+    avatarUrl?: string;
+    professionalId?: string;
+  }
+): Promise<string | undefined> {
+  try {
+    const { data: allProfs } = await supabaseAdmin
+      .from('salon_professionals')
+      .select('*');
+
+    const normalize = (t?: string | null) =>
+      (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    const targetEmail = normalize(params.email);
+    const targetName = normalize(params.fullName);
+
+    const existing = (allProfs || []).find((sp: any) =>
+      (params.professionalId && sp.id === params.professionalId) ||
+      (sp.user_id && sp.user_id === params.userId) ||
+      (targetEmail && sp.email && normalize(sp.email) === targetEmail) ||
+      (targetName && normalize(sp.name) === targetName)
+    );
+
+    const schedMeta = {
+      ...(existing?.weekly_schedule || {}),
+      _meta: {
+        ...((existing?.weekly_schedule as any)?._meta || {}),
+        is_auxiliar: true,
+        cargo: 'auxiliar',
+        role_title: 'Auxiliar (Cabelo)',
+      }
+    };
+
+    if (existing) {
+      await supabaseAdmin
+        .from('salon_professionals')
+        .update({
+          user_id: params.userId,
+          name: params.fullName || existing.name,
+          email: params.email || existing.email || null,
+          photo_url: params.avatarUrl || existing.photo_url || null,
+          categoria: existing.categoria || 'Cabelo',
+          role_title: 'Auxiliar (Cabelo)',
+          active: true,
+          weekly_schedule: schedMeta,
+        })
+        .eq('id', existing.id);
+      return existing.id;
+    } else if (params.fullName) {
+      const { data: inserted } = await supabaseAdmin
+        .from('salon_professionals')
+        .insert({
+          name: params.fullName.trim(),
+          user_id: params.userId,
+          email: params.email || null,
+          photo_url: params.avatarUrl || null,
+          categoria: 'Cabelo',
+          role_title: 'Auxiliar (Cabelo)',
+          specialties: ['Auxiliar (Cabelo)'],
+          active: true,
+          weekly_schedule: schedMeta,
+        })
+        .select('id')
+        .single();
+      return inserted?.id;
+    }
+  } catch (err) {
+    console.warn('[syncAuxiliarProfessionalRecord] Aviso ao sincronizar auxiliar em salon_professionals:', err);
+  }
+  return params.professionalId;
+}
+
 export async function updateUserRole(
   userId: string, 
   newRole: Role, 
@@ -84,13 +161,47 @@ export async function updateUserRole(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Ler perfil atual para não perder permissões existentes quando apenas a role é alterada
+  const { data: currentProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
   // 1. Atualizar a tabela 'profiles' (DB)
-  const perms = { ...(permissions || {}) };
+  const perms = { ...((currentProfile?.permissions as any) || {}), ...(permissions || {}) };
+  const isAuxRole = newRole === 'studio_auxiliar' || newRole === 'AUXILIAR' || (permissions && permissions.is_auxiliar === true);
+
+  if (isAuxRole) {
+    perms.is_auxiliar = true;
+    perms.cargo = 'auxiliar';
+    perms.tipo = 'auxiliar';
+    perms.categoria = 'Cabelo';
+  } else if (newRole && newRole !== 'PROFESSIONAL' && permissions === undefined) {
+    // Se mudou explicitamente de role na tabela para outra que não seja auxiliar
+    delete perms.is_auxiliar;
+    if (perms.cargo === 'auxiliar') delete perms.cargo;
+    if (perms.tipo === 'auxiliar') delete perms.tipo;
+  }
+
   if (extra?.professional_id) {
     perms.professional_id = extra.professional_id;
   }
   if (extra?.nickname) {
     perms.nickname = normalizeNickname(extra.nickname);
+  }
+
+  if (isAuxRole) {
+    const syncedProfId = await syncAuxiliarProfessionalRecord(supabaseAdmin, {
+      userId,
+      fullName: extra?.full_name || currentProfile?.full_name,
+      email: currentProfile?.email,
+      avatarUrl: extra?.avatar_url || currentProfile?.avatar_url,
+      professionalId: perms.professional_id,
+    });
+    if (syncedProfId) {
+      perms.professional_id = syncedProfId;
+    }
   }
 
   const updateData: any = { role: toDbRole(newRole), permissions: perms, updated_at: new Date().toISOString() };
@@ -247,7 +358,27 @@ export async function createAdminUser(userData: {
 
   if (authError) throw new Error(`Erro ao criar conta no Auth: ${authError.message}`);
 
-  // 3. Criar ou atualizar o perfil na tabela profiles
+  // 3. Se for Auxiliar (Cabelo), sincronizar imediatamente em salon_professionals antes de salvar o profile
+  const isAuxRole = userData.role === 'studio_auxiliar' || userData.role === 'AUXILIAR' || perms.is_auxiliar === true;
+  if (isAuxRole) {
+    perms.is_auxiliar = true;
+    perms.cargo = 'auxiliar';
+    perms.tipo = 'auxiliar';
+    perms.categoria = 'Cabelo';
+    const syncedProfId = await syncAuxiliarProfessionalRecord(supabaseAdmin, {
+      userId: authUser.user.id,
+      fullName: userData.full_name,
+      email: userData.email,
+      avatarUrl: userData.avatar_url,
+      professionalId: userData.professional_id,
+    });
+    if (syncedProfId) {
+      perms.professional_id = syncedProfId;
+      userData.professional_id = syncedProfId;
+    }
+  }
+
+  // 4. Criar ou atualizar o perfil na tabela profiles
   const profilePayload: any = {
     id: authUser.user.id,
     email: userData.email,
@@ -265,8 +396,8 @@ export async function createAdminUser(userData: {
 
   if (profileError) throw new Error(`Erro ao criar perfil no banco: ${profileError.message}`);
 
-  // 4. Vincular na tabela salon_professionals caso seja um profissional
-  if (userData.professional_id) {
+  // 5. Vincular na tabela salon_professionals caso seja um profissional
+  if (userData.professional_id && !isAuxRole) {
     try {
       await supabaseAdmin
         .from('salon_professionals')

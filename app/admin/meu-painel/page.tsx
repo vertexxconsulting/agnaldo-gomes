@@ -356,9 +356,10 @@ export default function MeuPainelPage() {
       } else if (isProfissionalUser || (matched && !isFullAdmin)) {
         setIsAuxiliarCabelo(false);
         setIsRestrictedProfissional(true);
+        const profsAtivos = (profs || []).filter(p => p.ativo);
         if (matched) {
           setSelectedProfId(matched.id);
-          setProfissionais([matched]);
+          setProfissionais(profsAtivos);
           carregarComissoesProf(matched.id);
           buscarPendenciasPassadas(matched.id);
         } else {
@@ -2085,7 +2086,7 @@ export default function MeuPainelPage() {
               {/* Auxiliar */}
               <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-foreground/[0.02]">
                 <label className="text-xs font-bold uppercase text-foreground/70 block mb-3">Auxiliar na Cadeira</label>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-foreground/5 transition-colors">
                     <input
                       type="checkbox"
@@ -2095,27 +2096,47 @@ export default function MeuPainelPage() {
                     />
                     <span className="text-sm text-foreground">Nenhum (somente titular)</span>
                   </label>
-                  {profissionais.map(p => {
-                    if (p.id === activeAgendamento?.profissional_id) return null;
-                    const isSelected = agendaConfigAuxiliares.includes(p.id);
-                    return (
-                      <label key={p.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-foreground/5 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            if (isSelected) {
-                              setAgendaConfigAuxiliares(agendaConfigAuxiliares.filter(id => id !== p.id));
-                            } else {
-                              setAgendaConfigAuxiliares([...agendaConfigAuxiliares, p.id]);
-                            }
-                          }}
-                          className="accent-blue-500"
-                        />
-                        <span className="text-sm text-foreground">{p.nome}</span>
-                      </label>
-                    );
-                  })}
+                  {[...profissionais]
+                    .filter(p => p.id !== activeAgendamento?.profissional_id && p.ativo !== false)
+                    .sort((a, b) => {
+                      const aAux = Boolean(a.is_auxiliar || a.cargo?.toLowerCase().includes('auxiliar') || a.role_title?.toLowerCase().includes('auxiliar') || a.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                      const bAux = Boolean(b.is_auxiliar || b.cargo?.toLowerCase().includes('auxiliar') || b.role_title?.toLowerCase().includes('auxiliar') || b.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                      if (aAux && !bAux) return -1;
+                      if (!aAux && bAux) return 1;
+                      return (a.nome || '').localeCompare(b.nome || '');
+                    })
+                    .map(p => {
+                      const isSelected = agendaConfigAuxiliares.includes(p.id);
+                      const isAuxCabelo = Boolean(p.is_auxiliar || p.cargo?.toLowerCase().includes('auxiliar') || p.role_title?.toLowerCase().includes('auxiliar') || p.especialidades?.some(e => e.toLowerCase().includes('auxiliar')));
+                      return (
+                        <label key={p.id} className="flex items-center justify-between gap-2 cursor-pointer p-2 rounded hover:bg-foreground/5 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setAgendaConfigAuxiliares(agendaConfigAuxiliares.filter(id => id !== p.id));
+                                } else {
+                                  setAgendaConfigAuxiliares([...agendaConfigAuxiliares, p.id]);
+                                }
+                              }}
+                              className="accent-blue-500 shrink-0"
+                            />
+                            <span className="text-sm text-foreground truncate">{p.nome}</span>
+                          </div>
+                          {isAuxCabelo ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 shrink-0">
+                              Auxiliar (Cabelo)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground/5 text-foreground/60 border border-[var(--border-subtle)] shrink-0">
+                              {p.cargo || p.role_title || getCategoriaProfissional(p)}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
                 </div>
               </div>
 

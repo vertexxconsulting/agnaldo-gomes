@@ -28,17 +28,130 @@ export async function GET() {
   if (auth.error) return auth.error;
 
   try {
-    const { data, error } = await supabaseAdmin
-      .from('salon_professionals')
-      .select('*')
-      .order('name');
+    const [{ data: rawProfs, error }, { data: profiles }] = await Promise.all([
+      supabaseAdmin.from('salon_professionals').select('*').order('name'),
+      supabaseAdmin.from('profiles').select('id, email, full_name, avatar_url, role, permissions'),
+    ]);
 
     if (error) {
       console.error('[api/profissionais] Erro ao buscar profissionais:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    const profsList: any[] = [...(rawProfs || [])];
+    const normalize = (t?: string | null) =>
+      (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    // Sincronizar automaticamente usuários cadastrados com a função Auxiliar (Cabelo) em profiles
+    const auxiliaresProfiles = (profiles || []).filter((p: any) => {
+      const perms = (p.permissions || {}) as any;
+      const roleStr = String(p.role || '').toLowerCase();
+      return (
+        roleStr === 'studio_auxiliar' ||
+        roleStr === 'auxiliar' ||
+        perms.is_auxiliar === true ||
+        perms.cargo === 'auxiliar' ||
+        perms.tipo === 'auxiliar'
+      );
+    });
+
+    for (const auxProfile of auxiliaresProfiles) {
+      const perms = (auxProfile.permissions || {}) as any;
+      const profIdPerm = perms.professional_id;
+      const auxEmail = normalize(auxProfile.email);
+      const auxName = normalize(auxProfile.full_name);
+
+      let matched = profsList.find((sp: any) =>
+        (sp.user_id && sp.user_id === auxProfile.id) ||
+        (profIdPerm && sp.id === profIdPerm) ||
+        (auxEmail && sp.email && normalize(sp.email) === auxEmail) ||
+        (auxName && normalize(sp.name) === auxName)
+      );
+
+      if (!matched && auxProfile.full_name) {
+        // Cria registro correspondente em salon_professionals para que a Auxiliar (Cabelo) tenha UUID válido na agenda e lista de auxiliares de cadeira
+        const schedMeta = {
+          _meta: {
+            is_auxiliar: true,
+            cargo: 'auxiliar',
+            role_title: 'Auxiliar (Cabelo)',
+          }
+        };
+        const insertPayload: Record<string, any> = {
+          name: String(auxProfile.full_name).trim(),
+          user_id: auxProfile.id,
+          email: auxProfile.email || null,
+          photo_url: auxProfile.avatar_url || null,
+          categoria: 'Cabelo',
+          role_title: 'Auxiliar (Cabelo)',
+          specialties: ['Auxiliar (Cabelo)'],
+          active: true,
+          weekly_schedule: schedMeta,
+        };
+
+        const { data: insertedProf, error: insertErr } = await supabaseAdmin
+          .from('salon_professionals')
+          .insert(insertPayload)
+          .select('*')
+          .single();
+
+        if (!insertErr && insertedProf) {
+          matched = insertedProf;
+          profsList.push(insertedProf);
+          // Vincula o professional_id de volta no profile
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              permissions: { ...perms, professional_id: insertedProf.id }
+            })
+            .eq('id', auxProfile.id);
+        }
+      } else if (matched) {
+        // Garante que o registro existente esteja marcado como Auxiliar (Cabelo) e vinculado ao user_id
+        matched.is_auxiliar = true;
+        matched.cargo = 'Auxiliar (Cabelo)';
+        matched.role_title = 'Auxiliar (Cabelo)';
+        if (!matched.categoria) matched.categoria = 'Cabelo';
+
+        if (!matched.user_id || matched.role_title !== 'Auxiliar (Cabelo)') {
+          const sched = (matched.weekly_schedule && typeof matched.weekly_schedule === 'object')
+            ? { ...matched.weekly_schedule }
+            : {};
+          sched._meta = { ...(sched._meta || {}), is_auxiliar: true, cargo: 'auxiliar', role_title: 'Auxiliar (Cabelo)' };
+          await supabaseAdmin
+            .from('salon_professionals')
+            .update({
+              user_id: matched.user_id || auxProfile.id,
+              role_title: 'Auxiliar (Cabelo)',
+              categoria: matched.categoria || 'Cabelo',
+              weekly_schedule: sched,
+            })
+            .eq('id', matched.id);
+        }
+      }
+    }
+
+    // Enriquecer todos os profissionais com flags de função (Auxiliar (Cabelo))
+    const enrichedProfs = profsList.map((sp: any) => {
+      const sched = (sp.weekly_schedule || {}) as any;
+      const roleTitle = sp.role_title || sp.cargo || sched?._meta?.role_title || sched?._meta?.cargo || null;
+      const isAux = Boolean(
+        sp.is_auxiliar ||
+        sched?._meta?.is_auxiliar ||
+        (typeof roleTitle === 'string' && roleTitle.toLowerCase().includes('auxiliar')) ||
+        (Array.isArray(sp.specialties) && sp.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+      );
+      return {
+        ...sp,
+        is_auxiliar: isAux,
+        cargo: isAux ? 'Auxiliar (Cabelo)' : roleTitle,
+        role_title: isAux ? 'Auxiliar (Cabelo)' : roleTitle,
+      };
+    });
+
+    enrichedProfs.sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || '')));
+
+    return NextResponse.json(enrichedProfs);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -56,7 +169,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal, stock_pin, product_commission_pct, periodo_recebimento } = body;
+    const { id, nome, foto_url, categoria, especialidades, ativo, jornada_semanal, stock_pin, product_commission_pct, periodo_recebimento, cargo, role_title, is_auxiliar, profile_id } = body;
 
     if (!nome) {
       return NextResponse.json({ error: 'Nome do profissional é obrigatório.' }, { status: 400 });
@@ -69,6 +182,15 @@ export async function POST(req: Request) {
     if (periodo_recebimento !== undefined) {
       sched._meta = { ...sched._meta, periodo_recebimento: periodo_recebimento || 'semanal' };
     }
+    if (is_auxiliar !== undefined || cargo !== undefined || role_title !== undefined) {
+      const auxFlag = Boolean(is_auxiliar || (typeof cargo === 'string' && cargo.toLowerCase().includes('auxiliar')) || (typeof role_title === 'string' && role_title.toLowerCase().includes('auxiliar')));
+      sched._meta = {
+        ...sched._meta,
+        is_auxiliar: auxFlag,
+        cargo: auxFlag ? 'auxiliar' : (cargo || null),
+        role_title: auxFlag ? 'Auxiliar (Cabelo)' : (role_title || cargo || null),
+      };
+    }
 
     const payload: Record<string, any> = {
       name: String(nome).trim(),
@@ -79,6 +201,13 @@ export async function POST(req: Request) {
       weekly_schedule: sched,
     };
 
+    if (profile_id) {
+      payload.user_id = profile_id;
+    }
+    if (is_auxiliar !== undefined || role_title !== undefined || cargo !== undefined) {
+      const auxFlag = Boolean(is_auxiliar || (typeof cargo === 'string' && cargo.toLowerCase().includes('auxiliar')) || (typeof role_title === 'string' && role_title.toLowerCase().includes('auxiliar')));
+      payload.role_title = auxFlag ? 'Auxiliar (Cabelo)' : (role_title || cargo || null);
+    }
     if (product_commission_pct !== undefined) {
       payload.product_commission_pct = Number(product_commission_pct) || 0;
     }

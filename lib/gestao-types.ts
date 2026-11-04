@@ -48,6 +48,8 @@ export interface Profissional {
   periodo_recebimento?: PeriodoRecebimentoComissao; // 'semanal' | 'quinzenal' | 'mensal'
   comissao_padrao?: number; // Comissão padrão sobre serviços (%)
   cargo?: string | null; // Cargo ou função do profissional
+  role_title?: string | null; // Título da função (ex: 'Auxiliar (Cabelo)')
+  is_auxiliar?: boolean; // Indica se é Auxiliar de Cadeira / Cabelo
   user_id?: string | null; // ID de autenticação vinculado (se houver)
   email?: string | null;
   avatar_url?: string | null; // Foto de perfil

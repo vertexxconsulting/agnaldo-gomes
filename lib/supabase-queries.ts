@@ -101,12 +101,19 @@ function mapProfissional(r: Row): Profissional {
   const sched = (r.weekly_schedule ?? {}) as any;
   const metaPin = sched?._meta?.stock_pin;
   const metaPeriodo = sched?._meta?.periodo_recebimento;
+  const cargoVal = r.cargo ?? r.role_title ?? sched?._meta?.role_title ?? sched?._meta?.cargo ?? null;
+  const isAux = Boolean(
+    r.is_auxiliar ||
+    sched?._meta?.is_auxiliar ||
+    (typeof cargoVal === 'string' && cargoVal.toLowerCase().includes('auxiliar')) ||
+    (Array.isArray(r.specialties) && r.specialties.some((s: string) => typeof s === 'string' && s.toLowerCase().includes('auxiliar')))
+  );
   return {
     id: r.id,
     nome: r.name ?? r.nome ?? '',
     foto_url: r.photo_url ?? r.foto_url ?? r.avatar_url ?? null,
     avatar_url: r.avatar_url ?? r.photo_url ?? r.foto_url ?? null,
-    categoria: r.categoria ?? r.category ?? null,
+    categoria: r.categoria ?? r.category ?? (isAux ? 'Cabelo' : null),
     especialidades: r.specialties ?? r.especialidades ?? [],
     ativo: r.active ?? r.ativo ?? true,
     jornada_semanal: sched as Profissional['jornada_semanal'],
@@ -116,7 +123,9 @@ function mapProfissional(r: Row): Profissional {
     atualizado_em: r.updated_at ?? undefined,
     user_id: r.user_id ?? null,
     email: r.email ?? null,
-    cargo: r.cargo ?? null,
+    cargo: isAux ? 'Auxiliar (Cabelo)' : cargoVal,
+    role_title: r.role_title ?? (isAux ? 'Auxiliar (Cabelo)' : cargoVal),
+    is_auxiliar: isAux,
     comissao_padrao: r.comissao_padrao != null ? Number(r.comissao_padrao) : undefined,
     product_commission_pct: r.product_commission_pct != null ? Number(r.product_commission_pct) : undefined,
   };
@@ -977,6 +986,9 @@ export async function criarProfissional(payload: {
   stock_pin?: string | null;
   periodo_recebimento?: PeriodoRecebimentoComissao | null;
   profile_id?: string | null;
+  cargo?: string | null;
+  role_title?: string | null;
+  is_auxiliar?: boolean;
 }): Promise<{ id?: string; error?: string }> {
   try {
     const res = await fetch('/api/profissionais', {
@@ -999,6 +1011,9 @@ export async function criarProfissional(payload: {
   if (payload.periodo_recebimento) {
     sched._meta = { ...sched._meta, periodo_recebimento: payload.periodo_recebimento };
   }
+  if (payload.is_auxiliar !== undefined) {
+    sched._meta = { ...sched._meta, is_auxiliar: payload.is_auxiliar, cargo: payload.is_auxiliar ? 'auxiliar' : null, role_title: payload.is_auxiliar ? 'Auxiliar (Cabelo)' : (payload.role_title || payload.cargo || null) };
+  }
 
   const insert: Row = {
     name: payload.nome,
@@ -1009,6 +1024,9 @@ export async function criarProfissional(payload: {
     weekly_schedule: sched,
     product_commission_pct: payload.product_commission_pct ?? 0,
   };
+  if (payload.role_title || payload.cargo || payload.is_auxiliar) {
+    insert.role_title = payload.is_auxiliar ? 'Auxiliar (Cabelo)' : (payload.role_title || payload.cargo);
+  }
   if (payload.stock_pin) insert.stock_pin = payload.stock_pin;
   if (payload.periodo_recebimento) insert.commission_frequency = payload.periodo_recebimento;
   if (payload.profile_id) insert.user_id = payload.profile_id;
@@ -1019,9 +1037,10 @@ export async function criarProfissional(payload: {
     .select('id')
     .single();
 
-  if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency'))) {
+  if (error && (error.message?.includes('stock_pin') || error.message?.includes('commission_frequency') || error.message?.includes('role_title'))) {
     delete insert.stock_pin;
     delete insert.commission_frequency;
+    if (error.message?.includes('role_title')) delete insert.role_title;
     const retry = await supabase.from(TBL.profissionais).insert(insert).select('id').single();
     data = retry.data;
     error = retry.error;
@@ -1044,6 +1063,9 @@ export async function atualizarProfissional(id: string, payload: Partial<{
   product_commission_pct: number;
   stock_pin: string | null;
   periodo_recebimento: PeriodoRecebimentoComissao;
+  cargo: string | null;
+  role_title: string | null;
+  is_auxiliar: boolean;
 }>): Promise<{ ok: boolean; error?: string }> {
   if (!isUUID(id)) {
     return { ok: true };

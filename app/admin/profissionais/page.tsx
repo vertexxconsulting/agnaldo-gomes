@@ -45,6 +45,7 @@ export default function ProfissionaisPage() {
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<string[]>([]);
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<'Cabelo' | 'Unhas' | string>('Cabelo');
+  const [isAuxiliarSelecionado, setIsAuxiliarSelecionado] = useState<boolean>(false);
   const [periodoRecebimento, setPeriodoRecebimento] = useState<PeriodoRecebimentoComissao>('semanal');
 
   // Estados para Acesso ao Sistema
@@ -179,8 +180,13 @@ export default function ProfissionaisPage() {
     const profissionalData = {
       nome: form.get('nome') as string,
       foto_url: finalFotoUrl,
-      categoria: categoriaSelecionada,
-      especialidades: especialidadesSelecionadas,
+      categoria: isAuxiliarSelecionado ? 'Cabelo' : categoriaSelecionada,
+      cargo: isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : (editando?.cargo || 'Cabeleireiro(a)'),
+      role_title: isAuxiliarSelecionado ? 'Auxiliar (Cabelo)' : (editando?.role_title || null),
+      is_auxiliar: isAuxiliarSelecionado,
+      especialidades: isAuxiliarSelecionado
+        ? Array.from(new Set(['Auxiliar (Cabelo)', ...especialidadesSelecionadas]))
+        : especialidadesSelecionadas.filter(e => e !== 'Auxiliar (Cabelo)'),
       ativo: true,
       jornada_semanal: jornada,
       product_commission_pct: editando?.product_commission_pct ?? 0,
@@ -281,6 +287,8 @@ export default function ProfissionaisPage() {
       setServicosSelecionados(profServCache.filter(ps => ps.profissional_id === prof.id).map(ps => ps.servico_id));
       setDiasAtivos(Object.keys(prof.jornada_semanal || {}).map(Number));
       setEspecialidadesSelecionadas(prof.especialidades || []);
+      const isAux = Boolean(prof.is_auxiliar || prof.cargo?.toLowerCase().includes('auxiliar') || prof.role_title?.toLowerCase().includes('auxiliar') || prof.especialidades?.some(e => e?.toLowerCase()?.includes('auxiliar')));
+      setIsAuxiliarSelecionado(isAux);
       setCategoriaSelecionada(prof.categoria || (prof.especialidades?.some(e => e?.toLowerCase()?.includes('unha')) ? 'Unhas' : 'Cabelo'));
       setPeriodoRecebimento(prof.periodo_recebimento || 'semanal');
     } else {
@@ -289,6 +297,7 @@ export default function ProfissionaisPage() {
       setFotoFile(null);
       setServicosSelecionados([]);
       setEspecialidadesSelecionadas([]);
+      setIsAuxiliarSelecionado(false);
       setCategoriaSelecionada('Cabelo');
       setPeriodoRecebimento('semanal');
       setDiasAtivos([]);
@@ -360,14 +369,14 @@ export default function ProfissionaisPage() {
                   <input name="nome" required defaultValue={editando?.nome ?? ''} className="w-full bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-foreground text-sm focus:outline-none focus:border-gold" />
                 </div>
                 <div className="sm:col-span-6">
-                  <label className="block text-xs text-foreground/60 mb-1">Categoria Principal *</label>
+                  <label className="block text-xs text-foreground/60 mb-1">Categoria / Função Principal *</label>
                   <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => setCategoriaSelecionada('Cabelo')}
+                        onClick={() => { setCategoriaSelecionada('Cabelo'); setIsAuxiliarSelecionado(false); }}
                         className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                          categoriaSelecionada === 'Cabelo'
+                          categoriaSelecionada === 'Cabelo' && !isAuxiliarSelecionado
                             ? 'bg-gold border-gold text-background shadow-sm'
                             : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
                         }`}
@@ -376,9 +385,20 @@ export default function ProfissionaisPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setCategoriaSelecionada('Unhas')}
+                        onClick={() => { setCategoriaSelecionada('Cabelo'); setIsAuxiliarSelecionado(true); setAcessoData(prev => ({ ...prev, role: 'studio_auxiliar' as Role })); }}
                         className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                          categoriaSelecionada === 'Unhas'
+                          isAuxiliarSelecionado
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                            : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-blue-500/40'
+                        }`}
+                      >
+                        <span>🤝</span> Auxiliar (Cabelo)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCategoriaSelecionada('Unhas'); setIsAuxiliarSelecionado(false); }}
+                        className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 ${
+                          categoriaSelecionada === 'Unhas' && !isAuxiliarSelecionado
                             ? 'bg-gold border-gold text-background shadow-sm'
                             : 'bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40'
                         }`}
@@ -388,8 +408,8 @@ export default function ProfissionaisPage() {
                       {(categoriaSelecionada === 'Cabelo' || categoriaSelecionada === 'Unhas') && (
                          <button 
                            type="button" 
-                           onClick={() => setCategoriaSelecionada('')} 
-                           className="flex-1 py-2 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
+                           onClick={() => { setCategoriaSelecionada(''); setIsAuxiliarSelecionado(false); }} 
+                           className="py-2 px-2.5 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1 bg-[var(--color-card)] border-[var(--border-subtle)] text-foreground/70 hover:border-gold/40"
                          >
                            + Outra
                          </button>
@@ -729,13 +749,19 @@ export default function ProfissionaisPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-bold text-lg truncate">{prof.nome}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
-                          ? 'bg-purple-100 text-purple-950 border border-purple-300'
-                          : 'bg-gold/15 text-gold-dim border border-gold/40'
-                      }`}>
-                        {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
-                      </span>
+                      {Boolean(prof.is_auxiliar || prof.cargo?.toLowerCase().includes('auxiliar') || prof.role_title?.toLowerCase().includes('auxiliar') || prof.especialidades?.some(e => e.toLowerCase().includes('auxiliar'))) ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                          🤝 Auxiliar (Cabelo)
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          (prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas'
+                            ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                            : 'bg-gold/15 text-gold-dim border border-gold/40'
+                        }`}>
+                          {(prof.categoria || (prof.especialidades?.some(e => e.toLowerCase().includes('unha')) ? 'Unhas' : 'Cabelo')) === 'Unhas' ? '💅 Unhas' : '✂️ Cabelo'}
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${prof.ativo ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-red-100 text-red-900 border-red-300'}`}>
                         {prof.ativo ? 'Ativo' : 'Inativo'}
                       </span>
