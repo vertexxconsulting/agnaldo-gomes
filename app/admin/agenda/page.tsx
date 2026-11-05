@@ -1458,29 +1458,77 @@ function AgendaContent() {
     setNovoProcServicoId('');
     setNovoProcProfId(appt.profissional_id);
 
-    // 1. Montar lista de procedimentos a partir do agendamento principal (respeitando valores do Pré-Fechamento se houver)
-    const procPreFechado = appt.comanda_unificada?.procedimentos?.[0];
-    const jaIncluiSubServicosNoPreFechamento = Boolean(
-      procPreFechado?.preco_tabela != null && Number(procPreFechado.preco_tabela) > 0
-    );
-    const precoPrincipal = jaIncluiSubServicosNoPreFechamento
-      ? Number(procPreFechado!.preco_tabela)
-      : getServicoPreco(appt.servico_id, servicos);
-    const descValPrincipal = procPreFechado?.desconto_valor != null
-      ? Number(procPreFechado.desconto_valor)
-      : (appt.desconto_valor != null ? Number(appt.desconto_valor) : 0);
-    const descPctPrincipal = procPreFechado?.desconto_pct != null
-      ? Number(procPreFechado.desconto_pct)
-      : (appt.desconto_pct != null ? Number(appt.desconto_pct) : 0);
-    const valorFinalPrincipal = appt.descontado_pacote
-      ? 0
-      : Math.max(0, precoPrincipal - descValPrincipal);
+    // 1. Montar lista de procedimentos a partir do agendamento principal (respeitando todos os serviços do Pré-Fechamento e Sub-serviços)
+    const procsPreFechados = Array.isArray(appt.comanda_unificada?.procedimentos)
+      ? appt.comanda_unificada!.procedimentos
+      : [];
+    const subsAgendamento = Array.isArray(appt.sub_servicos) ? appt.sub_servicos : [];
+    const somaSubsAgendamento = subsAgendamento.reduce((acc, sub) => {
+      const subId = typeof sub === 'string' ? sub : sub?.id;
+      const subPreco = (typeof sub === 'object' && sub?.is_free)
+        ? 0
+        : (typeof sub === 'object' && sub?.preco != null && Number(sub.preco) > 0)
+          ? Number(sub.preco)
+          : getServicoPreco(subId, servicos);
+      return acc + subPreco;
+    }, 0);
 
-    const listaProcedimentos: ProcedimentoComanda[] = [
-      {
+    const listaProcedimentos: ProcedimentoComanda[] = [];
+
+    if (procsPreFechados.length > 1) {
+      // Pré-fechamento já salvou cada procedimento separadamente
+      procsPreFechados.forEach((p, idx) => {
+        const precoTab = Number(p.preco_tabela || 0);
+        const descVal = Number(p.desconto_valor || 0);
+        const descPct = Number(p.desconto_pct || 0);
+        listaProcedimentos.push({
+          id: p.id || `proc_pf_${idx}_${appt.id}`,
+          servico_id: p.servico_id || appt.servico_id,
+          servico_nome: p.servico_nome || getServicoNome(p.servico_id || appt.servico_id, servicos),
+          profissional_id: p.profissional_id || appt.profissional_id,
+          profissional_nome: p.profissional_nome || getProfissionalNome(p.profissional_id || appt.profissional_id, profissionais),
+          preco_tabela: precoTab,
+          desconto_valor: descVal,
+          desconto_pct: descPct,
+          desconto_motivo: p.desconto_motivo || '',
+          valor_final: appt.descontado_pacote ? 0 : Math.max(0, precoTab - descVal),
+          agendamento_id: p.agendamento_id || appt.id,
+        });
+      });
+    } else {
+      const procPreFechado = procsPreFechados[0];
+      const precoTabelaPadrao = getServicoPreco(appt.servico_id, servicos);
+      let precoPrincipal = precoTabelaPadrao;
+
+      if (procPreFechado?.preco_tabela != null && Number(procPreFechado.preco_tabela) > 0) {
+        const precoPf = Number(procPreFechado.preco_tabela);
+        precoPrincipal = (somaSubsAgendamento > 0 && precoPf >= precoTabelaPadrao + somaSubsAgendamento - 0.01)
+          ? Math.max(0, Number((precoPf - somaSubsAgendamento).toFixed(2)))
+          : precoPf;
+      } else if (appt.total_amount != null && Number(appt.total_amount) > 0) {
+        const brutoTotal = Number(appt.total_amount) + Number(appt.desconto_valor || 0);
+        if (somaSubsAgendamento > 0 && brutoTotal >= somaSubsAgendamento) {
+          const cand = Number((brutoTotal - somaSubsAgendamento).toFixed(2));
+          if (cand > 0) precoPrincipal = cand;
+        } else if (somaSubsAgendamento === 0) {
+          precoPrincipal = brutoTotal;
+        }
+      }
+
+      const descValPrincipal = procPreFechado?.desconto_valor != null
+        ? Number(procPreFechado.desconto_valor)
+        : (appt.desconto_valor != null ? Number(appt.desconto_valor) : 0);
+      const descPctPrincipal = procPreFechado?.desconto_pct != null
+        ? Number(procPreFechado.desconto_pct)
+        : (appt.desconto_pct != null ? Number(appt.desconto_pct) : 0);
+      const valorFinalPrincipal = appt.descontado_pacote
+        ? 0
+        : Math.max(0, precoPrincipal - descValPrincipal);
+
+      listaProcedimentos.push({
         id: 'proc_principal_' + appt.id,
         servico_id: appt.servico_id,
-        servico_nome: procPreFechado?.servico_nome || getServicoNome(appt.servico_id, servicos),
+        servico_nome: getServicoNome(appt.servico_id, servicos),
         profissional_id: appt.profissional_id,
         profissional_nome: getProfissionalNome(appt.profissional_id, profissionais),
         preco_tabela: precoPrincipal,
@@ -1489,12 +1537,10 @@ function AgendaContent() {
         desconto_motivo: procPreFechado?.desconto_motivo || '',
         valor_final: valorFinalPrincipal,
         agendamento_id: appt.id,
-      }
-    ];
+      });
 
-    // Se houver sub_serviços no agendamento e ainda não estiverem consolidados no Pré-Fechamento, adicionar como procedimentos
-    if (!jaIncluiSubServicosNoPreFechamento && Array.isArray(appt.sub_servicos) && appt.sub_servicos.length > 0) {
-      appt.sub_servicos.forEach((sub, sIdx) => {
+      // Adicionar todos os serviços adicionais (sub_servicos) individualmente
+      subsAgendamento.forEach((sub, sIdx) => {
         const subId = typeof sub === 'string' ? sub : sub?.id;
         const subProfId = (typeof sub === 'object' && sub?.profissional_id) ? sub.profissional_id : appt.profissional_id;
         const subPreco = (typeof sub === 'object' && sub?.is_free)
@@ -1513,7 +1559,7 @@ function AgendaContent() {
             desconto_valor: 0,
             desconto_pct: 0,
             desconto_motivo: '',
-            valor_final: subPreco,
+            valor_final: appt.descontado_pacote ? 0 : subPreco,
             agendamento_id: appt.id,
           });
         }

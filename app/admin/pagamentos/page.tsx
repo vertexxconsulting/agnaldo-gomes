@@ -461,42 +461,173 @@ export default function AdminFinanceiro() {
     }
   };
 
+  // Helper que retorna a lista completa de procedimentos realizados (Serviço Principal + Sub-serviços / Adicionais + Comanda Unificada)
+  const obterProcedimentosAtendimento = (a: Agendamento) => {
+    const subs = Array.isArray(a.sub_servicos) ? a.sub_servicos : [];
+    const subsFormatados = subs.map((sub: any, sIdx: number) => {
+      const subId = typeof sub === 'string' ? sub : sub?.id;
+      const subNome = (typeof sub === 'object' && sub?.nome) ? sub.nome : getServicoNome(subId, servicos);
+      const subProfId = (typeof sub === 'object' && sub?.profissional_id) ? sub.profissional_id : a.profissional_id;
+      const subProfNome = (typeof sub === 'object' && sub?.profissional_nome)
+        ? sub.profissional_nome
+        : getProfissionalNome(subProfId, profissionais);
+      const subPreco = (typeof sub === 'object' && sub?.is_free)
+        ? 0
+        : (typeof sub === 'object' && sub?.preco != null && Number(sub.preco) > 0)
+          ? Number(sub.preco)
+          : getServicoPreco(subId, servicos);
+
+      return {
+        id: `sub_${sIdx}_${subId || sIdx}`,
+        servico_id: subId || a.servico_id,
+        servico_nome: subNome || 'Serviço Adicional',
+        profissional_id: subProfId,
+        profissional_nome: subProfNome,
+        preco_tabela: subPreco,
+        desconto_pct: 0,
+        desconto_valor: 0,
+        desconto_motivo: '',
+        valor_final: subPreco,
+        insumos_custo: 0,
+        agendamento_id: a.id,
+        is_adicional: true,
+      };
+    });
+
+    const somaSubs = subsFormatados.reduce((acc, s) => acc + Number(s.preco_tabela || 0), 0);
+    const comanda = a.comanda_unificada;
+
+    if (comanda && Array.isArray(comanda.procedimentos) && comanda.procedimentos.length > 0) {
+      // Se a comanda já tem múltiplos procedimentos detalhados, verifica se os sub_serviços já estão presentes
+      if (comanda.procedimentos.length > 1 || subsFormatados.length === 0) {
+        return comanda.procedimentos.map(p => ({
+          ...p,
+          preco_tabela: Number(p.preco_tabela || 0),
+          desconto_valor: Number(p.desconto_valor || 0),
+          desconto_pct: Number(p.desconto_pct || 0),
+          valor_final: p.valor_final != null ? Number(p.valor_final) : Math.max(0, Number(p.preco_tabela || 0) - Number(p.desconto_valor || 0)),
+        }));
+      }
+
+      // Caso legado onde comanda.procedimentos tinha apenas 1 linha mas o agendamento possui sub_servicos
+      const procUnico = comanda.procedimentos[0];
+      const precoTabelaUnico = Number(procUnico.preco_tabela || 0);
+      const descUnico = Number(procUnico.desconto_valor || 0);
+      const precoPrincipalBase = getServicoPreco(a.servico_id, servicos);
+      const jaSomouSubsNoUnico = somaSubs > 0 && precoTabelaUnico >= (precoPrincipalBase + somaSubs - 0.01);
+      const precoPrincipalCorrigido = jaSomouSubsNoUnico
+        ? Math.max(0, Number((precoTabelaUnico - somaSubs).toFixed(2)))
+        : precoTabelaUnico;
+
+      let descontoRestante = descUnico;
+      const descPrincipal = Math.min(precoPrincipalCorrigido, descontoRestante);
+      descontoRestante = Math.max(0, Number((descontoRestante - descPrincipal).toFixed(2)));
+
+      const itemPrincipal = {
+        ...procUnico,
+        servico_nome: getServicoNome(a.servico_id, servicos),
+        preco_tabela: precoPrincipalCorrigido,
+        desconto_valor: descPrincipal,
+        desconto_pct: precoPrincipalCorrigido > 0 ? Number(((descPrincipal / precoPrincipalCorrigido) * 100).toFixed(1)) : 0,
+        valor_final: Math.max(0, Number((precoPrincipalCorrigido - descPrincipal).toFixed(2))),
+      };
+
+      const itensSubs = subsFormatados.map(s => {
+        const dSub = Math.min(s.preco_tabela, descontoRestante);
+        descontoRestante = Math.max(0, Number((descontoRestante - dSub).toFixed(2)));
+        return {
+          ...s,
+          desconto_valor: dSub,
+          desconto_pct: s.preco_tabela > 0 ? Number(((dSub / s.preco_tabela) * 100).toFixed(1)) : 0,
+          valor_final: Math.max(0, Number((s.preco_tabela - dSub).toFixed(2))),
+        };
+      });
+
+      return [itemPrincipal, ...itensSubs];
+    }
+
+    // Sem comanda_unificada: construir a partir do serviço principal + sub_servicos
+    const precoTabelaPadrao = getServicoPreco(a.servico_id, servicos);
+    const descTotalAg = Number(a.desconto_valor || 0);
+    const totalAmountAg = a.total_amount != null && Number(a.total_amount) > 0 ? Number(a.total_amount) : 0;
+
+    let precoPrincipal = precoTabelaPadrao;
+    if (totalAmountAg > 0) {
+      const brutoEstimado = totalAmountAg + descTotalAg;
+      if (somaSubs > 0 && brutoEstimado >= somaSubs) {
+        const candidatoPrincipal = Number((brutoEstimado - somaSubs).toFixed(2));
+        if (candidatoPrincipal > 0) {
+          precoPrincipal = candidatoPrincipal;
+        }
+      } else if (somaSubs === 0) {
+        precoPrincipal = brutoEstimado;
+      }
+    }
+
+    let descontoRestante = descTotalAg;
+    const descPrincipal = Math.min(precoPrincipal, descontoRestante);
+    descontoRestante = Math.max(0, Number((descontoRestante - descPrincipal).toFixed(2)));
+
+    const procPrincipal = {
+      id: 'proc_principal_' + a.id,
+      servico_id: a.servico_id,
+      servico_nome: getServicoNome(a.servico_id, servicos),
+      profissional_id: a.profissional_id,
+      profissional_nome: getProfissionalNome(a.profissional_id, profissionais),
+      preco_tabela: precoPrincipal,
+      desconto_pct: precoPrincipal > 0 ? Number(((descPrincipal / precoPrincipal) * 100).toFixed(1)) : 0,
+      desconto_valor: descPrincipal,
+      desconto_motivo: '',
+      valor_final: Math.max(0, Number((precoPrincipal - descPrincipal).toFixed(2))),
+      insumos_custo: Number(a.product_cost) || 0,
+      agendamento_id: a.id,
+    };
+
+    const itensSubs = subsFormatados.map(s => {
+      const dSub = Math.min(s.preco_tabela, descontoRestante);
+      descontoRestante = Math.max(0, Number((descontoRestante - dSub).toFixed(2)));
+      return {
+        ...s,
+        desconto_valor: dSub,
+        desconto_pct: s.preco_tabela > 0 ? Number(((dSub / s.preco_tabela) * 100).toFixed(1)) : 0,
+        valor_final: Math.max(0, Number((s.preco_tabela - dSub).toFixed(2))),
+      };
+    });
+
+    return [procPrincipal, ...itensSubs];
+  };
+
   // Helper para obter valor líquido/efetivo de um agendamento, desconsiderando duplicidades de comandas unificadas
   const getValorEfetivo = (a: Agendamento): number => {
     // Se o agendamento foi unificado em outra comanda principal, seu valor a pagar individual é zero (cobrado no pai)
     if (a.unificado_em_id) return 0;
 
-    // Comanda multi-profissional ou com serviços adicionais
+    const procs = obterProcedimentosAtendimento(a);
+    let totalServicos = procs.reduce((acc: number, p: any) => {
+      const val = p.valor_final != null
+        ? Number(p.valor_final)
+        : Number((p.preco_tabela || 0) - (p.desconto_valor || 0));
+      return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    // Somar produtos vendidos no balcão / home care
     const comanda = (a as any).comanda_unificada;
-    if (comanda) {
-      let total = 0;
-      // Somar todos os procedimentos da comanda
-      if (Array.isArray(comanda.procedimentos) && comanda.procedimentos.length > 0) {
-        total += comanda.procedimentos.reduce((acc: number, p: any) => {
-          const val = p.valor_final != null
-            ? Number(p.valor_final)
-            : Number((p.preco_tabela || 0) - (p.desconto_valor || 0));
-          return acc + (isNaN(val) ? 0 : val);
-        }, 0);
-      }
-
-      // Somar produtos vendidos no balcão / home care
-      const prods = comanda.produtos_venda || comanda.produtos_comprados || [];
-      if (Array.isArray(prods) && prods.length > 0) {
-        total += prods.reduce((acc: number, pr: any) => {
-          const preco = Number(pr.preco_unitario ?? pr.preco ?? 0);
-          const qtd = Number(pr.quantidade ?? pr.qty ?? 1);
-          const valProd = preco * qtd;
-          return acc + (isNaN(valProd) ? 0 : valProd);
-        }, 0);
-      }
-
-      if (total > 0) {
-        return Number(total.toFixed(2));
-      }
+    const prods = comanda ? (comanda.produtos_venda || comanda.produtos_comprados || []) : [];
+    let totalProds = 0;
+    if (Array.isArray(prods) && prods.length > 0) {
+      totalProds = prods.reduce((acc: number, pr: any) => {
+        const preco = Number(pr.preco_unitario ?? pr.preco ?? 0);
+        const qtd = Number(pr.quantidade ?? pr.qty ?? 1);
+        const valProd = preco * qtd;
+        return acc + (isNaN(valProd) ? 0 : valProd);
+      }, 0);
     }
 
-    // Fallback para agendamento simples
+    const totalCalculado = Number((totalServicos + totalProds).toFixed(2));
+    if (totalCalculado > 0) {
+      return totalCalculado;
+    }
+
     if (a.total_amount != null && Number(a.total_amount) > 0) {
       return Number(a.total_amount);
     }
@@ -1172,7 +1303,8 @@ export default function AdminFinanceiro() {
                     const isPendingConfirmation = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
                     const isConfirmed = ag.status === 'concluido' && (ag.financial_status === 'CONFIRMED' || !ag.financial_status);
                     const isUnificado = Boolean(ag.unificado_em_id);
-                    const isMultiProf = Boolean(ag.comanda_unificada && ag.comanda_unificada.procedimentos && ag.comanda_unificada.procedimentos.length > 0);
+                    const procedimentosLinha = obterProcedimentosAtendimento(ag);
+                    const isMultiProf = procedimentosLinha.length > 1 || Boolean(ag.comanda_unificada && ag.comanda_unificada.procedimentos && ag.comanda_unificada.procedimentos.length > 0);
                     const agendamentoPai = isUnificado ? agendamentosDia.find(x => x.id === ag.unificado_em_id) : null;
 
                     return (
@@ -1195,11 +1327,11 @@ export default function AdminFinanceiro() {
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-gold/15 text-gold font-bold border border-gold/30 inline-flex items-center gap-1 shadow-sm">
-                                  <Sparkles size={11} className="text-gold" /> Comanda Multi-Profissional ({ag.comanda_unificada!.procedimentos.length} procedimentos)
+                                  <Sparkles size={11} className="text-gold" /> {procedimentosLinha.length} {procedimentosLinha.length === 1 ? 'procedimento realizado' : 'procedimentos realizados'}
                                 </span>
                               </div>
                               <div className="space-y-1">
-                                {ag.comanda_unificada!.procedimentos.map((p, idx) => (
+                                {procedimentosLinha.map((p, idx) => (
                                   <div key={idx} className="flex items-center justify-between text-xs bg-foreground/5 px-2.5 py-1 rounded-md border border-white/5">
                                     <div className="flex items-center gap-1.5">
                                       <Scissors size={11} className="text-gold" />
@@ -1220,9 +1352,9 @@ export default function AdminFinanceiro() {
                                   </div>
                                 ))}
                               </div>
-                              {((ag.comanda_unificada!.produtos_venda && ag.comanda_unificada!.produtos_venda.length > 0) || (ag.comanda_unificada!.produtos_comprados && ag.comanda_unificada!.produtos_comprados.length > 0)) && (
+                              {((ag.comanda_unificada?.produtos_venda && ag.comanda_unificada.produtos_venda.length > 0) || (ag.comanda_unificada?.produtos_comprados && ag.comanda_unificada.produtos_comprados.length > 0)) && (
                                 <p className="text-[11px] text-teal-800 font-bold font-mono flex items-center gap-1 pt-0.5">
-                                  <ShoppingBag size={11} /> {(ag.comanda_unificada!.produtos_venda?.length || ag.comanda_unificada!.produtos_comprados?.length || 0)} produto(s) vendidos no balcão inclusos
+                                  <ShoppingBag size={11} /> {(ag.comanda_unificada?.produtos_venda?.length || ag.comanda_unificada?.produtos_comprados?.length || 0)} produto(s) vendidos no balcão inclusos
                                 </p>
                               )}
                               {ag.product_cost != null && Number(ag.product_cost) > 0 && (
@@ -1443,22 +1575,9 @@ export default function AdminFinanceiro() {
         const ag = extratoComandaAppt;
         const cli = clientes.find(c => c.id === ag.cliente_id);
         const comanda = ag.comanda_unificada;
-        const isMulti = Boolean(comanda && comanda.procedimentos && comanda.procedimentos.length > 0);
-
-        // Procedimentos a listar
-        const procedimentos = isMulti
-          ? comanda!.procedimentos
-          : [{
-            servico_id: ag.servico_id,
-            servico_nome: getServicoNome(ag.servico_id, servicos),
-            profissional_id: ag.profissional_id,
-            profissional_nome: getProfissionalNome(ag.profissional_id, profissionais),
-            preco_tabela: getServicoPreco(ag.servico_id, servicos),
-            desconto_pct: 0,
-            desconto_valor: 0,
-            desconto_motivo: '',
-            insumos_custo: Number(ag.product_cost) || 0
-          }];
+        // Procedimentos a listar (Serviço Principal + Todos os Serviços Adicionais / Sub-serviços + Comanda Unificada)
+        const procedimentos = obterProcedimentosAtendimento(ag);
+        const isMulti = procedimentos.length > 1 || Boolean(comanda && comanda.procedimentos && comanda.procedimentos.length > 0);
 
         const subtotalServicos = procedimentos.reduce((acc: number, p) => acc + p.preco_tabela, 0);
         const totalDescontos = procedimentos.reduce((acc: number, p) => acc + p.desconto_valor, 0);
@@ -1467,11 +1586,12 @@ export default function AdminFinanceiro() {
           : (comanda?.produtos_comprados || []);
         const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario ?? prod.preco ?? 0) * Number(prod.quantidade ?? prod.qty ?? 1)), 0);
         const totalInsumos = Number(ag.product_cost ?? comanda?.total_insumos ?? 0);
+        const totalCalculadoComServicosEProdutos = Number((subtotalServicos - totalDescontos + totalProdutos).toFixed(2));
         const valorFinalCliente = valorFinalEditado !== ''
           ? (parseFloat(valorFinalEditado.replace(',', '.')) || 0)
-          : ((ag.total_amount != null && Number(ag.total_amount) > 0)
-            ? Number(ag.total_amount)
-            : (subtotalServicos - totalDescontos + totalProdutos));
+          : (totalCalculadoComServicosEProdutos > 0
+            ? totalCalculadoComServicosEProdutos
+            : ((ag.total_amount != null && Number(ag.total_amount) > 0) ? Number(ag.total_amount) : 0));
 
         const demoExtrato = calcularDemonstrativo3Partes(ag, valorFinalCliente, profissionais, regrasComissao);
 
@@ -1863,13 +1983,9 @@ export default function AdminFinanceiro() {
                   </div>
 
                   <div>
-                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Procedimento Realizado</p>
+                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Procedimento(s) Realizado(s)</p>
                     <p className="font-semibold text-stone-100 mt-0.5">
-                      {ag.comanda_unificada ? (
-                        `Comanda Multi (${ag.comanda_unificada.procedimentos.length} serviços)`
-                      ) : (
-                        getServicoNome(ag.servico_id, servicos)
-                      )}
+                      {obterProcedimentosAtendimento(ag).map(p => `${p.servico_nome} (R$ ${p.preco_tabela.toFixed(2)})`).join(' + ')}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className="text-stone-400">Titular:</span>

@@ -3126,6 +3126,43 @@ export default function MeuPainelPage() {
           ...(activeAgendamento.auxiliares_ids || [])
         ].filter(Boolean) as string[];
 
+        // Discriminação de todos os serviços realizados (Serviço Principal + Serviços Adicionais)
+        const somaSubServicos = calcularSomaSubServicos(activeAgendamento.sub_servicos);
+        const precoServicoPrincipal = Math.max(0, Number((precoBaseServico - somaSubServicos).toFixed(2)));
+        const listaSubServicosPreFechamento = Array.isArray(activeAgendamento.sub_servicos)
+          ? activeAgendamento.sub_servicos.map((sub, idx) => {
+              const subId = typeof sub === 'string' ? sub : sub?.id;
+              const subNome = typeof sub === 'string' ? getServicoNome(sub) : (sub?.nome || getServicoNome(subId));
+              const subPreco = getSubServicoPreco(sub);
+              const subProfId = (typeof sub === 'object' && sub?.profissional_id) ? sub.profissional_id : activeAgendamento.profissional_id;
+              const subProfNome = (typeof sub === 'object' && sub?.profissional_nome)
+                ? sub.profissional_nome
+                : (profissionais.find(p => p.id === subProfId)?.nome || titularNome);
+              return {
+                id: `sub_${idx}_${subId || idx}`,
+                servico_id: subId || activeAgendamento.servico_id,
+                nome: subNome || 'Serviço Adicional',
+                preco: subPreco,
+                profissional_id: subProfId,
+                profissional_nome: subProfNome,
+                isPrincipal: false,
+              };
+            })
+          : [];
+
+        const servicosDetalhadosPreFechamento = [
+          {
+            id: 'proc_principal_' + activeAgendamento.id,
+            servico_id: activeAgendamento.servico_id,
+            nome: getServicoNome(activeAgendamento.servico_id),
+            preco: precoServicoPrincipal,
+            profissional_id: activeAgendamento.profissional_id,
+            profissional_nome: titularNome,
+            isPrincipal: true,
+          },
+          ...listaSubServicosPreFechamento,
+        ];
+
         const isAgnaldoEnvolvido = titularesEAuxiliares.some(id => {
           const p = profissionais.find(pr => pr.id === id);
           return p?.nome?.toLowerCase().includes('agnaldo');
@@ -3295,25 +3332,39 @@ export default function MeuPainelPage() {
               ? `${getServicoNome(activeAgendamento.servico_id)} + ${subNomes.join(' + ')}`
               : getServicoNome(activeAgendamento.servico_id);
 
+            let descontoRestante = descValor;
+            const procedimentosDetalhados = servicosDetalhadosPreFechamento.map((srv, idx) => {
+              const descItem = activeAgendamento.descontado_pacote
+                ? srv.preco
+                : Math.min(srv.preco, Number(descontoRestante.toFixed(2)));
+              if (!activeAgendamento.descontado_pacote) {
+                descontoRestante = Math.max(0, Number((descontoRestante - descItem).toFixed(2)));
+              }
+              const valFinalItem = activeAgendamento.descontado_pacote
+                ? 0
+                : Math.max(0, Number((srv.preco - descItem).toFixed(2)));
+              const descPctItem = srv.preco > 0 ? Number(((descItem / srv.preco) * 100).toFixed(1)) : 0;
+
+              return {
+                id: srv.id,
+                servico_id: srv.servico_id,
+                servico_nome: srv.nome,
+                profissional_id: srv.profissional_id,
+                profissional_nome: srv.profissional_nome,
+                preco_tabela: srv.preco,
+                desconto_valor: activeAgendamento.descontado_pacote ? 0 : descItem,
+                desconto_pct: activeAgendamento.descontado_pacote ? 0 : descPctItem,
+                valor_final: valFinalItem,
+                insumos_custo: idx === 0 ? parte1InsumosRecompra : 0,
+                agendamento_id: activeAgendamento.id,
+              };
+            });
+
             const comandaObj: ComandaMultiProfissional = {
               cliente_id: activeAgendamento.cliente_id,
               cliente_nome: nomeCliente,
               data: activeAgendamento.data,
-              procedimentos: [
-                {
-                  id: 'proc_principal_' + activeAgendamento.id,
-                  servico_id: activeAgendamento.servico_id,
-                  servico_nome: nomeServico,
-                  profissional_id: activeAgendamento.profissional_id,
-                  profissional_nome: titularNome,
-                  preco_tabela: precoBaseServico,
-                  desconto_valor: descValor,
-                  desconto_pct: descPctEfetivo,
-                  valor_final: valorServicoLiquido,
-                  insumos_custo: parte1InsumosRecompra,
-                  agendamento_id: activeAgendamento.id,
-                },
-              ],
+              procedimentos: procedimentosDetalhados,
               insumos: activeAgendamento.insumos_detalhes || [],
               produtos_venda: produtosVendaDetalhados.map(p => ({
                 inventory_id: p.inventory_id,
@@ -3398,7 +3449,9 @@ export default function MeuPainelPage() {
               await carregarAgendamentosData(selectedDate);
               if (selectedProfId) {
                 buscarPendenciasPassadas(selectedProfId);
-                carregarComissoesProf(selectedProfId);
+              }
+              if (meuProfIdLogado) {
+                carregarComissoesProf(meuProfIdLogado);
               }
               alert('Atendimento pré-fechado com sucesso e enviado para a recepção / caixa!');
             } else {
@@ -3438,7 +3491,10 @@ export default function MeuPainelPage() {
                     <span className="text-foreground/50 uppercase font-semibold text-[10px]">Cliente Atendida</span>
                     <h4 className="text-lg font-bold text-foreground">{getClienteNome(activeAgendamento.cliente_id)}</h4>
                     <p className="text-xs text-foreground/70 font-medium">
-                      Procedimento: <strong>{getServicoNome(activeAgendamento.servico_id)}</strong>
+                      Procedimento(s):{' '}
+                      <strong>
+                        {servicosDetalhadosPreFechamento.map(s => s.nome).join(' + ')}
+                      </strong>
                     </p>
                   </div>
                   <div className="text-right">
@@ -3550,23 +3606,48 @@ export default function MeuPainelPage() {
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-[var(--border-subtle)] text-xs">
-                  <span className="text-foreground/60">Valor Líquido do Serviço:</span>
+                  <span className="text-foreground/60">Valor Líquido Total do(s) Serviço(s):</span>
                   <span className="text-sm font-bold font-mono text-foreground">
                     {fmt(valorServicoLiquido)}
                   </span>
                 </div>
               </div>
 
-              {/* DETALHAMENTO DE VALORES: SERVIÇO - DESCONTO + PRODUTOS BALCÃO = TOTAL FINAL */}
+              {/* DETALHAMENTO DE VALORES: SERVIÇOS PRESTADOS - DESCONTO + PRODUTOS BALCÃO = TOTAL FINAL */}
               <div className="p-4 rounded-xl bg-foreground/[0.03] border border-[var(--border-subtle)] space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70 flex items-center gap-1.5">
                   <DollarSign size={14} className="text-gold" /> Resumo de Valores do Atendimento
                 </h4>
 
-                {/* Valor do Serviço */}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-foreground/60">Valor do Serviço (Tabela)</span>
-                  <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico)}</span>
+                {/* Descrição individual de cada serviço prestado com seu respectivo valor */}
+                <div className="space-y-1.5 rounded-lg bg-foreground/[0.03] border border-[var(--border-subtle)] p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1">
+                    Serviços Prestados ({servicosDetalhadosPreFechamento.length})
+                  </p>
+                  {servicosDetalhadosPreFechamento.map((srv) => (
+                    <div key={srv.id} className="flex justify-between items-center text-xs sm:text-sm py-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Scissors size={12} className="text-gold shrink-0" />
+                        <span className="font-semibold text-foreground">{srv.nome}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          srv.isPrincipal
+                            ? 'bg-gold/15 text-gold border border-gold/30'
+                            : 'bg-blue-500/15 text-blue-500 border border-blue-500/30'
+                        }`}>
+                          {srv.isPrincipal ? 'Principal' : 'Adicional'}
+                        </span>
+                      </div>
+                      <span className="font-mono font-bold text-foreground shrink-0 ml-2">
+                        {fmt(srv.preco)}
+                      </span>
+                    </div>
+                  ))}
+                  {servicosDetalhadosPreFechamento.length > 1 && (
+                    <div className="flex justify-between items-center text-xs pt-1.5 mt-1 border-t border-[var(--border-subtle)] text-foreground/70">
+                      <span>Subtotal Bruto dos Serviços (Tabela)</span>
+                      <span className="font-mono font-bold text-foreground">{fmt(precoBaseServico)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Desconto */}
@@ -3581,10 +3662,10 @@ export default function MeuPainelPage() {
                   </div>
                 )}
 
-                {/* Valor Líquido do Serviço */}
+                {/* Valor Líquido Total do Serviço */}
                 <div className="flex justify-between items-center text-sm border-t border-[var(--border-subtle)] pt-2">
-                  <span className="text-foreground font-medium">Valor Líquido do Serviço</span>
-                  <span className="font-mono font-bold text-foreground">{fmt(valorServicoLiquido)}</span>
+                  <span className="text-foreground font-bold">Valor Líquido Total dos Serviços</span>
+                  <span className="font-mono font-bold text-foreground text-base">{fmt(valorServicoLiquido)}</span>
                 </div>
 
                 {/* Produtos Balcão / Home Care */}
