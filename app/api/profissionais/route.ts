@@ -153,8 +153,20 @@ export async function GET() {
       const finalCategoria = dbCategoria
         ? (isAux && dbCategoria.toLowerCase() === 'cabelo' ? 'Auxiliar (Cabelo)' : dbCategoria)
         : (isAux ? 'Auxiliar (Cabelo)' : 'Cabeleireiro(a)');
+
+      const spNameNorm = normalize(sp.name);
+      const spEmailNorm = normalize(sp.email);
+      const linkedProfile = (profiles || []).find((p: any) =>
+        (sp.user_id && p.id === sp.user_id) ||
+        (p.permissions?.professional_id && p.permissions.professional_id === sp.id) ||
+        (spEmailNorm && p.email && normalize(p.email) === spEmailNorm) ||
+        (spNameNorm && p.full_name && normalize(p.full_name) === spNameNorm)
+      );
+
       return {
         ...sp,
+        user_id: sp.user_id || linkedProfile?.id || null,
+        email: sp.email || linkedProfile?.email || null,
         categoria: finalCategoria,
         is_auxiliar: isAux,
         cargo: isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || roleTitle),

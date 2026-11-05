@@ -96,13 +96,18 @@ export function getArea(pathname: string): string | null {
 export function getUserRole(
   user: { user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } | null | undefined
 ): Role | null {
-  const metaRole = (user?.user_metadata?.role || (user as any)?.app_metadata?.role);
+  const meta = (user?.user_metadata || {}) as Record<string, any>;
+  if (meta.is_auxiliar === true || meta.cargo === 'auxiliar' || meta.tipo === 'auxiliar') {
+    return ROLES.STUDIO_AUXILIAR;
+  }
+  const metaRole = (meta.role || (user as any)?.app_metadata?.role);
   if (typeof metaRole !== 'string') return null;
   const lower = metaRole.toLowerCase();
   if (lower === 'admin') return ROLES.ADMIN;
   if (lower === 'studio_admin') return ROLES.STUDIO_ADMIN;
   if (lower === 'studio_secretaria') return ROLES.STUDIO_SECRETARIA;
-  if (lower === 'studio_profissional') return ROLES.STUDIO_PROFISSIONAL;
+  if (lower === 'studio_auxiliar' || lower === 'auxiliar') return ROLES.STUDIO_AUXILIAR;
+  if (lower === 'studio_profissional' || lower === 'professional' || lower === 'profissional') return ROLES.STUDIO_PROFISSIONAL;
   if (lower === 'academy_admin') return ROLES.ACADEMY_ADMIN;
   if (lower === 'loja_admin') return ROLES.LOJA_ADMIN;
   if (lower === 'student' || lower === 'aluno') return ROLES.ALUNO;

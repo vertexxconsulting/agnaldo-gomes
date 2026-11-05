@@ -134,7 +134,7 @@ function mapProfissional(r: Row): Profissional {
     periodo_recebimento: (r.commission_frequency || metaPeriodo || 'semanal') as PeriodoRecebimentoComissao,
     criado_em: r.created_at ?? '',
     atualizado_em: r.updated_at ?? undefined,
-    user_id: r.user_id ?? null,
+    user_id: r.user_id ?? r.profile_id ?? null,
     email: r.email ?? null,
     cargo: isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || cargoVal),
     role_title: r.role_title ?? (isAux ? 'Auxiliar (Cabelo)' : (dbCategoria || cargoVal)),
@@ -2577,11 +2577,16 @@ export async function fetchComissoes(professionalId?: string): Promise<Comissao[
     let q = supabase.from(TBL_COM.commissions).select('*').order('created_at', { ascending: false });
     if (professionalId) q = q.eq('professional_id', professionalId);
     const { data, error } = await q;
-    if (error || !data || data.length === 0) {
-      if (error) logSupabaseError('[fetchComissoes]', error);
+    if (error) {
+      logSupabaseError('[fetchComissoes]', error);
       return getMockComissoes(professionalId);
     }
-    const comissoes = (data ?? []).map(mapComissao);
+    if (!data || data.length === 0) {
+      return [];
+    }
+    const comissoes = (data ?? [])
+      .map(mapComissao)
+      .filter((c: Comissao) => !professionalId || c.professional_id === professionalId);
 
     // Carrega parcelas de todas de uma vez
     if (comissoes.length > 0) {
@@ -2610,8 +2615,8 @@ export async function fetchParcelasPendentes(professionalId?: string): Promise<(
       .eq('status', 'PENDING')
       .order('due_date');
     const { data, error } = await q;
-    if (error || !data || data.length === 0) {
-      if (error) logSupabaseError('[fetchParcelasPendentes]', error);
+    if (error) {
+      logSupabaseError('[fetchParcelasPendentes]', error);
       const mockComs = getMockComissoes(professionalId);
       return mockComs
         .flatMap(c => (c.parcelas ?? []).map(p => ({
@@ -2623,6 +2628,9 @@ export async function fetchParcelasPendentes(professionalId?: string): Promise<(
         })))
         .filter(p => p.status === 'PENDING')
         .filter(p => !professionalId || p.professional_id === professionalId);
+    }
+    if (!data || data.length === 0) {
+      return [];
     }
     return (data ?? [])
       .map((r: any) => ({
