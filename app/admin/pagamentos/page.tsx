@@ -9,6 +9,7 @@ import {
   Scissors, Percent, ShoppingBag, Eye, Printer, Layers
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
+import ProcedimentoList from '@/components/ProcedimentoList';
 import { Button } from '@/components/Button';
 import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
 import { useModulePermission } from '@/lib/use-module-permission';
