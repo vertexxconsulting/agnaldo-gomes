@@ -149,7 +149,7 @@ return (
       <CardGlass className={`p-6 border-l-4 transition-colors duration-300 ${agendamentoAtivo ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${agendamentoAtivo ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+            <div className={`p-3 rounded-lg ${agendamentoAtivo ? 'bg-emerald-500/10 text-black italic' : 'bg-red-500/10 text-red-500'}`}>
               {agendamentoAtivo ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
             </div>
             <div>
@@ -247,7 +247,7 @@ return (
           <div>
             {importStatus.tipo !== 'idle' && (
               <div className={`p-3 rounded-lg mb-4 text-xs flex items-start gap-2 ${
-                importStatus.tipo === 'sucesso' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                importStatus.tipo === 'sucesso' ? 'bg-emerald-500/10 text-black italic border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
               }`}>
                 {importStatus.tipo === 'sucesso' ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertTriangle size={16} className="mt-0.5 shrink-0" />}
                 <p>{importStatus.msg}</p>

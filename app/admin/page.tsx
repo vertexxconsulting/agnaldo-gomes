@@ -150,7 +150,7 @@ export default function ReceptionDashboard() {
           {/* Fila 1: Aguardando Pagamento (Serviço Concluído, pronto para Receber no Caixa) */}
           {aguardandoRecebimento.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-400">
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-emerald-800 dark:text-black italic">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                 Aguardando Pagamento / Caixa ({aguardandoRecebimento.length})
               </h2>
@@ -163,7 +163,7 @@ export default function ReceptionDashboard() {
                       <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-600/30 px-2 py-0.5 rounded-full mb-1 inline-block">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-black italic bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-600/30 px-2 py-0.5 rounded-full mb-1 inline-block">
                             ● Serviço Concluído
                           </span>
                           <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{getClienteNome(ag.cliente_id)}</h3>
@@ -251,7 +251,7 @@ export default function ReceptionDashboard() {
                         <button
                           type="button"
                           onClick={() => setCheckoutAppt(ag)}
-                          className="w-full text-[11px] text-emerald-800 dark:text-emerald-400 hover:underline font-semibold py-0.5 flex items-center justify-center gap-1 transition-colors"
+                          className="w-full text-[11px] text-emerald-800 dark:text-black italic hover:underline font-semibold py-0.5 flex items-center justify-center gap-1 transition-colors"
                         >
                           <Banknote size={13} />
                           Ou ir direto para Fechamento Prévio

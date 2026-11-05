@@ -131,7 +131,7 @@ export function CursoCard({ curso, isEnrolled = false, isPurchasable = false, on
         {/* Status badge com alto contraste e legibilidade */}
         <div className="flex items-center gap-2 mb-4 text-xs">
           {hasAccess ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-500/25">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-black italic font-semibold border border-emerald-500/25">
               <Check className="w-3.5 h-3.5 shrink-0" />
               <span>Acesso liberado</span>
             </span>

@@ -42,7 +42,7 @@ const fmtDate = (d: string) => {
 type Aba = 'resumo' | 'fechamento' | 'recebiveis' | 'parcelas' | 'historico' | 'regras' | 'taxas';
 
 const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: typeof Banknote; cor: string; badge: string }> = {
-  DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400', badge: 'Imediato' },
+  DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-black italic', badge: 'Imediato' },
   PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400', badge: 'Imediato' },
   DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-700 dark:text-purple-300', badge: 'Imediato' },
   CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground', badge: 'D+30' },
@@ -53,7 +53,7 @@ function StatusBadge({ status }: { status: string }) {
   const cfg = {
     PENDING: 'bg-amber-500/15 text-foreground border border-amber-500/20',
     PARTIAL: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-    PAID: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
+    PAID: 'bg-emerald-500/15 text-black italic border border-emerald-500/20',
     OVERDUE: 'bg-red-500/15 text-red-400 border border-red-500/20',
   }[status] ?? 'bg-foreground/10 text-foreground/50';
   const label = { PENDING: 'Pendente', PARTIAL: 'Parcial', PAID: 'Pago', OVERDUE: 'Atrasado' }[status] ?? status;
@@ -200,7 +200,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
       tipo: 'PAGO', 
       label: 'Quitado / Pago', 
       badge: 'Pago',
-      cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+      cor: 'text-black italic bg-emerald-500/10 border-emerald-500/20' 
     };
   }
   const hoje = new Date().toISOString().split('T')[0];
@@ -210,7 +210,7 @@ function getD30Status(item: { due_date: string; payment_method: FormaPagamento; 
         tipo: 'LIBERADO_D30', 
         label: 'Liberado (D+30 Cumprido)', 
         badge: 'Liberado D+30',
-        cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+        cor: 'text-black italic bg-emerald-500/10 border-emerald-500/20' 
       };
     }
     const diffMs = new Date(item.due_date + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime();
@@ -937,11 +937,11 @@ export default function ComissoesPage() {
           {(isRestrictedProfissional && meuProfissional ? [
             { icon: TrendingUp, label: 'Meu Faturamento Bruto (Mês)', value: fmt(totalFaturamentoMes), cor: 'text-foreground' },
             { icon: Clock, label: 'Minhas Comissões a Receber', value: fmt(totalPendente), cor: 'text-foreground' },
-            { icon: CheckCircle2, label: 'Já Recebido (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-emerald-400' },
+            { icon: CheckCircle2, label: 'Já Recebido (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-black italic' },
             { icon: DollarSign, label: 'Meus Atendimentos (Mês)', value: `${comissoesMesAtual.length} serv.`, cor: 'text-gold' },
           ] : [
             { icon: Clock, label: 'A Pagar (Total Geral)', value: fmt(totalPendente), cor: 'text-foreground' },
-            { icon: CheckCircle2, label: 'Pago (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-emerald-400' },
+            { icon: CheckCircle2, label: 'Pago (Mês Atual)', value: fmt(totalPagoMes), cor: 'text-black italic' },
             { icon: AlertTriangle, label: 'Parcelas Vencidas', value: vencidas, cor: vencidas > 0 ? 'text-red-400' : 'text-foreground/40' },
             { icon: User2, label: 'Profissionais Ativos', value: profissionais.length, cor: 'text-foreground' },
           ]).map((k, i) => (
@@ -1056,7 +1056,7 @@ export default function ComissoesPage() {
                     <CalendarDays size={14} /> Fechamento de Caixa {periodoNome}
                   </span>
                   {semanaOffset === 0 ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-black italic font-bold uppercase">
                       {periodoNome} Atual
                     </span>
                   ) : (
@@ -1181,10 +1181,10 @@ export default function ComissoesPage() {
 
               <CardGlass className="p-4 border-l-4 border-l-emerald-400">
                 <p className="text-xs text-foreground/50">Comissões Liberadas ({periodoNome})</p>
-                <p className="text-xl font-bold text-emerald-400 mt-1">
+                <p className="text-xl font-bold text-black italic mt-1">
                   {fmt(fechamentoSemanalData.reduce((s, f) => s + f.totalLiberadoSemana, 0))}
                 </p>
-                <p className="text-[11px] text-emerald-400/80 mt-1">
+                <p className="text-[11px] text-black italic mt-1">
                   Dinheiro/PIX/Débito + Crédito D+30
                 </p>
               </CardGlass>
@@ -1461,10 +1461,10 @@ export default function ComissoesPage() {
 
               <CardGlass className="p-4 border-l-4 border-l-emerald-400">
                 <p className="text-xs text-foreground/50">Liberado p/ Pagamento</p>
-                <p className="text-xl font-bold text-emerald-400 mt-1">
+                <p className="text-xl font-bold text-black italic mt-1">
                   {fmt(recebiveisFiltrados.filter(i => i.status === 'PENDING' && i.d30Info.tipo !== 'CARENCIA_D30').reduce((s, i) => s + i.amount, 0))}
                 </p>
-                <p className="text-[11px] text-emerald-400/80 mt-1">
+                <p className="text-[11px] text-black italic mt-1">
                   Disponível para repasse imediato
                 </p>
               </CardGlass>
@@ -1555,7 +1555,7 @@ export default function ComissoesPage() {
                         </td>
                         {!isRestrictedProfissional && !isReadOnly && (
                           <td className="py-3.5 px-4">
-                            <span className="text-xs font-mono font-bold text-emerald-400">
+                            <span className="text-xs font-mono font-bold text-black italic">
                               {fmt((item as any).liquido_salao ?? 0)}
                             </span>
                           </td>
@@ -1573,7 +1573,7 @@ export default function ComissoesPage() {
                                 size="sm"
                                 onClick={() => marcarPago(item.id)}
                                 disabled={pagando === item.id}
-                                className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
+                                className="text-black italic border-emerald-500/30 hover:bg-emerald-500/10 text-xs"
                               >
                                 <CheckCircle2 size={13} className="mr-1" />
                                 {pagando === item.id ? 'Baixando...' : 'Pagar'}
@@ -1585,7 +1585,7 @@ export default function ComissoesPage() {
                             )
                           )}
                           {item.status === 'PAID' && (
-                            <span className="text-xs text-emerald-400 font-semibold">
+                            <span className="text-xs text-black italic font-semibold">
                               ✓ Quitado
                             </span>
                           )}
@@ -1685,7 +1685,7 @@ export default function ComissoesPage() {
                         </div>
                         <div className="p-3 bg-emerald-500/8 rounded-lg border border-emerald-500/15">
                           <p className="text-xs text-foreground/50 mb-0.5">Pago (Mês Atual)</p>
-                          <p className="font-bold text-emerald-400 text-base">{fmt(pagaMes)}</p>
+                          <p className="font-bold text-black italic text-base">{fmt(pagaMes)}</p>
                         </div>
                       </div>
                     </div>
@@ -1785,7 +1785,7 @@ export default function ComissoesPage() {
                               size="sm"
                               onClick={() => marcarPago(p.id)}
                               disabled={pagando === p.id}
-                              className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                              className="text-black italic border-emerald-500/30 hover:bg-emerald-500/10"
                             >
                               <CheckCircle2 size={13} className="mr-1" />
                               {pagando === p.id ? 'Baixando...' : 'Marcar como Pago'}
@@ -1802,7 +1802,7 @@ export default function ComissoesPage() {
                   {parcelasFiltradas.length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-foreground/40">
-                        <CheckCircle2 size={40} className="mx-auto mb-2 text-emerald-400 opacity-60" />
+                        <CheckCircle2 size={40} className="mx-auto mb-2 text-black italic opacity-60" />
                         <p className="font-medium text-foreground/70">Nenhuma parcela pendente!</p>
                         <p className="text-xs text-foreground/40 mt-1">Todos os repasses de comissão deste filtro estão quitados.</p>
                       </td>
@@ -1905,7 +1905,7 @@ export default function ComissoesPage() {
                             key={p.id}
                             className={`text-xs px-2.5 py-1 rounded-md border font-mono ${
                               p.status === 'PAID'
-                                ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5'
+                                ? 'border-emerald-500/30 text-black italic bg-emerald-500/5'
                                 : 'border-amber-500/30 text-foreground bg-amber-500/5'
                             }`}
                           >
@@ -2248,7 +2248,7 @@ export default function ComissoesPage() {
                                                 {r.commission_pct}%
                                               </span>
                                             </td>
-                                            <td className="py-2 px-3 font-mono text-emerald-800 dark:text-emerald-400 font-semibold">
+                                            <td className="py-2 px-3 font-mono text-emerald-800 dark:text-black italic font-semibold">
                                               {precoBase > 0 ? fmt(repasseEstimado) : '—'}
                                             </td>
                                             {!isRestrictedProfissional && !isReadOnly && (
@@ -2344,7 +2344,7 @@ export default function ComissoesPage() {
                     </h4>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                       descontarTaxaComissao 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                        ? 'bg-emerald-500/20 text-black italic border border-emerald-500/30' 
                         : 'bg-amber-500/20 text-foreground border border-amber-500/30'
                     }`}>
                       {descontarTaxaComissao ? 'Ativado (Recomendado)' : 'Desativado'}
@@ -2363,7 +2363,7 @@ export default function ComissoesPage() {
                   onClick={handleToggleConfigTaxa}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                     descontarTaxaComissao
-                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-black italic hover:bg-emerald-500/25'
                       : 'bg-foreground/10 border border-foreground/20 text-foreground/70 hover:bg-foreground/20'
                   }`}
                 >
@@ -2380,7 +2380,7 @@ export default function ComissoesPage() {
                   credito: { label: 'Crédito', icon: CreditCard, cor: 'text-foreground bg-amber-500/10 border-amber-500/20' },
                   debito: { label: 'Débito', icon: CreditCard, cor: 'text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/10 border-purple-300 dark:border-purple-500/20' },
                   pix: { label: 'PIX', icon: Smartphone, cor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-                  dinheiro: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                  dinheiro: { label: 'Dinheiro', icon: Banknote, cor: 'text-black italic bg-emerald-500/10 border-emerald-500/20' },
                   boleto: { label: 'Boleto', icon: Banknote, cor: 'text-gray-400 bg-gray-500/10 border-gray-500/20' },
                 }[taxa.payment_type] || { label: taxa.payment_type, icon: CreditCard, cor: 'text-foreground/70 bg-foreground/10 border-foreground/20' };
 
@@ -2409,7 +2409,7 @@ export default function ComissoesPage() {
 
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                           taxa.active 
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' 
+                            ? 'bg-emerald-500/15 text-black italic border border-emerald-500/20' 
                             : 'bg-foreground/10 text-foreground/40'
                         }`}>
                           {taxa.active ? 'Ativa' : 'Inativa'}
@@ -2445,7 +2445,7 @@ export default function ComissoesPage() {
                         className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                           taxa.active 
                             ? 'text-foreground/50 hover:text-foreground' 
-                            : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'text-black italic bg-emerald-500/10 hover:bg-emerald-500/20'
                         }`}
                       >
                         {taxa.active ? 'Pausar' : 'Ativar'}
@@ -2575,8 +2575,8 @@ export default function ComissoesPage() {
                         <span className="text-lg font-bold font-mono text-blue-400">{fmt(valorLiquidoVenda)}</span>
                       </div>
                       <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                        <span className="text-[11px] text-emerald-400 block">Economia p/ o Salão</span>
-                        <span className="text-lg font-bold font-mono text-emerald-400">+{fmt(economiaSalao)}</span>
+                        <span className="text-[11px] text-black italic block">Economia p/ o Salão</span>
+                        <span className="text-lg font-bold font-mono text-black italic">+{fmt(economiaSalao)}</span>
                       </div>
                     </div>
 
@@ -2584,10 +2584,10 @@ export default function ComissoesPage() {
                       {/* Cenário A: Com Desconto da Taxa */}
                       <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-black italic uppercase tracking-wider flex items-center gap-1.5">
                             <CheckCircle size={14} /> Cenário Atual (Com Desconto da Taxa)
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-black italic font-bold">
                             Base: {fmt(valorLiquidoVenda)}
                           </span>
                         </div>
@@ -2598,7 +2598,7 @@ export default function ComissoesPage() {
                           </div>
                           <div className="flex justify-between">
                             <span>Líquido Retido pelo Salão:</span>
-                            <span className="font-bold font-mono text-emerald-400">{fmt(liquidoSalaoComRegra)}</span>
+                            <span className="font-bold font-mono text-black italic">{fmt(liquidoSalaoComRegra)}</span>
                           </div>
                           <div className="flex justify-between text-foreground/50 text-[11px] pt-1 border-t border-emerald-500/20">
                             <span>Operadora de Cartão:</span>

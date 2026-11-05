@@ -128,7 +128,7 @@ export default function BoltenCRMPage() {
           <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] flex items-center justify-between">
             <span className="font-mono text-xs text-foreground/70">BOLTEN_API_KEY</span>
             {statusEnv?.apiKeyMasked ? (
-              <span className="text-xs font-bold text-emerald-500 font-mono flex items-center gap-1">
+              <span className="text-xs font-bold text-black italic font-mono flex items-center gap-1">
                 <CheckCircle2 size={14} /> {statusEnv.apiKeyMasked}
               </span>
             ) : (
@@ -141,7 +141,7 @@ export default function BoltenCRMPage() {
           <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] flex items-center justify-between">
             <span className="font-mono text-xs text-foreground/70">BOLTEN_PROJECT_ID</span>
             {statusEnv?.projectId ? (
-              <span className="text-xs font-bold text-emerald-500 font-mono flex items-center gap-1">
+              <span className="text-xs font-bold text-black italic font-mono flex items-center gap-1">
                 <CheckCircle2 size={14} /> Configurado
               </span>
             ) : (
@@ -152,7 +152,7 @@ export default function BoltenCRMPage() {
           <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] flex items-center justify-between">
             <span className="font-mono text-xs text-foreground/70">BOLTEN_KANBAN_COMPONENT_ID</span>
             {statusEnv?.kanbanComponentId ? (
-              <span className="text-xs font-bold text-emerald-500 font-mono flex items-center gap-1">
+              <span className="text-xs font-bold text-black italic font-mono flex items-center gap-1">
                 <CheckCircle2 size={14} /> Configurado
               </span>
             ) : (
@@ -163,7 +163,7 @@ export default function BoltenCRMPage() {
           <div className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)] flex items-center justify-between">
             <span className="font-mono text-xs text-foreground/70">BOLTEN_CONTACT_COMPONENT_ID</span>
             {statusEnv?.contactComponentId ? (
-              <span className="text-xs font-bold text-emerald-500 font-mono flex items-center gap-1">
+              <span className="text-xs font-bold text-black italic font-mono flex items-center gap-1">
                 <CheckCircle2 size={14} /> Configurado
               </span>
             ) : (
@@ -202,7 +202,7 @@ export default function BoltenCRMPage() {
         {resultadoTeste && (
           <div className={`p-4 rounded-xl text-sm border flex items-start gap-3 mt-4 ${
             resultadoTeste.sucesso 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' 
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-black italic' 
               : 'bg-red-500/10 border-red-500/30 text-red-500'
           }`}>
             {resultadoTeste.sucesso ? (
@@ -250,7 +250,7 @@ export default function BoltenCRMPage() {
               setTimeout(() => setCopiadoWebhook(false), 2500);
             }}
           >
-            {copiadoWebhook ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+            {copiadoWebhook ? <Check size={14} className="text-black italic" /> : <Copy size={14} />}
             {copiadoWebhook ? 'Copiado!' : 'Copiar URL'}
           </Button>
         </div>

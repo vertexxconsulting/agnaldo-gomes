@@ -124,7 +124,7 @@ export default function EpisodioPage({
                 {aula.title}
               </h1>
               <div className="flex flex-wrap items-center gap-2.5 text-white/70 text-xs sm:text-sm font-medium">
-                <span className="text-green-400 font-semibold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20 text-xs">Novo</span>
+                <span className="text-black italic font-semibold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20 text-xs">Novo</span>
                 <span>Módulo {modulo?.order_index}: {modulo?.title}</span>
                 <span className="text-white/30">•</span>
                 <span>Episódio {aula.order_index}</span>
@@ -282,7 +282,7 @@ export default function EpisodioPage({
                       </span>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[11px] text-white/50 font-medium">{aulaItem.duration_minutes} min</span>
-                        {aulaConcluida && <CheckCircle2 size={12} className="text-green-500" />}
+                        {aulaConcluida && <CheckCircle2 size={12} className="text-black italic" />}
                       </div>
                     </div>
                   </Link>

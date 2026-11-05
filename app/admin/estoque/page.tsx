@@ -30,7 +30,7 @@ type Aba = 'produtos' | 'movimentacoes' | 'alertas';
 type MovTipo = 'IN' | 'OUT_SALE' | 'OUT_PROCEDURE' | 'ADJUSTMENT';
 
 const MOV_LABELS: Record<MovTipo, { label: string; cor: string }> = {
-  IN: { label: 'Entrada', cor: 'text-emerald-400 bg-emerald-500/10' },
+  IN: { label: 'Entrada', cor: 'text-black italic bg-emerald-500/10' },
   OUT_SALE: { label: 'Venda', cor: 'text-blue-400 bg-blue-500/10' },
   OUT_PROCEDURE: { label: 'Insumo', cor: 'text-amber-400 bg-amber-500/10' },
   ADJUSTMENT: { label: 'Ajuste', cor: 'text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/10 border border-purple-300 dark:border-purple-500/20' },
@@ -55,7 +55,7 @@ function estoqueBadge(p: ProdutoEstoque) {
   if (p.stock_qty <= 0) return { label: 'Zerado', cor: 'bg-red-500/15 text-red-400' };
   const alerta = p.stock_alert_qty ?? 0;
   if (alerta > 0 && p.stock_qty <= alerta) return { label: 'Baixo', cor: 'bg-amber-500/15 text-amber-400' };
-  return { label: 'OK', cor: 'bg-emerald-500/15 text-emerald-400' };
+  return { label: 'OK', cor: 'bg-emerald-500/15 text-black italic' };
 }
 
 const FORM_VAZIO = {
@@ -620,7 +620,7 @@ export default function EstoquePage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-5">
         {[
           { icon: Package, label: 'Produtos Ativos', value: totalProdutos, cor: 'text-gold' },
-          { icon: BarChart3, label: 'Valor em Estoque', value: fmt(totalEmEstoque), cor: 'text-emerald-400' },
+          { icon: BarChart3, label: 'Valor em Estoque', value: fmt(totalEmEstoque), cor: 'text-black italic' },
           { icon: ShoppingBag, label: 'Para Venda', value: produtosVenda, cor: 'text-blue-400' },
           { icon: AlertTriangle, label: 'Alertas Baixo', value: alertas.length, cor: alertas.length > 0 ? 'text-amber-400' : 'text-foreground/40' },
         ].map((k, i) => (
@@ -761,7 +761,7 @@ export default function EstoquePage() {
 
                       <div className={`flex gap-2 ${isReadOnly ? 'hidden' : ''}`}>
                         <button onClick={() => abrirEntrada(p)}
-                          className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/10 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-emerald-500/30 text-black italic text-xs hover:bg-emerald-500/10 transition-colors"
                           title="Registrar entrada de estoque com senha">
                           <TrendingUp size={13} /> Entrada
                         </button>
@@ -888,7 +888,7 @@ export default function EstoquePage() {
                           </span>
                         </td>
                         <td className="py-3 pr-4 font-bold font-mono">
-                          <span className={m.type === 'IN' ? 'text-emerald-400' : 'text-red-400'}>
+                          <span className={m.type === 'IN' ? 'text-black italic' : 'text-red-400'}>
                             {sinal}{fmtQty(m.qty, prod?.unit ?? 'g')}
                           </span>
                         </td>
@@ -927,7 +927,7 @@ export default function EstoquePage() {
           <div className="space-y-3">
             {alertas.length === 0 ? (
               <CardGlass className="text-center py-12">
-                <CheckCircle2 size={40} className="mx-auto mb-3 text-emerald-400 opacity-70" />
+                <CheckCircle2 size={40} className="mx-auto mb-3 text-black italic opacity-70" />
                 <p className="text-foreground/60">Todos os produtos estão com estoque adequado!</p>
               </CardGlass>
             ) : alertas.map(p => {
@@ -1118,7 +1118,7 @@ export default function EstoquePage() {
           <CardGlass className="w-full max-w-md p-6 animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-black italic flex items-center justify-center">
                   <TrendingUp size={18} />
                 </div>
                 <div>
@@ -1136,7 +1136,7 @@ export default function EstoquePage() {
               </div>
               <div className="text-right">
                 <span className="text-[11px] text-foreground/40 block">Estoque Atual</span>
-                <span className="font-bold font-mono text-emerald-400 text-sm">{fmtQty(showEntrada.stock_qty, showEntrada.unit)}</span>
+                <span className="font-bold font-mono text-black italic text-sm">{fmtQty(showEntrada.stock_qty, showEntrada.unit)}</span>
               </div>
             </div>
 
@@ -1159,7 +1159,7 @@ export default function EstoquePage() {
 
               <div>
                 <label className="block text-xs font-medium text-foreground/70 mb-1 flex items-center gap-1.5">
-                  <UserCheck size={13} className="text-emerald-400" />
+                  <UserCheck size={13} className="text-black italic" />
                   Profissional Responsável pela Entrada *
                 </label>
                 <select
@@ -1458,7 +1458,7 @@ export default function EstoquePage() {
                   return (
                     <div className="flex items-center justify-between text-[11px] text-foreground/50 px-1 pt-0.5">
                       <span>Categoria: <strong className="text-foreground/70">{prodPreview.category}</strong></span>
-                      <span>Estoque disponível: <strong className={prodPreview.stock_qty <= 0 ? 'text-red-400' : 'text-emerald-400'}>{fmtQty(prodPreview.stock_qty, prodPreview.unit)}</strong></span>
+                      <span>Estoque disponível: <strong className={prodPreview.stock_qty <= 0 ? 'text-red-400' : 'text-black italic'}>{fmtQty(prodPreview.stock_qty, prodPreview.unit)}</strong></span>
                     </div>
                   );
                 })()}
@@ -1551,11 +1551,11 @@ export default function EstoquePage() {
               <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Percent size={15} className="text-emerald-400" />
+                    <Percent size={15} className="text-black italic" />
                     <span className="text-xs font-bold text-foreground">Desconto no Total da Venda</span>
                   </div>
                   {valorDescVenda > 0 && (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold font-mono">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-black italic font-semibold font-mono">
                       -{fmt(valorDescVenda)} ({vendaDescPct || '0'}%)
                     </span>
                   )}
@@ -1614,7 +1614,7 @@ export default function EstoquePage() {
                       onClick={() => handleVendaDescPct(b.val === '0' ? '' : b.val)}
                       className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
                         (b.val === '0' && !vendaDescPct) || (vendaDescPct === b.val)
-                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-black italic font-bold'
                           : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30 hover:text-foreground'
                       }`}
                     >
@@ -1773,7 +1773,7 @@ export default function EstoquePage() {
                   <span className="font-mono">{fmt(subtotalVenda)}</span>
                 </div>
                 {valorDescVenda > 0 && (
-                  <div className="flex justify-between text-emerald-400 font-semibold">
+                  <div className="flex justify-between text-black italic font-semibold">
                     <span>Desconto ({vendaDescPct || '0'}%)</span>
                     <span className="font-mono">- {fmt(valorDescVenda)}</span>
                   </div>
@@ -1797,7 +1797,7 @@ export default function EstoquePage() {
                     </div>
                     <div className="flex justify-between text-foreground/80 font-semibold">
                       <span>Líquido Salão (Previsão {taxaMaqVenda.daysToReceive === 0 ? 'D+0' : `D+${taxaMaqVenda.daysToReceive}`}):</span>
-                      <span className="font-mono text-emerald-400 font-bold">{fmt(taxaMaqVenda.valorLiquido)}</span>
+                      <span className="font-mono text-black italic font-bold">{fmt(taxaMaqVenda.valorLiquido)}</span>
                     </div>
                     {vendaProfissionalId && (
                       <p className="text-[10px] text-foreground/50 italic">

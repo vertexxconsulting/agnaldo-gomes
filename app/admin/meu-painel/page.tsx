@@ -55,7 +55,7 @@ function fmtDate(d: string): string {
 }
 
 const PAGAMENTO_CONFIG: Record<FormaPagamento, { label: string; icon: any; cor: string; badge: string }> = {
-  DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-emerald-500', badge: 'Imediato' },
+  DINHEIRO: { label: 'Dinheiro', icon: Banknote, cor: 'text-black italic', badge: 'Imediato' },
   PIX: { label: 'PIX', icon: Smartphone, cor: 'text-blue-500', badge: 'Imediato' },
   DEBITO: { label: 'Débito', icon: CreditCard, cor: 'text-purple-500', badge: 'Imediato' },
   CREDITO: { label: 'Crédito', icon: CreditCard, cor: 'text-amber-500', badge: 'D+30' },
@@ -468,7 +468,7 @@ export default function MeuPainelPage() {
         c.parcelas.forEach(p => {
           let statusItem: 'LIBERADO' | 'CARENCIA_D30' | 'PAGO' = 'LIBERADO';
           let label = 'Liberado no Período';
-          let cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+          let cor = 'text-black italic bg-emerald-500/10 border-emerald-500/30';
           let diasRestantes: number | undefined;
 
           if (p.status === 'PAID') {
@@ -479,7 +479,7 @@ export default function MeuPainelPage() {
             if (p.due_date <= hoje) {
               statusItem = 'LIBERADO';
               label = 'Liberado (D+30 Cumprido)';
-              cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+              cor = 'text-black italic bg-emerald-500/10 border-emerald-500/30';
             } else {
               statusItem = 'CARENCIA_D30';
               const diffMs = new Date(p.due_date + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime();
@@ -508,7 +508,7 @@ export default function MeuPainelPage() {
       } else {
         let statusItem: 'LIBERADO' | 'CARENCIA_D30' | 'PAGO' = 'LIBERADO';
         let label = 'Liberado no Período';
-        let cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+        let cor = 'text-black italic bg-emerald-500/10 border-emerald-500/30';
         let diasRestantes: number | undefined;
         let dueDate = dataCriacao;
 
@@ -523,7 +523,7 @@ export default function MeuPainelPage() {
           if (dueDate <= hoje) {
             statusItem = 'LIBERADO';
             label = 'Liberado (D+30 Cumprido)';
-            cor = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+            cor = 'text-black italic bg-emerald-500/10 border-emerald-500/30';
           } else {
             statusItem = 'CARENCIA_D30';
             const diffMs = new Date(dueDate + 'T12:00:00').getTime() - new Date(hoje + 'T12:00:00').getTime();
@@ -1529,7 +1529,7 @@ export default function MeuPainelPage() {
                           <p className="text-xs text-foreground/50 whitespace-nowrap">Iniciado às</p>
                           <p className="text-xl font-mono text-foreground font-bold whitespace-nowrap">{ag.hora_inicio}</p>
                           {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                            <p className="text-xs font-mono text-emerald-500 font-bold mt-1 flex items-center justify-end gap-1 whitespace-nowrap">
+                            <p className="text-xs font-mono text-black italic font-bold mt-1 flex items-center justify-end gap-1 whitespace-nowrap">
                               <Beaker size={12} className="shrink-0" /> {fmt(Number(ag.product_cost))}
                             </p>
                           )}
@@ -1545,12 +1545,12 @@ export default function MeuPainelPage() {
                           className="p-3.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500 hover:bg-emerald-500/10 text-left transition-all flex flex-col justify-between group cursor-pointer overflow-hidden bg-background/60"
                         >
                           <div className="flex items-center justify-between gap-2 w-full">
-                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-bold uppercase tracking-wider text-black italic flex items-center gap-1.5 min-w-0">
                               <Beaker size={14} className="shrink-0" />
                               <span className="truncate">Produto (Insumos)</span>
                             </span>
                             {ag.insumos_detalhes && ag.insumos_detalhes.length > 0 && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 shrink-0 whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-black italic shrink-0 whitespace-nowrap">
                                 {ag.insumos_detalhes.length} {ag.insumos_detalhes.length === 1 ? 'item' : 'itens'}
                               </span>
                             )}
@@ -1719,7 +1719,7 @@ export default function MeuPainelPage() {
                             periodo === 'quinzenal'
                               ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
                               : periodo === 'mensal'
-                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                ? 'bg-emerald-500/15 text-black italic border-emerald-500/30'
                                 : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
                           }`}>
                             {periodo === 'quinzenal' ? '🌓 Quinzenal (15 dias)' : periodo === 'mensal' ? '📅 Mensal (Mês)' : '🗓️ Semanal (7 dias)'}
@@ -1786,12 +1786,12 @@ export default function MeuPainelPage() {
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         {/* 1. Liberado no Período */}
                         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shadow-xs flex flex-col justify-between">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-black italic">
                             <span>Liberado p/ Fechamento</span>
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                           </div>
                           <div className="my-2">
-                            <span className="text-xl font-bold font-mono text-emerald-400 tracking-tight">
+                            <span className="text-xl font-bold font-mono text-black italic tracking-tight">
                               {fmt(totalLiberado)}
                             </span>
                           </div>
@@ -2054,7 +2054,7 @@ export default function MeuPainelPage() {
                 <div key={ag.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-foreground/5">
                   <span className="text-foreground/50">{ag.hora_inicio}</span>
                   <span className="truncate flex-1 px-3 text-foreground/80">{getClienteNome(ag.cliente_id)}</span>
-                  <CheckCircle2 size={14} className="text-green-500" />
+                  <CheckCircle2 size={14} className="text-black italic" />
                 </div>
               ))
             )}
@@ -2540,7 +2540,7 @@ export default function MeuPainelPage() {
                             onClick={() => handleProdDescPct(b.val === '0' ? '' : b.val)}
                             className={`text-[10px] px-2 py-0.5 rounded border transition-all ${
                               (b.val === '0' && !produtoDescPct) || (produtoDescPct === b.val)
-                                ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-bold'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-black italic font-bold'
                                 : 'border-[var(--border-subtle)] text-foreground/60 hover:border-emerald-500/30'
                             }`}
                           >
@@ -2552,7 +2552,7 @@ export default function MeuPainelPage() {
                       <div className="flex justify-between items-center pt-1 text-xs">
                         <span className="text-foreground/70">
                           Total do item: <strong className="text-foreground font-mono">R$ {totalItem.toFixed(2)}</strong>
-                          {descVal > 0 && <span className="text-emerald-800 dark:text-emerald-400 ml-1.5 font-semibold">(-R$ {descVal.toFixed(2)})</span>}
+                          {descVal > 0 && <span className="text-emerald-800 dark:text-black italic ml-1.5 font-semibold">(-R$ {descVal.toFixed(2)})</span>}
                         </span>
                         <Button variant="primary" size="sm" onClick={handleSalvarProduto} className="text-xs py-1 px-3">
                           <ShoppingBag size={13} className="mr-1" /> Lançar
@@ -2583,7 +2583,7 @@ export default function MeuPainelPage() {
                           {temDesc && (
                             <p className="text-xs text-foreground/50 ml-5 mt-0.5 flex items-center gap-1.5">
                               <span className="line-through">R$ {precoOrig.toFixed(2)}</span>
-                              <span className="text-emerald-800 dark:text-emerald-400 font-semibold">R$ {item.price.toFixed(2)} un.</span>
+                              <span className="text-emerald-800 dark:text-black italic font-semibold">R$ {item.price.toFixed(2)} un.</span>
                             </p>
                           )}
                         </div>
@@ -3678,7 +3678,7 @@ export default function MeuPainelPage() {
 
                 {/* Detalhe dos Insumos (1ª Parte - Absorvido no Serviço) */}
                 {parte1InsumosRecompra > 0 && (
-                  <div className="flex justify-between items-center text-xs text-emerald-500 pt-1 border-t border-[var(--border-subtle)]">
+                  <div className="flex justify-between items-center text-xs text-black italic pt-1 border-t border-[var(--border-subtle)]">
                     <span>Insumos Utilizados (1ª Parte • Absorvido no serviço)</span>
                     <span className="font-mono font-bold">{fmt(parte1InsumosRecompra)} (deduzido da base de comissão)</span>
                   </div>
@@ -3748,13 +3748,13 @@ export default function MeuPainelPage() {
                             <span className="truncate max-w-[40%]">{item.name}</span>
                             <span className="text-right w-12 font-mono">{Number(item.qty_used || 0)}{item.unit}</span>
                             <span className="text-right w-16 font-mono text-foreground/60">R$ {itemUnit.toFixed(2)}</span>
-                            <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {itemTotal.toFixed(2)}</span>
+                            <span className="text-right w-16 font-mono font-bold text-black italic">R$ {itemTotal.toFixed(2)}</span>
                           </div>
                         );
                       })}
                       <div className="flex justify-between items-center text-[10px] font-bold text-foreground border-t border-[var(--border-subtle)] pt-1 mt-1">
                         <span>Total Insumos</span>
-                        <span className="text-right w-16 font-mono font-bold text-emerald-500">R$ {custoInsumosUsado.toFixed(2)}</span>
+                        <span className="text-right w-16 font-mono font-bold text-black italic">R$ {custoInsumosUsado.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
@@ -4065,9 +4065,9 @@ export default function MeuPainelPage() {
               ) : (
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-2 animate-in fade-in">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                    <CheckCircle2 size={16} className="text-black italic shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <p className="text-xs font-bold text-black italic">
                         Horário Livre na Agenda ({novoAgHoraInicio} às {analiseHorarioNovoAg.horaFim})
                       </p>
                       <p className="text-[11px] text-foreground/60">

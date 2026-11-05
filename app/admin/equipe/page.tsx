@@ -647,7 +647,7 @@ export default function TeamManagementPage() {
                       A pessoa com este login acessa a <strong>Agenda de todos os profissionais de Cabelo</strong> e o <strong>Painel da Cadeira</strong> para lançamento de insumos em tempo real durante os procedimentos em andamento.
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-semibold">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">✓ Vê todos de Cabelo</span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-black italic border border-emerald-500/30">✓ Vê todos de Cabelo</span>
                       <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-600 border border-blue-500/30">✓ Lança insumos na comanda</span>
                       <span className="px-2 py-0.5 rounded-md bg-foreground/10 text-foreground/60 border border-[var(--border-subtle)]">✕ Oculta Unhas</span>
                       <span className="px-2 py-0.5 rounded-md bg-foreground/10 text-foreground/60 border border-[var(--border-subtle)]">✕ Oculta Comissões</span>

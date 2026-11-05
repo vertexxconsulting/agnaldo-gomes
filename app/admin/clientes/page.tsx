@@ -610,7 +610,7 @@ export default function ClienteModule() {
                                     <span>{nomeServico}</span>
                                     <span className="text-xs text-foreground/60 font-normal">com {nomeProf}</span>
                                     <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-medium border
-                                      ${ag.status === 'concluido' ? 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10' : 
+                                      ${ag.status === 'concluido' ? 'text-black italic border-emerald-400/20 bg-emerald-400/10' : 
                                         ag.status === 'cancelado' || ag.status === 'no_show' ? 'text-red-400 border-red-400/20 bg-red-400/10' : 
                                         'text-blue-400 border-blue-400/20 bg-blue-400/10'}`}
                                     >
@@ -627,7 +627,7 @@ export default function ClienteModule() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3 self-end sm:self-center">
-                                  <span className="text-sm font-bold text-emerald-500">
+                                  <span className="text-sm font-bold text-black italic">
                                     R$ {valor.toFixed(2)}
                                   </span>
                                   {c.cpf && (

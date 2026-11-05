@@ -195,7 +195,7 @@ export default function IAAssistentePage() {
       </div>
 
       {mensagemSucesso && (
-        <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2 animate-fade-in">
+        <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-black italic text-xs font-bold flex items-center gap-2 animate-fade-in">
           <CheckCircle2 size={16} /> Diretrizes e configurações da IA salvas com sucesso!
         </div>
       )}
@@ -312,7 +312,7 @@ export default function IAAssistentePage() {
                           {info.nome}
                         </span>
                         <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          info.aberto ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                          info.aberto ? 'bg-emerald-500/10 text-black italic' : 'bg-red-500/10 text-red-400'
                         }`}>
                           {info.aberto ? 'Aberto' : 'Fechado'}
                         </span>
@@ -487,7 +487,7 @@ export default function IAAssistentePage() {
                   <Button 
                     variant="outline" 
                     onClick={handleTestarWhatsAppAgnaldo}
-                    className="text-xs text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 flex items-center gap-1.5 shrink-0"
+                    className="text-xs text-black italic border-emerald-500/30 hover:bg-emerald-500/10 flex items-center gap-1.5 shrink-0"
                   >
                     <Smartphone size={14} /> Testar Envio
                   </Button>
@@ -683,7 +683,7 @@ export default function IAAssistentePage() {
               <p>• <strong>Atendimentos:</strong> 1 cliente atendido</p>
               <p>• <strong>Profissional destaque:</strong> Agnaldo Gomes</p>
               <p>• <strong>Cancelamentos:</strong> 0 registros</p>
-              <p className="text-emerald-400 mt-2">💡 Disparo via WhatsApp Automático.</p>
+              <p className="text-black italic mt-2">💡 Disparo via WhatsApp Automático.</p>
             </div>
           </CardGlass>
         </div>

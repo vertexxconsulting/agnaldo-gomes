@@ -289,7 +289,7 @@ function NotasFiscaisContent() {
           <CardGlass className="p-6 space-y-6">
             <div>
               <h3 className="font-bold text-lg border-b border-[var(--border-subtle)] pb-2 mb-4 flex items-center gap-2">
-                <User size={20} className="text-emerald-500" />
+                <User size={20} className="text-black italic" />
                 Dados do Cliente
               </h3>
               <div className="space-y-3 text-sm">
@@ -341,7 +341,7 @@ function NotasFiscaisContent() {
                       <div className="flex-1">
                         <div className="flex justify-between font-bold text-sm">
                           <span>{servico.servico}</span>
-                          <span className="text-emerald-500">R$ {Number(servico.valor).toFixed(2)}</span>
+                          <span className="text-black italic">R$ {Number(servico.valor).toFixed(2)}</span>
                         </div>
                         <div className="text-xs text-foreground/60 mt-1 flex flex-wrap gap-3">
                           <span className="flex items-center gap-1"><Calendar size={12}/> {formatarDataSegura(servico.data)} às {servico.hora}</span>
@@ -404,7 +404,7 @@ function NotasFiscaisContent() {
             <div className="mt-8 pt-4 border-t border-[var(--border-subtle)]">
               {notaEmitida ? (
                 <div className="flex flex-col gap-4">
-                  <div className="bg-emerald-500/10 text-emerald-500 p-4 rounded-lg flex flex-col items-center justify-center gap-2">
+                  <div className="bg-emerald-500/10 text-black italic p-4 rounded-lg flex flex-col items-center justify-center gap-2">
                     <CheckCircle size={32} />
                     <p className="font-bold">Nota Fiscal Emitida com Sucesso!</p>
                     <p className="text-xs text-center opacity-80">O documento foi enviado para a prefeitura via Asaas. Você pode acompanhar o status no painel do Asaas.</p>

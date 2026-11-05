@@ -260,7 +260,7 @@ export function ModalServicosFeedback({
                         onClick={() => toggleCategoria(cat)}
                         className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-all flex items-center gap-1.5 ${
                           full
-                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 font-bold'
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-black italic font-bold'
                             : partial
                             ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
                             : 'bg-foreground/[0.02] border-[var(--border-subtle)] text-foreground/60 hover:border-gold/30'
@@ -361,7 +361,7 @@ export function ModalServicosFeedback({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-[var(--border-subtle)] bg-foreground/[0.02]">
           <div className="text-xs text-foreground/70">
             {modo === 'todos' ? (
-              <span className="text-emerald-400 font-semibold">
+              <span className="text-black italic font-semibold">
                 ✓ Todos os serviços ativos geram feedback
               </span>
             ) : (

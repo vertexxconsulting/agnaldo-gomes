@@ -139,11 +139,11 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   const pedidoValido = nome.trim().length > 0 && email.includes('@');
   const checkoutLabel = valorComCupom !== null && valorComCupom !== precoCurso ? `— ${formatBRL(valorComCupom)}` : '';
-  const stepIcon: React.ReactNode = step === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : step === 'redirect' ? <Check className="w-4 h-4 text-green-400" /> : null;
+  const stepIcon: React.ReactNode = step === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : step === 'redirect' ? <Check className="w-4 h-4 text-black italic" /> : null;
 
   // --- LIVE PRICE BADGE ---
   const badgeColor = cupomValido
-    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+    ? 'bg-green-500/20 text-black italic border-green-500/30'
     : cupomValido === false
     ? 'bg-red-500/20 text-red-400 border-red-500/30'
     : 'bg-gold/10 text-gold border-gold/30';
@@ -193,7 +193,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                 {cupomValido && (
                   <span className="text-sm text-foreground/50 line-through">{formatBRL(valorOriginal ?? precoCurso)}</span>
                 )}
-                {cupomValido && <span className="text-sm font-semibold text-green-400">{msgCupom}</span>}
+                {cupomValido && <span className="text-sm font-semibold text-black italic">{msgCupom}</span>}
               </div>
             </div>
           </div>
@@ -236,7 +236,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         {/* Redirect step */}
         {step === 'redirect' && (
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center mb-6">
-            <Check className="w-8 h-8 mx-auto text-green-400 mb-2" />
+            <Check className="w-8 h-8 mx-auto text-black italic mb-2" />
             <p className="text-sm text-foreground/70 mb-4">Redirecionando para o Stripe...</p>
             <button
               onClick={() => window.location.reload()}

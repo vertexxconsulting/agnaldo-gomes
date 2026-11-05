@@ -166,7 +166,7 @@ function CardRegraControle({ regra }: { regra: any }) {
             </h4>
             <span
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                ativo ? 'bg-emerald-500/20 text-emerald-400' : 'bg-foreground/10 text-foreground/50'
+                ativo ? 'bg-emerald-500/20 text-black italic' : 'bg-foreground/10 text-foreground/50'
               }`}
             >
               {ativo ? 'Ativo' : 'Desativado'}
@@ -281,7 +281,7 @@ function CardRegraControle({ regra }: { regra: any }) {
                             }
                           }
                         }}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors whitespace-nowrap cursor-pointer"
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-black italic border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors whitespace-nowrap cursor-pointer"
                       >
                         Chamar
                       </button>

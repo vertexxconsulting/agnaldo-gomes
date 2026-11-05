@@ -314,7 +314,7 @@ export default function ServicosPage() {
                     <td className="py-3 pr-4">
                       <div className="flex gap-2">
                         <button onClick={() => toggleAtivo(s.id)} title={s.ativo ? 'Desativar' : 'Ativar'}
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.ativo ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.ativo ? 'bg-emerald-500/15 text-black italic' : 'bg-red-500/15 text-red-400'}`}>
                           {s.ativo ? 'Ativo' : 'Inativo'}
                         </button>
                         <button onClick={() => toggleVisivel(s.id)} title={s.visivel_app ? 'Ocultar do app' : 'Mostrar no app'}

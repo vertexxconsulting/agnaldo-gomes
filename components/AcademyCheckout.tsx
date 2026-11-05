@@ -112,7 +112,7 @@ export function AcademyCheckout({
 
         {registrado ? (
           <div className="p-8 text-center space-y-4">
-            <CheckCircle2 className="text-emerald-500 mx-auto" size={44} />
+            <CheckCircle2 className="text-black italic mx-auto" size={44} />
             <p className="font-bold">Matrícula registrada!</p>
             <p className="text-sm text-foreground/70">
               No modo demonstração, sua inscrição ficou salva localmente.

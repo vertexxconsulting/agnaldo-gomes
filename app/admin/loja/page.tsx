@@ -119,7 +119,7 @@ export default function LojaPage() {
 
       {success ? (
         <CardGlass className="p-8 text-center flex flex-col items-center justify-center space-y-4 border-green-500/30">
-          <CheckCircle2 size={48} className="text-green-500" />
+          <CheckCircle2 size={48} className="text-black italic" />
           <h2 className="text-xl font-bold">Venda realizada com sucesso!</h2>
           <p className="text-foreground/60">O estoque foi atualizado e a comissão registrada.</p>
         </CardGlass>
@@ -249,7 +249,7 @@ export default function LojaPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Total da Venda:</span>
-                  <span className="font-bold text-green-500">R$ {total.toFixed(2)}</span>
+                  <span className="font-bold text-black italic">R$ {total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm pt-3 border-t border-[var(--border-subtle)]">
                   <span>Comissão para o Profissional:</span>

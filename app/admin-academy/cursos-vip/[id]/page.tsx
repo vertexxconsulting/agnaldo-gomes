@@ -273,7 +273,7 @@ export default function AdminEdicaoCursoVipPage() {
 
                 {cursoForm.stripe_payment_link ? (
                   <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <p className="text-xs font-medium text-green-400 mb-1 flex items-center gap-1">
+                    <p className="text-xs font-medium text-black italic mb-1 flex items-center gap-1">
                       <CheckCircle2 size={14} /> Link Ativo
                     </p>
                     <code className="text-[10px] text-foreground/70 break-all">{cursoForm.stripe_payment_link}</code>

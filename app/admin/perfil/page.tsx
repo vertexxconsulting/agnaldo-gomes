@@ -230,7 +230,7 @@ export default function AdminPerfilPage() {
 
             <div className="w-full border-t border-[var(--border-subtle)] pt-4 flex flex-col gap-3">
               <div className="flex items-center gap-3 text-sm text-foreground/70">
-                <Shield size={16} className="text-emerald-500" />
+                <Shield size={16} className="text-black italic" />
                 Acesso: {ROLE_LABELS[userRole as Role] || userRole}
               </div>
               <div className="flex items-center gap-3 text-sm text-foreground/70">

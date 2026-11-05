@@ -98,7 +98,7 @@ export default function AdminCertificadosPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'issued':
-        return <span className="bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Emitido</span>;
+        return <span className="bg-green-500/10 text-black italic border border-green-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Emitido</span>;
       case 'revoked':
         return <span className="bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold px-2 py-1 rounded-md">Revogado</span>;
       case 'reissued':

@@ -298,7 +298,7 @@ export function LessonPlayer({
             />
           </div>
           {currentTime >= completionThreshold && (
-            <p className="text-xs text-green-500 mt-1 text-center">✓ Tempo mínimo atingido — aula será marcada como concluída</p>
+            <p className="text-xs text-black italic mt-1 text-center">✓ Tempo mínimo atingido — aula será marcada como concluída</p>
           )}
         </div>
       )}

@@ -262,14 +262,14 @@ export default function SistemaApiPage() {
         <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
           <div>
             <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-              <MessageSquare size={20} className="text-emerald-500" />
+              <MessageSquare size={20} className="text-black italic" />
               WhatsApp de Atendimento do Salão
             </h3>
             <p className="text-sm text-foreground/60 mt-1">
               Número que recebe as solicitações de agendamento feitas pelos clientes no site (com DDD, ex: 42 99827-1222 ou 5542998271222).
             </p>
             {whatsappContato && (
-              <p className="text-xs text-emerald-500 font-medium mt-1.5 flex items-center gap-1">
+              <p className="text-xs text-black italic font-medium mt-1.5 flex items-center gap-1">
                 <span>✓ Destino configurado:</span> <span className="font-mono font-bold">{whatsappContato}</span>
               </p>
             )}
@@ -288,7 +288,7 @@ export default function SistemaApiPage() {
             {whatsappContato && (
               <Button 
                 variant="outline"
-                className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 text-xs"
+                className="border-emerald-500/40 text-black italic hover:bg-emerald-500/10 text-xs"
                 onClick={() => {
                   const limpo = whatsappContato.replace(/\D/g, '');
                   const num = limpo.length === 10 || limpo.length === 11 ? `55${limpo}` : limpo;
@@ -306,7 +306,7 @@ export default function SistemaApiPage() {
       <CardGlass className="p-6 border-l-4 border-l-gold shadow-lg">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-[var(--border-subtle)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+            <div className="p-3 bg-emerald-500/10 text-black italic rounded-xl border border-emerald-500/20">
               <Smartphone size={28} />
             </div>
             <div>
@@ -314,7 +314,7 @@ export default function SistemaApiPage() {
                 <h3 className="font-bold text-xl text-foreground">Conexão WhatsApp (Evolution API)</h3>
                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
                   waState === 'open' 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                    ? 'bg-emerald-500/20 text-black italic border border-emerald-500/30' 
                     : waState === 'connecting'
                     ? 'bg-amber-500/20 text-foreground border border-amber-500/30'
                     : 'bg-red-500/20 text-red-400 border border-red-500/30'
@@ -355,7 +355,7 @@ export default function SistemaApiPage() {
           <div className="space-y-6 animate-in fade-in">
             <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <CheckCircle2 size={32} className="text-emerald-400 shrink-0" />
+                <CheckCircle2 size={32} className="text-black italic shrink-0" />
                 <div>
                   <h4 className="font-bold text-foreground text-sm">WhatsApp Vinculado e Ativo!</h4>
                   <p className="text-xs text-foreground/70 mt-0.5">
@@ -363,7 +363,7 @@ export default function SistemaApiPage() {
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-mono font-bold text-emerald-400 px-3 py-1 bg-emerald-500/15 rounded-lg border border-emerald-500/30 whitespace-nowrap">
+              <span className="text-xs font-mono font-bold text-black italic px-3 py-1 bg-emerald-500/15 rounded-lg border border-emerald-500/30 whitespace-nowrap">
                 Instância: {instance}
               </span>
             </div>
@@ -524,7 +524,7 @@ export default function SistemaApiPage() {
                   <span className="text-xs font-bold uppercase text-foreground/70">{api}</span>
                 </div>
                 <span className={`text-[10px] font-medium ${
-                  info.status === 'ok' ? 'text-emerald-500' : 
+                  info.status === 'ok' ? 'text-black italic' : 
                   info.status === 'warning' ? 'text-amber-500' : 'text-red-500'
                 }`}>
                   {info.msg}

@@ -196,7 +196,7 @@ export default function CartPage() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className={`text-[10px] font-bold mb-4 -mt-2 ${discount > 0 ? 'text-emerald-600' : 'text-red-500'}`}
+                    className={`text-[10px] font-bold mb-4 -mt-2 ${discount > 0 ? 'text-black italic' : 'text-red-500'}`}
                   >
                     {couponMsg}
                   </motion.p>
@@ -237,7 +237,7 @@ export default function CartPage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="flex justify-between items-center mb-3 text-xs text-emerald-600 font-medium"
+                    className="flex justify-between items-center mb-3 text-xs text-black italic font-medium"
                   >
                     <span>Cupom aplicado</span>
                     <span>− R$ {discount.toFixed(2)}</span>
@@ -266,7 +266,7 @@ export default function CartPage() {
               </Link>
 
               <div className="flex items-center justify-center gap-1.5 mt-4 pt-4 border-t border-slate-100 text-[9px] text-slate-400 uppercase tracking-wider">
-                <ShieldCheck size={10} className="text-emerald-500" /> Pagamento 100% seguro
+                <ShieldCheck size={10} className="text-black italic" /> Pagamento 100% seguro
               </div>
             </div>
           </div>

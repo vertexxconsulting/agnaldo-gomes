@@ -173,7 +173,7 @@ export default function AdminAcademyComunidade() {
                 Responder
               </Button>
               {comment.status === 'pending' && (
-                <Button size="sm" variant="outline" className="flex items-center gap-2 text-green-600 border-green-600/30 hover:bg-green-600/10">
+                <Button size="sm" variant="outline" className="flex items-center gap-2 text-black italic border-green-600/30 hover:bg-green-600/10">
                   <CheckCircle size={16} />
                   Aprovar (Sem Resposta)
                 </Button>

@@ -174,7 +174,7 @@ export function ConfiguracaoAutomacao({ onConfigSaved, isReadOnly }: { onConfigS
       key: 'feedback' as const,
       titulo: 'Feedback Pós-Atendimento',
       desc: 'Solicita avaliação (nota 0 a 10) 1 dia após procedimento concluído',
-      icone: <Star size={20} className="text-emerald-400" />,
+      icone: <Star size={20} className="text-black italic" />,
       padraoHora: '16:00',
     },
     {
@@ -248,7 +248,7 @@ export function ConfiguracaoAutomacao({ onConfigSaved, isReadOnly }: { onConfigS
                   <div>
                     <h4 className="text-sm font-bold text-foreground leading-snug">{s.titulo}</h4>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                      isAtivo ? 'bg-emerald-500/20 text-emerald-400' : 'bg-foreground/10 text-foreground/50'
+                      isAtivo ? 'bg-emerald-500/20 text-black italic' : 'bg-foreground/10 text-foreground/50'
                     }`}>
                       {isAtivo ? 'Ativo' : 'Desativado'}
                     </span>
@@ -335,7 +335,7 @@ export function ConfiguracaoAutomacao({ onConfigSaved, isReadOnly }: { onConfigS
       {/* BLOCO DE SEGURANÇA E INTERVALO ANTI-BLOQUEIO */}
       <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
+          <div className="p-2.5 bg-emerald-500/10 text-black italic rounded-xl border border-emerald-500/20 shrink-0">
             <ShieldCheck size={24} />
           </div>
           <div>

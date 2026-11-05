@@ -703,7 +703,7 @@ export default function AdminEdicaoCursoPage() {
               {/* Status do link atual */}
               {cursoForm.stripe_payment_link ? (
                 <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <p className="text-sm font-medium text-green-400 mb-2 flex items-center gap-2">
+                  <p className="text-sm font-medium text-black italic mb-2 flex items-center gap-2">
                     <CheckCircle size={16} /> Payment Link ativo
                   </p>
                   <code className="text-xs text-foreground/70 break-all mb-3">{cursoForm.stripe_payment_link}</code>
@@ -966,7 +966,7 @@ function ModuloCard({
                 autoFocus
                 className="bg-background border border-gold px-2 py-1 rounded text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-gold"
               />
-              <button onClick={handleSaveModulo} className="p-1.5 text-green-500 hover:text-green-400"><Edit2 size={16} /></button>
+              <button onClick={handleSaveModulo} className="p-1.5 text-black italic hover:text-green-400"><Edit2 size={16} /></button>
             </>
           ) : (
             <h3 className="font-bold text-foreground" onDoubleClick={() => setEditing(true)}>
@@ -1184,7 +1184,7 @@ function AulaCard({
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         {editing ? (
           <button
-            className="p-1.5 text-green-500 hover:text-green-600 transition-colors"
+            className="p-1.5 text-black italic hover:text-green-600 transition-colors"
             onClick={handleSave}
             title="Salvar Alterações"
           >

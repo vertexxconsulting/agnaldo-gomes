@@ -166,7 +166,7 @@ export default function CursoDetalhesPage({ params, hasAccess = true, price = 97
                       <>
                         <div className="flex items-center gap-4">
                           {isConcluida ? (
-                            <CheckCircle2 size={20} className="text-green-500 flex-shrink-0" />
+                            <CheckCircle2 size={20} className="text-black italic flex-shrink-0" />
                           ) : (
                             !hasAccess ? (
                               <Lock size={20} className="text-foreground/40 group-hover:text-gold transition-colors flex-shrink-0" />

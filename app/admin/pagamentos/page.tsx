@@ -934,13 +934,13 @@ export default function AdminFinanceiro() {
           {/* Dashboard Topo */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <CardGlass className="p-5 flex items-center gap-4 border-l-4 border-l-emerald-500">
-              <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500">
+              <div className="p-3 bg-emerald-500/10 rounded-xl text-black italic">
                 <LockOpen size={24} />
               </div>
               <div>
                 <p className="text-sm text-foreground/60">Status do Caixa</p>
                 <p className="font-bold text-xl text-foreground">ABERTO</p>
-                <p className="text-xs text-emerald-500 mt-1">Fundo inicial: R$ {Number(caixaAberto.opening_balance).toFixed(2)}</p>
+                <p className="text-xs text-black italic mt-1">Fundo inicial: R$ {Number(caixaAberto.opening_balance).toFixed(2)}</p>
               </div>
             </CardGlass>
 
@@ -1090,7 +1090,7 @@ export default function AdminFinanceiro() {
                             </span>
                           </td>
                           <td className="p-4 text-right">
-                            <span className={`font-bold ${isIncome ? 'text-emerald-500' : 'text-red-500'}`}>
+                            <span className={`font-bold ${isIncome ? 'text-black italic' : 'text-red-500'}`}>
                               {isIncome ? '+' : '-'} R$ {Number(t.amount).toFixed(2)}
                             </span>
                           </td>
@@ -1671,7 +1671,7 @@ export default function AdminFinanceiro() {
                       <span className="text-stone-400">Forma:</span>
                       <span className="font-semibold text-gold uppercase">{ag.payment_method || 'Não definida'}</span>
                       <span className="text-stone-600">•</span>
-                      <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'bg-stone-200 px-2 py-0.5 rounded text-black italic' : 'text-amber-400'}`}>
                         {ag.financial_status === 'CONFIRMED' ? 'Contabilizado' : 'Aguardando Gestão'}
                       </span>
                     </div>
@@ -1801,10 +1801,10 @@ export default function AdminFinanceiro() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* 1ª PARTE • INSUMOS */}
-                    <div className="p-3 rounded-lg bg-black/40 border border-emerald-500/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-emerald-400 block">1ª Parte • Insumos</span>
-                      <p className="text-base font-bold font-mono text-emerald-300">R$ {demoExtrato.custoInsumos.toFixed(2)}</p>
-                      <p className="text-[10px] text-stone-400 leading-tight">
+                    <div className="p-3 rounded-lg bg-stone-200 border border-stone-300 space-y-1">
+                      <span className="text-[10px] font-bold uppercase text-black italic block">1ª Parte • Insumos</span>
+                      <p className="text-base font-bold font-mono text-black italic">R$ {demoExtrato.custoInsumos.toFixed(2)}</p>
+                      <p className="text-[10px] text-stone-700 leading-tight">
                         Separado p/ recompra do estoque ({demoExtrato.numItensInsumos} {demoExtrato.numItensInsumos === 1 ? 'item' : 'itens'})
                       </p>
                     </div>
@@ -2012,10 +2012,10 @@ export default function AdminFinanceiro() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* 1ª PARTE • INSUMOS */}
-                    <div className="p-3 rounded-lg bg-black/40 border border-emerald-500/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-emerald-400 block">1ª Parte • Insumos</span>
-                      <p className="text-base font-bold font-mono text-emerald-300">R$ {demo.custoInsumos.toFixed(2)}</p>
-                      <p className="text-[10px] text-stone-400 leading-tight">
+                    <div className="p-3 rounded-lg bg-stone-200 border border-stone-300 space-y-1">
+                      <span className="text-[10px] font-bold uppercase text-black italic block">1ª Parte • Insumos</span>
+                      <p className="text-base font-bold font-mono text-black italic">R$ {demo.custoInsumos.toFixed(2)}</p>
+                      <p className="text-[10px] text-stone-700 leading-tight">
                         Separado p/ recompra do estoque ({demo.numItensInsumos} {demo.numItensInsumos === 1 ? 'item' : 'itens'})
                       </p>
                     </div>
@@ -2103,7 +2103,7 @@ export default function AdminFinanceiro() {
                       step="0.01"
                       value={modalValor}
                       onChange={e => setModalValor(e.target.value)}
-                      className="w-full bg-[#18181b] border border-white/15 rounded-lg px-3 py-2.5 text-base text-emerald-400 focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none font-bold font-mono transition-all"
+                      className="w-full bg-stone-100 border border-white/15 rounded-lg px-3 py-2.5 text-base text-black italic focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none font-bold font-mono transition-all"
                       placeholder="0.00"
                     />
                     <p className="text-[10px] text-stone-400">

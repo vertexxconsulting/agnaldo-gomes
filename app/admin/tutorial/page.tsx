@@ -279,33 +279,33 @@ export default function AdminTutorialPage() {
                       <tbody className="divide-y divide-[var(--border-subtle)]">
                         <tr>
                           <td className="py-2 pr-3 font-medium text-foreground">Visualizar Todos os Agendamentos da Casa</td>
-                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Total</td>
+                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Total</td>
                           <td className="py-2 px-3 text-center text-foreground/50">Apenas os seus</td>
-                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Total</td>
+                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Total</td>
                         </tr>
                         <tr>
                           <td className="py-2 pr-3 font-medium text-foreground">Fechamento Prévio (Comanda e Liberação da Cliente)</td>
-                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Sim</td>
+                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Sim</td>
                           <td className="py-2 px-3 text-center text-foreground/40">—</td>
-                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Sim</td>
+                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Sim</td>
                         </tr>
                         <tr>
                           <td className="py-2 pr-3 font-medium text-foreground">Comissões da Equipe e Faturamento Líquido</td>
                           <td className="py-2 px-3 text-center text-red-500 font-bold">✕ Oculto (Confidencial)</td>
                           <td className="py-2 px-3 text-center text-foreground/50">Apenas a própria</td>
-                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Completo</td>
+                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Completo</td>
                         </tr>
                         <tr>
                           <td className="py-2 pr-3 font-medium text-foreground">Lançamento e Edição de Insumos (g/ml) na Cadeira</td>
-                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Na Agenda</td>
-                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ No Meu Painel</td>
-                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Total</td>
+                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Na Agenda</td>
+                          <td className="py-2 px-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ No Meu Painel</td>
+                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Total</td>
                         </tr>
                         <tr>
                           <td className="py-2 pr-3 font-medium text-foreground">Auditoria Definitiva do Caixa (/admin/pagamentos)</td>
                           <td className="py-2 px-3 text-center text-red-500 font-bold">✕ Sem acesso</td>
                           <td className="py-2 px-3 text-center text-foreground/40">—</td>
-                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-emerald-400 font-bold">✓ Gestão Final</td>
+                          <td className="py-2 pl-3 text-center text-emerald-800 dark:text-black italic font-bold">✓ Gestão Final</td>
                         </tr>
                       </tbody>
                     </table>

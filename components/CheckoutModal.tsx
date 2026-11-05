@@ -632,11 +632,11 @@ export function CheckoutModal({
               <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Percent size={14} className="text-emerald-400" />
+                    <Percent size={14} className="text-black italic" />
                     <span className="text-xs font-bold text-foreground uppercase tracking-wider">Desconto ao Cliente</span>
                   </div>
                   {valorDesconto > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold font-mono">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-black italic font-bold font-mono">
                       -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)} ({checkoutDescontoPct || '0'}%)
                     </span>
                   )}
@@ -687,7 +687,7 @@ export function CheckoutModal({
                       onClick={() => handleCheckoutDescontoPct(btn.pct === '0' ? '' : btn.pct, subtotalGeral)}
                       className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
                         (btn.pct === '0' && !checkoutDescontoPct) || (checkoutDescontoPct === btn.pct)
-                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold'
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-black italic font-bold'
                           : 'border-[var(--color-border)] text-foreground/60 hover:text-foreground'
                       }`}
                     >
@@ -774,7 +774,7 @@ export function CheckoutModal({
                   </p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground/60 mt-1">
                     <span>Serviços: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalServico + checkoutExtras.reduce((a, b) => a + b.preco, 0))}</span>
-                    {valorDesconto > 0 && <span className="text-emerald-400 font-medium">Desc: -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>}
+                    {valorDesconto > 0 && <span className="text-black italic font-medium">Desc: -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDesconto)}</span>}
                     {checkoutProdutos.length > 0 && <span className="text-teal-400 font-medium">Produtos: +{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(checkoutProdutos.reduce((a, b) => a + (b.preco * b.qty), 0))}</span>}
                   </div>
                 </div>

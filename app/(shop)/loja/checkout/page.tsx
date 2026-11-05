@@ -198,7 +198,7 @@ export default function CheckoutPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white border border-slate-200 rounded-sm shadow-sm p-10 text-center max-w-lg mx-auto"
         >
-          <CheckCircle2 size={56} className="mx-auto text-emerald-500 mb-4" />
+          <CheckCircle2 size={56} className="mx-auto text-black italic mb-4" />
           <h2 className="text-lg font-bold text-slate-900 uppercase tracking-widest mb-2">Pedido Confirmado!</h2>
           <p className="text-xs text-slate-500 mb-1 leading-relaxed">
             Obrigado pela sua compra, {customerName.split(' ')[0]}! Este é um ambiente de demonstração:
@@ -229,7 +229,7 @@ export default function CheckoutPage() {
               >
                 <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-widest border-b border-slate-100 pb-3">
                   <MapPin className="text-amber-500" size={16} /> 1. Endereço de Entrega
-                  {addressValid && <CheckCircle2 size={14} className="text-emerald-500 ml-auto" />}
+                  {addressValid && <CheckCircle2 size={14} className="text-black italic ml-auto" />}
                 </h2>
               </button>
 
@@ -418,9 +418,9 @@ export default function CheckoutPage() {
                             : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                         }`}
                       >
-                        <Wallet size={20} className={paymentMethod === 'pix' ? 'text-emerald-600' : 'text-slate-400'} />
+                        <Wallet size={20} className={paymentMethod === 'pix' ? 'text-black italic' : 'text-slate-400'} />
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${paymentMethod === 'pix' ? 'text-emerald-700' : 'text-slate-500'}`}>PIX</span>
-                        <span className="text-[9px] text-emerald-600 font-bold">10% OFF</span>
+                        <span className="text-[9px] text-black italic font-bold">10% OFF</span>
                       </button>
                       <button
                         type="button"
@@ -460,7 +460,7 @@ export default function CheckoutPage() {
                     )}
 
                     <p className="flex items-center gap-1.5 text-[9px] text-slate-400 uppercase tracking-wider mb-4">
-                      <LockOpen size={10} className="text-emerald-500" /> Ambiente de demonstração — nenhum cartão será cobrado
+                      <LockOpen size={10} className="text-black italic" /> Ambiente de demonstração — nenhum cartão será cobrado
                     </p>
                   </motion.div>
                 )}
@@ -513,7 +513,7 @@ export default function CheckoutPage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="flex justify-between items-center mb-2 text-xs text-emerald-600 font-medium"
+                    className="flex justify-between items-center mb-2 text-xs text-black italic font-medium"
                   >
                     <span>Desconto PIX (10%)</span>
                     <span>− R$ {pixDiscount.toFixed(2)}</span>
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
                 )}
               </button>
               <p className="text-center text-[9px] text-slate-500 mt-3 uppercase tracking-widest flex justify-center items-center gap-1">
-                <ShieldCheck size={10} className="text-emerald-500" /> Checkout 100% Seguro • SSL
+                <ShieldCheck size={10} className="text-black italic" /> Checkout 100% Seguro • SSL
               </p>
             </div>
           </div>

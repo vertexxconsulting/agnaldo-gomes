@@ -95,7 +95,7 @@ export default function AdminLojaConfiguracoes() {
                   value=""
                   readOnly
                 />
-                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.asaasConfigured ? 'text-green-500' : 'text-slate-400'}`} size={18} />
+                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.asaasConfigured ? 'text-black italic' : 'text-slate-400'}`} size={18} />
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 As variáveis de ambiente estão configuradas para serem lidas diretamente da <strong>Vercel</strong> por motivos de segurança. 
@@ -128,7 +128,7 @@ export default function AdminLojaConfiguracoes() {
                   value=""
                   readOnly
                 />
-                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.meConfigured ? 'text-green-500' : 'text-slate-400'}`} size={18} />
+                <ShieldCheck className={`absolute left-3 top-1/2 -translate-y-1/2 ${envStatus.meConfigured ? 'text-black italic' : 'text-slate-400'}`} size={18} />
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 Configure a variável <code>MELHOR_ENVIO_TOKEN</code> no painel de Environment Variables da Vercel.

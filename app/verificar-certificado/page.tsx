@@ -106,7 +106,7 @@ export default async function VerificarCertificadoPage({
             
             {/* Badge verificado */}
             <div className="flex items-center justify-center gap-2 mb-6">
-              <div className="flex items-center gap-2 bg-green-500/10 text-green-500 border border-green-500/20 px-4 py-2 rounded-full">
+              <div className="flex items-center gap-2 bg-green-500/10 text-black italic border border-green-500/20 px-4 py-2 rounded-full">
                 <CheckCircle2 size={16} />
                 <span className="font-bold text-sm">CERTIFICADO VÁLIDO</span>
               </div>

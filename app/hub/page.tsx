@@ -501,7 +501,7 @@ export default function HubCentralPage() {
             const cores: Record<string, string> = {
               primary: 'from-amber-500/15 to-amber-500/5 hover:border-amber-500/60 text-amber-600',
               purple: 'from-purple-500/15 to-purple-500/5 hover:border-purple-500/60 text-purple-600',
-              green: 'from-emerald-500/15 to-emerald-500/5 hover:border-emerald-500/60 text-emerald-600',
+              green: 'from-emerald-500/15 to-emerald-500/5 hover:border-emerald-500/60 text-black italic',
             };
             
             return (

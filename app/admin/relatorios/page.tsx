@@ -548,7 +548,7 @@ export default function RelatoriosPage() {
           <CardGlass className="p-6">
             <div className="flex justify-between items-center mb-6 border-b border-[var(--border-subtle)] pb-3">
               <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-400" /> Detalhamento dos Atendimentos ({data.itensDetalhados.length})
+                <CheckCircle2 size={16} className="text-black italic" /> Detalhamento dos Atendimentos ({data.itensDetalhados.length})
               </h3>
             </div>
 

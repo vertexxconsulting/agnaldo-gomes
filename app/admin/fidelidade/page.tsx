@@ -149,7 +149,7 @@ export default function FidelidadePage() {
             disabled={isReadOnly}
             onClick={toggleFidelidade}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${fidelidadeAtiva
-              ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25'
+              ? 'bg-emerald-500/15 text-black italic hover:bg-emerald-500/25'
               : 'bg-red-500/15 text-red-500 hover:bg-red-500/25'
               } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           >

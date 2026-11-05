@@ -119,7 +119,7 @@ export function SystemTutorial({ module }: SystemTutorialProps) {
               <ol className="list-decimal list-inside space-y-3 text-sm text-foreground/80">
                 <li className="pl-2">O cliente pede pelo site ou WhatsApp. Entra na <strong>Agenda</strong> como <span className="text-amber-400 font-bold">Pendente</span>.</li>
                 <li className="pl-2">A secretária negocia o horário e confirma. O status muda para <span className="text-amber-500 font-bold">Confirmado</span>.</li>
-                <li className="pl-2">O profissional inicia o procedimento no <strong>Meu Painel</strong>. O status muda para <span className="text-emerald-400 font-bold">Em Atendimento</span>.</li>
+                <li className="pl-2">O profissional inicia o procedimento no <strong>Meu Painel</strong>. O status muda para <span className="text-black italic font-bold">Em Atendimento</span>.</li>
                 <li className="pl-2">Na cadeira, o profissional lança insumos por grama (com busca inteligente) e faz upsell de produtos de balcão.</li>
                 <li className="pl-2">Ao terminar, clica em "Encerrar Atendimento" e o agendamento vai para <span className="text-blue-400 font-bold">Finalizou (Pagamento)</span>.</li>
               </ol>

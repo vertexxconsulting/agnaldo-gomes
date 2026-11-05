@@ -291,7 +291,7 @@ export default function AdminAlunosPage() {
                     </td>
                     <td className="py-4 px-6">
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                        aluno.status === 'Ativo' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                        aluno.status === 'Ativo' ? 'bg-green-500/10 text-black italic border border-green-500/20' :
                         aluno.status === 'Concluído' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
                         aluno.status === 'Bloqueado' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
                         'bg-foreground/10 text-foreground/50 border border-foreground/20'
@@ -354,7 +354,7 @@ export default function AdminAlunosPage() {
                                 </div>
                                 <span className="text-sm font-medium text-foreground/70">{detalhes.progresso}%</span>
                                 {detalhes.concluido && (
-                                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-green-500/10 text-green-500 border border-green-500/20">
+                                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-green-500/10 text-black italic border border-green-500/20">
                                     Concluído
                                   </span>
                                 )}

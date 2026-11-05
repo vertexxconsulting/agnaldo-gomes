@@ -393,7 +393,7 @@ export default function MensagensWhatsAppPage() {
             <Link href="/admin/api" title="Clique para gerenciar conexão do WhatsApp">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer hover:opacity-85 ${
                 waStatus.conectado
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-black italic'
                   : waStatus.state === 'connecting'
                   ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
                   : 'border-red-500/30 bg-red-500/10 text-red-400'
@@ -738,7 +738,7 @@ export default function MensagensWhatsAppPage() {
                             </p>
                           </div>
                           {i.ja_enviado_hoje || i.enviada_via_api ? (
-                            <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+                            <span className="text-[10px] font-bold bg-emerald-500/15 text-black italic px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
                               ENVIADA HOJE
                             </span>
                           ) : i.wa_link ? (
@@ -968,7 +968,7 @@ function LinhaClienteMensagem({
       {/* Ações e status do disparo */}
       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
         {item.ja_enviado_hoje || item.enviada_via_api ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/15 text-black italic px-3 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
             <CheckCircle2 size={12} /> ENVIADA HOJE
           </span>
         ) : !temTelefone ? (
@@ -1042,7 +1042,7 @@ function BotaoReativar({ id, nome, telefone, dias }: { id: string; nome: string;
   if (!url) return <span className="text-[10px] text-foreground/40">—</span>;
   if (enviado) {
     return (
-      <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
+      <span className="text-[10px] font-bold bg-emerald-500/15 text-black italic px-2 py-1 rounded-full border border-emerald-500/30 whitespace-nowrap">
         ENVIADA HOJE
       </span>
     );

@@ -114,3 +114,17 @@ body {
 svg.lucide {
   stroke-width: 1.5 !important;
 }
+
+/* Padronização global: substitui textos em verde claro por preto em itálico */
+.text-emerald-200,
+.text-emerald-300,
+.text-emerald-400,
+.text-emerald-500,
+.text-emerald-600,
+.text-green-400,
+.text-green-500,
+.text-green-600 {
+  color: #000000 !important;
+  font-style: italic !important;
+}
+

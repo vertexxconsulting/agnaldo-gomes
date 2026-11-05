@@ -46,3 +46,4 @@ const ProcedimentoList: React.FC<Props> = ({ title, items }) => {
 };
 
 export default ProcedimentoList;
+

@@ -476,7 +476,7 @@ function PagamentoModal({
                       <p className="text-[11px] font-mono break-all text-white/80">{pixGerado}</p>
                     </>
                   ) : (
-                    <p className="text-xs text-emerald-300 font-bold flex items-center gap-2">
+                    <p className="text-xs text-black italic font-bold flex items-center gap-2">
                       <CheckCircle2 size={14} /> Pagamento PIX criado no Mercado Pago — o código copia-e-cola foi registrado.
                     </p>
                   )}

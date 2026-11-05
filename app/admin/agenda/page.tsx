@@ -74,7 +74,7 @@ const CORES_PROCESSO_AGENDA: Record<StatusAgendamento, EstiloProcessoAgenda> = {
     badgeClass: 'bg-emerald-200 dark:bg-emerald-600 text-black dark:text-white border-emerald-400 dark:border-emerald-600',
     servicoClass: 'text-black dark:text-white',
     textCliente: 'text-black dark:text-white font-bold',
-    textHora: 'text-black/800 dark:text-emerald-200',
+    textHora: 'text-black/800 dark:text-black italic',
   },
   concluido: {
     label: 'Pagamento',
@@ -2529,8 +2529,8 @@ function AgendaContent() {
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f0fdf4] dark:bg-emerald-950/25 border border-emerald-300/80 dark:border-emerald-600/40 shadow-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span className="font-bold text-emerald-950 dark:text-emerald-200 text-[11px]">Em Atendimento</span>
-              <span className="text-[10px] text-emerald-700/60 dark:text-emerald-300/60 font-mono hidden md:inline">(Verde)</span>
+              <span className="font-bold text-emerald-950 dark:text-black italic text-[11px]">Em Atendimento</span>
+              <span className="text-[10px] text-emerald-700/60 dark:text-black italic/60 font-mono hidden md:inline">(Verde)</span>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eff6ff] dark:bg-blue-950/25 border border-blue-300/80 dark:border-blue-600/40 shadow-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
@@ -3589,9 +3589,9 @@ function AgendaContent() {
 
             {/* Aviso informativo e botão fechar */}
             <div className="bg-emerald-100/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-xl p-3.5 text-xs text-emerald-950 dark:text-emerald-100 flex items-start gap-2.5 mb-4 shadow-xs">
-              <CheckCircle2 size={16} className="shrink-0 text-emerald-700 dark:text-emerald-400 mt-0.5" />
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-700 dark:text-black italic mt-0.5" />
               <span className="leading-relaxed">
-                <strong className="text-emerald-900 dark:text-emerald-200 font-bold">Tudo sincronizado:</strong> A baixa no estoque é imediata. O atendimento continua em andamento normalmente e todos estes produtos já estarão pré-carregados quando a secretária abrir o Fechamento no Caixa.
+                <strong className="text-emerald-900 dark:text-black italic font-bold">Tudo sincronizado:</strong> A baixa no estoque é imediata. O atendimento continua em andamento normalmente e todos estes produtos já estarão pré-carregados quando a secretária abrir o Fechamento no Caixa.
               </span>
             </div>
 
@@ -3707,11 +3707,11 @@ function AgendaContent() {
                           {/* BLOCO DE DESCONTO INDIVIDUAL DO PROFISSIONAL NESTE PROCEDIMENTO */}
                           <div className="p-2.5 bg-foreground/[0.02] border border-border-subtle/70 rounded-lg space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                              <span className="text-xs font-semibold text-emerald-800 dark:text-black italic flex items-center gap-1">
                                 <Tag size={12} /> Desconto do Profissional ({pNome}):
                               </span>
                               {temDesconto ? (
-                                <span className="text-[11px] text-emerald-900 dark:text-emerald-300 font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/60">
+                                <span className="text-[11px] text-emerald-900 dark:text-black italic font-mono font-bold bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700/60">
                                   -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(proc.desconto_valor)} ({proc.desconto_pct.toFixed(0)}%)
                                 </span>
                               ) : (
@@ -3771,7 +3771,7 @@ function AgendaContent() {
                                   type="button"
                                   onClick={() => handleProcedimentoDescontoPct(proc.id, pctVal)}
                                   className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${(pctVal === '0' && proc.desconto_pct === 0) || (proc.desconto_pct === parseFloat(pctVal))
-                                      ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 font-bold'
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-black italic font-bold'
                                       : 'border-[var(--border-subtle)] text-foreground/60 hover:text-foreground'
                                     }`}
                                 >
@@ -4050,7 +4050,7 @@ function AgendaContent() {
                               {temDesc ? (
                                 <p className="text-xs text-foreground/50 mt-0.5 flex items-center gap-1.5">
                                   <span className="line-through">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal)}</span>
-                                  <span className="text-emerald-800 dark:text-emerald-400 font-semibold">
+                                  <span className="text-emerald-800 dark:text-black italic font-semibold">
                                     Desc: {prod.descontoPct ? `${prod.descontoPct.toFixed(0)}%` : ''} (-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subOriginal - subFinal)})
                                   </span>
                                 </p>
@@ -4172,7 +4172,7 @@ function AgendaContent() {
                           <div className="flex justify-between items-center text-xs pt-1">
                             <span className="text-foreground/60">
                               Total do item: <strong className="text-foreground font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalItemFinal)}</strong>
-                              {descValItem > 0 && <span className="text-emerald-800 dark:text-emerald-400 ml-1.5 font-semibold">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
+                              {descValItem > 0 && <span className="text-emerald-800 dark:text-black italic ml-1.5 font-semibold">(-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(descValItem)})</span>}
                             </span>
                             <Button
                               variant="primary"
@@ -4201,7 +4201,7 @@ function AgendaContent() {
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                     {([
-                      ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-700 dark:text-emerald-400 border-emerald-400 dark:border-emerald-500/40'],
+                      ['DINHEIRO', 'Dinheiro', Banknote, 'text-emerald-700 dark:text-black italic border-emerald-400 dark:border-emerald-500/40'],
                       ['PIX', 'PIX', Smartphone, 'text-blue-700 dark:text-blue-400 border-blue-400 dark:border-blue-500/40'],
                       ['DEBITO', 'Débito', CreditCard, 'text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/40'],
                       ['CREDITO', 'Crédito', CreditCard, 'text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-500/40'],
@@ -4396,11 +4396,11 @@ function AgendaContent() {
                       <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
-                            <Percent size={14} className="text-emerald-700 dark:text-emerald-400" />
+                            <Percent size={14} className="text-emerald-700 dark:text-black italic" />
                             <span className="text-xs font-bold text-foreground">Desconto Geral Adicional na Conta <span className="text-foreground/40 font-normal">(opcional)</span></span>
                           </div>
                           {valorDescontoGeral > 0 && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold font-mono border border-emerald-300 dark:border-emerald-700/60">
+                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-black italic font-semibold font-mono border border-emerald-300 dark:border-emerald-700/60">
                               -{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}
                             </span>
                           )}
@@ -4480,7 +4480,7 @@ function AgendaContent() {
                                           <span className="font-mono whitespace-nowrap">
                                             {fmtMoeda(proc.preco_tabela)}
                                             {proc.desconto_valor > 0 && (
-                                              <span className="text-emerald-800 dark:text-emerald-400 ml-1 font-semibold">
+                                              <span className="text-emerald-800 dark:text-black italic ml-1 font-semibold">
                                                 (-{fmtMoeda(proc.desconto_valor)})
                                               </span>
                                             )}
@@ -4549,11 +4549,11 @@ function AgendaContent() {
                             </div>
 
                             <div className="p-2.5 bg-[var(--background)]/80 border border-emerald-300 dark:border-emerald-500/30 rounded-xl space-y-0.5">
-                              <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-400 text-[11px] font-bold uppercase">
+                              <div className="flex items-center justify-between text-emerald-800 dark:text-black italic text-[11px] font-bold uppercase">
                                 <span><DollarSign size={12} className="inline mr-1" /> Salão Líquido</span>
                                 <span className="text-[10px] font-mono">Receita</span>
                               </div>
-                              <p className="text-base font-black font-mono text-emerald-800 dark:text-emerald-300">
+                              <p className="text-base font-black font-mono text-emerald-800 dark:text-black italic">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoLiquidoSalao)}
                               </p>
                               <p className="text-[9px] text-foreground/60 font-medium">Faturamento líquido que fica com o salão.</p>
@@ -4569,13 +4569,13 @@ function AgendaContent() {
                           <span className="font-mono font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotalProcedimentosTabela)}</span>
                         </div>
                         {totalDescontosProcedimentos > 0 && (
-                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-black italic font-bold">
                             <span>Descontos Concedidos pelos Profissionais</span>
                             <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDescontosProcedimentos)}</span>
                           </div>
                         )}
                         {valorDescontoGeral > 0 && (
-                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-400 font-bold">
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-black italic font-bold">
                             <span>Desconto Adicional da Recepção</span>
                             <span className="font-mono">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorDescontoGeral)}</span>
                           </div>
@@ -4828,7 +4828,7 @@ function AgendaContent() {
                 <label className="block text-xs font-bold text-foreground/70 flex items-center justify-between">
                   <span>1. Cliente *</span>
                   {clienteSelecionado ? (
-                    <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1">
+                    <span className="text-[11px] font-semibold text-black italic flex items-center gap-1">
                       <Check size={12} /> Cliente selecionado
                     </span>
                   ) : (
@@ -5402,7 +5402,7 @@ function AgendaContent() {
                         );
                         if (futuros.length > 0) {
                           return (
-                            <div className="mt-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-md flex items-center gap-1.5">
+                            <div className="mt-2 text-xs font-semibold text-black italic bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-md flex items-center gap-1.5">
                               <CheckCircle2 size={13} className="shrink-0" />
                               <span>{futuros.length} agendamento(s) futuro(s) encontrado(s) para este cliente na agenda.</span>
                             </div>
@@ -5508,7 +5508,7 @@ function AgendaContent() {
                 {/* Status do Salão vs Profissional */}
                 {statusDiaInfo && (
                   <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${statusDiaInfo.tipo === 'aberto'
-                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                      ? 'bg-emerald-500/10 text-black italic border border-emerald-500/20'
                       : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                     }`}>
                     {statusDiaInfo.tipo === 'aberto' ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}

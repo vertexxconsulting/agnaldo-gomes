@@ -138,11 +138,11 @@ export default function CheckoutVIP() {
             <div className="space-y-4">
               <h3 className="font-bold text-foreground">O que está incluso:</h3>
               <ul className="space-y-2 text-sm text-foreground/80">
-                <li className="flex gap-2"><Check size={16} className="text-green-500 shrink-0" /> Formação presencial exclusiva</li>
+                <li className="flex gap-2"><Check size={16} className="text-black italic shrink-0" /> Formação presencial exclusiva</li>
                 {course.certificate_included && (
-                  <li className="flex gap-2"><Check size={16} className="text-green-500 shrink-0" /> Certificado de conclusão</li>
+                  <li className="flex gap-2"><Check size={16} className="text-black italic shrink-0" /> Certificado de conclusão</li>
                 )}
-                <li className="flex gap-2"><Check size={16} className="text-green-500 shrink-0" /> Contato direto e suporte</li>
+                <li className="flex gap-2"><Check size={16} className="text-black italic shrink-0" /> Contato direto e suporte</li>
               </ul>
             </div>
           </div>

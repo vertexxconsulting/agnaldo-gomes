@@ -225,7 +225,7 @@ export default function PerfilAlunoPage() {
                 <div
                   className={`mb-5 p-3.5 rounded-lg text-sm border flex items-center gap-2.5 transition-all ${
                     feedback.type === 'success'
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-black italic'
                       : 'bg-red-500/10 border-red-500/30 text-red-400'
                   }`}
                 >

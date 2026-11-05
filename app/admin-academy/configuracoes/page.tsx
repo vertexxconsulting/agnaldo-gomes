@@ -324,7 +324,7 @@ export default function AdminAcademyConfiguracoes() {
                       </div>
                       
                       {instanceState === 'open' ? (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-500 text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
+                        <span className="px-2 py-1 bg-green-500/20 text-black italic text-[10px] font-bold uppercase rounded-md flex items-center gap-1">
                           Conectado
                         </span>
                       ) : instanceState === 'connecting' ? (
@@ -386,7 +386,7 @@ export default function AdminAcademyConfiguracoes() {
                         {instanceState === 'open' && (
                           <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-col items-center justify-center py-6">
                             <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-3">
-                              <CheckCircle2 size={32} className="text-green-500" />
+                              <CheckCircle2 size={32} className="text-black italic" />
                             </div>
                             <h4 className="font-bold text-foreground">WhatsApp Conectado!</h4>
                             <p className="text-xs text-foreground/60 mt-1 text-center max-w-sm">
@@ -460,7 +460,7 @@ export default function AdminAcademyConfiguracoes() {
                       </div>
                     </div>
                     {envStatus.mercadoPago ? (
-                      <span className="bg-green-500/10 text-green-500 px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
+                      <span className="bg-green-500/10 text-black italic px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
                     ) : (
                       <span className="bg-red-500/10 text-red-500 px-2 py-1 text-xs font-bold rounded">DESCONECTADO</span>
                     )}
@@ -493,7 +493,7 @@ export default function AdminAcademyConfiguracoes() {
                       </div>
                     </div>
                     {envStatus.stripe ? (
-                      <span className="bg-green-500/10 text-green-500 px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
+                      <span className="bg-green-500/10 text-black italic px-2 py-1 text-xs font-bold rounded">CONECTADO</span>
                     ) : (
                       <Button size="sm" variant="outline" disabled>Em Breve</Button>
                     )}

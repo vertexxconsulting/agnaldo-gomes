@@ -736,10 +736,10 @@ export default function AgendamentoPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {clienteReconhecido ? (
                     <div className="md:col-span-2 p-3.5 bg-emerald-100/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-xl flex items-center gap-3 text-xs text-emerald-950 dark:text-emerald-100 shadow-xs">
-                      <UserCheck size={20} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
+                      <UserCheck size={20} className="text-emerald-700 dark:text-black italic shrink-0" />
                       <div>
                         <p className="font-bold text-emerald-950 dark:text-emerald-100 text-sm">Cadastro localizado!</p>
-                        <p className="text-emerald-900/80 dark:text-emerald-200/80">Bem-vindo(a) de volta, <strong>{clienteReconhecido}</strong>. Seus dados foram carregados.</p>
+                        <p className="text-emerald-900/80 dark:text-black italic/80">Bem-vindo(a) de volta, <strong>{clienteReconhecido}</strong>. Seus dados foram carregados.</p>
                       </div>
                     </div>
                   ) : (
@@ -1331,7 +1331,7 @@ export default function AgendamentoPage() {
                       setTimeout(() => setCopiadoPix(false), 2500);
                     }}
                   >
-                    {copiadoPix ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                    {copiadoPix ? <Check size={14} className="text-black italic" /> : <Copy size={14} />}
                     {copiadoPix ? 'Copiado!' : 'Copiar'}
                   </Button>
                 </div>

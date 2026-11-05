@@ -132,7 +132,7 @@ export default function ProductDetailPage() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-sm shadow-xl flex items-center gap-2"
           >
-            <Check size={14} className="text-emerald-400" /> {toast}
+            <Check size={14} className="text-black italic" /> {toast}
           </motion.div>
         )}
       </AnimatePresence>
@@ -214,7 +214,7 @@ export default function ProductDetailPage() {
                 <div className="text-xs text-slate-500 mt-1 font-medium">
                   em até 12x de R$ {installments} sem juros no cartão
                 </div>
-                <div className="text-xs text-emerald-600 mt-1 font-medium">
+                <div className="text-xs text-black italic mt-1 font-medium">
                   ou R$ {(produto.price * 0.9).toFixed(2)} no PIX (10% de desconto)
                 </div>
               </>
@@ -338,7 +338,7 @@ export default function ProductDetailPage() {
               { icon: RotateCcw, label: 'Troca em 7 dias' },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center text-center gap-1.5">
-                <Icon size={18} className="text-emerald-600" />
+                <Icon size={18} className="text-black italic" />
                 <span className="text-[10px] text-slate-600 uppercase tracking-wider font-medium">{label}</span>
               </div>
             ))}

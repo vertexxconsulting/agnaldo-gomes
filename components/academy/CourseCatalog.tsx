@@ -129,8 +129,8 @@ export function CourseCatalog() {
                   <div className="flex items-center gap-2 mb-3 text-xs">
                     {isEnrolled ? (
                       <>
-                        <Unlock className="w-4 h-4 text-green-500" />
-                        <span className="text-green-500">Acesso liberado</span>
+                        <Unlock className="w-4 h-4 text-black italic" />
+                        <span className="text-black italic">Acesso liberado</span>
                       </>
                     ) : isPurchasable ? (
                       <>

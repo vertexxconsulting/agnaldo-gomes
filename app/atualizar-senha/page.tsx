@@ -80,7 +80,7 @@ export default function UpdatePasswordPage() {
         {status === 'success' ? (
           <div className="text-center mt-6">
             <div className="flex justify-center mb-4">
-              <CheckCircle className="text-green-500 w-16 h-16" />
+              <CheckCircle className="text-black italic w-16 h-16" />
             </div>
             <p className="text-foreground mb-6 text-sm">
               Sua senha foi atualizada com sucesso! Você já pode fazer login.

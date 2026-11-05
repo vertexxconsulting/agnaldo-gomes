@@ -76,7 +76,7 @@ export default function AdminVideoAcademy() {
               }`}
           >
             {isBunnyConfigurado ? (
-              <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+              <CheckCircle2 size={20} className="text-black italic mt-0.5 shrink-0" />
             ) : (
               <AlertTriangle size={20} className="text-amber-500 mt-0.5 shrink-0" />
             )}
@@ -113,7 +113,7 @@ export default function AdminVideoAcademy() {
               }`}
           >
             {isVimeoConfigurado ? (
-              <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
+              <CheckCircle2 size={20} className="text-black italic mt-0.5 shrink-0" />
             ) : (
               <AlertTriangle size={20} className="text-foreground/40 mt-0.5 shrink-0" />
             )}
