@@ -86,9 +86,14 @@ export async function POST(req: NextRequest) {
         userId = newUser.user.id;
       }
       
-      // GARANTIA: Atualiza a role na tabela profiles para STUDENT (sobrepondo o DEFAULT do banco)
+      // GARANTIA: Garante profile com role STUDENT e cria se não existir
       if (userId) {
-        await supabase.from('profiles').update({ role: 'STUDENT', full_name: nome }).eq('id', userId);
+        await supabase.from('profiles').upsert({
+          id: userId,
+          email,
+          full_name: nome,
+          role: 'STUDENT',
+        }, { onConflict: 'id' });
       }
 
       // 3) Descobrir qual curso vincular
