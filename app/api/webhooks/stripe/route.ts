@@ -89,36 +89,56 @@ export async function POST(req: NextRequest) {
           }
 
           if (userId) {
-            // 3. Criar/atualizar payment_records
+            // 3. Criar/atualizar payment_records (sem depender de constraint UNIQUE em provider_payment_id)
             const amountBrl = session.amount_total ? session.amount_total / 100 : 0;
-            
-            const { data: paymentRecord, error: paymentError } = await supabase
+
+            const { data: existingPayment } = await supabase
               .from('payment_records')
-              .upsert({
+              .select('id')
+              .eq('provider_payment_id', paymentId)
+              .maybeSingle();
+
+            const paymentPayload = {
+              user_id: userId,
+              course_id: cursoId,
+              provider: 'stripe',
+              provider_payment_id: paymentId,
+              provider_session_id: session.id,
+              amount_brl: amountBrl,
+              currency: session.currency?.toUpperCase() || 'BRL',
+              status: 'paid',
+              metadata: {
+                stripe_session_id: session.id,
+                stripe_customer_id: session.customer as string,
+                email_aluno: email,
+                nome_aluno: nome,
+              },
+              paid_at: new Date().toISOString(),
+            };
+
+            if (existingPayment?.id) {
+              await supabase.from('payment_records').update(paymentPayload).eq('id', existingPayment.id);
+            } else {
+              const { error: paymentError } = await supabase.from('payment_records').insert(paymentPayload);
+              if (paymentError) {
+                console.error('Erro ao criar payment_records:', paymentError);
+              }
+            }
+
+            // 4. Garantir liberação da matrícula em course_enrollments
+            const { data: enrollmentExists } = await supabase
+              .from('course_enrollments')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('course_id', cursoId)
+              .maybeSingle();
+
+            if (!enrollmentExists) {
+              await supabase.from('course_enrollments').insert({
                 user_id: userId,
                 course_id: cursoId,
-                provider: 'stripe',
-                provider_payment_id: paymentId,
-                provider_session_id: session.id,
-                amount_brl: amountBrl,
-                currency: session.currency?.toUpperCase() || 'BRL',
-                status: 'paid',
-                metadata: {
-                  stripe_session_id: session.id,
-                  stripe_customer_id: session.customer as string,
-                  email_aluno: email,
-                  nome_aluno: nome,
-                },
-                paid_at: new Date().toISOString(),
-              }, { onConflict: 'provider_payment_id' })
-              .select('id')
-              .single();
-
-            if (paymentError) {
-              console.error('Erro ao criar payment_records:', paymentError);
-            } else {
-              // 4. Trigger automático criará a matrícula via create_enrollment_after_payment
-              console.log(`[stripe-webhook] Pagamento registrado: ${paymentRecord?.id}, matrícula será criada via trigger`);
+                enrolled_at: new Date().toISOString(),
+              });
             }
           }
         }
