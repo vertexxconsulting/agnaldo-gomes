@@ -876,7 +876,7 @@ export default function TeamManagementPage() {
                 </div>
               </div>
 
-              {{tipoAcesso !== 'profissional' && (/* LOJA */}
+              {tipoAcesso !== 'profissional' && (
               <div>
                 <h4 className="text-xs font-bold text-gold uppercase mb-2">Loja Física / E-commerce</h4>
                 <div className="space-y-1">
