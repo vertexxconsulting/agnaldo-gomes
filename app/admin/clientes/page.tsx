@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History, X, MapPin } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, FileText, ChevronDown, ChevronUp, History, X, MapPin, Sparkles, Plus } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/SectionTitle';
 import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
 import { useModulePermission } from '@/lib/use-module-permission';
 import { getClientes, getAgendamentos, getServicos, getProfissionais, getServicoNome, getServicoPreco, getProfissionalNome, STATUS_LABELS } from '@/lib/mock-data';
-import type { Cliente, Agendamento, Servico, Profissional } from '@/lib/gestao-types';
+import type { Cliente, Agendamento, Servico, Profissional, PacoteCliente } from '@/lib/gestao-types';
+import { fetchPacotesClientes, salvarPacoteCliente } from '@/lib/pacotes';
 
 // Utilitários para dividir e compor endereços de forma inteligente
 function parseEndereco(raw?: string | null) {
@@ -111,6 +112,16 @@ export default function ClienteModule() {
   const { isReadOnly } = useModulePermission('clientes');
   const numeroRef = useRef<HTMLInputElement>(null);
 
+  // Estados de pacote de serviço
+  const [pacotes, setPacotes] = useState<PacoteCliente[]>([]);
+  const [showPacoteForm, setShowPacoteForm] = useState<string | null>(null);
+  const [novoPacoteServico, setNovoPacoteServico] = useState('');
+  const [novoPacoteNome, setNovoPacoteNome] = useState('');
+  const [novoPacoteSessoes, setNovoPacoteSessoes] = useState('');
+  const [novoPacoteValor, setNovoPacoteValor] = useState('');
+  const [novoPacoteObs, setNovoPacoteObs] = useState('');
+  const [salvandoPacote, setSalvandoPacote] = useState(false);
+
   const buscarCep = async (cepInput: string) => {
     const cepLimpo = cepInput.replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
@@ -177,6 +188,15 @@ export default function ClienteModule() {
     };
     carregarDados();
   }, []);
+
+  // Carregar pacotes do cliente quando o card é expandido
+  useEffect(() => {
+    if (expandido) {
+      carregarPacotes(expandido);
+    } else {
+      setPacotes([]);
+    }
+  }, [expandido]);
 
   // Calcula estatísticas do CRM (Ticket Médio, Visitas, Faturamento Total, Última Visita)
   const statsCliente = (clienteId: string) => {
@@ -305,6 +325,57 @@ export default function ClienteModule() {
     } catch (err: any) {
       console.error('Erro ao excluir cliente:', err);
       alert(`Erro ao excluir no banco: ${err.message}`);
+    }
+  };
+
+  // ── PACOTES DE CLIENTE ──────────────────────────────────
+
+  const carregarPacotes = async (clienteId: string) => {
+    const pacotesData = await fetchPacotesClientes(clienteId);
+    setPacotes(pacotesData);
+  };
+
+  const abrirNovoPacote = (clienteId: string) => {
+    setShowPacoteForm(clienteId);
+    setNovoPacoteServico('');
+    setNovoPacoteNome('');
+    setNovoPacoteSessoes('');
+    setNovoPacoteValor('');
+    setNovoPacoteObs('');
+  };
+
+  const salvarNovoPacote = async (clienteId: string) => {
+    setSalvandoPacote(true);
+    try {
+      const pacote: PacoteCliente = {
+        id: `pacote_${Date.now()}`,
+        cliente_id: clienteId,
+        servico_id: novoPacoteServico,
+        nome_pacote: novoPacoteNome,
+        sessoes_total: Number(novoPacoteSessoes),
+        sessoes_utilizadas: 0,
+        sessoes_restantes: Number(novoPacoteSessoes),
+        valor_total_pago: Number(novoPacoteValor),
+        data_aquisicao: new Date().toISOString().split('T')[0],
+        observacoes: novoPacoteObs || null,
+        status: 'ATIVO',
+      };
+      const ok = await salvarPacoteCliente(pacote);
+      if (ok) {
+        await carregarPacotes(clienteId);
+        setNovoPacoteServico('');
+        setNovoPacoteNome('');
+        setNovoPacoteSessoes('');
+        setNovoPacoteValor('');
+        setNovoPacoteObs('');
+        setShowPacoteForm(null);
+      } else {
+        alert('Erro ao salvar pacote.');
+      }
+    } catch (err: any) {
+      alert('Erro ao salvar pacote: ' + err.message);
+    } finally {
+      setSalvandoPacote(false);
     }
   };
 
@@ -582,6 +653,139 @@ export default function ClienteModule() {
                       <div className={`pt-2 flex gap-2 ${isReadOnly ? 'hidden' : ''}`}>
                         <Button variant="outline" size="sm" className="flex-1 text-xs py-1.5 h-auto" onClick={(e) => { e.stopPropagation(); abrirEdicaoCliente(c); }}><Edit size={14} className="mr-1"/> Editar</Button>
                         <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 h-auto py-1.5" onClick={(e) => { e.stopPropagation(); excluir(c.id); }}><Trash2 size={14}/></Button>
+                      </div>
+
+                      {/* Pacotes de Serviço do Cliente */}
+                      <div className="pt-2 border-t border-[var(--border-subtle)]">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-foreground/40 flex items-center gap-1">
+                            <Sparkles size={12} /> Pacotes de Serviço
+                          </span>
+                          {!isReadOnly && (
+                            <Button variant="outline" size="sm" className="text-xs py-1 h-auto" onClick={() => abrirNovoPacote(c.id)}>
+                              <Plus size={12} className="mr-1" /> Novo Pacote
+                            </Button>
+                          )}
+                        </div>
+
+                        {pacotes.length === 0 ? (
+                          <div className="text-sm text-foreground/40 p-3 border border-[var(--border-subtle)] rounded-md text-center italic">
+                            Nenhum pacote de serviço cadastrado.
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {pacotes.map(p => {
+                              const servicoNome = servicos.find(s => s.id === p.servico_id)?.nome || 'Serviço';
+                              const usoPct = p.sessoes_total > 0 ? Math.round((p.sessoes_utilizadas / p.sessoes_total) * 100) : 0;
+                              const isExpirado = p.status === 'CONCLUIDO';
+
+                              const badgeClass = isExpirado
+                                ? 'text-red-500 bg-red-500/10 border border-red-500/20'
+                                : p.sessoes_restantes > 0
+                                  ? 'text-emerald-700 bg-emerald-700/10 border border-emerald-700/20'
+                                  : 'text-foreground/40 border border-foreground/10';
+
+                              const barClass = `h-full ${isExpirado ? 'bg-red-500' : 'bg-gold'}`;
+                              const barStyle = { width: Math.min(usoPct, 100) + '%' };
+
+                              return (
+                                <div key={p.id} className={`p-2.5 rounded-lg border text-xs ${isExpirado ? 'bg-red-500/5 border-red-500/20' : 'bg-[var(--color-background)]/50 border-[var(--color-border)]'}`}>
+                                  <div className="flex justify-between items-start mb-1">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-foreground truncate">{p.nome_pacote}</div>
+                                      <div className="text-[10px] text-foreground/50 flex items-center gap-1">
+                                        <span>{servicoNome}</span>
+                                        <span className="text-foreground/30">•</span>
+                                        <span>R$ {Number(p.valor_total_pago).toFixed(2)}</span>
+                                      </div>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeClass}`}>
+                                      {isExpirado ? 'Concluído' : `${p.sessoes_restantes} de ${p.sessoes_total}`}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-foreground/10 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                    <div className={barClass} style={barStyle} />
+                                  </div>
+                                  <div className="flex justify-between items-center mt-1 text-[10px] text-foreground/50">
+                                    <span>Usadas: {p.sessoes_utilizadas}</span>
+                                    <span>Restantes: {p.sessoes_restantes}</span>
+                                    <span className="font-mono">Data: {new Date(p.data_aquisicao).toLocaleDateString('pt-BR')}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Form Novo Pacote */}
+                        {showPacoteForm === c.id && (
+                          <div className="mt-3 p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg space-y-2">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/40">Criar Novo Pacote</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-foreground/40 block mb-1">Serviço do Pacote</label>
+                                <select
+                                  value={novoPacoteServico}
+                                  onChange={e => setNovoPacoteServico(e.target.value)}
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-1.5 text-xs text-foreground focus:outline-none focus:border-gold"
+                                >
+                                  <option value="">Selecione o serviço...</option>
+                                  {servicos.filter(s => s.ativo).map(s => (
+                                    <option key={s.id} value={s.id}>{s.nome} — R$ {s.preco.toFixed(2)}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-foreground/40 block mb-1">Nome do Pacote</label>
+                                <input
+                                  value={novoPacoteNome}
+                                  onChange={e => setNovoPacoteNome(e.target.value)}
+                                  placeholder="Ex: Pacote de 10 Cortes"
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-1.5 text-xs text-foreground focus:outline-none focus:border-gold"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-foreground/40 block mb-1">Total de Sessões</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={novoPacoteSessoes}
+                                  onChange={e => setNovoPacoteSessoes(e.target.value)}
+                                  placeholder="Qtd"
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-gold"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-foreground/40 block mb-1">Valor Total Pago (R$)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={novoPacoteValor}
+                                  onChange={e => setNovoPacoteValor(e.target.value)}
+                                  placeholder="0,00"
+                                  className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-gold"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-foreground/40 block mb-1">Observações</label>
+                              <textarea
+                                value={novoPacoteObs}
+                                onChange={e => setNovoPacoteObs(e.target.value)}
+                                rows={2}
+                                placeholder="Ex: Pacote promocional de abertura..."
+                                className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded p-1.5 text-xs text-foreground focus:outline-none focus:border-gold resize-none"
+                              />
+                            </div>
+                            <div className="flex gap-2 justify-end mt-2">
+                              <Button type="button" variant="ghost" size="sm" className="text-xs py-1.5 h-auto" onClick={() => setShowPacoteForm(null)}>Cancelar</Button>
+                              <Button type="button" variant="primary" size="sm" className="text-xs py-1.5 h-auto" disabled={salvandoPacote || !novoPacoteServico || !novoPacoteNome || !novoPacoteSessoes || !novoPacoteValor} onClick={() => salvarNovoPacote(c.id)}>
+                                {salvandoPacote ? 'Salvando...' : 'Criar Pacote'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 

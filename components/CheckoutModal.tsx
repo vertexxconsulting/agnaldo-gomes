@@ -3,20 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, CheckCircle2, ShoppingBag, Beaker, Percent, Banknote, 
-  CreditCard, QrCode, Coins, Plus, Trash2, AlertCircle, Sparkles
+  CreditCard, QrCode, Coins, Plus, Trash2, AlertCircle, Sparkles, Package
 } from 'lucide-react';
 import { CardGlass } from '@/components/CardGlass';
 import { Button } from '@/components/Button';
 import { ProductSearchSelect } from '@/components/ProductSearchSelect';
 import type { 
   Agendamento, Servico, Profissional, Cliente, ProdutoEstoque, 
-  ServicoProduto, FormaPagamento, PaymentFee 
+  ServicoProduto, FormaPagamento, PaymentFee, PacoteCliente 
 } from '@/lib/gestao-types';
 import { 
   fetchEstoque, fetchTodosServicoProdutos, registrarMovimentacao, 
   criarComissao, fetchItensComanda, fetchTaxasPagamento, 
   calcularTaxaMaquininha, finalizarRecebimentoAgendamento, atualizarStatusAgendamento 
 } from '@/lib/supabase-queries';
+import { fetchPacotesClientes, abaterSessaoPacote } from '@/lib/pacotes';
 
 export interface InsumoAtendimento {
   inventory_id: string;
@@ -75,6 +76,11 @@ export function CheckoutModal({
   const [checkoutDescontoValor, setCheckoutDescontoValor] = useState<string>('');
   const [checkoutDescontoMotivo, setCheckoutDescontoMotivo] = useState<string>('');
 
+  // Estados de pacote de serviço
+  const [pacotesCliente, setPacotesCliente] = useState<PacoteCliente[]>([]);
+  const [pacoteSelecionado, setPacoteSelecionado] = useState<string | null>(null);
+  const [pacoteAvisoMostrado, setPacoteAvisoMostrado] = useState(false);
+
   const [checkoutNovoProdId, setCheckoutNovoProdId] = useState<string>('');
   const [checkoutNovoProdQty, setCheckoutNovoProdQty] = useState<string>('1');
   const [checkoutNovoProdDescPct, setCheckoutNovoProdDescPct] = useState<string>('');
@@ -109,6 +115,16 @@ export function CheckoutModal({
         }
 
         promises.push(fetchItensComanda(appt.id));
+
+        // Buscar pacotes ativos do cliente para este serviço
+        const pacotesData = await fetchPacotesClientes(appt.cliente_id);
+        const pacotesAtivosServico = pacotesData.filter(
+          p => p.servico_id === appt.servico_id && p.sessoes_restantes > 0 && p.status === 'ATIVO'
+        );
+        setPacotesCliente(pacotesAtivosServico);
+        if (pacotesAtivosServico.length > 0) {
+          setPacoteAvisoMostrado(true);
+        }
 
         const [estData, spData, taxasData, comandaItens] = await Promise.all(promises);
 
@@ -214,17 +230,30 @@ export function CheckoutModal({
     setSubmitting(true);
     try {
       // 1. Finalizar o atendimento principal no Supabase com forma de pagamento e total
+      const pacoteSel = pacotesCliente.find(p => p.id === pacoteSelecionado);
       const okRecebimento = await finalizarRecebimentoAgendamento({
         id: appt.id,
         paymentMethod: checkoutPagamento,
         installments: numParcelas,
         totalAmount: totalGeral,
         productCost: totalCustoInsumos,
+        pacoteUtilizadoId: pacoteSelecionado || undefined,
+        pacoteNome: pacoteSel?.nome_pacote || undefined,
+        descontadoPacote: Boolean(pacoteSelecionado),
       });
 
       if (!okRecebimento) {
         // Fallback para atualizar status simples
         await atualizarStatusAgendamento(appt.id, 'concluido');
+      }
+
+      // 2. Se usou pacote, abater 1 sessão
+      if (pacoteSelecionado) {
+        const abatido = await abaterSessaoPacote(pacoteSelecionado, appt.id);
+        if (!abatido.ok) {
+          console.warn('Erro ao abater sessão do pacote:', abatido.error);
+          alert(`Atenção: o fechamento foi registrado, mas não foi possível descontar a sessão do pacote.\nMotivo: ${abatido.error}`);
+        }
       }
 
       // Sincronizar com Bolten CRM em background
@@ -345,6 +374,65 @@ export function CheckoutModal({
             <p className="text-xs sm:text-sm text-foreground/60 mt-1">
               Cliente: <strong className="text-foreground">{getClienteNome(appt.cliente_id)}</strong> • Profissional: <strong>{getProfissionalNome(appt.profissional_id)}</strong> • <span className="text-amber-500 font-medium">Envio para a Gestão Financeira</span>
             </p>
+
+            {/* Aviso de Pacote Ativo */}
+            {pacoteAvisoMostrado && pacotesCliente.length > 0 && (
+              <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <Package size={14} className="text-amber-500" />
+                  <span className="font-bold text-amber-800 uppercase tracking-wider text-[10px]">
+                    Cliente possui pacote(s) ativo(s) para este serviço
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {pacotesCliente.map(p => {
+                    const usoPct = p.sessoes_total > 0 ? Math.round((p.sessoes_utilizadas / p.sessoes_total) * 100) : 0;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-2 bg-amber-500/5 rounded border border-amber-500/20">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-foreground truncate">{p.nome_pacote}</div>
+                          <div className="text-[10px] text-foreground/60 flex items-center gap-1">
+                            <span>{p.sessoes_restantes} de {p.sessoes_total} sessões restantes</span>
+                            <span className="text-foreground/30">•</span>
+                            <span>R$ {Number(p.valor_total_pago).toFixed(2)} total pago</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={pacoteSelecionado === p.id}
+                              onChange={() => setPacoteSelecionado(p.id)}
+                              className="accent-amber-500"
+                              disabled={pacoteSelecionado !== null && pacoteSelecionado !== p.id}
+                            />
+                            <span className="text-xs font-medium text-foreground">
+                              {pacoteSelecionado === p.id ? 'Selecionado' : 'Usar este pacote'}
+                            </span>
+                          </label>
+                          {pacoteSelecionado === p.id && (
+                            <button
+                              type="button"
+                              onClick={() => setPacoteSelecionado(null)}
+                              className="text-[10px] text-amber-600 hover:text-amber-800 underline font-medium px-1"
+                            >
+                              Remover
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {pacoteSelecionado && (
+                    <div className="bg-gold/10 border border-gold/20 rounded p-2 text-xs">
+                      <span className="font-bold text-gold">Pacote selecionado:</span>
+                      <span className="text-foreground ml-1">{pacotesCliente.find(p => p.id === pacoteSelecionado)?.nome_pacote}</span>
+                      <span className="text-foreground/60 ml-1">— 1 sessão será descontada ao finalizar</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <button 
             onClick={onClose} 

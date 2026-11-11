@@ -319,6 +319,12 @@ export default function TeamManagementPage() {
   return (
     <div className="py-4">
       <SectionTitle title="Gestão de Equipe" subtitle="Controle de acessos e hierarquias do sistema" align="left" />
+<div className="flex justify-between items-center sm:hidden mb-4">
+  <button className="flex items-center gap-2 text-sm font-medium text-primary bg-gold/10 hover:bg-gold/20 px-3 py-1.5 rounded">
+    <UserCheck size={16} className="text-primary" />
+    Marcar Cliente
+  </button>
+</div>
       {isReadOnly && <ReadOnlyNotice modulo="Gestão de Equipe" />}
 
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
@@ -870,7 +876,7 @@ export default function TeamManagementPage() {
                 </div>
               </div>
 
-              {/* LOJA */}
+              {{tipoAcesso !== 'profissional' && (/* LOJA */}
               <div>
                 <h4 className="text-xs font-bold text-gold uppercase mb-2">Loja Física / E-commerce</h4>
                 <div className="space-y-1">

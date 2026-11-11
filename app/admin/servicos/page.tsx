@@ -231,7 +231,7 @@ export default function ServicosPage() {
                 <th className="py-3 pr-4">Categoria</th>
                 <th className="py-3 pr-4">Duração</th>
                 <th className="py-3 pr-4">Preço</th>
-                <th className="py-3 pr-4">Comissão</th>
+                
                 <th className="py-3 pr-4">Profissionais</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4 text-right">Ações</th>
@@ -304,7 +304,7 @@ export default function ServicosPage() {
                         ? (s.preco_maximo ? `R$ ${Number(s.preco).toFixed(2)} - R$ ${Number(s.preco_maximo).toFixed(2)}` : `A partir de R$ ${Number(s.preco).toFixed(2)}`)
                         : `R$ ${Number(s.preco).toFixed(2)}`}
                     </td>
-                    <td className="py-3 pr-4 text-foreground/70 font-semibold">{s.default_commission_pct ?? 40}%</td>
+                    
                     <td className="py-3 pr-4 text-foreground/60 text-xs">
                       {(() => {
                         const profs = profsPorServico(s.id);

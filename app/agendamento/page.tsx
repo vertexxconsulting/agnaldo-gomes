@@ -546,7 +546,7 @@ export default function AgendamentoPage() {
       console.error('Erro no agendamento:', err);
       // Fallback de segurança: se a API retornar instabilidade, envia os dados diretamente para o WhatsApp do salão
       const destino = whatsappSalaoFormatado || '5542998271222';
-      const msgTexto = `*Novo Agendamento Solicitado* 📅\n\n👤 *Cliente:* ${formData.nome || 'Cliente'}\n📞 *Telefone:* ${formData.telefone}\n✂️ *Serviço:* ${servicoSelecionado?.nome || 'Serviço'}\n👤 *Profissional:* ${profissionalSelecionado?.nome || 'Especialista'}\n💰 *Valor:* R$ ${valorTotalServico.toFixed(2).replace('.', ',')}\n\n🗓️ *Data/Hora:* A ser definida pela secretaria\n\n_Olá! Gostaria de agendar este procedimento no Studio Agnaldo Gomes._`;
+      const msgTexto = `*Novo Agendamento Solicitado* 📅\n\n👤 *Cliente:* ${formData.nome || 'Cliente'}\n📞 *Telefone:* ${formData.telefone}\n✂️ *Serviço:* ${servicoSelecionado?.nome || 'Serviço'}\n👤 *Profissional:* ${profissionalSelecionado?.nome || 'Especialista'}\n\n🗓️ *Data/Hora:* A ser definida pela secretaria\n\n_Olá! Gostaria de agendar este procedimento no Studio Agnaldo Gomes._`;
       const fallbackUrl = `https://api.whatsapp.com/send?phone=${destino}&text=${encodeURIComponent(msgTexto)}`;
 
       const tentarDireto = confirm(`Aviso do agendamento: ${err.message || 'Houve uma instabilidade temporária'}.\n\nDeseja enviar sua solicitação diretamente para o WhatsApp do salão agora?`);
@@ -985,7 +985,7 @@ export default function AgendamentoPage() {
                 </span>
               </div>
               <p className="text-xs text-foreground/60 mb-4">
-                Procedimentos realizados exclusivamente por {profissionalSelecionado?.nome || 'este profissional'}. Todos os valores são &quot;a partir de&quot;.
+                Procedimentos realizados exclusivamente por {profissionalSelecionado?.nome || 'este profissional'}.
               </p>
 
               {/* Se o profissional não tiver procedimentos atrelados */}
@@ -1081,13 +1081,6 @@ export default function AgendamentoPage() {
                               <span className="text-[11px] text-foreground/50 block mt-0.5">{servico.categoria}</span>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="font-bold text-gold text-base text-right max-w-[120px] leading-tight block">
-                                {servico.preco_variavel 
-                                  ? (servico.preco_maximo 
-                                      ? `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')} a R$ ${Number(servico.preco_maximo).toFixed(2).replace('.', ',')}` 
-                                      : `A partir de R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`)
-                                  : `R$ ${Number(servico.preco).toFixed(2).replace('.', ',')}`}
-                              </span>
                               <span className="text-[11px] text-foreground/50 block">{servico.duracao_min} min</span>
                             </div>
                           </div>
@@ -1260,11 +1253,7 @@ export default function AgendamentoPage() {
                 <div className="flex justify-between py-1.5 text-base">
                   <span className="font-bold text-foreground">Valor:</span>
                   <span className="font-extrabold text-gold text-right">
-                    {servicoSelecionado?.preco_variavel
-                      ? (servicoSelecionado.preco_maximo 
-                          ? `R$ ${valorTotalServico.toFixed(2).replace('.', ',')} a R$ ${Number(servicoSelecionado.preco_maximo).toFixed(2).replace('.', ',')}` 
-                          : `A partir de R$ ${valorTotalServico.toFixed(2).replace('.', ',')}`)
-                      : `R$ ${valorTotalServico.toFixed(2).replace('.', ',')}`}
+                    Consulte a secretaria
                   </span>
                 </div>
               </div>
