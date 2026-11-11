@@ -357,7 +357,7 @@ export default function ClienteModule() {
         sessoes_restantes: Number(novoPacoteSessoes),
         valor_total_pago: Number(novoPacoteValor),
         data_aquisicao: new Date().toISOString().split('T')[0],
-        observacoes: novoPacoteObs || null,
+        observacoes: novoPacoteObs || undefined,
         status: 'ATIVO',
       };
       const ok = await salvarPacoteCliente(pacote);

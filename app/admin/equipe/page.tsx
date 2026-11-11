@@ -11,9 +11,9 @@ import { useModulePermission } from '@/lib/use-module-permission';
 import { fetchProfissionais, criarProfissional } from '@/lib/supabase-queries';
 import type { Profissional } from '@/lib/gestao-types';
 
-import { 
-  ADMIN_MODULES, STUDIO_MODULES, LOJA_MODULES, ACADEMY_MODULES, 
-  UserPermissions, PermissionLevel, DEFAULT_PERMISSIONS 
+import {
+  ADMIN_MODULES, STUDIO_MODULES, LOJA_MODULES, ACADEMY_MODULES,
+  UserPermissions, PermissionLevel, DEFAULT_PERMISSIONS
 } from '@/lib/permissions';
 
 export default function TeamManagementPage() {
@@ -26,23 +26,23 @@ export default function TeamManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tipoAcesso, setTipoAcesso] = useState<'profissional' | 'auxiliar' | 'administrativo'>('profissional');
   const [selectedProfissionalId, setSelectedProfissionalId] = useState<string>('');
-  const [newUser, setNewUser] = useState({ 
-    email: '', 
-    full_name: '', 
-    password: '', 
-    role: 'studio_profissional' as Role, 
-    nickname: '', 
+  const [newUser, setNewUser] = useState({
+    email: '',
+    full_name: '',
+    password: '',
+    role: 'studio_profissional' as Role,
+    nickname: '',
     avatar_url: '',
     professional_id: '',
-    permissions: { ...DEFAULT_PERMISSIONS } 
+    permissions: { ...DEFAULT_PERMISSIONS }
   });
   const [creating, setCreating] = useState(false);
-  
+
   // Modal de edição de permissões
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [editingNickname, setEditingNickname] = useState('');
   const [editPermissions, setEditPermissions] = useState<UserPermissions>({});
-  
+
   const [busca, setBusca] = useState('');
 
   async function safeFetch(url: string, options?: RequestInit) {
@@ -79,13 +79,10 @@ export default function TeamManagementPage() {
   }
 
   const getNicknameDisplay = (profile: any) => {
-    // 1. Nickname explícito no perfil (permissions ou retornado da API)
     const directNick = (profile.permissions as any)?.nickname || profile.nickname;
     if (directNick && typeof directNick === 'string' && directNick.trim()) {
       return directNick.trim().toLowerCase();
     }
-
-    // 2. Mapa global de nicknames cadastrados
     if (profile.email) {
       const emailLower = profile.email.toLowerCase().trim();
       for (const [nick, email] of Object.entries(nicknames)) {
@@ -94,8 +91,6 @@ export default function TeamManagementPage() {
         }
       }
     }
-
-    // 3. Fallback para primeiro nome ou sem-apelido
     return profile.full_name?.split(' ')[0]?.toLowerCase() || 'sem-apelido';
   };
 
@@ -138,13 +133,12 @@ export default function TeamManagementPage() {
           body: JSON.stringify({ email: editingProfile.email, nickname: nickToSave }),
         }).catch(err => console.warn('Aviso ao salvar nickname:', err));
       }
-
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: editingProfile.id, 
-          newRole: editingProfile.role, 
+        body: JSON.stringify({
+          userId: editingProfile.id,
+          newRole: editingProfile.role,
           permissions: permsToSave,
           nickname: nickToSave || undefined,
         }),
@@ -174,7 +168,6 @@ export default function TeamManagementPage() {
       }));
       return;
     }
-
     const prof = profissionaisSalao.find(p => p.id === profId);
     if (prof) {
       const primeiroNome = (prof.nome || '')
@@ -184,10 +177,8 @@ export default function TeamManagementPage() {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]/g, '');
-
       const fotoUrl = prof.foto_url || '';
       const emailSugerido = `${primeiroNome}@agnaldogomes.com`;
-
       setNewUser(prev => ({
         ...prev,
         full_name: prof.nome,
@@ -216,12 +207,10 @@ export default function TeamManagementPage() {
       alert('Preencha os campos obrigatórios (Nome, E-mail e Senha).');
       return;
     }
-
     setCreating(true);
     try {
       const perms = { ...newUser.permissions };
       let roleToSave = newUser.role;
-
       if (tipoAcesso === 'auxiliar') {
         roleToSave = ROLES.STUDIO_AUXILIAR;
         (perms as any).is_auxiliar = true;
@@ -237,35 +226,30 @@ export default function TeamManagementPage() {
         perms.comissoes = 'none';
         perms.equipe = 'none';
       }
-
       if (newUser.nickname.trim()) {
         (perms as any).nickname = newUser.nickname.trim().toLowerCase();
       }
       if (newUser.professional_id || selectedProfissionalId) {
         (perms as any).professional_id = newUser.professional_id || selectedProfissionalId;
       }
-
       await safeFetch('/api/admin/equipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...newUser, 
+        body: JSON.stringify({
+          ...newUser,
           role: roleToSave,
           permissions: perms,
           avatar_url: newUser.avatar_url,
           professional_id: newUser.professional_id || selectedProfissionalId,
         }),
       });
-
       if (newUser.nickname.trim()) {
         await safeFetch('/api/admin/nicknames', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: newUser.email, nickname: newUser.nickname.trim() }),
+          body: JSON.stringify({ email: newUser.email, nickname: newUser.nickname.trim() })
         }).catch(err => console.warn('Aviso ao registrar nickname:', err));
       }
-
-      // Se for auxiliar e não tem profissional vinculado, criar automaticamente na tabela de profissionais
       if (tipoAcesso === 'auxiliar' && !newUser.professional_id && !selectedProfissionalId) {
         try {
           await criarProfissional({
@@ -281,19 +265,18 @@ export default function TeamManagementPage() {
           console.warn('[equipe] Aviso: não foi possível criar registro de profissional para auxiliar:', err);
         }
       }
-
       alert('Usuário criado com sucesso!');
       setIsModalOpen(false);
       setSelectedProfissionalId('');
-      setNewUser({ 
-        email: '', 
-        full_name: '', 
-        password: '', 
-        role: 'studio_profissional', 
-        nickname: '', 
+      setNewUser({
+        email: '',
+        full_name: '',
+        password: '',
+        role: 'studio_profissional',
+        nickname: '',
         avatar_url: '',
         professional_id: '',
-        permissions: { ...DEFAULT_PERMISSIONS } 
+        permissions: { ...DEFAULT_PERMISSIONS }
       });
       await loadProfiles();
     } catch (e: any) {
@@ -303,8 +286,8 @@ export default function TeamManagementPage() {
     }
   }
 
-  const profilesFiltrados = profiles.filter((p) => 
-    p.full_name?.toLowerCase().includes(busca.toLowerCase()) || 
+  const profilesFiltrados = profiles.filter(p =>
+    p.full_name?.toLowerCase().includes(busca.toLowerCase()) ||
     p.email?.toLowerCase().includes(busca.toLowerCase())
   );
 
@@ -319,21 +302,20 @@ export default function TeamManagementPage() {
   return (
     <div className="py-4">
       <SectionTitle title="Gestão de Equipe" subtitle="Controle de acessos e hierarquias do sistema" align="left" />
-<div className="flex justify-between items-center sm:hidden mb-4">
-  <button className="flex items-center gap-2 text-sm font-medium text-primary bg-gold/10 hover:bg-gold/20 px-3 py-1.5 rounded">
-    <UserCheck size={16} className="text-primary" />
-    Marcar Cliente
-  </button>
-</div>
+      <div className="flex justify-between items-center sm:hidden mb-4">
+        <button className="flex items-center gap-2 text-sm font-medium text-primary bg-gold/10 hover:bg-gold/20 px-3 py-1.5 rounded">
+          <UserCheck size={16} className="text-primary" />
+          Marcar Cliente
+        </button>
+      </div>
       {isReadOnly && <ReadOnlyNotice modulo="Gestão de Equipe" />}
-
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
           <input
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full pl-10 pr-3 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            onChange={e => setBusca(e.target.value)}
+            className="w-full pl-10 pr-3 py-2.5 bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Buscar por nome ou e-mail..."
           />
         </div>
@@ -347,7 +329,6 @@ export default function TeamManagementPage() {
           </Button>
         )}
       </div>
-
       <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-lg">
         <table className="w-full text-left border-collapse">
           <thead className="bg-foreground/5 text-foreground text-xs font-bold uppercase tracking-widest">
@@ -375,16 +356,14 @@ export default function TeamManagementPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-gold/15 text-gold text-xs font-mono font-bold border border-gold/30">
-                    @{getNicknameDisplay(profile)}
-                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-gold/15 text-gold text-xs font-mono font-bold border border-gold/30">@{getNicknameDisplay(profile)}</span>
                 </td>
                 <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
                 <td className="px-6 py-4 text-center">
                   {!isReadOnly ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setEditingProfile(profile);
                         setEditingNickname(getNicknameDisplay(profile));
@@ -399,17 +378,17 @@ export default function TeamManagementPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <select 
+                  <select
                     value={profile.role}
-                    onChange={(e) => handleChangeRole(profile.id, e.target.value as Role)}
+                    onChange={e => handleChangeRole(profile.id, e.target.value as Role)}
                     disabled={isReadOnly || updatingId === profile.id}
                     className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
                   >
                     {Object.entries(ROLES)
                       .filter(([_, value]) => value === profile.role || (value !== ROLES.ALUNO && value !== ROLES.CUSTOMER))
                       .map(([key, value]) => (
-                      <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
-                    ))}
+                        <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
+                      ))}
                   </select>
                 </td>
               </tr>
@@ -419,11 +398,10 @@ export default function TeamManagementPage() {
         {profilesFiltrados.length === 0 && (
           <div className="py-20 text-center text-foreground/40">
             <p className="text-lg font-medium">Nenhum usuário encontrado.</p>
-            <p className="text-sm opacity-60">Use o botão "Novo Membro" para adicionar sua equipe.</p>
+            <p className="text-sm opacity-60">Use o botão \"Novo Membro\" para adicionar sua equipe.</p>
           </div>
         )}
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--color-card)] rounded-3xl w-full max-w-lg border border-[var(--border-subtle)] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -432,19 +410,15 @@ export default function TeamManagementPage() {
                 <div className="w-8 h-8 rounded-lg bg-gold/15 text-gold flex items-center justify-center">
                   <UserPlus size={18} />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">Criar Acesso ao Sistema</h3>
-                  <p className="text-[11px] text-foreground/60">Configure o login e perfil do membro da equipe</p>
-                </div>
+                <h3 className="text-lg font-bold text-foreground">Criar Acesso ao Sistema</h3>
+                <p className="text-[11px] text-foreground/60">Configure o login e perfil do membro da equipe</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-foreground/40 hover:text-foreground transition-colors p-1">
+              <button onClick={() => setIsModalOpen(false)} className="text-foreground/40 hover:text-foreground transition-colors">
                 <X size={20} />
               </button>
             </div>
-
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              
-              {/* Seleção do Tipo de Acesso: Profissional vs Auxiliar vs Administrativo */}
+              {/* Seleção do Tipo de Acesso */}
               <div className="grid grid-cols-3 gap-1.5 p-1 bg-foreground/5 rounded-2xl border border-[var(--border-subtle)]">
                 <button
                   type="button"
@@ -455,11 +429,7 @@ export default function TeamManagementPage() {
                       role: ROLES.STUDIO_PROFISSIONAL,
                     }));
                   }}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                    tipoAcesso === 'profissional'
-                      ? 'bg-gold text-black shadow-md'
-                      : 'text-foreground/70 hover:text-foreground'
-                  }`}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 ${tipoAcesso === 'profissional' ? 'bg-gold text-black shadow-md' : 'text-foreground/70 hover:text-foreground'}`}
                 >
                   <Scissors size={13} /> Profissional
                 </button>
@@ -478,11 +448,7 @@ export default function TeamManagementPage() {
                       professional_id: '',
                     }));
                   }}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                    tipoAcesso === 'auxiliar'
-                      ? 'bg-gold text-black shadow-md'
-                      : 'text-foreground/70 hover:text-foreground'
-                  }`}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 ${tipoAcesso === 'auxiliar' ? 'bg-gold text-black shadow-md' : 'text-foreground/70 hover:text-foreground'}`}
                 >
                   <Sparkles size={13} /> Auxiliar (Cabelo)
                 </button>
@@ -498,34 +464,24 @@ export default function TeamManagementPage() {
                       professional_id: '',
                     }));
                   }}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                    tipoAcesso === 'administrativo'
-                      ? 'bg-gold text-black shadow-md'
-                      : 'text-foreground/70 hover:text-foreground'
-                  }`}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 ${tipoAcesso === 'administrativo' ? 'bg-gold text-black shadow-md' : 'text-foreground/70 hover:text-foreground'}`}
                 >
                   <Shield size={13} /> Administrativo
                 </button>
               </div>
-
               {/* FLUXO 1: Profissional do Salão */}
               {tipoAcesso === 'profissional' && (
                 <div className="space-y-4">
-                  
-                  {/* Seletor de Profissional Cadastrado */}
                   <div className="p-3.5 rounded-2xl bg-gold/10 border border-gold/30 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
                         <Sparkles size={14} className="text-gold" /> Qual profissional receberá o acesso?
                       </label>
-                      <span className="text-[10px] text-foreground/50 font-medium">
-                        {profissionaisSalao.length} profissionais ativos
-                      </span>
+                      <span className="text-[10px] text-foreground/50 font-medium">{profissionaisSalao.length} profissionais ativos</span>
                     </div>
-
                     <select
                       value={selectedProfissionalId}
-                      onChange={(e) => handleSelectProfissional(e.target.value)}
+                      onChange={e => handleSelectProfissional(e.target.value)}
                       className="w-full bg-[var(--color-card)] border border-gold/40 focus:border-gold rounded-xl px-3.5 py-2.5 text-sm font-bold text-foreground outline-none shadow-sm cursor-pointer"
                     >
                       <option value="">Selecione um profissional cadastrado...</option>
@@ -535,8 +491,6 @@ export default function TeamManagementPage() {
                         </option>
                       ))}
                     </select>
-
-                    {/* Preview e Confirmação da Foto do Cadastro */}
                     {selectedProfissional && (
                       <div className="mt-2.5 p-3 rounded-xl bg-[var(--color-card)] border border-emerald-500/30 flex items-center gap-3 animate-in fade-in">
                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gold/60 bg-foreground/5 shrink-0 relative shadow">
@@ -551,40 +505,26 @@ export default function TeamManagementPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <p className="text-xs font-bold text-foreground truncate">{selectedProfissional.nome}</p>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-700 font-bold">
-                              ✓ Foto Vinculada
-                            </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-700 font-bold">✓ Foto Vinculada</span>
                           </div>
-                          <p className="text-[10px] text-foreground/60 truncate mt-0.5">
-                            Foto e dados carregados automaticamente do cadastro do salão.
-                          </p>
+                          <p className="text-[10px] text-foreground/60 truncate mt-0.5">Foto e dados carregados automaticamente do cadastro do salão.</p>
                         </div>
                       </div>
                     )}
+                    <div className="px-3 py-2 rounded-xl bg-foreground/5 border border-[var(--border-subtle)] text-[11px] text-foreground/70 flex items-center gap-2">
+                      <UserCheck size={14} className="text-gold shrink-0" />
+                      <span>{selectedProfissional ? 'Os dados e a foto de perfil já vieram definidos. Defina apenas a Senha Inicial abaixo.' : 'Selecione um profissional acima para carregar automaticamente o nome e a foto de perfil.'}</span>
+                    </div>
                   </div>
-
-                  {/* Aviso de facilidade */}
-                  <div className="px-3 py-2 rounded-xl bg-foreground/5 border border-[var(--border-subtle)] text-[11px] text-foreground/70 flex items-center gap-2">
-                    <UserCheck size={14} className="text-gold shrink-0" />
-                    <span>
-                      {selectedProfissional 
-                        ? 'Os dados e a foto de perfil já vieram definidos. Defina apenas a Senha Inicial abaixo.' 
-                        : 'Selecione um profissional acima para carregar automaticamente o nome e a foto de perfil.'}
-                    </span>
-                  </div>
-
-                  {/* Nome Completo (Auto-preenchido) */}
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Nome Completo</label>
                     <div className="relative flex items-center">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newUser.full_name}
                         readOnly={Boolean(selectedProfissional)}
-                        onChange={e => setNewUser({...newUser, full_name: e.target.value})}
-                        className={`w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground outline-none text-sm font-medium ${
-                          selectedProfissional ? 'opacity-80 bg-foreground/[0.03] cursor-not-allowed' : ''
-                        }`}
+                        onChange={e => setNewUser({ ...newUser, full_name: e.target.value })}
+                        className={`w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground outline-none text-sm font-medium ${selectedProfissional ? 'opacity-80 bg-foreground/[0.03] cursor-not-allowed' : ''}`}
                         placeholder="Selecione o profissional acima..."
                       />
                       {selectedProfissional && (
@@ -594,53 +534,42 @@ export default function TeamManagementPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* E-mail de Login */}
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">E-mail de Acesso</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       value={newUser.email}
-                      onChange={e => setNewUser({...newUser, email: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, email: e.target.value })}
                       className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
                       placeholder="email@agnaldogomes.com"
                     />
                   </div>
-
-                  {/* Nickname de Login */}
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Apelido / Nickname (Permite entrar sem digitar e-mail)</label>
                     <div className="relative flex items-center">
                       <span className="absolute left-4 text-gold font-bold text-sm">@</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newUser.nickname}
-                        onChange={e => setNewUser({...newUser, nickname: e.target.value})}
+                        onChange={e => setNewUser({ ...newUser, nickname: e.target.value })}
                         className="w-full bg-background border border-[var(--border-subtle)] rounded-xl pl-8 pr-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
                         placeholder="ex: edinaldo"
                       />
                     </div>
                   </div>
-
-                  {/* Senha Inicial */}
                   <div className="flex flex-col gap-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-                    <label className="block text-xs font-bold text-amber-900 uppercase">
-                      🔑 Senha Inicial de Acesso (Obrigatório)
-                    </label>
-                    <input 
-                      type="password" 
+                    <label className="block text-xs font-bold text-amber-900 uppercase">🔑 Senha Inicial de Acesso (Obrigatório)</label>
+                    <input
+                      type="password"
                       value={newUser.password}
-                      onChange={e => setNewUser({...newUser, password: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, password: e.target.value })}
                       className="w-full bg-[var(--color-card)] border border-amber-500/40 rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm font-mono"
                       placeholder="Defina uma senha provisória..."
                     />
-                    <p className="text-[10px] text-amber-900/80 mt-0.5">
-                      O profissional utilizará essa senha no login (com o e-mail ou com o @nickname).
-                    </p>
+                    <p className="text-[10px] text-amber-900/80 mt-0.5">O profissional utilizará essa senha no login (com o e-mail ou com o @nickname).</p>
                   </div>
                 </div>
               )}
-
               {/* FLUXO 2: Auxiliar (Cabelo) */}
               {tipoAcesso === 'auxiliar' && (
                 <div className="space-y-4">
@@ -659,78 +588,70 @@ export default function TeamManagementPage() {
                       <span className="px-2 py-0.5 rounded-md bg-foreground/10 text-foreground/60 border border-[var(--border-subtle)]">✕ Oculta Comissões</span>
                     </div>
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Nome Completo</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newUser.full_name}
-                      onChange={e => setNewUser({...newUser, full_name: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, full_name: e.target.value })}
                       className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
                       placeholder="Ex: Auxiliar de Cabelo"
                     />
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">E-mail de Acesso</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       value={newUser.email}
-                      onChange={e => setNewUser({...newUser, email: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, email: e.target.value })}
                       className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
                       placeholder="auxiliar@agnaldogomes.com"
                     />
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Nickname de Login (@)</label>
                     <div className="relative flex items-center">
                       <span className="absolute left-4 text-gold font-bold text-sm">@</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newUser.nickname}
-                        onChange={e => setNewUser({...newUser, nickname: e.target.value})}
+                        onChange={e => setNewUser({ ...newUser, nickname: e.target.value })}
                         className="w-full bg-background border border-[var(--border-subtle)] rounded-xl pl-8 pr-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
                         placeholder="ex: auxiliar"
                       />
                     </div>
                   </div>
-
                   <div className="flex flex-col gap-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-                    <label className="block text-xs font-bold text-amber-900 uppercase">
-                      🔑 Senha Inicial de Acesso (Obrigatório)
-                    </label>
-                    <input 
-                      type="password" 
+                    <label className="block text-xs font-bold text-amber-900 uppercase">🔑 Senha Inicial de Acesso (Obrigatório)</label>
+                    <input
+                      type="password"
                       value={newUser.password}
-                      onChange={e => setNewUser({...newUser, password: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, password: e.target.value })}
                       className="w-full bg-[var(--color-card)] border border-amber-500/40 rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm font-mono"
                       placeholder="Defina a senha da auxiliar..."
                     />
                   </div>
                 </div>
               )}
-
               {/* FLUXO 3: Cargo Administrativo */}
               {tipoAcesso === 'administrativo' && (
-                /* FLUXO 2: Cargo Administrativo Tradicional (Gestor, Secretária, etc.) */
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Nome Completo</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newUser.full_name}
-                      onChange={e => setNewUser({...newUser, full_name: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, full_name: e.target.value })}
                       className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
                       placeholder="Ex: Maria Secretária"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="block text-xs font-bold text-foreground/60 uppercase">E-mail Corporativo</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       value={newUser.email}
-                      onChange={e => setNewUser({...newUser, email: e.target.value})}
+                      onChange={e => setNewUser({ ...newUser, email: e.target.value })}
                       className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium"
                       placeholder="maria@empresa.com"
                     />
@@ -739,72 +660,30 @@ export default function TeamManagementPage() {
                     <label className="block text-xs font-bold text-foreground/60 uppercase">Nickname de Login (Opcional)</label>
                     <div className="relative flex items-center">
                       <span className="absolute left-4 text-gold font-bold text-sm">@</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newUser.nickname}
-                        onChange={e => setNewUser({...newUser, nickname: e.target.value})}
+                        onChange={e => setNewUser({ ...newUser, nickname: e.target.value })}
                         className="w-full bg-background border border-[var(--border-subtle)] rounded-xl pl-8 pr-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all font-mono text-sm"
-                        placeholder="ex: maria"
+                        placeholder="ex: admin"
                       />
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="block text-xs font-bold text-foreground/60 uppercase">Senha Inicial</label>
-                    <input 
-                      type="password" 
+                  <div className="flex flex-col gap-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                    <label className="block text-xs font-bold text-amber-900 uppercase">🔑 Senha Inicial de Acesso (Obrigatório)</label>
+                    <input
+                      type="password"
                       value={newUser.password}
-                      onChange={e => setNewUser({...newUser, password: e.target.value})}
-                      className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-mono"
-                      placeholder="••••••••"
+                      onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                      className="w-full bg-[var(--color-card)] border border-amber-500/40 rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm font-mono"
+                      placeholder="Defina a senha administrativa..."
                     />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="block text-xs font-bold text-foreground/60 uppercase">Papel (Role)</label>
-                    <select 
-                      value={newUser.role}
-                      onChange={e => setNewUser({...newUser, role: e.target.value as Role})}
-                      className="w-full bg-background border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-primary outline-none transition-all text-sm font-medium cursor-pointer"
-                    >
-                      {Object.entries(ROLES)
-                        .filter(([_, value]) => value !== ROLES.ALUNO && value !== ROLES.CUSTOMER && value !== ROLES.STUDIO_PROFISSIONAL)
-                        .map(([key, value]) => (
-                        <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Tabela de Permissões Granulares */}
-                  <div className="flex flex-col gap-1 mt-4">
-                    <label className="block text-xs font-bold text-foreground/60 uppercase mb-1">Permissões de Acesso</label>
-                    <div className="max-h-56 overflow-y-auto bg-foreground/5 rounded-xl border border-[var(--border-subtle)] p-2 space-y-3">
-                      <div>
-                        <h4 className="text-xs font-bold text-gold uppercase mb-1.5 px-2">Studio (Salão)</h4>
-                        <div className="space-y-1">
-                          {STUDIO_MODULES.map(mod => (
-                            <div key={mod.id} className="flex justify-between items-center text-xs px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
-                              <span className="font-medium text-foreground/80">{mod.label}</span>
-                              <select 
-                                value={newUser.permissions[mod.id] || 'none'}
-                                onChange={(e) => setNewUser({...newUser, permissions: {...newUser.permissions, [mod.id]: e.target.value as PermissionLevel}})}
-                                className="bg-background border border-[var(--border-subtle)] text-[11px] rounded px-2 py-1 outline-none focus:border-gold"
-                              >
-                                <option value="none">Ocultar</option>
-                                <option value="read">Leitura</option>
-                                <option value="write">Edição</option>
-                              </select>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
-
             </div>
-
-            <div className="p-5 border-t border-[var(--border-subtle)] bg-foreground/5 shrink-0">
-              <button 
+            <div className="p-6 border-t border-[var(--border-subtle)] bg-foreground/5 shrink-0">
+              <button
                 onClick={handleCreateUser}
                 disabled={creating || (tipoAcesso === 'profissional' && !newUser.full_name)}
                 className="w-full bg-gold text-black py-3 rounded-xl font-bold hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg text-sm"
@@ -812,9 +691,7 @@ export default function TeamManagementPage() {
                 {creating ? 'Criando Acesso...' : (
                   <>
                     <UserPlus size={18} />
-                    {tipoAcesso === 'profissional' 
-                      ? (selectedProfissional ? `Criar Acesso de ${selectedProfissional.nome.split(' ')[0]}` : 'Criar Acesso do Profissional')
-                      : 'Criar Acesso Administrativo'}
+                    {tipoAcesso === 'profissional' ? (selectedProfissional ? `Criar Acesso de ${selectedProfissional.nome.split(' ')[0]}` : 'Criar Acesso do Profissional') : 'Criar Acesso Administrativo'}
                   </>
                 )}
               </button>
@@ -822,7 +699,6 @@ export default function TeamManagementPage() {
           </div>
         </div>
       )}
-
       {/* Modal de Permissões */}
       {editingProfile && (
         <div className="fixed inset-0 z-50 bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -842,7 +718,7 @@ export default function TeamManagementPage() {
                 <label className="block text-xs font-bold text-gold uppercase mb-1.5">Nickname de Acesso (@)</label>
                 <div className="relative flex items-center">
                   <span className="absolute left-3 text-gold font-bold text-sm">@</span>
-                  <input 
+                  <input
                     type="text"
                     value={editingNickname}
                     onChange={e => setEditingNickname(e.target.value)}
@@ -850,22 +726,19 @@ export default function TeamManagementPage() {
                     className="flex-1 bg-background border border-[var(--border-subtle)] text-foreground text-sm rounded-xl pl-8 pr-3 py-2 outline-none focus:border-gold font-mono"
                   />
                 </div>
-                <p className="text-[11px] text-foreground/50 mt-1.5">
-                  Permite entrar no sistema digitando apenas este apelido ao invés do e-mail.
-                </p>
+                <p className="text-[11px] text-foreground/50 mt-1.5">Permite entrar no sistema digitando apenas este apelido ao invés do e-mail.</p>
               </div>
-
               {/* STUDIO */}
               <div>
                 <h4 className="text-xs font-bold text-gold uppercase mb-2">Studio (Salão)</h4>
                 <div className="space-y-1">
                   {STUDIO_MODULES.map(mod => (
-                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                    <div key={mod.id} className="flex justify-between items-center text-xs px-2 py-1 border-b border-[var(--border-subtle)] last:border-0">
                       <span className="font-medium text-foreground/80">{mod.label}</span>
-                      <select 
+                      <select
                         value={editPermissions[mod.id] || 'none'}
-                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
-                        className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
+                        onChange={e => setEditPermissions({ ...editPermissions, [mod.id]: e.target.value as PermissionLevel })}
+                        className="bg-background border border-[var(--border-subtle)] text-[11px] rounded px-2 py-1 outline-none focus:border-gold"
                       >
                         <option value="none">Ocultar</option>
                         <option value="read">Leitura</option>
@@ -875,38 +748,38 @@ export default function TeamManagementPage() {
                   ))}
                 </div>
               </div>
-
+              {/* LOJA */}
               {tipoAcesso !== 'profissional' && (
-              <div>
-                <h4 className="text-xs font-bold text-gold uppercase mb-2">Loja Física / E-commerce</h4>
-                <div className="space-y-1">
-                  {LOJA_MODULES.map(mod => (
-                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
-                      <span className="font-medium text-foreground/80">{mod.label}</span>
-                      <select 
-                        value={editPermissions[mod.id] || 'none'}
-                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
-                        className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
-                      >
-                        <option value="none">Ocultar</option>
-                        <option value="read">Leitura</option>
-                        <option value="write">Edição</option>
-                      </select>
-                    </div>
-                  ))}
+                <div>
+                  <h4 className="text-xs font-bold text-gold uppercase mb-2">Loja Física / E-commerce</h4>
+                  <div className="space-y-1">
+                    {LOJA_MODULES.map(mod => (
+                      <div key={mod.id} className="flex justify-between items-center text-xs px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                        <span className="font-medium text-foreground/80">{mod.label}</span>
+                        <select
+                          value={editPermissions[mod.id] || 'none'}
+                          onChange={e => setEditPermissions({ ...editPermissions, [mod.id]: e.target.value as PermissionLevel })}
+                          className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
+                        >
+                          <option value="none">Ocultar</option>
+                          <option value="read">Leitura</option>
+                          <option value="write">Edição</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
+              )}
               {/* ACADEMY */}
               <div>
                 <h4 className="text-xs font-bold text-gold uppercase mb-2">Academy (Cursos)</h4>
                 <div className="space-y-1">
                   {ACADEMY_MODULES.map(mod => (
-                    <div key={mod.id} className="flex justify-between items-center text-sm px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
+                    <div key={mod.id} className="flex justify-between items-center text-xs px-3 py-2 bg-foreground/5 rounded-lg border border-[var(--border-subtle)]">
                       <span className="font-medium text-foreground/80">{mod.label}</span>
-                      <select 
+                      <select
                         value={editPermissions[mod.id] || 'none'}
-                        onChange={(e) => setEditPermissions({...editPermissions, [mod.id]: e.target.value as PermissionLevel})}
+                        onChange={e => setEditPermissions({ ...editPermissions, [mod.id]: e.target.value as PermissionLevel })}
                         className="bg-background border border-[var(--border-subtle)] text-xs rounded px-2 py-1.5 outline-none focus:border-gold"
                       >
                         <option value="none">Ocultar</option>
@@ -917,10 +790,9 @@ export default function TeamManagementPage() {
                   ))}
                 </div>
               </div>
-
             </div>
             <div className="p-6 border-t border-[var(--border-subtle)] bg-foreground/5 shrink-0">
-              <button 
+              <button
                 onClick={handleSavePermissions}
                 disabled={updatingId === editingProfile.id}
                 className="w-full bg-gold text-black py-3 rounded-xl font-bold hover:bg-white transition-all disabled:opacity-50"
