@@ -5,6 +5,8 @@
  * - Se chamado sem ?execute=true, opera em modo PREVIEW (apenas lista, NUNCA dispara).
  * - Quando execute=true, respeita as travas de ativação (reativacao),
  *   horário programado, proteção anti-duplicação e intervalo mínimo de 1 minuto entre envios.
+ *
+ * NOTA: maxDuration = 300s para suportar múltiplos disparos com intervalo de 1 min cada.
  */
 import { NextResponse } from 'next/server';
 import { autorizadoCron, hojeBRT } from '@/lib/cron-auth';
@@ -15,6 +17,9 @@ import {
   getMarketingConfig, getDisparosHoje, registrarDisparoHoje,
   esperarIntervaloSeguro, horaAtualBRT, tentarObterLockDisparo, liberarLockDisparo,
 } from '@/lib/marketing-control';
+
+// Estende o timeout da função serverless para até 300 segundos (plano Pro do Vercel)
+export const maxDuration = 300;
 
 const DIAS_INATIVO = 90;
 

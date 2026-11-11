@@ -1,18 +1,24 @@
 /**
  * DISPATCHER UNIFICADO DE CRON (WhatsApp Marketing Studio Agnaldo Gomes)
  *
- * Pode ser chamado periodicamente (ex: a cada 10 ou 15 minutos via cron ou agendador externo).
+ * Executado automaticamente pelo Vercel Cron a cada 30 minutos.
  * - Verifica o horário atual de Brasília (BRT, UTC-3).
  * - Avalia cada sessão (Aniversários, Confirmações, Lembretes, Feedback, Reativação).
  * - Se a sessão estiver ATIVA e o horário atual for igual ou posterior ao horário configurado,
  *   dispara as mensagens pendentes garantindo:
  *   1. Anti-Duplicação: Nenhuma mensagem é enviada 2x no mesmo dia.
  *   2. Intervalo Mínimo de 1 minuto (60s) entre cada disparo sucessivo.
- *   3. Mutex/Lock para evitar execuções concorrentes.
+ *   3. Deduplicação via banco (Supabase) — segura em ambiente serverless.
+ *
+ * NOTA: maxDuration = 300s para suportar múltiplos disparos com intervalo de 1 min cada.
  */
 import { NextResponse } from 'next/server';
+
 import { autorizadoCron, hojeBRT } from '@/lib/cron-auth';
 import { getMarketingConfig, horaAtualBRT } from '@/lib/marketing-control';
+
+// Estende o timeout da função serverless para até 300 segundos (plano Pro do Vercel)
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   if (!(await autorizadoCron(req))) {
