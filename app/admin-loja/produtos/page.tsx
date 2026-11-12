@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Edit2, Trash2, ExternalLink, Package } from 'lucide-react';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { extractPromoFromRow, normalizeShopImageUrl } from '@/lib/shop-utils';
 import type { Produto } from '@/lib/gestao-types';
 
 // Mock fallback para produtos (usado quando Supabase não tem dados)
@@ -138,8 +138,12 @@ export default function AdminLojaProdutos() {
                   <tr key={produto.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="py-3 px-6">
                       <div className="w-12 h-12 bg-slate-100 rounded-md relative overflow-hidden flex items-center justify-center border border-slate-200">
-                        {produto.image_url ? (
-                          <Image src={produto.image_url} alt={produto.name} fill className="object-contain p-1" />
+                        {normalizeShopImageUrl(produto.image_url) ? (
+                          <img
+                            src={normalizeShopImageUrl(produto.image_url)}
+                            alt={produto.name}
+                            className="w-full h-full object-contain p-1"
+                          />
                         ) : (
                           <Package className="text-slate-400" size={20} />
                         )}
@@ -161,14 +165,35 @@ export default function AdminLojaProdutos() {
                       )}
                     </td>
                     <td className="py-3 px-6 text-sm font-medium text-slate-900">
-                      R$ {Number(produto.price || 0).toFixed(2).replace('.', ',')}
+                      {(() => {
+                        const promo = extractPromoFromRow(produto as unknown as Record<string, unknown>);
+                        return (
+                          <div className="flex flex-col">
+                            {promo.original_price && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                                <span className="line-through">
+                                  R$ {promo.original_price.toFixed(2).replace('.', ',')}
+                                </span>
+                                {promo.discount_pct && (
+                                  <span className="bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.2 rounded text-[10px]">
+                                    -{promo.discount_pct}%
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <span>
+                              R$ {Number(produto.price || 0).toFixed(2).replace('.', ',')}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-6">
                       {produto.type === 'AFFILIATE_ML' ? (
                         <span className="text-slate-400 text-sm">-</span>
                       ) : (
-                        <span className={`text-sm font-semibold ${(produto.stock ?? 0) > 0 ? 'text-black italic' : 'text-red-500'}`}>
-                          {produto.stock ?? 0} unid.
+                        <span className={`text-sm font-semibold ${(produto.stock_quantity ?? 0) > 0 ? 'text-black italic' : 'text-red-500'}`}>
+                          {produto.stock_quantity ?? 0} unid.
                         </span>
                       )}
                     </td>
@@ -179,8 +204,8 @@ export default function AdminLojaProdutos() {
                     </td>
                     <td className="py-3 px-6 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {produto.link && (
-                          <a href={produto.link} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Ver no Mercado Livre">
+                        {(produto.ml_link || produto.link) && (
+                          <a href={produto.ml_link || produto.link} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Ver no Mercado Livre">
                             <ExternalLink size={18} />
                           </a>
                         )}

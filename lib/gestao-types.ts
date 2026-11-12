@@ -171,10 +171,15 @@ export interface Produto {
   category: string;
   type: 'LOCAL_STOCK' | 'AFFILIATE_ML';
   price: number;
+  original_price?: number | null;
+  discount_pct?: number | null;
   stock?: number;
+  stock_quantity?: number;
   active: boolean;
   image_url?: string;
   link?: string;
+  ml_link?: string | null;
+  tagline?: string | null;
 }
 
 // ── ESTOQUE DO SALÃO ────────────────────────────────────────

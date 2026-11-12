@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Link as LinkIcon, Box, Upload, Info } from 'lucide-react';
+import { ArrowLeft, Save, Link as LinkIcon, Box } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { extractMlFromApi, saveAdminProduct } from '@/lib/admin-product-save';
+import { calcDiscountPct } from '@/lib/shop-utils';
+import { ProductImageField } from '@/components/admin-loja/ProductImageField';
 
 export default function NovoProdutoPage() {
   const [productType, setProductType] = useState<'AFFILIATE_ML' | 'LOCAL_STOCK'>('AFFILIATE_ML');
@@ -15,6 +18,8 @@ export default function NovoProdutoPage() {
     name: '',
     category: '',
     price: '',
+    original_price: '',
+    description: '',
     link: '',
     stock: '',
     image_url: '',
@@ -47,48 +52,21 @@ export default function NovoProdutoPage() {
       alert('Por favor, insira o link do Mercado Livre primeiro.');
       return;
     }
-    
+
     setIsExtracting(true);
     try {
-      const res = await fetch('/api/mercadolivre/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: formData.link })
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao extrair dados');
-      }
-
-      // Inferir categoria a partir do nome
-      let inferredCategory = '';
-      if (data.product.name) {
-        const nameLower = data.product.name.toLowerCase();
-        if (nameLower.includes('progressiva') || nameLower.includes('alisamento') || nameLower.includes('selagem') || nameLower.includes('botox')) {
-          inferredCategory = 'alisamento';
-        } else if (nameLower.includes('coloração') || nameLower.includes('tinta') || nameLower.includes('ox ') || nameLower.includes('pó descolorante')) {
-          inferredCategory = 'coloracao';
-        } else if (nameLower.includes('mascara') || nameLower.includes('hidratação') || nameLower.includes('tratamento') || nameLower.includes('shampoo') || nameLower.includes('condicionador') || nameLower.includes('kit')) {
-          inferredCategory = 'tratamento';
-        } else if (nameLower.includes('oleo') || nameLower.includes('óleo') || nameLower.includes('leave-in') || nameLower.includes('reparador') || nameLower.includes('protetor')) {
-          inferredCategory = 'finalizadores';
-        } else if (nameLower.includes('secador') || nameLower.includes('prancha') || nameLower.includes('chapinha') || nameLower.includes('modelador') || nameLower.includes('babyliss') || nameLower.includes('máquina')) {
-          inferredCategory = 'equipamentos';
-        }
-      }
-      
-      setFormData(prev => ({
+      const extracted = await extractMlFromApi(formData.link);
+      setFormData((prev) => ({
         ...prev,
-        name: data.product.name || prev.name,
-        price: data.product.price ? data.product.price.toString() : prev.price,
-        image_url: data.product.image_url || prev.image_url,
-        link: data.product.ml_link || prev.link,
-        category: inferredCategory || prev.category
+        name: extracted.name || prev.name,
+        description: extracted.description || prev.description,
+        price: extracted.price || prev.price,
+        original_price: extracted.original_price,
+        image_url: extracted.image_url || prev.image_url,
+        link: extracted.ml_link || prev.link,
+        category: extracted.category || prev.category,
       }));
-      
-      alert(data.message || 'Dados extraídos com sucesso!');
+      alert(extracted.message);
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Falha ao extrair dados. Verifique o link ou preencha manualmente.');
@@ -100,18 +78,22 @@ export default function NovoProdutoPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from('products').insert({
-        name: formData.name,
-        category: formData.category,
+      const priceVal = parseFloat(formData.price) || 0;
+      const originalVal = formData.original_price ? parseFloat(formData.original_price) : null;
+      const { error } = await saveAdminProduct({
         type: productType,
-        price: parseFloat(formData.price) || 0,
-        stock_quantity: productType === 'LOCAL_STOCK' ? parseInt(formData.stock) || 0 : 0,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        image_url: formData.image_url,
         active: formData.active,
-        image_url: formData.image_url || null,
         ml_link: formData.link || null,
+        price: priceVal,
+        original_price: originalVal,
+        stock_quantity: productType === 'LOCAL_STOCK' ? parseInt(formData.stock) || 0 : 0,
         salon_inventory_id: formData.salon_inventory_id || null,
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       router.push('/admin-loja/produtos');
     } catch (err) {
       console.error('Erro ao salvar produto:', err);
@@ -224,17 +206,44 @@ export default function NovoProdutoPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Preço de Venda (R$) *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Preço de Venda / Promocional (R$) *
+                </label>
                 <input type="number" step="0.01" placeholder="0,00" 
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Preço Original / De (R$)
+                  </label>
+                  {(() => {
+                    const pct = calcDiscountPct(parseFloat(formData.price), parseFloat(formData.original_price));
+                    return pct ? (
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
+                        {pct}% OFF
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                <input type="number" step="0.01" placeholder="Opcional (se em promoção)" 
+                  value={formData.original_price}
+                  onChange={(e) => setFormData({ ...formData, original_price: e.target.value })}
                   className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
-              <textarea rows={4} className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"></textarea>
+              <textarea
+                rows={4}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Detalhes e benefícios do produto..."
+                className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"
+              />
             </div>
           </div>
 
@@ -314,23 +323,11 @@ export default function NovoProdutoPage() {
             </div>
           </div>
 
-          {/* Imagem Principal */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Imagem Principal</h2>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-amber-500 transition-colors cursor-pointer group bg-slate-50">
-              <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:bg-amber-50 transition-colors text-slate-400 group-hover:text-amber-500">
-                <Upload size={24} />
-              </div>
-              <p className="text-sm font-semibold text-slate-700">Clique ou arraste a imagem</p>
-              <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP (Máx: 2MB)</p>
-            </div>
-            {productType === 'AFFILIATE_ML' && (
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-6 flex items-start gap-3">
-                <Info className="shrink-0 mt-0.5" size={18} />
-                <p>Ao salvar um link do Mercado Livre, o sistema buscará automaticamente o preço e o estoque se disponível. Produtos do Mercado Livre aparecem com o selo &quot;Afiliado&quot; na vitrine.</p>
-              </div>
-            )}
-          </div>
+          <ProductImageField
+            value={formData.image_url}
+            onChange={(nextUrl) => setFormData((prev) => ({ ...prev, image_url: nextUrl }))}
+            productType={productType}
+          />
 
         </div>
 

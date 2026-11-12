@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
@@ -11,23 +10,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { supabase } from '@/lib/supabase';
 import { type ShopProduct } from '@/lib/shop-mock';
+import { mapDbProductToShopProduct } from '@/lib/shop-utils';
+import { ShopProductImage } from '@/components/shop/ShopProductImage';
 
 function toProduct(p: any): ShopProduct {
-  return {
-    id: p.id,
-    type: p.type ?? 'LOCAL_STOCK',
-    name: p.name,
-    description: p.description ?? '',
-    category: p.category ?? 'Geral',
-    image_url: p.image_url ?? '',
-    active: p.active ?? true,
-    ml_link: p.ml_link ?? null,
-    price: p.price ?? null,
-    stock_quantity: p.stock_quantity ?? 0,
-    rating: p.rating ?? 4.8,
-    reviews: p.reviews ?? 20,
-    tagline: p.tagline ?? null,
-  };
+  return mapDbProductToShopProduct(p);
 }
 
 export default function ProductDetailPage() {
@@ -151,23 +138,26 @@ export default function ProductDetailPage() {
         {/* Galeria */}
         <div className="w-full md:w-[45%] lg:w-[40%] shrink-0 flex flex-col gap-3">
           <div className="bg-white border border-slate-200 aspect-square relative flex items-center justify-center overflow-hidden rounded-sm shadow-sm">
-            {produto.image_url ? (
-              <Image
-                src={produto.image_url}
-                alt={produto.name}
-                fill
-                className="object-contain p-8"
-              />
-            ) : (
-              <ShoppingBag size={64} className="text-slate-200" />
-            )}
-            {produto.tagline && (
-              <div className="absolute top-4 left-4 bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow">
-                {produto.tagline}
-              </div>
-            )}
+            <ShopProductImage
+              src={gallery[selectedImage] || produto.image_url}
+              alt={produto.name}
+              fallbackSize={64}
+              className="w-full h-full object-contain p-8"
+            />
+            <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
+              {produto.discount_pct && produto.original_price && (
+                <div className="bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow w-fit">
+                  {produto.discount_pct}% OFF
+                </div>
+              )}
+              {produto.tagline && (
+                <div className="bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow w-fit">
+                  {produto.tagline}
+                </div>
+              )}
+            </div>
             {produto.type === 'AFFILIATE_ML' && (
-              <div className="absolute top-4 right-4 bg-blue-100 text-blue-800 text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm border border-blue-200">
+              <div className="absolute top-4 right-4 bg-blue-100 text-blue-800 text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm border border-blue-200 z-10">
                 Via Mercado Livre
               </div>
             )}
@@ -184,7 +174,7 @@ export default function ProductDetailPage() {
                     i === selectedImage ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-slate-200'
                   }`}
                 >
-                  <Image src={img} alt="" fill className="object-contain p-2" />
+                  <ShopProductImage src={img} alt={produto.name} fallbackSize={20} className="w-full h-full object-contain p-2" />
                 </button>
               ))}
             </div>
@@ -206,8 +196,20 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="mb-5">
+            {produto.original_price && produto.price !== null && produto.original_price > produto.price && (
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm text-slate-400 line-through">
+                  De R$ {Number(produto.original_price).toFixed(2).replace('.', ',')}
+                </span>
+                {produto.discount_pct && (
+                  <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-sm">
+                    {produto.discount_pct}% OFF
+                  </span>
+                )}
+              </div>
+            )}
             <div className="text-3xl font-bold text-slate-900">
-              {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2)}` : 'Oferta no Mercado Livre'}
+              {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2).replace('.', ',')}` : 'Oferta no Mercado Livre'}
             </div>
             {produto.price && (
               <>
@@ -356,14 +358,22 @@ export default function ProductDetailPage() {
             {related.map(p => (
               <Link key={p.id} href={`/loja/p/${p.id}`} className="group flex flex-col bg-white border border-slate-200 rounded-sm hover:shadow-lg hover:border-amber-400 transition-all overflow-hidden">
                 <div className="relative w-full pt-[100%] bg-white">
-                  {p.image_url && (
-                    <Image src={p.image_url} alt={p.name} fill className="object-contain p-4 group-hover:scale-105 transition-transform duration-300" />
-                  )}
+                  <ShopProductImage
+                    src={p.image_url}
+                    alt={p.name}
+                    fallbackSize={36}
+                    className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                  />
                 </div>
                 <div className="p-3 flex flex-col flex-1 bg-slate-50/50">
                   <h3 className="text-[11px] text-slate-700 leading-tight line-clamp-2 group-hover:text-amber-600 transition-colors flex-1">{p.name}</h3>
-                  <div className="text-sm font-bold text-slate-900 mt-2">
-                    {p.price !== null ? `R$ ${Number(p.price).toFixed(2)}` : 'Ver oferta'}
+                  {p.original_price && p.price !== null && p.original_price > p.price && (
+                    <div className="text-[10px] text-slate-400 line-through mt-2">
+                      R$ {Number(p.original_price).toFixed(2).replace('.', ',')}
+                    </div>
+                  )}
+                  <div className={`text-sm font-bold text-slate-900 ${p.original_price && p.price !== null && p.original_price > p.price ? 'mt-0.5' : 'mt-2'}`}>
+                    {p.price !== null ? `R$ ${Number(p.price).toFixed(2).replace('.', ',')}` : 'Ver oferta'}
                   </div>
                 </div>
               </Link>

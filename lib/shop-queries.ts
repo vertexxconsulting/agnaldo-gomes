@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { ShopProduct } from '@/lib/shop-mock';
+import { mapDbProductToShopProduct } from '@/lib/shop-utils';
 
 /**
  * Query: lista todos os produtos ativos.
@@ -113,29 +114,5 @@ export async function checkStock(productId: string) {
  * na tabela, então o operador ?? do TypeScript cuida do fallback.
  */
 function mapRowToProduct(row: Record<string, unknown>): ShopProduct {
-  return {
-    id: String(row.id ?? ''),
-    type: (row.type as 'AFFILIATE_ML' | 'LOCAL_STOCK') ?? 'LOCAL_STOCK',
-    name: String(row.name ?? 'Sem nome'),
-    description: String(row.description ?? ''),
-    category: String(row.category ?? 'Geral'),
-    image_url: String(row.image_url ?? ''),
-    active: Boolean(row.active ?? true),
-    ml_link: row.ml_link ? String(row.ml_link) : null,
-    price:
-      row.price !== null && row.price !== undefined
-        ? Number(row.price)
-        : null,
-    stock_quantity: Number(row.stock_quantity ?? 0),
-    rating:
-      row.rating !== null && row.rating !== undefined
-        ? Number(row.rating)
-        : 4.8,
-    reviews:
-      row.reviews !== null && row.reviews !== undefined
-        ? Number(row.reviews)
-        : (Date.now() % 100) + 20,
-    featured: Boolean(row.featured ?? false),
-    tagline: row.tagline ? String(row.tagline) : undefined,
-  };
+  return mapDbProductToShopProduct(row);
 }

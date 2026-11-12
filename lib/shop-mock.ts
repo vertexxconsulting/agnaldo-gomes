@@ -14,6 +14,8 @@ export interface ShopProduct {
   active: boolean;
   ml_link: string | null;
   price: number | null;
+  original_price?: number | null;
+  discount_pct?: number | null;
   stock_quantity: number;
   rating: number;
   reviews: number;

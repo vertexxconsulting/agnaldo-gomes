@@ -9,6 +9,8 @@ import { useCartStore } from '@/store/cartStore';
 
 import { supabase } from '@/lib/supabase';
 import { type ShopProduct } from '@/lib/shop-mock';
+import { mapDbProductToShopProduct } from '@/lib/shop-utils';
+import { ShopProductImage } from '@/components/shop/ShopProductImage';
 
 const heroSlides = [
   { type: 'video', src: '/opt/hero-loop.mp4' },
@@ -27,21 +29,7 @@ const heroSlides = [
 ];
 
 function toProduct(p: any): ShopProduct {
-  return {
-    id: p.id,
-    type: p.type ?? 'LOCAL_STOCK',
-    name: p.name,
-    description: p.description ?? '',
-    category: p.category ?? 'Geral',
-    image_url: p.image_url ?? '',
-    active: p.active ?? true,
-    ml_link: p.ml_link ?? null,
-    price: p.price ?? null,
-    stock_quantity: p.stock_quantity ?? 0,
-    rating: p.rating ?? 4.8,
-    reviews: p.reviews ?? (Date.now() % 100) + 20,
-    tagline: p.tagline ?? null,
-  };
+  return mapDbProductToShopProduct(p);
 }
 
 export default function LojaHome() {
@@ -356,6 +344,11 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
 
       {/* Badges */}
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+        {produto.discount_pct && produto.original_price && (
+          <span className="bg-emerald-600 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm shadow">
+            {produto.discount_pct}% OFF
+          </span>
+        )}
         {produto.tagline && (
           <span className="bg-slate-900 text-white text-[8px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm shadow">
             {produto.tagline}
@@ -375,18 +368,12 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
 
       {/* Imagem */}
       <div className="relative w-full pt-[100%] bg-white">
-        {produto.image_url ? (
-          <Image
-            src={produto.image_url}
-            alt={produto.name}
-            fill
-            className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-300">
-            <ShoppingBag size={48} />
-          </div>
-        )}
+        <ShopProductImage
+          src={produto.image_url}
+          alt={produto.name}
+          fallbackSize={48}
+          className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+        />
       </div>
 
       {/* Info */}
@@ -402,8 +389,13 @@ function ProductCard({ produto, onAdd }: { produto: ShopProduct; onAdd: (p: Shop
         </div>
 
         <div className="mt-auto">
+          {produto.original_price && produto.price !== null && produto.original_price > produto.price && (
+            <div className="text-[11px] text-slate-400 line-through">
+              De R$ {Number(produto.original_price).toFixed(2).replace('.', ',')}
+            </div>
+          )}
           <div className="text-lg font-bold text-slate-900 mb-3">
-            {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2)}` : 'Ver oferta'}
+            {produto.price !== null ? `R$ ${Number(produto.price).toFixed(2).replace('.', ',')}` : 'Ver oferta'}
           </div>
 
           <button
