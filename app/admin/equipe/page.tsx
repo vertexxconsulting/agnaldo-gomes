@@ -300,14 +300,8 @@ export default function TeamManagementPage() {
   }
 
   return (
-    <div className="py-4">
+    <div className="py-4 w-full max-w-full overflow-x-hidden">
       <SectionTitle title="Gestão de Equipe" subtitle="Controle de acessos e hierarquias do sistema" align="left" />
-      <div className="flex justify-between items-center sm:hidden mb-4">
-        <button className="flex items-center gap-2 text-sm font-medium text-primary bg-gold/10 hover:bg-gold/20 px-3 py-1.5 rounded">
-          <UserCheck size={16} className="text-primary" />
-          Marcar Cliente
-        </button>
-      </div>
       {isReadOnly && <ReadOnlyNotice modulo="Gestão de Equipe" />}
       <div className="flex flex-col sm:flex-row gap-4 mt-8 mb-6">
         <div className="relative flex-1">
@@ -329,72 +323,74 @@ export default function TeamManagementPage() {
           </Button>
         )}
       </div>
-      <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-lg">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-foreground/5 text-foreground text-xs font-bold uppercase tracking-widest">
-            <tr className="border-b border-[var(--border-subtle)]">
-              <th className="px-6 py-4">Usuário</th>
-              <th className="px-6 py-4">Nickname</th>
-              <th className="px-6 py-4">E-mail</th>
-              <th className="px-6 py-4 text-center">Permissões</th>
-              <th className="px-6 py-4 text-right">Alterar Acesso</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
-            {profilesFiltrados.map((profile) => (
-              <tr key={profile.id} className="hover:bg-foreground/5 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt={profile.full_name || 'Usuário'} className="w-8 h-8 rounded-full object-cover border border-gold/30" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-black text-xs font-bold">
-                        {profile.full_name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                    )}
-                    <span className="text-foreground font-semibold text-sm">{profile.full_name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="px-2.5 py-1 rounded-lg bg-gold/15 text-gold text-xs font-mono font-bold border border-gold/30">@{getNicknameDisplay(profile)}</span>
-                </td>
-                <td className="px-6 py-4 text-foreground/60 text-sm">{profile.email}</td>
-                <td className="px-6 py-4 text-center">
-                  {!isReadOnly ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingProfile(profile);
-                        setEditingNickname(getNicknameDisplay(profile));
-                        setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
-                      }}
-                      disabled={updatingId === profile.id}
-                    >
-                      Editar
-                    </Button>
-                  ) : (
-                    <span className="text-xs text-foreground/40 italic">Somente leitura</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <select
-                    value={profile.role}
-                    onChange={e => handleChangeRole(profile.id, e.target.value as Role)}
-                    disabled={isReadOnly || updatingId === profile.id}
-                    className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
-                  >
-                    {Object.entries(ROLES)
-                      .filter(([_, value]) => value === profile.role || (value !== ROLES.ALUNO && value !== ROLES.CUSTOMER))
-                      .map(([key, value]) => (
-                        <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
-                      ))}
-                  </select>
-                </td>
+      <div className="bg-[var(--color-card)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-lg w-full">
+        <div className="w-full overflow-x-auto overscroll-x-contain touch-pan-x">
+          <table className="w-full min-w-[680px] text-left border-collapse">
+            <thead className="bg-foreground/5 text-foreground text-xs font-bold uppercase tracking-widest">
+              <tr className="border-b border-[var(--border-subtle)]">
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Usuário</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Nickname</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">E-mail</th>
+                <th className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">Permissões</th>
+                <th className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">Alterar Acesso</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {profilesFiltrados.map((profile) => (
+                <tr key={profile.id} className="hover:bg-foreground/5 transition-colors group">
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      {profile.avatar_url ? (
+                        <img src={profile.avatar_url} alt={profile.full_name || 'Usuário'} className="w-8 h-8 rounded-full object-cover border border-gold/30 shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-black text-xs font-bold shrink-0">
+                          {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      <span className="text-foreground font-semibold text-sm">{profile.full_name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-lg bg-gold/15 text-gold text-xs font-mono font-bold border border-gold/30">@{getNicknameDisplay(profile)}</span>
+                  </td>
+                  <td className="px-4 sm:px-6 py-4 text-foreground/60 text-sm whitespace-nowrap">{profile.email}</td>
+                  <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
+                    {!isReadOnly ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingProfile(profile);
+                          setEditingNickname(getNicknameDisplay(profile));
+                          setEditPermissions(profile.permissions || { ...DEFAULT_PERMISSIONS });
+                        }}
+                        disabled={updatingId === profile.id}
+                      >
+                        Editar
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-foreground/40 italic">Somente leitura</span>
+                    )}
+                  </td>
+                  <td className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">
+                    <select
+                      value={profile.role}
+                      onChange={e => handleChangeRole(profile.id, e.target.value as Role)}
+                      disabled={isReadOnly || updatingId === profile.id}
+                      className="bg-background border border-[var(--border-subtle)] text-foreground text-xs rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-gold/50 transition-all disabled:opacity-50"
+                    >
+                      {Object.entries(ROLES)
+                        .filter(([_, value]) => value === profile.role || (value !== ROLES.ALUNO && value !== ROLES.CUSTOMER))
+                        .map(([key, value]) => (
+                          <option key={key} value={value}>{ROLE_LABELS[value as Role] || value}</option>
+                        ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {profilesFiltrados.length === 0 && (
           <div className="py-20 text-center text-foreground/40">
             <p className="text-lg font-medium">Nenhum usuário encontrado.</p>

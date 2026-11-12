@@ -150,8 +150,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen bg-[var(--color-background)] overflow-hidden font-body antialiased">
       <PWAManifestSwitch manifest="/manifest-admin.json" />
       {sidebar}
-      <main className="flex-1 overflow-y-auto relative">
-        <div className="pt-14 md:pt-2 px-3 sm:px-5 lg:px-6 pb-10 w-full max-w-none">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative">
+        <div className="pt-14 md:pt-2 px-3 sm:px-5 lg:px-6 pb-10 w-full max-w-full">
           {children}
         </div>
       </main>
