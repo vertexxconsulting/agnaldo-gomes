@@ -10,7 +10,7 @@ import {
 import { 
   TrendingUp, Users, Scissors, AlertTriangle, Calendar, Filter, 
   DollarSign, CheckCircle2, Clock, ChevronRight, FileDown, Image as ImageIcon, Download,
-  BarChart3, PieChart as PieIcon, Crown
+  BarChart3, PieChart as PieIcon, Crown, Beaker, Scale, ShieldCheck
 } from 'lucide-react';
 import { gerarRelatorioFiltrado, ReportData, TipoPeriodoRelatorio, FiltroRelatorio } from '@/lib/reports';
 import { exportarRelatorioPDF, exportarRelatorioSVG } from '@/lib/export-reports';
@@ -221,8 +221,8 @@ export default function RelatoriosPage() {
         <div className="p-12 text-center text-foreground/50">Carregando relatório e métricas...</div>
       ) : (
         <>
-          {/* KPIs Rápidos */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPIs Rápidos (com Discriminação de Insumos para Recompra) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <CardGlass className="p-5 flex flex-col justify-between relative overflow-hidden border-gold/30 bg-gold/5">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Faturamento Bruto</span>
@@ -231,8 +231,36 @@ export default function RelatoriosPage() {
                 </span>
               </div>
               <div className="mt-3">
-                <span className="text-3xl font-black text-gold">R$ {data.faturamentoBruto.toFixed(2)}</span>
+                <span className="text-2xl xl:text-3xl font-black text-gold">R$ {data.faturamentoBruto.toFixed(2)}</span>
                 <p className="text-[11px] text-stone-600 font-medium mt-0.5">Total faturado no período</p>
+              </div>
+            </CardGlass>
+
+            <CardGlass className="p-5 flex flex-col justify-between bg-orange-500/10 border-2 border-orange-500/30">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-black uppercase tracking-widest text-orange-950">Separar p/ Insumos</span>
+                <span className="p-2 rounded-lg bg-orange-100 text-orange-800 border border-orange-200 shadow-xs">
+                  <Beaker size={18} />
+                </span>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl xl:text-3xl font-black text-orange-800">R$ {data.totalInsumosRecompra.toFixed(2)}</span>
+                <p className="text-[11px] text-orange-950 font-semibold mt-0.5">
+                  Fundo recompra ({data.atendimentosComInsumos} atend.)
+                </p>
+              </div>
+            </CardGlass>
+
+            <CardGlass className="p-5 flex flex-col justify-between bg-emerald-500/5 border-emerald-500/25">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Líquido s/ Insumos</span>
+                <span className="p-2 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs">
+                  <ShieldCheck size={18} />
+                </span>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl xl:text-3xl font-black text-emerald-800">R$ {data.faturamentoLiquidoSemInsumos.toFixed(2)}</span>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Livre após separar recompra</p>
               </div>
             </CardGlass>
             
@@ -244,21 +272,8 @@ export default function RelatoriosPage() {
                 </span>
               </div>
               <div className="mt-3">
-                <span className="text-3xl font-black text-foreground">{data.totalAtendimentos}</span>
-                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Clientes atendidos</p>
-              </div>
-            </CardGlass>
-
-            <CardGlass className="p-5 flex flex-col justify-between bg-amber-500/5 border-amber-500/20">
-              <div className="flex justify-between items-start">
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Ticket Médio</span>
-                <span className="p-2 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
-                  <TrendingUp size={18} />
-                </span>
-              </div>
-              <div className="mt-3">
-                <span className="text-3xl font-black text-amber-800">R$ {data.ticketMedio.toFixed(2)}</span>
-                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Média por atendimento</p>
+                <span className="text-2xl xl:text-3xl font-black text-foreground">{data.totalAtendimentos}</span>
+                <p className="text-[11px] text-stone-600 font-medium mt-0.5">Ticket Médio: R$ {data.ticketMedio.toFixed(2)}</p>
               </div>
             </CardGlass>
 
@@ -270,11 +285,117 @@ export default function RelatoriosPage() {
                 </span>
               </div>
               <div className="mt-3">
-                <span className="text-3xl font-black text-red-600">{data.totalCancelamentos}</span>
+                <span className="text-2xl xl:text-3xl font-black text-red-600">{data.totalCancelamentos}</span>
                 <p className="text-[11px] text-stone-600 font-medium mt-0.5">Cancelados ou No-show</p>
               </div>
             </CardGlass>
           </div>
+
+          {/* SEÇÃO EXCLUSIVA: DISCRIMINAÇÃO DE INSUMOS PARA RECOMPRA DE ESTOQUE */}
+          <CardGlass className="p-6 border-2 border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-orange-500/20 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-orange-500/20 text-orange-800 border border-orange-500/30 shrink-0 mt-0.5">
+                  <Beaker size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground flex flex-wrap items-center gap-2">
+                    Relatório de Insumos Gastos — Fundo de Recompra de Produtos
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-orange-600 text-white font-bold uppercase tracking-wider">
+                      Separar do Financeiro
+                    </span>
+                  </h3>
+                  <p className="text-xs text-foreground/70 mt-1 max-w-3xl">
+                    Discriminação exata de tudo o que foi gerado/gasto com <strong>insumos de procedimento</strong> no período ({data.tituloPeriodo}) para separar do financeiro e realizar a recompra/reposição dos produtos utilizados.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+                <div className="px-4 py-2.5 rounded-xl bg-stone-100 border border-stone-300 text-right">
+                  <span className="text-[10px] uppercase font-bold text-stone-600 block">Faturamento Bruto</span>
+                  <span className="text-lg font-black font-mono text-stone-900">R$ {data.faturamentoBruto.toFixed(2)}</span>
+                </div>
+                <div className="px-4 py-2.5 rounded-xl bg-orange-100 border-2 border-orange-400 text-right shadow-xs">
+                  <span className="text-[10px] uppercase font-extrabold text-orange-900 block">(-) Separar p/ Recompra</span>
+                  <span className="text-lg font-black font-mono text-orange-950">R$ {data.totalInsumosRecompra.toFixed(2)}</span>
+                </div>
+                <div className="px-4 py-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-right">
+                  <span className="text-[10px] uppercase font-bold text-emerald-900 block">(=) Saldo s/ Insumos</span>
+                  <span className="text-lg font-black font-mono text-emerald-950">R$ {data.faturamentoLiquidoSemInsumos.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {data.insumosParaRecompra.length === 0 ? (
+              <div className="p-6 rounded-xl bg-foreground/5 border border-border-subtle text-center text-sm text-foreground/50">
+                Nenhum gasto com insumos registrado nos atendimentos deste período.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-orange-500/25 bg-background/90 overflow-hidden">
+                <div className="px-4 py-3 bg-orange-500/10 border-b border-orange-500/20 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                    <Scale size={15} className="text-orange-700" />
+                    Produtos / Insumos Consumidos para Recompra ({data.insumosParaRecompra.length})
+                  </span>
+                  <span className="text-xs font-bold text-orange-900">
+                    Utilizados em {data.atendimentosComInsumos} de {data.totalAtendimentos} atendimentos
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-foreground/5 text-[11px] uppercase tracking-wider text-foreground/70">
+                        <th className="p-3 font-bold">Produto / Insumo</th>
+                        <th className="p-3 font-bold text-center">Consumo Total</th>
+                        <th className="p-3 font-bold text-right">Custo Médio Unit.</th>
+                        <th className="p-3 font-bold text-center">Atendimentos</th>
+                        <th className="p-3 font-bold text-center">% do Fundo</th>
+                        <th className="p-3 font-bold text-right">Valor a Separar p/ Recompra</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle/60">
+                      {data.insumosParaRecompra.map((ins, idx) => (
+                        <tr key={idx} className="hover:bg-foreground/5 transition-colors">
+                          <td className="p-3 font-bold text-foreground flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                            {ins.nome}
+                          </td>
+                          <td className="p-3 text-center font-mono font-bold text-foreground">
+                            {ins.quantidadeTotal} {ins.unidade}
+                          </td>
+                          <td className="p-3 text-right font-mono text-xs text-foreground/60">
+                            R$ {ins.custoUnitarioMedio.toFixed(2)}/{ins.unidade}
+                          </td>
+                          <td className="p-3 text-center font-mono text-xs text-foreground/80">
+                            {ins.atendimentos}x
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-100 text-orange-900 border border-orange-200">
+                              {ins.porcentagem}%
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono font-black text-orange-800">
+                            R$ {ins.custoTotalRecompra.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-orange-500/15 border-t-2 border-orange-500/30 font-extrabold">
+                        <td colSpan={5} className="p-3.5 text-xs uppercase tracking-wider text-orange-950">
+                          Total Geral de Insumos (Separar do Financeiro para Recompra de Produtos):
+                        </td>
+                        <td className="p-3.5 text-right font-mono text-base font-black text-orange-950">
+                          R$ {data.totalInsumosRecompra.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardGlass>
 
           {/* Gráficos */}
           {(() => {
@@ -565,8 +686,10 @@ export default function RelatoriosPage() {
                       <th className="pb-3 font-bold">Cliente</th>
                       <th className="pb-3 font-bold">Serviço</th>
                       <th className="pb-3 font-bold">Profissional</th>
+                      <th className="pb-3 font-bold">Insumos (Separar p/ Recompra)</th>
                       <th className="pb-3 font-bold">Status</th>
-                      <th className="pb-3 font-bold text-right">Valor</th>
+                      <th className="pb-3 font-bold text-right">Valor Bruto</th>
+                      <th className="pb-3 font-bold text-right">Líq. s/ Insumos</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -596,6 +719,27 @@ export default function RelatoriosPage() {
                             {item.profissionalNome}
                           </td>
                           <td className="py-3.5">
+                            {item.custoInsumos > 0 ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-100 text-orange-950 border border-orange-300 font-mono font-bold text-xs">
+                                  <Beaker size={11} className="text-orange-700" />
+                                  R$ {item.custoInsumos.toFixed(2)}
+                                </span>
+                                {item.insumos && item.insumos.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.insumos.map((ins, iIdx) => (
+                                      <span key={iIdx} className="text-[10px] text-foreground/60 bg-foreground/5 px-1.5 py-0.5 rounded">
+                                        {ins.nome} ({ins.quantidade}{ins.unidade})
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-foreground/30 font-mono">—</span>
+                            )}
+                          </td>
+                          <td className="py-3.5">
                             <span 
                               className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block"
                               style={{ 
@@ -606,13 +750,33 @@ export default function RelatoriosPage() {
                               {STATUS_LABELS[item.status as keyof typeof STATUS_LABELS] || item.status}
                             </span>
                           </td>
-                          <td className="py-3.5 text-right font-extrabold text-gold">
+                          <td className="py-3.5 text-right font-extrabold text-gold font-mono">
                             R$ {item.valor.toFixed(2)}
+                          </td>
+                          <td className="py-3.5 text-right font-bold text-emerald-700 font-mono">
+                            R$ {item.valorLiquidoSemInsumos.toFixed(2)}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-[var(--border-subtle)] bg-foreground/[0.03] font-extrabold text-xs">
+                      <td colSpan={4} className="py-3.5 px-2 uppercase text-foreground/70">
+                        Totais Consolidados do Período ({data.totalAtendimentos} atendimentos concluídos):
+                      </td>
+                      <td className="py-3.5 font-mono text-orange-800">
+                        Separar Insumos: R$ {data.totalInsumosRecompra.toFixed(2)}
+                      </td>
+                      <td className="py-3.5"></td>
+                      <td className="py-3.5 text-right font-mono text-gold text-sm">
+                        R$ {data.faturamentoBruto.toFixed(2)}
+                      </td>
+                      <td className="py-3.5 text-right font-mono text-emerald-800 text-sm">
+                        R$ {data.faturamentoLiquidoSemInsumos.toFixed(2)}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}

@@ -635,6 +635,68 @@ export default function AdminFinanceiro() {
     return getServicoPreco(a.servico_id, servicos);
   };
 
+  // Helper para extrair e discriminar todos os insumos utilizados no atendimento (para separar do financeiro e recomprar estoque)
+  const obterInsumosAtendimento = (a: Agendamento) => {
+    if (a.unificado_em_id) return [];
+
+    const rawInsumos =
+      (a.comanda_unificada?.insumos && a.comanda_unificada.insumos.length > 0)
+        ? a.comanda_unificada.insumos
+        : (Array.isArray(a.insumos_detalhes) ? a.insumos_detalhes : []);
+
+    const lista = rawInsumos.map((ins: any, idx: number) => {
+      const qtd = Number(ins.qty_used ?? ins.quantidade ?? 1);
+      const unitCost = Number(ins.price_per_gram ?? ins.custo_unitario ?? 0);
+      const total = ins.custo_total != null ? Number(ins.custo_total) : Number((qtd * unitCost).toFixed(2));
+      return {
+        inventory_id: String(ins.inventory_id || `ins_${idx}`),
+        name: String(ins.name || ins.nome || 'Insumo de Procedimento'),
+        unit: String(ins.unit || ins.unidade || 'g'),
+        price_per_gram: Number(unitCost.toFixed(4)),
+        qty_used: Number(qtd.toFixed(2)),
+        custo_total: Number(total.toFixed(2)),
+        etapa: ins.etapa || undefined,
+      };
+    });
+
+    const somaItens = Number(lista.reduce((acc, i) => acc + i.custo_total, 0).toFixed(2));
+    const custoDeclarado = Number(a.product_cost ?? a.comanda_unificada?.total_insumos ?? 0);
+    const custoFinal = Math.max(somaItens, custoDeclarado);
+
+    if (custoFinal > 0 && lista.length === 0) {
+      lista.push({
+        inventory_id: 'reserva_insumo',
+        name: 'Insumos de Procedimento (Taxa / Reserva)',
+        unit: 'serv.',
+        price_per_gram: Number(custoFinal.toFixed(2)),
+        qty_used: 1,
+        custo_total: Number(custoFinal.toFixed(2)),
+        etapa: 'Procedimento',
+      });
+    } else if (custoFinal > somaItens + 0.01) {
+      const diff = Number((custoFinal - somaItens).toFixed(2));
+      lista.push({
+        inventory_id: 'complemento_insumo',
+        name: 'Reserva Complementar de Insumos',
+        unit: 'serv.',
+        price_per_gram: diff,
+        qty_used: 1,
+        custo_total: diff,
+        etapa: 'Complemento',
+      });
+    }
+
+    return lista;
+  };
+
+  const getCustoInsumosEfetivo = (a: Agendamento): number => {
+    if (a.unificado_em_id) return 0;
+    const itens = obterInsumosAtendimento(a);
+    const soma = Number(itens.reduce((acc, i) => acc + i.custo_total, 0).toFixed(2));
+    const declarado = Number(a.product_cost ?? a.comanda_unificada?.total_insumos ?? 0);
+    return Math.max(soma, declarado);
+  };
+
   // Confirmação e Contabilização pela Gestão
   const handleConfirmarGestao = async (ag: Agendamento, metodoCustom?: string, valorCustom?: number) => {
     if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
@@ -847,6 +909,79 @@ export default function AdminFinanceiro() {
   const totalPendenteGestao = preFechadosPendentes.reduce((acc, a) => {
     return acc + getValorEfetivo(a);
   }, 0);
+
+  // Totais de Insumos para Separar do Financeiro (Fundo de Recompra de Produtos)
+  const totalInsumosConfirmado = Number(contabilizadosGestao.reduce((acc, a) => {
+    return acc + getCustoInsumosEfetivo(a);
+  }, 0).toFixed(2));
+
+  const totalInsumosPendente = Number(preFechadosPendentes.reduce((acc, a) => {
+    return acc + getCustoInsumosEfetivo(a);
+  }, 0).toFixed(2));
+
+  const totalInsumosDia = Number((totalInsumosConfirmado + totalInsumosPendente).toFixed(2));
+  const faturamentoLiquidoSemInsumosConfirmado = Math.max(0, Number((totalConfirmadoGestao - totalInsumosConfirmado).toFixed(2)));
+  const faturamentoLiquidoSemInsumosTotal = Math.max(0, Number((totalConfirmadoGestao + totalPendenteGestao - totalInsumosDia).toFixed(2)));
+
+  // Consolidação por Produto/Insumo Gasto no Dia para Recompra
+  const atendimentosPrincipaisDia = atendimentosConcluidos.filter(a => !a.unificado_em_id);
+  const atendimentosComInsumosDia = atendimentosPrincipaisDia.filter(a => getCustoInsumosEfetivo(a) > 0);
+
+  const insumosConsolidadosDia = (() => {
+    const mapa: Record<string, {
+      id: string;
+      nome: string;
+      unidade: string;
+      qtdTotal: number;
+      somaUnit: number;
+      ocorrencias: number;
+      atendimentosIds: Set<string>;
+      custoConfirmado: number;
+      custoPendente: number;
+      custoTotal: number;
+    }> = {};
+
+    atendimentosPrincipaisDia.forEach(ag => {
+      const isConf = ag.financial_status === 'CONFIRMED' || !ag.financial_status;
+      const itens = obterInsumosAtendimento(ag);
+      itens.forEach(item => {
+        if (item.custo_total <= 0 && item.qty_used <= 0) return;
+        const key = `${item.name.trim().toLowerCase()}__${item.unit.trim().toLowerCase()}`;
+        if (!mapa[key]) {
+          mapa[key] = {
+            id: item.inventory_id,
+            nome: item.name,
+            unidade: item.unit,
+            qtdTotal: 0,
+            somaUnit: 0,
+            ocorrencias: 0,
+            atendimentosIds: new Set<string>(),
+            custoConfirmado: 0,
+            custoPendente: 0,
+            custoTotal: 0,
+          };
+        }
+        mapa[key].qtdTotal = Number((mapa[key].qtdTotal + item.qty_used).toFixed(2));
+        mapa[key].somaUnit += item.price_per_gram;
+        mapa[key].ocorrencias += 1;
+        mapa[key].atendimentosIds.add(ag.id);
+        mapa[key].custoTotal = Number((mapa[key].custoTotal + item.custo_total).toFixed(2));
+        if (isConf) {
+          mapa[key].custoConfirmado = Number((mapa[key].custoConfirmado + item.custo_total).toFixed(2));
+        } else {
+          mapa[key].custoPendente = Number((mapa[key].custoPendente + item.custo_total).toFixed(2));
+        }
+      });
+    });
+
+    return Object.values(mapa)
+      .map(m => ({
+        ...m,
+        custoUnitarioMedio: m.ocorrencias > 0 ? Number((m.somaUnit / m.ocorrencias).toFixed(4)) : 0,
+        atendimentosCount: m.atendimentosIds.size,
+      }))
+      .sort((a, b) => b.custoTotal - a.custoTotal);
+  })();
 
   // Totais por método dos lançamentos contabilizados
   const totalDinheiroConfirmado = contabilizadosGestao
@@ -1169,8 +1304,8 @@ export default function AdminFinanceiro() {
           </div>
         )}
 
-        {/* Resumo Gerencial: Confirmado vs Pendente */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Resumo Gerencial: Confirmado vs Pendente + Fundo de Insumos para Recompra */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <CardGlass className="p-4 border-l-4 border-l-emerald-600 bg-emerald-500/5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-foreground/70 font-semibold">Contabilizado (Gestão)</span>
@@ -1179,7 +1314,22 @@ export default function AdminFinanceiro() {
             <p className="text-xl font-black text-emerald-700 mt-1">
               R$ {totalConfirmadoGestao.toFixed(2)}
             </p>
-            <p className="text-[11px] text-stone-600 font-medium mt-0.5">{contabilizadosGestao.length} oficializado(s)</p>
+            <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+              Líq. s/ Insumos: R$ {faturamentoLiquidoSemInsumosConfirmado.toFixed(2)} ({contabilizadosGestao.length})
+            </p>
+          </CardGlass>
+
+          <CardGlass className="p-4 border-l-4 border-l-orange-600 bg-orange-500/10 ring-1 ring-orange-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-orange-950 font-extrabold">Separar p/ Recompra (Insumos)</span>
+              <span className="p-1.5 bg-orange-100 text-orange-800 rounded-md"><Beaker size={14} /></span>
+            </div>
+            <p className="text-xl font-black text-orange-800 mt-1">
+              R$ {totalInsumosDia.toFixed(2)}
+            </p>
+            <p className="text-[11px] text-stone-700 font-semibold mt-0.5">
+              Conf.: R$ {totalInsumosConfirmado.toFixed(2)} {totalInsumosPendente > 0 ? `| Pend.: R$ ${totalInsumosPendente.toFixed(2)}` : `(${atendimentosComInsumosDia.length} atend.)`}
+            </p>
           </CardGlass>
 
           <CardGlass className="p-4 border-l-4 border-l-amber-600 bg-amber-500/5">
@@ -1215,6 +1365,170 @@ export default function AdminFinanceiro() {
             <p className="text-[11px] text-stone-600 font-medium mt-0.5">PIX R$ {totalPixConfirmado.toFixed(2)} | Cartões R$ {totalCartoesConfirmado.toFixed(2)}</p>
           </CardGlass>
         </div>
+
+        {/* PAINEL EXCLUSIVO: DISCRIMINAÇÃO EM SEPARADO DO QUE FOI GERADO COM INSUMOS (PARA RECOMPRA DE ESTOQUE) */}
+        <CardGlass className="p-5 border-2 border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-orange-500/20 pb-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-orange-500/20 text-orange-700 border border-orange-500/30 shrink-0 mt-0.5">
+                <Beaker size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-foreground flex flex-wrap items-center gap-2">
+                  Discriminação de Insumos no Fechamento — Fundo de Recompra de Produtos
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-orange-600 text-white font-bold uppercase tracking-wider">
+                    Separar do Financeiro
+                  </span>
+                </h3>
+                <p className="text-xs text-foreground/70 mt-1 max-w-3xl">
+                  Relatório isolado exclusivamente do que foi gasto/gerado com <strong>insumos de bancada</strong> (coloração, pó descolorante, oxidante, ampolas, etc.) nesta data para que a gestão separe este valor do faturamento e realize a reposição do estoque.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
+              <div className="px-3.5 py-2 rounded-xl bg-orange-100/90 border border-orange-300 text-right">
+                <span className="text-[10px] uppercase font-bold text-orange-900 block">Separar p/ Recompra (Total)</span>
+                <span className="text-lg font-black font-mono text-orange-950">R$ {totalInsumosDia.toFixed(2)}</span>
+                <span className="text-[10px] text-orange-800 font-semibold block">
+                  {insumosConsolidadosDia.length} produto(s) • {atendimentosComInsumosDia.length} atend.
+                </span>
+              </div>
+              <div className="px-3.5 py-2 rounded-xl bg-emerald-100/80 border border-emerald-300 text-right">
+                <span className="text-[10px] uppercase font-bold text-emerald-900 block">Já Contabilizado p/ Separar</span>
+                <span className="text-lg font-black font-mono text-emerald-950">R$ {totalInsumosConfirmado.toFixed(2)}</span>
+                <span className="text-[10px] text-emerald-800 font-semibold block">
+                  Pend. conferência: R$ {totalInsumosPendente.toFixed(2)}
+                </span>
+              </div>
+              <div className="px-3.5 py-2 rounded-xl bg-stone-100 border border-stone-300 text-right">
+                <span className="text-[10px] uppercase font-bold text-stone-700 block">Faturamento Líq. (s/ Insumos)</span>
+                <span className="text-lg font-black font-mono text-stone-900">R$ {faturamentoLiquidoSemInsumosTotal.toFixed(2)}</span>
+                <span className="text-[10px] text-stone-600 font-semibold block">
+                  Bruto do dia: R$ {(totalConfirmadoGestao + totalPendenteGestao).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {insumosConsolidadosDia.length === 0 ? (
+            <div className="p-4 rounded-xl bg-foreground/5 border border-border-subtle text-center text-xs text-foreground/60">
+              Nenhum consumo de insumo foi registrado nos atendimentos concluídos desta data ({dataFiltro}).
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Tabela 1: Consolidado por Produto para Recompra */}
+              <div className="rounded-xl border border-orange-500/25 bg-background/80 overflow-hidden">
+                <div className="px-4 py-2.5 bg-orange-500/10 border-b border-orange-500/20 flex items-center justify-between">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                    <Scale size={14} className="text-orange-700" />
+                    1. Produtos Gastos no Dia (Lista p/ Recompra)
+                  </span>
+                  <span className="text-[11px] font-bold text-orange-900">
+                    {insumosConsolidadosDia.length} {insumosConsolidadosDia.length === 1 ? 'item consumido' : 'itens consumidos'}
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-foreground/5 text-[11px] text-foreground/70 uppercase">
+                        <th className="p-2.5 font-bold">Produto / Insumo</th>
+                        <th className="p-2.5 font-bold text-center">Qtd. Gasta</th>
+                        <th className="p-2.5 font-bold text-right">Custo Unit.</th>
+                        <th className="p-2.5 font-bold text-right">Separar (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle/50">
+                      {insumosConsolidadosDia.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-foreground/5">
+                          <td className="p-2.5">
+                            <p className="font-bold text-foreground">{item.nome}</p>
+                            <p className="text-[10px] text-foreground/50">
+                              Usado em {item.atendimentosCount} {item.atendimentosCount === 1 ? 'atendimento' : 'atendimentos'}
+                            </p>
+                          </td>
+                          <td className="p-2.5 text-center font-mono font-bold text-foreground">
+                            {item.qtdTotal} {item.unidade}
+                          </td>
+                          <td className="p-2.5 text-right font-mono text-foreground/60">
+                            R$ {item.custoUnitarioMedio.toFixed(2)}/{item.unidade}
+                          </td>
+                          <td className="p-2.5 text-right font-mono font-black text-orange-800">
+                            R$ {item.custoTotal.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-orange-500/15 border-t border-orange-500/30 font-bold">
+                        <td colSpan={3} className="p-2.5 text-xs uppercase text-orange-950">
+                          Total a Separar do Financeiro p/ Recompra:
+                        </td>
+                        <td className="p-2.5 text-right font-mono text-sm font-black text-orange-950">
+                          R$ {totalInsumosDia.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tabela 2: Discriminação de Insumos por Atendimento */}
+              <div className="rounded-xl border border-orange-500/25 bg-background/80 overflow-hidden">
+                <div className="px-4 py-2.5 bg-orange-500/10 border-b border-orange-500/20 flex items-center justify-between">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                    <Receipt size={14} className="text-orange-700" />
+                    2. Origem dos Insumos por Atendimento
+                  </span>
+                  <span className="text-[11px] font-bold text-orange-900">
+                    {atendimentosComInsumosDia.length} {atendimentosComInsumosDia.length === 1 ? 'atendimento com insumo' : 'atendimentos com insumos'}
+                  </span>
+                </div>
+                <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-foreground/5 text-[11px] text-foreground/70 uppercase">
+                        <th className="p-2.5 font-bold">Cliente / Serviço</th>
+                        <th className="p-2.5 font-bold">Insumos Utilizados</th>
+                        <th className="p-2.5 font-bold text-right">Separar (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle/50">
+                      {atendimentosComInsumosDia.map(ag => {
+                        const cli = clientes.find(c => c.id === ag.cliente_id);
+                        const srv = getServicoNome(ag.servico_id, servicos);
+                        const prof = getProfissionalNome(ag.profissional_id, profissionais);
+                        const itensIns = obterInsumosAtendimento(ag);
+                        const custoIns = getCustoInsumosEfetivo(ag);
+                        return (
+                          <tr key={ag.id} className="hover:bg-foreground/5">
+                            <td className="p-2.5 align-top">
+                              <p className="font-bold text-foreground">{ag.hora_inicio} • {cli?.nome || 'Cliente'}</p>
+                              <p className="text-[10px] text-foreground/60">{srv} ({prof})</p>
+                            </td>
+                            <td className="p-2.5 align-top">
+                              <div className="space-y-0.5">
+                                {itensIns.map((ins, iIdx) => (
+                                  <div key={iIdx} className="text-[11px] text-foreground/80 flex items-center justify-between gap-2">
+                                    <span>• {ins.name} <strong className="font-mono">({ins.qty_used}{ins.unit})</strong></span>
+                                    <span className="font-mono text-foreground/60">R$ {ins.custo_total.toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-right font-mono font-black text-orange-800 align-top">
+                              R$ {custoIns.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardGlass>
 
         {/* Abas de Filtro de Status */}
         <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
@@ -1287,6 +1601,8 @@ export default function AdminFinanceiro() {
                     const nomeServico = getServicoNome(ag.servico_id, servicos);
                     const nomeProf = getProfissionalNome(ag.profissional_id, profissionais);
                     const valor = getValorEfetivo(ag);
+                    const insumosLinha = obterInsumosAtendimento(ag);
+                    const custoInsumosLinha = getCustoInsumosEfetivo(ag);
 
                     const isPendingConfirmation = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
                     const isConfirmed = ag.status === 'concluido' && (ag.financial_status === 'CONFIRMED' || !ag.financial_status);
@@ -1345,10 +1661,20 @@ export default function AdminFinanceiro() {
                                   <ShoppingBag size={11} /> {(ag.comanda_unificada?.produtos_venda?.length || ag.comanda_unificada?.produtos_comprados?.length || 0)} produto(s) vendidos no balcão inclusos
                                 </p>
                               )}
-                              {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                                <p className="text-[11px] text-amber-800 font-bold font-mono flex items-center gap-1">
-                                  <Beaker size={11} /> Insumos / Fundo de Produtos: R$ {Number(ag.product_cost).toFixed(2)}
-                                </p>
+                              {custoInsumosLinha > 0 && (
+                                <div className="mt-1 p-2 rounded-lg bg-orange-500/10 border border-orange-500/25 space-y-1">
+                                  <p className="text-[11px] text-orange-900 font-extrabold font-mono flex items-center justify-between gap-2">
+                                    <span className="flex items-center gap-1"><Beaker size={11} /> Separar p/ Recompra (Insumos):</span>
+                                    <span>R$ {custoInsumosLinha.toFixed(2)}</span>
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {insumosLinha.map((ins, iIdx) => (
+                                      <span key={iIdx} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-950 font-semibold border border-orange-200">
+                                        {ins.name}: {ins.qty_used}{ins.unit} (R$ {ins.custo_total.toFixed(2)})
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           ) : isUnificado ? (
@@ -1372,10 +1698,20 @@ export default function AdminFinanceiro() {
                                   </span>
                                 )}
                               </div>
-                              {ag.product_cost != null && Number(ag.product_cost) > 0 && (
-                                <p className="text-[11px] text-amber-800 font-bold font-mono mt-1 flex items-center gap-1">
-                                  <Beaker size={11} /> Fundo Produtos: R$ {Number(ag.product_cost).toFixed(2)}
-                                </p>
+                              {custoInsumosLinha > 0 && (
+                                <div className="mt-1.5 p-2 rounded-lg bg-orange-500/10 border border-orange-500/25 space-y-1">
+                                  <p className="text-[11px] text-orange-900 font-extrabold font-mono flex items-center justify-between gap-2">
+                                    <span className="flex items-center gap-1"><Beaker size={11} /> Separar p/ Recompra (Insumos):</span>
+                                    <span>R$ {custoInsumosLinha.toFixed(2)}</span>
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {insumosLinha.map((ins, iIdx) => (
+                                      <span key={iIdx} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-950 font-semibold border border-orange-200">
+                                        {ins.name}: {ins.qty_used}{ins.unit} (R$ {ins.custo_total.toFixed(2)})
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           )}
@@ -1416,14 +1752,21 @@ export default function AdminFinanceiro() {
                               </span>
                             </div>
                           ) : (
-                            <span className={`font-black text-sm ${isConfirmed
-                                ? 'text-emerald-700'
-                                : isPendingConfirmation
-                                  ? 'text-amber-800'
-                                  : 'text-stone-900'
-                              }`}>
-                              R$ {valor.toFixed(2)}
-                            </span>
+                            <div className="flex flex-col items-end">
+                              <span className={`font-black text-sm ${isConfirmed
+                                  ? 'text-emerald-700'
+                                  : isPendingConfirmation
+                                    ? 'text-amber-800'
+                                    : 'text-stone-900'
+                                }`}>
+                                R$ {valor.toFixed(2)}
+                              </span>
+                              {custoInsumosLinha > 0 && (
+                                <span className="text-[10px] font-mono font-bold text-orange-800 bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200 mt-0.5">
+                                  Insumos: R$ {custoInsumosLinha.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="p-4 text-center">
@@ -1567,7 +1910,8 @@ export default function AdminFinanceiro() {
           ? comanda.produtos_venda
           : (comanda?.produtos_comprados || []);
         const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario ?? prod.preco ?? 0) * Number(prod.quantidade ?? prod.qty ?? 1)), 0);
-        const totalInsumos = Number(ag.product_cost ?? comanda?.total_insumos ?? 0);
+        const insumosListaModal = obterInsumosAtendimento(ag);
+        const totalInsumos = getCustoInsumosEfetivo(ag);
         const totalCalculadoComServicosEProdutos = Number((subtotalServicos - totalDescontos + totalProdutos).toFixed(2));
         const valorBasePadrao = totalCalculadoComServicosEProdutos > 0
           ? totalCalculadoComServicosEProdutos
@@ -1699,49 +2043,92 @@ export default function AdminFinanceiro() {
                   </div>
                 </div>
 
-                {/* PRODUTOS USADOS E PRODUTOS COMPRADOS PELA CLIENTE */}
-                {(produtosComprados.length > 0 || totalInsumos > 0) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {totalInsumos > 0 && (
-                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                          <Beaker size={14} className="text-amber-400" /> Fundo de Reserva de Insumos / Produtos
-                        </div>
-                        <p className="text-[11px] text-stone-300 leading-relaxed font-medium">
-                          Produtos utilizados durante a execução dos serviços (coloração, oxigenada, pós, ampolas).
-                        </p>
-                        <p className="font-mono font-bold text-amber-300 text-sm pt-1">
-                          R$ {totalInsumos.toFixed(2)}
-                        </p>
-                      </div>
-                    )}
+                {/* DISCRIMINAÇÃO EM SEPARADO DE INSUMOS PARA RECOMPRA DE ESTOQUE */}
+                <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/35 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-2">
+                    <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-300">
+                      <Beaker size={15} className="text-amber-400" />
+                      Insumos Gastos no Procedimento (Separar do Financeiro p/ Recompra)
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-black font-black font-mono text-xs">
+                      Separar: R$ {totalInsumos.toFixed(2)}
+                    </span>
+                  </div>
 
-                    {produtosComprados.length > 0 && (
-                      <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
-                          <ShoppingBag size={14} className="text-teal-400" /> Produtos Vendidos (Balcão / Home Care)
-                        </div>
-                        <div className="space-y-1 pt-1">
-                          {produtosComprados.map((prod: any, pIdx: number) => {
-                            const vendId = prod.profissional_id || ag.profissional_id;
-                            const vendNome = prod.profissional_nome || getProfissionalNome(vendId, profissionais);
-                            const qtd = Number(prod.quantidade ?? prod.qty ?? 1);
-                            const unit = Number(prod.preco_unitario ?? prod.preco ?? 0);
-                            return (
-                              <div key={pIdx} className="flex items-center justify-between text-xs gap-2">
-                                <span className="text-stone-200 font-medium truncate">
-                                  {prod.nome || prod.name} (x{qtd})
-                                  {vendNome && <span className="text-[10px] text-teal-300/80 ml-1">• Por: {vendNome}</span>}
-                                </span>
-                                <span className="font-mono text-teal-300 font-bold shrink-0">
-                                  R$ {(unit * qtd).toFixed(2)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                  {insumosListaModal.length === 0 ? (
+                    <p className="text-xs text-stone-400">
+                      Nenhum insumo registrado neste atendimento (R$ 0,00 a separar para reposição de estoque).
+                    </p>
+                  ) : (
+                    <div className="rounded-lg border border-amber-500/25 overflow-hidden bg-black/50">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-amber-500/15 text-amber-200 border-b border-amber-500/20 text-[11px] uppercase">
+                            <th className="p-2.5 font-bold">Produto / Insumo Utilizado</th>
+                            <th className="p-2.5 font-bold text-center">Qtd. Usada</th>
+                            <th className="p-2.5 font-bold text-right">Custo Unit.</th>
+                            <th className="p-2.5 font-bold text-right">Separar p/ Recompra</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10">
+                          {insumosListaModal.map((ins, iIdx) => (
+                            <tr key={iIdx} className="hover:bg-white/[0.03]">
+                              <td className="p-2.5 font-semibold text-stone-100">
+                                {ins.name}
+                                {ins.etapa && <span className="text-[10px] text-amber-300/70 ml-1.5">({ins.etapa})</span>}
+                              </td>
+                              <td className="p-2.5 text-center font-mono font-bold text-amber-200">
+                                {ins.qty_used} {ins.unit}
+                              </td>
+                              <td className="p-2.5 text-right font-mono text-stone-400">
+                                R$ {ins.price_per_gram.toFixed(2)}/{ins.unit}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-bold text-amber-300">
+                                R$ {ins.custo_total.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-amber-500/20 border-t border-amber-500/30 font-bold">
+                            <td colSpan={3} className="p-2.5 text-amber-200 uppercase text-[11px]">
+                              Total a Separar do Financeiro p/ Recompra desses Produtos:
+                            </td>
+                            <td className="p-2.5 text-right font-mono text-sm font-black text-amber-300">
+                              R$ {totalInsumos.toFixed(2)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* PRODUTOS COMPRADOS PELA CLIENTE (BALCÃO / HOME CARE) */}
+                {produtosComprados.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                      <ShoppingBag size={14} className="text-teal-400" /> Produtos Vendidos (Balcão / Home Care)
+                    </div>
+                    <div className="space-y-1 pt-1">
+                      {produtosComprados.map((prod: any, pIdx: number) => {
+                        const vendId = prod.profissional_id || ag.profissional_id;
+                        const vendNome = prod.profissional_nome || getProfissionalNome(vendId, profissionais);
+                        const qtd = Number(prod.quantidade ?? prod.qty ?? 1);
+                        const unit = Number(prod.preco_unitario ?? prod.preco ?? 0);
+                        return (
+                          <div key={pIdx} className="flex items-center justify-between text-xs gap-2">
+                            <span className="text-stone-200 font-medium truncate">
+                              {prod.nome || prod.name} (x{qtd})
+                              {vendNome && <span className="text-[10px] text-teal-300/80 ml-1">• Por: {vendNome}</span>}
+                            </span>
+                            <span className="font-mono text-teal-300 font-bold shrink-0">
+                              R$ {(unit * qtd).toFixed(2)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -1826,26 +2213,37 @@ export default function AdminFinanceiro() {
 
                 {/* FORMA DE PAGAMENTO CONFERIDA E VALOR TOTAL FINAL (UNIFICADOS) */}
                 <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 space-y-4">
-                  {(totalDescontos > 0 || totalProdutos > 0) && (
-                    <div className="space-y-1 text-xs text-stone-300 pb-3 border-b border-gold/20">
-                      <div className="flex justify-between">
-                        <span className="text-stone-300">Subtotal Procedimentos:</span>
-                        <span className="font-mono font-bold text-stone-100">R$ {subtotalServicos.toFixed(2)}</span>
-                      </div>
-                      {totalDescontos > 0 && (
-                        <div className="flex justify-between text-amber-400 font-bold">
-                          <span>(-) Total Descontos dos Profissionais:</span>
-                          <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {totalProdutos > 0 && (
-                        <div className="flex justify-between text-teal-300 font-bold">
-                          <span>(+) Produtos Adicionais:</span>
-                          <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
-                        </div>
-                      )}
+                  <div className="space-y-1.5 text-xs text-stone-300 pb-3 border-b border-gold/20">
+                    <div className="flex justify-between">
+                      <span className="text-stone-300">Subtotal Procedimentos:</span>
+                      <span className="font-mono font-bold text-stone-100">R$ {subtotalServicos.toFixed(2)}</span>
                     </div>
-                  )}
+                    {totalDescontos > 0 && (
+                      <div className="flex justify-between text-amber-400 font-bold">
+                        <span>(-) Total Descontos dos Profissionais:</span>
+                        <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {totalProdutos > 0 && (
+                      <div className="flex justify-between text-teal-300 font-bold">
+                        <span>(+) Produtos Adicionais (Balcão):</span>
+                        <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1.5 mt-1 border-t border-white/10 text-amber-300 font-extrabold">
+                      <span className="flex items-center gap-1">
+                        <Beaker size={13} className="text-amber-400" />
+                        (-) Separar do Financeiro p/ Recompra de Insumos:
+                      </span>
+                      <span className="font-mono text-sm font-black">-R$ {demoExtrato.custoInsumos.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-300 font-extrabold">
+                      <span>(=) Faturamento Líquido Restante (Livre de Insumos):</span>
+                      <span className="font-mono text-sm font-black">
+                        R$ {Math.max(0, valorFinalCliente - demoExtrato.custoInsumos).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">

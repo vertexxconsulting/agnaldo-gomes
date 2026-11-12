@@ -56,10 +56,10 @@ export function exportarRelatorioPDF(data: ReportData) {
   const cardHeight = 18;
 
   const kpis = [
-    { label: 'FATURAMENTO', val: `R$ ${data.faturamentoBruto.toFixed(2)}`, color: [16, 185, 129] },
-    { label: 'ATENDIMENTOS', val: String(data.totalAtendimentos), color: [59, 130, 246] },
-    { label: 'TICKET MÉDIO', val: `R$ ${data.ticketMedio.toFixed(2)}`, color: corDourado },
-    { label: 'CANCELAMENTOS', val: String(data.totalCancelamentos), color: [239, 68, 68] },
+    { label: 'FATURAMENTO BRUTO', val: `R$ ${data.faturamentoBruto.toFixed(2)}`, color: [16, 185, 129] },
+    { label: 'INSUMOS (RECOMPRA)', val: `R$ ${(data.totalInsumosRecompra || 0).toFixed(2)}`, color: [217, 119, 6] },
+    { label: 'LÍQUIDO S/ INSUMOS', val: `R$ ${(data.faturamentoLiquidoSemInsumos ?? data.faturamentoBruto).toFixed(2)}`, color: corDourado },
+    { label: 'ATENDIMENTOS', val: `${data.totalAtendimentos} (TM R$${data.ticketMedio.toFixed(0)})`, color: [59, 130, 246] },
   ];
 
   kpis.forEach((kpi, idx) => {
@@ -74,12 +74,55 @@ export function exportarRelatorioPDF(data: ReportData) {
     doc.text(kpi.label, cx + 3, y + 5);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
+    doc.setFontSize(10);
     doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
     doc.text(kpi.val, cx + 3, y + 13);
   });
 
-  y += cardHeight + 10;
+  y += cardHeight + 8;
+
+  // 2.5 Discriminação de Insumos para Recompra de Estoque
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(corEscuro[0], corEscuro[1], corEscuro[2]);
+  doc.text(`DISCRIMINAÇÃO DE INSUMOS P/ RECOMPRA (SEPARAR DO FINANCEIRO: R$ ${(data.totalInsumosRecompra || 0).toFixed(2)})`, margin, y);
+  y += 4;
+
+  doc.setFillColor(corEscuro[0], corEscuro[1], corEscuro[2]);
+  doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7.5);
+  doc.text('PRODUTO / INSUMO', margin + 3, y + 4.2);
+  doc.text('QTD CONSUMIDA', margin + 90, y + 4.2);
+  doc.text('ATENDIMENTOS', margin + 125, y + 4.2);
+  doc.text('SEPARAR P/ RECOMPRA (R$)', pageWidth - margin - 3, y + 4.2, { align: 'right' });
+  y += 6;
+
+  if (!data.insumosParaRecompra || data.insumosParaRecompra.length === 0) {
+    doc.setTextColor(corCinza[0], corCinza[1], corCinza[2]);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.text('Nenhum insumo registrado nos atendimentos do período.', margin + 3, y + 5);
+    y += 8;
+  } else {
+    data.insumosParaRecompra.forEach((ins, idx) => {
+      const bg = idx % 2 === 0 ? 255 : 248;
+      doc.setFillColor(bg, bg, bg);
+      doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
+
+      doc.setTextColor(30, 41, 59);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(ins.nome.slice(0, 45), margin + 3, y + 4.2);
+      doc.text(`${ins.quantidadeTotal} ${ins.unidade}`, margin + 90, y + 4.2);
+      doc.text(`${ins.atendimentos} atend.`, margin + 125, y + 4.2);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`R$ ${ins.custoTotalRecompra.toFixed(2)}`, pageWidth - margin - 3, y + 4.2, { align: 'right' });
+      y += 6;
+    });
+  }
+
+  y += 8;
 
   // 3. Performance Profissional
   doc.setFont('helvetica', 'bold');
@@ -305,28 +348,28 @@ export function exportarRelatorioSVG(data: ReportData) {
   <text x="950" y="55" fill="#94a3b8" font-size="12" font-family="sans-serif" text-anchor="end">Emitido em: ${agora}</text>
 
   <!-- 4 Cards de KPIs -->
-  <!-- Card 1: Faturamento -->
+  <!-- Card 1: Faturamento Bruto -->
   <g transform="translate(50, 130)">
     <rect width="205" height="110" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
     <text x="20" y="32" fill="#94a3b8" font-size="11" font-family="sans-serif" font-weight="bold" letter-spacing="1">FATURAMENTO BRUTO</text>
-    <text x="20" y="75" fill="#D4AF37" font-size="24" font-family="sans-serif" font-weight="900">R$ ${data.faturamentoBruto.toFixed(2)}</text>
-    <text x="20" y="96" fill="#10B981" font-size="11" font-family="sans-serif">● Total apurado no período</text>
+    <text x="20" y="75" fill="#D4AF37" font-size="22" font-family="sans-serif" font-weight="900">R$ ${data.faturamentoBruto.toFixed(2)}</text>
+    <text x="20" y="96" fill="#10B981" font-size="10.5" font-family="sans-serif">● Líq. s/ Insumos: R$ ${(data.faturamentoLiquidoSemInsumos ?? data.faturamentoBruto).toFixed(2)}</text>
   </g>
 
-  <!-- Card 2: Atendimentos -->
+  <!-- Card 2: Insumos p/ Recompra -->
   <g transform="translate(280, 130)">
-    <rect width="205" height="110" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-    <text x="20" y="32" fill="#94a3b8" font-size="11" font-family="sans-serif" font-weight="bold" letter-spacing="1">ATENDIMENTOS</text>
-    <text x="20" y="75" fill="#f8fafc" font-size="26" font-family="sans-serif" font-weight="900">${data.totalAtendimentos}</text>
-    <text x="20" y="96" fill="#38bdf8" font-size="11" font-family="sans-serif">● Clientes atendidos</text>
+    <rect width="205" height="110" rx="12" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="20" y="32" fill="#fbbf24" font-size="11" font-family="sans-serif" font-weight="bold" letter-spacing="1">INSUMOS (RECOMPRA)</text>
+    <text x="20" y="75" fill="#f59e0b" font-size="22" font-family="sans-serif" font-weight="900">R$ ${(data.totalInsumosRecompra || 0).toFixed(2)}</text>
+    <text x="20" y="96" fill="#fde68a" font-size="10.5" font-family="sans-serif">● Separar p/ repor estoque</text>
   </g>
 
-  <!-- Card 3: Ticket Médio -->
+  <!-- Card 3: Atendimentos e Ticket -->
   <g transform="translate(510, 130)">
     <rect width="205" height="110" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-    <text x="20" y="32" fill="#94a3b8" font-size="11" font-family="sans-serif" font-weight="bold" letter-spacing="1">TICKET MÉDIO</text>
-    <text x="20" y="75" fill="#f59e0b" font-size="24" font-family="sans-serif" font-weight="900">R$ ${data.ticketMedio.toFixed(2)}</text>
-    <text x="20" y="96" fill="#fbbf24" font-size="11" font-family="sans-serif">● Média por cliente</text>
+    <text x="20" y="32" fill="#94a3b8" font-size="11" font-family="sans-serif" font-weight="bold" letter-spacing="1">ATENDIMENTOS</text>
+    <text x="20" y="75" fill="#f8fafc" font-size="24" font-family="sans-serif" font-weight="900">${data.totalAtendimentos}</text>
+    <text x="20" y="96" fill="#38bdf8" font-size="10.5" font-family="sans-serif">● Ticket Médio: R$ ${data.ticketMedio.toFixed(2)}</text>
   </g>
 
   <!-- Card 4: Cancelamentos -->
