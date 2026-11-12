@@ -20,7 +20,7 @@ import {
 import { enviarTexto, evolutionConfigurada } from '@/lib/evolution';
 import {
   getMarketingConfig, getDisparosHoje, registrarDisparoHoje,
-  esperarIntervaloSeguro, horaAtualBRT, tentarObterLockDisparo, liberarLockDisparo,
+  aguardarJanelaSeguraAntesDoDisparo, horaAtualBRT, tentarObterLockDisparo, liberarLockDisparo,
 } from '@/lib/marketing-control';
 
 // Estende o timeout da função serverless para até 300 segundos (plano Pro do Vercel)
@@ -241,16 +241,17 @@ export async function GET(req: Request) {
           continue;
         }
 
+        // TRAVA 4: Garante intervalo mínimo de pelo menos 1 minuto (60s) desde o último envio
+        await aguardarJanelaSeguraAntesDoDisparo(config.intervalo_segundos);
+
         // Enviar mensagem
         const r = await enviarTexto(item.telefone, item.mensagem);
         if (r.ok) {
           enviadosAutomaticos++;
           item.enviada_via_api = true;
           item.ja_enviado_hoje = true;
+          disparosHoje.add(item.chaveUnica);
           await registrarDisparoHoje(item.chaveUnica, hoje);
-
-          // TRAVA 4: Intervalo de pelo menos 1 minuto (60s) entre cada disparo
-          await esperarIntervaloSeguro(config.intervalo_segundos);
         } else {
           falhas.push({ nome: item.nome, error: r.error ?? '' });
         }

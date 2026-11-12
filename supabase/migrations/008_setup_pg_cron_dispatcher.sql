@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- AGENDAMENTO AUTOMÁTICO DE LEMBRETES E MARKETING VIA SUPABASE (pg_cron + pg_net)
 -- ==============================================================================
--- Este script configura o disparo automático a cada 15 ou 30 minutos diretamente
+-- Este script configura o disparo automático a cada 10 minutos diretamente
 -- a partir do banco de dados Supabase, sem depender das limitações do plano Hobby da Vercel.
 --
 -- Pode ser executado diretamente no SQL Editor do Supabase Dashboard:
@@ -12,16 +12,19 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- 2. Limpar agendamento anterior se já existir
-SELECT cron.unschedule('marketing_cron_dispatcher') WHERE EXISTS (
-    SELECT 1 FROM cron.job WHERE jobname = 'marketing_cron_dispatcher'
-);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'marketing_cron_dispatcher') THEN
+    PERFORM cron.unschedule('marketing_cron_dispatcher');
+  END IF;
+END $$;
 
--- OPÇÃO A: Chamar diretamente a API da sua aplicação Next.js (https://agnaldogomes.com)
--- Dispara a cada 30 minutos todos os dias
+-- OPÇÃO A (Pronta para uso imediato):
+-- O pg_cron do Supabase aciona o dispatcher a cada 10 minutos todos os dias
 SELECT cron.schedule(
     'marketing_cron_dispatcher',
-    '*/30 * * * *',
-    $$
+    '*/10 * * * *',
+    $cron$
     SELECT net.http_get(
         url := 'https://agnaldogomes.com/api/cron/dispatcher?execute=true',
         headers := jsonb_build_object(
@@ -29,16 +32,16 @@ SELECT cron.schedule(
             'User-Agent', 'Supabase-pg_cron/1.0'
         )
     );
-    $$
+    $cron$
 );
 
--- OPÇÃO B (Se você optar por implantar a Edge Function 'cron-dispatcher'):
--- Caso queira que o pg_cron invoque a Edge Function do Supabase em vez da URL direta:
+-- OPÇÃO B (Chamando diretamente a Edge Function 'cron-dispatcher' no Supabase):
+-- Caso publique a pasta supabase/functions/cron-dispatcher nas Edge Functions do Supabase:
 /*
 SELECT cron.schedule(
     'marketing_edge_function_dispatcher',
-    '*/30 * * * *',
-    $$
+    '*/10 * * * *',
+    $cron$
     SELECT net.http_get(
         url := 'https://nbxikhiwdzllhgypkfyw.supabase.co/functions/v1/cron-dispatcher',
         headers := jsonb_build_object(
@@ -46,7 +49,7 @@ SELECT cron.schedule(
             'Content-Type', 'application/json'
         )
     );
-    $$
+    $cron$
 );
 */
 

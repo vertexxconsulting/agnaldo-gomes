@@ -20,7 +20,8 @@ import {
   getMarketingConfig,
   getDisparosHoje,
   registrarDisparoHoje,
-  esperarIntervaloSeguro,
+  aguardarJanelaSeguraAntesDoDisparo,
+  horaAtualBRT,
   tentarObterLockDisparo,
   liberarLockDisparo,
 } from '@/lib/marketing-control';
@@ -229,22 +230,27 @@ export async function GET(req: Request) {
     let enviadosAutomaticos = 0;
     const falhas: { regra: string; nome: string | null; error: string }[] = [];
 
+    const horaAtual = horaAtualBRT();
+
     try {
       for (const grupo of itensPorRegra) {
         if (grupo.send_method !== 'AUTO') continue;
         if (!force && !grupo.ativo) continue;
+        if (!force && horaAtual < grupo.horario) continue;
 
         for (const item of grupo.itens) {
           if (!item.telefone) continue;
           if (disparosHoje.has(item.chaveUnica)) continue;
+
+          await aguardarJanelaSeguraAntesDoDisparo(config.intervalo_segundos);
 
           const r = await enviarTexto(item.telefone, item.mensagem);
           if (r.ok) {
             enviadosAutomaticos++;
             item.enviada_via_api = true;
             item.ja_enviado_hoje = true;
+            disparosHoje.add(item.chaveUnica);
             await registrarDisparoHoje(item.chaveUnica, hoje);
-            await esperarIntervaloSeguro(config.intervalo_segundos);
           } else {
             falhas.push({ regra: grupo.regra_nome, nome: item.nome, error: r.error ?? '' });
           }

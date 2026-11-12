@@ -6,6 +6,7 @@ import {
 export * from './marketing-types';
 
 const SETTING_KEY_CONFIG = 'marketing_automacao_config';
+const SETTING_KEY_LAST_SENT = 'marketing_ultimo_disparo_ts';
 
 /**
  * Retorna a hora atual no fuso horário do Brasil (BRT, UTC-3) no formato "HH:MM"
@@ -140,26 +141,82 @@ export async function getDisparosHoje(dataISO: string): Promise<Set<string>> {
   return new Set();
 }
 
+// Timestamp em memória do último disparo (complementado pelo banco)
+let ultimoDisparoMemoriaTs = 0;
+
+/**
+ * Obtém o timestamp (ms) do último disparo realizado (banco + memória)
+ */
+export async function getUltimoDisparoTs(): Promise<number> {
+  try {
+    const supabase = await getSupabaseServiceClient();
+    const { data } = await supabase
+      .from('salon_system_settings')
+      .select('value')
+      .eq('key', SETTING_KEY_LAST_SENT)
+      .maybeSingle();
+
+    const dbTs = data?.value ? Number(data.value) || 0 : 0;
+    return Math.max(ultimoDisparoMemoriaTs, dbTs);
+  } catch {
+    return ultimoDisparoMemoriaTs;
+  }
+}
+
+/**
+ * Aguarda apenas o tempo restante para completar o intervalo mínimo (pelo menos 60s)
+ * desde o último disparo registrado.
+ * Assim, a 1ª mensagem sai imediatamente se não houve envio no último minuto,
+ * e a função NUNCA fica esperando 60s à toa depois de enviar a última mensagem!
+ */
+export async function aguardarJanelaSeguraAntesDoDisparo(intervaloSegundos: number): Promise<void> {
+  const intervaloMs = Math.max(60, Number(intervaloSegundos) || 60) * 1000;
+  const ultimoTs = await getUltimoDisparoTs();
+  if (ultimoTs > 0) {
+    const decorrido = Date.now() - ultimoTs;
+    if (decorrido < intervaloMs) {
+      const restanteMs = intervaloMs - decorrido;
+      await new Promise(resolve => setTimeout(resolve, restanteMs));
+    }
+  }
+}
+
 /**
  * Registra um envio no log do dia para prevenir qualquer duplicidade
+ * e atualiza o timestamp global do último disparo.
  */
 export async function registrarDisparoHoje(chaveUnica: string, dataISO: string): Promise<void> {
+  const agoraTs = Date.now();
+  ultimoDisparoMemoriaTs = agoraTs;
   try {
     const supabase = await getSupabaseServiceClient();
     const chaveSetting = `marketing_disparos_${dataISO}`;
     const setExistente = await getDisparosHoje(dataISO);
     setExistente.add(chaveUnica);
 
-    await supabase
-      .from('salon_system_settings')
-      .upsert(
-        {
-          key: chaveSetting,
-          value: JSON.stringify(Array.from(setExistente)),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'key' }
-      );
+    const isoNow = new Date(agoraTs).toISOString();
+    await Promise.all([
+      supabase
+        .from('salon_system_settings')
+        .upsert(
+          {
+            key: chaveSetting,
+            value: JSON.stringify(Array.from(setExistente)),
+            updated_at: isoNow,
+          },
+          { onConflict: 'key' }
+        ),
+      supabase
+        .from('salon_system_settings')
+        .upsert(
+          {
+            key: SETTING_KEY_LAST_SENT,
+            value: String(agoraTs),
+            updated_at: isoNow,
+          },
+          { onConflict: 'key' }
+        ),
+    ]);
   } catch (err) {
     console.error('[marketing-control] Erro ao registrar disparo:', err);
   }
@@ -173,15 +230,19 @@ export async function esperarIntervaloSeguro(intervaloSegundos: number): Promise
   await new Promise(resolve => setTimeout(resolve, tempoMs));
 }
 
-// Mutex em memória para evitar que duas execuções paralelas ocorram ao mesmo tempo
-let lockDisparoEmAndamento = false;
+// Mutex em memória com expiração automática de segurança (3 min)
+let lockDisparoTimestamp = 0;
+const LOCK_TTL_MS = 3 * 60 * 1000;
 
 export function tentarObterLockDisparo(): boolean {
-  if (lockDisparoEmAndamento) return false;
-  lockDisparoEmAndamento = true;
+  const agora = Date.now();
+  if (lockDisparoTimestamp > 0 && agora - lockDisparoTimestamp < LOCK_TTL_MS) {
+    return false;
+  }
+  lockDisparoTimestamp = agora;
   return true;
 }
 
 export function liberarLockDisparo(): void {
-  lockDisparoEmAndamento = false;
+  lockDisparoTimestamp = 0;
 }
