@@ -812,22 +812,10 @@ export default function AdminFinanceiro() {
     }
   };
 
-  const handleAbrirAjusteModal = (ag: Agendamento) => {
-    if (isReadOnly) { alert('Ação bloqueada: seu perfil possui permissão somente de leitura no Financeiro.'); return; }
-    const val = getValorEfetivo(ag);
-    setEditingApptGestao(ag);
+  const handleAbrirExtratoFaturamento = (ag: Agendamento) => {
+    setExtratoComandaAppt(ag);
     setModalMetodo(ag.payment_method || 'DINHEIRO');
-    setModalValor(val.toFixed(2));
-  };
-
-  const handleSalvarAjusteGestao = () => {
-    if (!editingApptGestao) return;
-    const num = parseFloat(modalValor.replace(',', '.'));
-    if (isNaN(num) || num < 0) {
-      alert('Informe um valor válido.');
-      return;
-    }
-    handleConfirmarGestao(editingApptGestao, modalMetodo, num);
+    setValorFinalEditado('');
   };
 
   // Resumos do Caixa Físico
@@ -1483,7 +1471,7 @@ export default function AdminFinanceiro() {
                               <button
                                 onClick={() => {
                                   if (agendamentoPai) {
-                                    setExtratoComandaAppt(agendamentoPai);
+                                    handleAbrirExtratoFaturamento(agendamentoPai);
                                   } else {
                                     alert('A comanda principal está registrada em outro lote ou registro.');
                                   }
@@ -1496,39 +1484,33 @@ export default function AdminFinanceiro() {
                             </div>
                           ) : (
                             <div className="flex flex-wrap items-center justify-center gap-1.5">
-                              {/* Botão de Extrato Discriminado da Cliente / Gestão */}
+                              {/* Botão Unificado de Extrato & Faturamento */}
                               <button
-                                onClick={() => setExtratoComandaAppt(ag)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${isMultiProf
-                                    ? 'bg-gold/15 text-gold border border-gold/40 hover:bg-gold hover:text-black'
-                                    : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-border-subtle'
-                                  }`}
-                                title="Ver demonstrativo discriminado completo do atendimento com procedimentos, profissionais, descontos e insumos"
+                                onClick={() => handleAbrirExtratoFaturamento(ag)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                  isPendingConfirmation
+                                    ? 'bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40'
+                                    : isMultiProf
+                                      ? 'bg-gold/15 text-gold border border-gold/40 hover:bg-gold hover:text-black'
+                                      : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-border-subtle'
+                                }`}
+                                title="Conferir extrato discriminado, forma de pagamento, divisão em 3 partes e faturar"
                               >
                                 <Receipt size={13} />
-                                {isMultiProf ? 'Extrato Discriminado' : 'Extrato'}
+                                {isPendingConfirmation ? 'Extrato & Faturar' : (isMultiProf ? 'Extrato Discriminado' : 'Extrato')}
                               </button>
 
                               {isPendingConfirmation ? (
                                 !isReadOnly ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleAbrirAjusteModal(ag)}
-                                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40 transition-colors flex items-center gap-1 shadow-sm"
-                                      title="Faturar atendimento e conferir demonstrativo da divisão em 3 partes"
-                                    >
-                                      <DollarSign size={13} /> Faturar
-                                    </button>
-                                    <button
-                                      onClick={() => handleConfirmarGestao(ag)}
-                                      disabled={actionLoadingId === ag.id}
-                                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
-                                      title="Confirmar conferência e contabilizar oficialmente no financeiro"
-                                    >
-                                      <CheckCircle2 size={13} />
-                                      {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar'}
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleConfirmarGestao(ag)}
+                                    disabled={actionLoadingId === ag.id}
+                                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1 shadow-sm shadow-emerald-600/30 disabled:opacity-50"
+                                    title="Confirmar conferência rápida e contabilizar oficialmente no financeiro"
+                                  >
+                                    <CheckCircle2 size={13} />
+                                    {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar'}
+                                  </button>
                                 ) : (
                                   <span className="text-[11px] text-amber-500 font-semibold px-2 py-1 bg-amber-500/10 rounded border border-amber-500/20">
                                     Aguardando Gestão
@@ -1570,7 +1552,7 @@ export default function AdminFinanceiro() {
         </CardGlass>
       </div>
 
-      {/* MODAL DE EXTRATO DISCRIMINADO DO ATENDIMENTO (COMANDA MULTI-PROFISSIONAL) */}
+      {/* MODAL UNIFICADO: EXTRATO DISCRIMINADO & CONFERÊNCIA DE FATURAMENTO DA GESTÃO */}
       {extratoComandaAppt && (() => {
         const ag = extratoComandaAppt;
         const cli = clientes.find(c => c.id === ag.cliente_id);
@@ -1587,47 +1569,22 @@ export default function AdminFinanceiro() {
         const totalProdutos = produtosComprados.reduce((acc: number, prod: any) => acc + (Number(prod.preco_unitario ?? prod.preco ?? 0) * Number(prod.quantidade ?? prod.qty ?? 1)), 0);
         const totalInsumos = Number(ag.product_cost ?? comanda?.total_insumos ?? 0);
         const totalCalculadoComServicosEProdutos = Number((subtotalServicos - totalDescontos + totalProdutos).toFixed(2));
+        const valorBasePadrao = totalCalculadoComServicosEProdutos > 0
+          ? totalCalculadoComServicosEProdutos
+          : ((ag.total_amount != null && Number(ag.total_amount) > 0) ? Number(ag.total_amount) : 0);
+
         const valorFinalCliente = valorFinalEditado !== ''
           ? (parseFloat(valorFinalEditado.replace(',', '.')) || 0)
-          : (totalCalculadoComServicosEProdutos > 0
-            ? totalCalculadoComServicosEProdutos
-            : ((ag.total_amount != null && Number(ag.total_amount) > 0) ? Number(ag.total_amount) : 0));
+          : valorBasePadrao;
 
         const demoExtrato = calcularDemonstrativo3Partes(ag, valorFinalCliente, profissionais, regrasComissao);
-
-        // Agrupamento por profissional para o demonstrativo da gestora
-        const profIds = Array.from(new Set(procedimentos.map(p => p.profissional_id)));
-        const discriminadoProfissionais = profIds.map(pid => {
-          const procsProf = procedimentos.filter(p => p.profissional_id === pid);
-          const profObj = profissionais.find(p => p.id === pid);
-          const somaTabela = procsProf.reduce((a: number, b) => a + b.preco_tabela, 0);
-          const somaDesconto = procsProf.reduce((a: number, b) => a + b.desconto_valor, 0);
-          const somaInsumos = procsProf.reduce((a: number, b: any) => a + (Number(b.insumos_custo) || 0), 0);
-          const liquidoBase = Math.max(0, somaTabela - somaDesconto - somaInsumos);
-          const pctComissao = Number(profObj?.comissao_padrao) || 40;
-          const valorComissao = (liquidoBase * pctComissao) / 100;
-
-          return {
-            profissional_id: pid,
-            profissional_nome: profObj?.nome || 'Profissional',
-            especialidade: profObj?.cargo || 'Especialista',
-            procedimentos: procsProf,
-            somaTabela,
-            somaDesconto,
-            somaInsumos,
-            liquidoBase,
-            pctComissao,
-            valorComissao,
-          };
-        });
-
         const isPending = ag.status === 'concluido' && ag.financial_status === 'PENDING_CONFIRMATION';
 
         return (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="dark bg-[#121214] text-stone-100 border border-gold/40 rounded-2xl w-full max-w-2xl my-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
-              {/* Header do Extrato */}
+              {/* Header Unificado */}
               <div className="flex items-center justify-between p-5 border-b border-white/10 bg-gradient-to-r from-gold/15 via-gold/5 to-transparent">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-sm">
@@ -1635,10 +1592,10 @@ export default function AdminFinanceiro() {
                   </div>
                   <div>
                     <h3 className="font-bold text-lg text-stone-100 flex items-center gap-2">
-                      Extrato Discriminado do Atendimento
+                      Extrato & Conferência de Faturamento
                     </h3>
                     <p className="text-xs text-stone-400">
-                      {isMulti ? 'Comanda Multi-Profissional Consolidada' : 'Atendimento Individual do Salão'}
+                      {isMulti ? 'Comanda Multi-Profissional Consolidada' : 'Conferência do recebimento e divisão em 3 partes'}
                     </p>
                   </div>
                 </div>
@@ -1650,7 +1607,7 @@ export default function AdminFinanceiro() {
                 </button>
               </div>
 
-              {/* Conteúdo do Extrato */}
+              {/* Conteúdo do Modal Unificado */}
               <div className="p-5 space-y-5 overflow-y-auto flex-1 text-sm custom-scrollbar">
 
                 {/* Cartão de Identificação da Cliente e Atendimento */}
@@ -1669,7 +1626,7 @@ export default function AdminFinanceiro() {
                     </p>
                     <div className="mt-1 flex items-center sm:justify-end gap-1.5">
                       <span className="text-stone-400">Forma:</span>
-                      <span className="font-semibold text-gold uppercase">{ag.payment_method || 'Não definida'}</span>
+                      <span className="font-semibold text-gold uppercase">{modalMetodo || ag.payment_method || 'Não definida'}</span>
                       <span className="text-stone-600">•</span>
                       <span className={`font-bold ${ag.financial_status === 'CONFIRMED' ? 'bg-stone-200 px-2 py-0.5 rounded text-black italic' : 'text-amber-400'}`}>
                         {ag.financial_status === 'CONFIRMED' ? 'Contabilizado' : 'Aguardando Gestão'}
@@ -1691,59 +1648,60 @@ export default function AdminFinanceiro() {
                   </div>
 
                   <div className="rounded-xl border border-white/10 overflow-hidden bg-black/40">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-white/[0.06] border-b border-white/10 text-stone-300 font-semibold">
-                          <th className="p-3">Procedimento</th>
-                          <th className="p-3">Profissional</th>
-                          <th className="p-3 text-right">Tabela</th>
-                          <th className="p-3 text-right">Desconto Prof.</th>
-                          <th className="p-3 text-right">Líquido Procedimento</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {procedimentos.map((p, idx) => {
-                          const liquido = p.preco_tabela - p.desconto_valor;
-                          return (
-                            <tr key={idx} className="hover:bg-white/[0.03]">
-                              <td className="p-3">
-                                <p className="font-bold text-stone-100">{p.servico_nome}</p>
-                                {p.desconto_motivo && (
-                                  <p className="text-[10px] text-amber-400 font-medium italic mt-0.5">
-                                    Motivo desconto: "{p.desconto_motivo}"
-                                  </p>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                <span className="font-medium text-stone-300">{p.profissional_nome}</span>
-                              </td>
-                              <td className="p-3 text-right font-mono text-stone-400">
-                                R$ {p.preco_tabela.toFixed(2)}
-                              </td>
-                              <td className="p-3 text-right">
-                                {p.desconto_valor > 0 ? (
-                                  <span className="font-bold text-amber-400 font-mono">
-                                    -R$ {p.desconto_valor.toFixed(2)} ({p.desconto_pct}%)
-                                  </span>
-                                ) : (
-                                  <span className="text-stone-500 font-mono">—</span>
-                                )}
-                              </td>
-                              <td className="p-3 text-right font-bold text-stone-100 font-mono">
-                                R$ {liquido.toFixed(2)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-white/[0.06] border-b border-white/10 text-stone-300 font-semibold">
+                            <th className="p-3">Procedimento</th>
+                            <th className="p-3">Profissional</th>
+                            <th className="p-3 text-right">Tabela</th>
+                            <th className="p-3 text-right">Desconto Prof.</th>
+                            <th className="p-3 text-right">Líquido Procedimento</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {procedimentos.map((p, idx) => {
+                            const liquido = p.preco_tabela - p.desconto_valor;
+                            return (
+                              <tr key={idx} className="hover:bg-white/[0.03]">
+                                <td className="p-3">
+                                  <p className="font-bold text-stone-100">{p.servico_nome}</p>
+                                  {p.desconto_motivo && (
+                                    <p className="text-[10px] text-amber-400 font-medium italic mt-0.5">
+                                      Motivo desconto: "{p.desconto_motivo}"
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="p-3">
+                                  <span className="font-medium text-stone-300">{p.profissional_nome}</span>
+                                </td>
+                                <td className="p-3 text-right font-mono text-stone-400">
+                                  R$ {p.preco_tabela.toFixed(2)}
+                                </td>
+                                <td className="p-3 text-right">
+                                  {p.desconto_valor > 0 ? (
+                                    <span className="font-bold text-amber-400 font-mono">
+                                      -R$ {p.desconto_valor.toFixed(2)} ({p.desconto_pct}%)
+                                    </span>
+                                  ) : (
+                                    <span className="text-stone-500 font-mono">—</span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-right font-bold text-stone-100 font-mono">
+                                  R$ {liquido.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
                 {/* PRODUTOS USADOS E PRODUTOS COMPRADOS PELA CLIENTE */}
                 {(produtosComprados.length > 0 || totalInsumos > 0) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Produtos Insumos Usados */}
                     {totalInsumos > 0 && (
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
@@ -1758,7 +1716,6 @@ export default function AdminFinanceiro() {
                       </div>
                     )}
 
-                    {/* Produtos Home Care Comprados */}
                     {produtosComprados.length > 0 && (
                       <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
@@ -1867,272 +1824,99 @@ export default function AdminFinanceiro() {
                   </div>
                 </div>
 
-                {/* RESUMO TOTALIZADOR DO FECHAMENTO */}
-                <div className="p-4 rounded-xl bg-gold/15 border border-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1 text-xs text-stone-300 w-full sm:w-auto">
-                    <div className="flex justify-between sm:justify-start sm:gap-6">
-                      <span className="text-stone-300">Subtotal Procedimentos:</span>
-                      <span className="font-mono font-bold text-stone-100">R$ {subtotalServicos.toFixed(2)}</span>
+                {/* FORMA DE PAGAMENTO CONFERIDA E VALOR TOTAL FINAL (UNIFICADOS) */}
+                <div className="p-4 rounded-xl bg-gold/10 border border-gold/40 space-y-4">
+                  {(totalDescontos > 0 || totalProdutos > 0) && (
+                    <div className="space-y-1 text-xs text-stone-300 pb-3 border-b border-gold/20">
+                      <div className="flex justify-between">
+                        <span className="text-stone-300">Subtotal Procedimentos:</span>
+                        <span className="font-mono font-bold text-stone-100">R$ {subtotalServicos.toFixed(2)}</span>
+                      </div>
+                      {totalDescontos > 0 && (
+                        <div className="flex justify-between text-amber-400 font-bold">
+                          <span>(-) Total Descontos dos Profissionais:</span>
+                          <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {totalProdutos > 0 && (
+                        <div className="flex justify-between text-teal-300 font-bold">
+                          <span>(+) Produtos Adicionais:</span>
+                          <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
+                        </div>
+                      )}
                     </div>
-                    {totalDescontos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-amber-400 font-bold">
-                        <span>(-) Total Descontos dos Profissionais:</span>
-                        <span className="font-mono font-bold">-R$ {totalDescontos.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {totalProdutos > 0 && (
-                      <div className="flex justify-between sm:justify-start sm:gap-6 text-teal-300 font-bold">
-                        <span>(+) Produtos Adicionais:</span>
-                        <span className="font-mono font-bold">+R$ {totalProdutos.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
 
-                  <div className="text-center sm:text-right w-full sm:w-auto border-t sm:border-t-0 border-white/10 pt-2 sm:pt-0">
-                    <span className="text-xs text-stone-300 font-semibold uppercase tracking-wider block">
-                      Valor Total a Pagar pela Cliente
-                    </span>
-                    <span className="text-2xl font-black text-gold font-mono tracking-tight">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-stone-200 font-semibold block">
+                        Forma de Pagamento Conferida
+                      </label>
+                      <select
+                        value={modalMetodo}
+                        disabled={isReadOnly || !isPending}
+                        onChange={e => setModalMetodo(e.target.value)}
+                        className="w-full bg-[#18181b] border border-white/20 rounded-lg px-3 py-2.5 text-sm text-stone-100 focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none transition-all disabled:opacity-60"
+                      >
+                        <option value="DINHEIRO" className="bg-[#18181b] text-stone-100">Dinheiro (Espécie)</option>
+                        <option value="PIX" className="bg-[#18181b] text-stone-100">PIX</option>
+                        <option value="CARTAO_CREDITO" className="bg-[#18181b] text-stone-100">Cartão de Crédito</option>
+                        <option value="CARTAO_DEBITO" className="bg-[#18181b] text-stone-100">Cartão de Débito</option>
+                        <option value="PACOTE" className="bg-[#18181b] text-stone-100">Pacote Pré-Pago</option>
+                        <option value="OUTRO" className="bg-[#18181b] text-stone-100">Outro</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-stone-200 font-semibold block">
+                        Valor Total Final (R$)
+                      </label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={valorFinalEditado || valorFinalCliente.toFixed(2)}
+                        disabled={isReadOnly || !isPending}
+                        value={valorFinalEditado !== '' ? valorFinalEditado : valorBasePadrao.toFixed(2)}
                         onChange={(e) => setValorFinalEditado(e.target.value)}
-                        className="w-36 text-right bg-black/60 border border-gold/50 rounded-lg px-2.5 py-1 text-2xl font-black text-gold font-mono focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/50 shadow-inner"
+                        className="w-full bg-stone-100 border border-gold/50 rounded-lg px-3 py-2 text-base text-black italic focus:border-gold focus:ring-1 focus:ring-gold/50 outline-none font-bold font-mono transition-all disabled:opacity-70"
+                        placeholder="0.00"
                       />
-                    </span>
+                      {isPending && (
+                        <p className="text-[10px] text-stone-400">
+                          Ajuste caso tenha havido diferença de cobrança no caixa.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
               </div>
 
               {/* Footer com Ações */}
-              <div className="p-4 border-t border-white/10 bg-black/60 flex flex-wrap items-center justify-between gap-2">
-
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setExtratoComandaAppt(null)}
-                    className="text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
-                  >
-                    Fechar
-                  </Button>
-
-                  {isPending && !isReadOnly && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={actionLoadingId === ag.id}
-                      onClick={() => handleConfirmarGestao(ag, undefined, valorFinalCliente)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30"
-                    >
-                      <CheckCircle2 size={16} />
-                      {actionLoadingId === ag.id ? 'Gravando...' : 'Confirmar & Contabilizar'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* MODAL DE AJUSTE, CONFERÊNCIA E FATURAMENTO DA GESTÃO */}
-      {editingApptGestao && (() => {
-        const ag = editingApptGestao;
-        const cli = clientes.find(c => c.id === ag.cliente_id);
-        const valorNum = parseFloat(modalValor.replace(',', '.')) || getValorEfetivo(ag);
-        const demo = calcularDemonstrativo3Partes(ag, valorNum, profissionais, regrasComissao);
-
-        return (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div className="dark bg-[#121214] text-stone-100 border border-gold/40 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/30">
-                    <ShieldCheck size={22} />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-lg text-stone-100 flex items-center gap-2">
-                      Conferência & Faturamento da Gestão
-                    </h3>
-                    <p className="text-xs text-stone-400">
-                      Conferência do recebimento e auditoria transparente da divisão em 3 partes
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingApptGestao(null)}
-                  className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="space-y-4 text-sm">
-                {/* IDENTIFICAÇÃO DO ATENDIMENTO */}
-                <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Cliente</p>
-                    <p className="font-bold text-base text-stone-100 mt-0.5">{cli?.nome || 'Cliente'}</p>
-                    {cli?.telefone && <p className="text-stone-400 font-mono mt-0.5">{cli.telefone}</p>}
-                  </div>
-
-                  <div>
-                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">Procedimento(s) Realizado(s)</p>
-                    <p className="font-semibold text-stone-100 mt-0.5">
-                      {obterProcedimentosAtendimento(ag).map(p => `${p.servico_nome} (R$ ${p.preco_tabela.toFixed(2)})`).join(' + ')}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className="text-stone-400">Titular:</span>
-                      <span className="font-bold text-gold">{getProfissionalNome(ag.profissional_id, profissionais)}</span>
-                      {ag.auxiliares_ids && ag.auxiliares_ids.length > 0 && (
-                        <span className="text-[11px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
-                          +{ag.auxiliares_ids.length} Aux: {ag.auxiliares_ids.map(aid => getProfissionalNome(aid, profissionais)).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ✨ DEMONSTRATIVO DA DIVISÃO EM 3 PARTES */}
-                <div className="p-4 rounded-xl bg-gradient-to-br from-gold/15 via-foreground/[0.02] to-background border-2 border-gold/40 space-y-3.5 shadow-md">
-                  <div className="flex justify-between items-center border-b border-gold/20 pb-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                      <Sparkles size={14} /> Demonstrativo da Divisão em 3 Partes
-                    </h4>
-                    <span className="text-[11px] text-stone-400 font-mono">
-                      Total: R$ {valorNum.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* 1ª PARTE • INSUMOS */}
-                    <div className="p-3 rounded-lg bg-stone-200 border border-stone-300 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-black italic block">1ª Parte • Insumos</span>
-                      <p className="text-base font-bold font-mono text-black italic">R$ {demo.custoInsumos.toFixed(2)}</p>
-                      <p className="text-[10px] text-stone-700 leading-tight">
-                        Separado p/ recompra do estoque ({demo.numItensInsumos} {demo.numItensInsumos === 1 ? 'item' : 'itens'})
-                      </p>
-                    </div>
-
-                    {/* 2ª PARTE • COMISSÃO */}
-                    <div className="p-3 rounded-lg bg-black/40 border border-blue-500/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-blue-400 block">2ª Parte • Comissões</span>
-                      <p className="text-base font-bold font-mono text-blue-300">R$ {demo.parte2ComissaoTotal.toFixed(2)}</p>
-                      <p className="text-[10px] text-stone-400 leading-tight">
-                        Serviço: R$ {demo.totalComissaoServicos.toFixed(2)}
-                        {demo.totalComissaoProdutos > 0 ? ` + Prod.: R$ ${demo.totalComissaoProdutos.toFixed(2)}` : ` (${demo.pctComissaoBase}%)`}
-                      </p>
-                    </div>
-
-                    {/* 3ª PARTE • SALÃO */}
-                    <div className="p-3 rounded-lg bg-black/40 border border-gold/30 space-y-1">
-                      <span className="text-[10px] font-bold uppercase text-gold block">3ª Parte • Salão</span>
-                      <p className="text-base font-bold font-mono text-gold">R$ {demo.parte3Salao.toFixed(2)}</p>
-                      <p className="text-[10px] text-stone-400 leading-tight">
-                        Estrutura, salão e margem operacional
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* DISTRIBUIÇÃO DA COMISSÃO ENTRE PROFISSIONAIS */}
-                  <div className="space-y-1.5 pt-2 border-t border-gold/20">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                      Distribuição da Comissão entre Profissionais (Serviço + Venda de Produtos):
-                    </span>
-                    {demo.comissoesIndividuais.map((c, i) => (
-                      <div key={i} className="flex flex-wrap justify-between items-center text-xs p-2 rounded-lg bg-white/[0.04] border border-white/10 gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Users size={13} className="text-gold" />
-                          <span className="font-semibold text-stone-100">{c.nome}</span>
-                          {c.isAuxiliar && (
-                            <span className="px-1.5 py-0.2 rounded bg-gold/15 text-gold text-[9px] font-bold">Auxiliar</span>
-                          )}
-                          {c.observacao && (
-                            <span className="text-[10px] text-amber-400 font-medium italic">({c.observacao})</span>
-                          )}
-                        </div>
-                        <div className="text-right font-mono">
-                          <span className="font-bold text-stone-100">
-                            R$ {c.valor.toFixed(2)}
-                          </span>
-                          {(c.valorServico > 0 && c.valorProduto > 0) && (
-                            <span className="block text-[10px] text-stone-400">
-                              Serv. ({c.pct}%): R$ {c.valorServico.toFixed(2)} + Prod. ({c.pctProduto ?? 10}%): R$ {c.valorProduto.toFixed(2)}
-                            </span>
-                          )}
-                          {(c.valorServico > 0 && c.valorProduto === 0) && (
-                            <span className="text-stone-400 font-normal ml-1">({c.pct}%)</span>
-                          )}
-                          {(c.valorServico === 0 && c.valorProduto > 0) && (
-                            <span className="text-teal-300 font-normal ml-1">(Prod. {c.pctProduto ?? 10}%)</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* FORMA DE PAGAMENTO E VALOR FINAL */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-stone-300 font-semibold">Forma de Pagamento Conferida</label>
-                    <select
-                      value={modalMetodo}
-                      onChange={e => setModalMetodo(e.target.value)}
-                      className="w-full bg-[#18181b] border border-white/15 rounded-lg px-3 py-2.5 text-sm text-stone-100 focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none transition-all"
-                    >
-                      <option value="DINHEIRO" className="bg-[#18181b] text-stone-100">Dinheiro (Espécie)</option>
-                      <option value="PIX" className="bg-[#18181b] text-stone-100">PIX</option>
-                      <option value="CARTAO_CREDITO" className="bg-[#18181b] text-stone-100">Cartão de Crédito</option>
-                      <option value="CARTAO_DEBITO" className="bg-[#18181b] text-stone-100">Cartão de Débito</option>
-                      <option value="PACOTE" className="bg-[#18181b] text-stone-100">Pacote Pré-Pago</option>
-                      <option value="OUTRO" className="bg-[#18181b] text-stone-100">Outro</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-stone-300 font-semibold">Valor Total Final (R$)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={modalValor}
-                      onChange={e => setModalValor(e.target.value)}
-                      className="w-full bg-stone-100 border border-white/15 rounded-lg px-3 py-2.5 text-base text-black italic focus:border-gold focus:ring-1 focus:ring-gold/40 outline-none font-bold font-mono transition-all"
-                      placeholder="0.00"
-                    />
-                    <p className="text-[10px] text-stone-400">
-                      Ajuste caso tenha havido diferença de cobrança no caixa.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+              <div className="p-4 border-t border-white/10 bg-black/60 flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setEditingApptGestao(null)}
-                  className="text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
+                  onClick={() => setExtratoComandaAppt(null)}
+                  className="text-xs text-stone-300 hover:text-white hover:bg-white/10 border border-white/10"
                 >
-                  Cancelar
+                  {isPending ? 'Cancelar' : 'Fechar'}
                 </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={actionLoadingId === editingApptGestao.id}
-                  onClick={handleSalvarAjusteGestao}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30 px-5"
-                >
-                  <CheckCircle2 size={16} />
-                  {actionLoadingId === editingApptGestao.id ? 'Confirmando...' : 'Confirmar & Contabilizar'}
-                </Button>
+
+                {isPending && !isReadOnly && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={actionLoadingId === ag.id}
+                    onClick={() => handleConfirmarGestao(ag, modalMetodo, valorFinalCliente)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-none gap-1.5 shadow-lg shadow-emerald-600/30 px-5"
+                  >
+                    <CheckCircle2 size={16} />
+                    {actionLoadingId === ag.id ? 'Confirmando...' : 'Confirmar & Contabilizar'}
+                  </Button>
+                )}
               </div>
+
             </div>
           </div>
         );
