@@ -26,14 +26,25 @@ export default function AdminLojaProdutos() {
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select('*, salon_inventory(id, name, stock_qty, image_url)')
           .order('created_at', { ascending: false });
         if (error) {
           console.error('Erro ao buscar produtos:', error.message);
           setProducts(MOCK_PRODUTOS);
         } else {
-          // Se a tabela existe e não tem erro, não use mock
-          setProducts(data || []);
+          // Mescla saldo e foto de fallback vindos do estoque do salão vinculado
+          const normalized = (data || []).map((row: any) => {
+            const inv = Array.isArray(row.salon_inventory) ? row.salon_inventory[0] : row.salon_inventory;
+            return {
+              ...row,
+              stock_quantity:
+                row.type === 'LOCAL_STOCK' && inv && inv.stock_qty !== undefined && inv.stock_qty !== null
+                  ? Math.max(0, Math.floor(Number(inv.stock_qty)))
+                  : row.stock_quantity,
+              image_url: row.image_url || inv?.image_url || '',
+            };
+          });
+          setProducts(normalized);
         }
       } catch {
         setProducts(MOCK_PRODUTOS);

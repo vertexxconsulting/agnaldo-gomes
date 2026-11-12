@@ -8,11 +8,12 @@ import { mapDbProductToShopProduct } from '@/lib/shop-utils';
  * todos os produtos retornam com featured=false via mapRowToProduct.
  */
 const hasStock = (p: ShopProduct) => p.type === 'AFFILIATE_ML' || (p.stock_quantity ?? 0) > 0;
+const PRODUCT_SELECT = '*, salon_inventory(id, name, stock_qty, image_url)';
 
 export async function getAllProducts(): Promise<ShopProduct[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('active', true);
   if (error || !data) return [];
   return data.map(mapRowToProduct).filter(hasStock);
@@ -24,7 +25,7 @@ export async function getAllProducts(): Promise<ShopProduct[]> {
 export async function getProductById(id: string): Promise<ShopProduct | null> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('id', id)
     .single();
   if (error || !data) return null;
@@ -37,7 +38,7 @@ export async function getProductById(id: string): Promise<ShopProduct | null> {
 export async function getProductsByCategory(category: string): Promise<ShopProduct[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('category', category)
     .eq('active', true);
   if (error || !data) return [];
@@ -58,7 +59,7 @@ export async function getProductsByCategory(category: string): Promise<ShopProdu
 export async function getFeaturedProducts(): Promise<ShopProduct[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('featured', true)
     .eq('active', true)
     .limit(4);
@@ -75,7 +76,7 @@ export async function getRelatedProducts(
 ): Promise<ShopProduct[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('category', category)
     .neq('id', productId)
     .eq('active', true)
@@ -90,14 +91,15 @@ export async function getRelatedProducts(
 export async function checkStock(productId: string) {
   const { data, error } = await supabase
     .from('products')
-    .select('stock_quantity')
+    .select('stock_quantity, type, salon_inventory(stock_qty)')
     .eq('id', productId)
     .single();
 
   if (error || !data) return { available: false, count: 0 };
+  const mapped = mapRowToProduct(data as Record<string, unknown>);
   return {
-    available: data.stock_quantity > 0,
-    count: data.stock_quantity,
+    available: mapped.type === 'AFFILIATE_ML' || mapped.stock_quantity > 0,
+    count: mapped.stock_quantity,
   };
 }
 

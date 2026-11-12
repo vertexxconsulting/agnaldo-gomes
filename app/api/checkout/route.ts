@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { ENVIO_DEFAULT } from '@/lib/envios';
 import { createOrUpdateAsaasCustomer, createAsaasPayment, AsaasPayment } from '@/lib/asaas';
+import { syncInventoryToProductsBeforeCheckout } from '@/lib/salon-stock-sync';
 
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (isProd ? 'https://agnaldogomes.com.br' : 'http://localhost:3000');
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
 
     const subtotal = items.reduce((acc: number, item: any) => acc + (item.unit_price * item.quantity), 0);
     const total = subtotal + shippingCost;
+
+    // Garante que produtos vinculados ao estoque do salão validem o saldo em tempo real
+    await syncInventoryToProductsBeforeCheckout(items.map((item: any) => String(item.id || '')));
 
     // Usar RPC para transação atômica
     const { data: rpcResult, error: rpcError } = await supabase.rpc('create_order_with_stock_check', {

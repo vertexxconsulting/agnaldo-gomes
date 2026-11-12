@@ -5,9 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { extractMlFromApi, saveAdminProduct } from '@/lib/admin-product-save';
+import {
+  buildInventoryFormPatch,
+  extractMlFromApi,
+  fetchResaleInventoryItems,
+  saveAdminProduct,
+} from '@/lib/admin-product-save';
 import { calcDiscountPct, extractPromoFromRow, normalizeShopImageUrl } from '@/lib/shop-utils';
 import { ProductImageField } from '@/components/admin-loja/ProductImageField';
+import {
+  SalonInventoryPicker,
+  type SalonInventoryResaleItem,
+} from '@/components/admin-loja/SalonInventoryPicker';
 
 type ProductType = 'AFFILIATE_ML' | 'LOCAL_STOCK';
 
@@ -46,22 +55,23 @@ export default function EditarProdutoPage() {
     salon_inventory_id: '',
   });
 
-  const [estoque, setEstoque] = useState<any[]>([]);
+  const [estoque, setEstoque] = useState<SalonInventoryResaleItem[]>([]);
+  const [loadingEstoque, setLoadingEstoque] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     const carregar = async () => {
       try {
-        const [prodRes, estRes] = await Promise.all([
+        const [prodRes, resaleItems] = await Promise.all([
           supabase.from('products').select('*').eq('id', id).single(),
-          supabase.from('salon_inventory').select('id, name, type, stock_qty').eq('type', 'PRODUTO').order('name')
+          fetchResaleInventoryItems(),
         ]);
-        if (!cancelled && estRes.data) {
-          setEstoque(estRes.data);
+        if (!cancelled) {
+          setEstoque(resaleItems);
+          setLoadingEstoque(false);
         }
         const { data, error } = prodRes;
         if (error || !data) {
-          // Produto mock ou inexistente — preenche com valores de demonstração
           if (!cancelled) {
             setFormData({
               name: '',
@@ -81,6 +91,12 @@ export default function EditarProdutoPage() {
         }
         if (!cancelled) {
           const promo = extractPromoFromRow(data);
+          const linkedInv = data.salon_inventory_id
+            ? resaleItems.find((e) => e.id === data.salon_inventory_id)
+            : undefined;
+          const normalizedProdImg = normalizeShopImageUrl(data.image_url);
+          const invImg = normalizeShopImageUrl(linkedInv?.image_url);
+
           setProductType(data.type === 'AFFILIATE_ML' ? 'AFFILIATE_ML' : 'LOCAL_STOCK');
           setFormData({
             name: data.name ?? '',
@@ -89,15 +105,22 @@ export default function EditarProdutoPage() {
             price: data.price !== null && data.price !== undefined ? String(data.price) : '',
             original_price: promo.original_price ? String(promo.original_price) : '',
             link: data.ml_link ?? data.link ?? '',
-            stock: String(data.stock_quantity ?? data.stock ?? 0),
-            image_url: normalizeShopImageUrl(data.image_url),
+            stock: String(
+              linkedInv
+                ? Math.max(0, Math.floor(Number(linkedInv.stock_qty ?? 0)))
+                : data.stock_quantity ?? data.stock ?? 0
+            ),
+            image_url: normalizedProdImg || invImg,
             active: data.active ?? true,
             salon_inventory_id: data.salon_inventory_id ?? '',
           });
           setLoaded(true);
         }
       } catch {
-        if (!cancelled) setLoaded(true);
+        if (!cancelled) {
+          setLoadingEstoque(false);
+          setLoaded(true);
+        }
       }
     };
     carregar();
@@ -105,6 +128,8 @@ export default function EditarProdutoPage() {
       cancelled = true;
     };
   }, [id]);
+
+  const linkedInventoryItem = estoque.find((e) => e.id === formData.salon_inventory_id) || null;
 
   const handleExtract = async () => {
     if (!formData.link) {
@@ -234,6 +259,34 @@ export default function EditarProdutoPage() {
             </div>
           </div>
 
+          {productType === 'LOCAL_STOCK' && (
+            <SalonInventoryPicker
+              items={estoque}
+              selectedId={formData.salon_inventory_id}
+              loading={loadingEstoque}
+              onSelect={(item) => {
+                if (!item) {
+                  setFormData((prev) => ({ ...prev, salon_inventory_id: '' }));
+                  return;
+                }
+                const patch = buildInventoryFormPatch(item, {
+                  currentDescription: formData.description,
+                  currentImageUrl: formData.image_url,
+                });
+                setFormData((prev) => ({ ...prev, ...patch }));
+              }}
+              onResync={(item) => {
+                const patch = buildInventoryFormPatch(item, {
+                  preserveCustomName: true,
+                  currentName: formData.name,
+                  currentDescription: formData.description,
+                  currentImageUrl: formData.image_url,
+                });
+                setFormData((prev) => ({ ...prev, ...patch }));
+              }}
+            />
+          )}
+
           {/* Informações Básicas */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
             <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Informações Básicas</h2>
@@ -263,13 +316,20 @@ export default function EditarProdutoPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Produto *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {productType === 'LOCAL_STOCK' ? 'Nome de Exibição na Loja *' : 'Nome do Produto *'}
+              </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
+              {linkedInventoryItem && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Produto vinculado no estoque do salão: <strong>{linkedInventoryItem.name}</strong> (você pode personalizar o nome exibido na loja acima).
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -338,32 +398,26 @@ export default function EditarProdutoPage() {
           {productType === 'LOCAL_STOCK' && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
               <h2 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2">Estoque</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Vincular Insumo (Estoque Físico)</label>
-                  <select
-                    value={formData.salon_inventory_id}
-                    onChange={(e) => setFormData({ ...formData, salon_inventory_id: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white"
-                  >
-                    <option value="">Não vincular</option>
-                    {estoque.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} (Saldo: {item.stock_qty})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-500 mt-1">Ao vincular, as vendas da loja dão baixa no estoque do Studio.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Atual (Loja)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {linkedInventoryItem ? 'Estoque Sincronizado (Salão)' : 'Estoque Atual (Loja)'}
+                  </label>
                   <input
                     type="number"
                     placeholder="0"
                     value={formData.stock}
+                    readOnly={Boolean(linkedInventoryItem)}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    className={`w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 ${
+                      linkedInventoryItem ? 'bg-slate-50 text-slate-600' : ''
+                    }`}
                   />
+                  {linkedInventoryItem && (
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Espelhado do estoque do salão ({Math.floor(Number(linkedInventoryItem.stock_qty ?? 0))} {linkedInventoryItem.unit || 'un'}).
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -393,6 +447,7 @@ export default function EditarProdutoPage() {
             value={formData.image_url}
             onChange={(nextUrl) => setFormData((prev) => ({ ...prev, image_url: nextUrl }))}
             productType={productType}
+            stockLinked={Boolean(formData.salon_inventory_id)}
           />
         </div>
       </div>

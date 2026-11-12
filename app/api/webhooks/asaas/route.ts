@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { deductSalonInventoryForPaidOrder } from '@/lib/salon-stock-sync';
 
 /**
  * Webhook do Asaas para LOJA e ACADEMY
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
           console.error(`[asaas-webhook] Erro ao atualizar pedido ${ref}:`, error);
           return NextResponse.json({ received: true, error: 'Database update failed' });
         }
+        await deductSalonInventoryForPaidOrder(ref);
         console.log(`[asaas-webhook] Pedido ${ref} atualizado para PAID.`);
       }
 

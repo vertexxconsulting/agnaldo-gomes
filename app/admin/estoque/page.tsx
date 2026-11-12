@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Package, Plus, Edit, Trash2, Search, AlertTriangle,
   TrendingDown, TrendingUp, ArrowUpDown, X, ChevronDown, ChevronUp,
   BarChart3, RefreshCw, ShoppingBag, Beaker, CheckCircle2,
   Percent, Tag, DollarSign, User2, Lock, Eye, EyeOff, KeyRound,
-  ShieldCheck, UserCheck, Filter
+  ShieldCheck, UserCheck, Filter, Upload, ImageOff
 } from 'lucide-react';
+import { normalizeShopImageUrl } from '@/lib/shop-utils';
+import { uploadAdminImage } from '@/lib/upload-image';
 import { SectionTitle } from '@/components/SectionTitle';
 import { ReadOnlyNotice } from '@/components/ReadOnlyNotice';
 import { useModulePermission } from '@/lib/use-module-permission';
@@ -62,7 +64,7 @@ const FORM_VAZIO = {
   name: '', brand: '', category: '', unit: 'g' as UnidadeEstoque,
   stock_qty: 0, stock_alert_qty: 50, cost_price: 0, sale_price: '',
   price_per_gram: '', allow_sale: false, allow_procedure_use: true,
-  active: true, notes: '', allow_points_redeem: false, points_cost: '',
+  active: true, image_url: '', notes: '', allow_points_redeem: false, points_cost: '',
 };
 
 export default function EstoquePage() {
@@ -83,6 +85,8 @@ export default function EstoquePage() {
   const [editando, setEditando] = useState<ProdutoEstoque | null>(null);
   const [form, setForm] = useState({ ...FORM_VAZIO });
   const [salvando, setSalvando] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const imgInputRef = useRef<HTMLInputElement | null>(null);
 
   // Entrada rápida de Estoque (com Senha do Profissional)
   const [showEntrada, setShowEntrada] = useState<ProdutoEstoque | null>(null);
@@ -571,7 +575,7 @@ export default function EstoquePage() {
         cost_price: p.cost_price, sale_price: p.sale_price?.toString() ?? '',
         price_per_gram: p.price_per_gram?.toString() ?? '',
         allow_sale: p.allow_sale, allow_procedure_use: p.allow_procedure_use,
-        active: p.active, notes: p.notes ?? '',
+        active: p.active, image_url: p.image_url ?? '', notes: p.notes ?? '',
         allow_points_redeem: p.points_cost != null && p.points_cost > 0,
         points_cost: p.points_cost?.toString() ?? '',
       });
@@ -580,6 +584,21 @@ export default function EstoquePage() {
       setForm({ ...FORM_VAZIO });
     }
     setShowForm(true);
+  };
+
+  const handleEstoqueImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImg(true);
+    try {
+      const publicUrl = await uploadAdminImage(file, 'estoque');
+      setForm(f => ({ ...f, image_url: publicUrl }));
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao enviar foto do produto.');
+    } finally {
+      setUploadingImg(false);
+      if (imgInputRef.current) imgInputRef.current.value = '';
+    }
   };
 
   const salvar = async () => {
@@ -594,7 +613,7 @@ export default function EstoquePage() {
       price_per_gram: form.price_per_gram !== '' ? Number(form.price_per_gram) : null,
       points_cost: form.allow_points_redeem && form.points_cost !== '' ? Number(form.points_cost) : null,
       allow_sale: form.allow_sale, allow_procedure_use: form.allow_procedure_use,
-      active: form.active, image_url: null, notes: form.notes || null,
+      active: form.active, image_url: normalizeShopImageUrl(form.image_url) || null, notes: form.notes || null,
     };
     const res = await salvarProdutoEstoque(payload, editando?.id);
     if (res.ok) {
@@ -709,7 +728,16 @@ export default function EstoquePage() {
                   const badge = estoqueBadge(p);
                   return (
                     <CardGlass key={p.id} className={`p-4 ${!p.active || p.stock_qty <= 0 ? 'opacity-60 grayscale-[30%]' : ''}`}>
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        {normalizeShopImageUrl(p.image_url) && (
+                          <div className="w-11 h-11 rounded-lg border border-[var(--border-subtle)] bg-white overflow-hidden shrink-0 flex items-center justify-center">
+                            <img
+                              src={normalizeShopImageUrl(p.image_url)}
+                              alt={p.name}
+                              className="w-full h-full object-contain p-0.5"
+                            />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-foreground truncate">{p.name}</h3>
                           {p.brand && <p className="text-xs text-foreground/50">{p.brand}</p>}
@@ -1095,6 +1123,61 @@ export default function EstoquePage() {
                     className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg p-2.5 text-sm focus:outline-none focus:border-gold" placeholder="ex: 500" />
                 </div>
               )}
+              {/* Foto do Produto (usada também ao importar na Loja Online) */}
+              <div className="sm:col-span-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--background)]/60 p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-foreground/75">
+                    Foto do Produto <span className="text-foreground/45">(puxada automaticamente para a Loja Online)</span>
+                  </label>
+                  {form.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, image_url: '' }))}
+                      className="text-[11px] text-foreground/50 hover:text-red-500 flex items-center gap-1"
+                    >
+                      <Trash2 size={11} /> Remover
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-lg border border-[var(--border-subtle)] bg-white flex items-center justify-center overflow-hidden shrink-0">
+                    {normalizeShopImageUrl(form.image_url) ? (
+                      <img
+                        src={normalizeShopImageUrl(form.image_url)}
+                        alt={form.name || 'Produto'}
+                        className="w-full h-full object-contain p-1"
+                      />
+                    ) : (
+                      <ImageOff size={20} className="text-foreground/30" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      ref={imgInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEstoqueImageUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingImg}
+                      onClick={() => imgInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 text-foreground text-xs font-medium transition-colors disabled:opacity-50"
+                    >
+                      <Upload size={13} />
+                      {uploadingImg ? 'Enviando...' : 'Enviar Foto'}
+                    </button>
+                    <input
+                      type="url"
+                      value={form.image_url}
+                      onChange={e => setForm(f => ({ ...f, image_url: normalizeShopImageUrl(e.target.value) }))}
+                      placeholder="Ou cole a URL da imagem (https://...)"
+                      className="w-full bg-[var(--background)] border border-[var(--border-subtle)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gold"
+                    />
+                  </div>
+                </div>
+              </div>
               {/* Notas */}
               <div className="sm:col-span-2">
                 <label className="block text-xs text-foreground/60 mb-1">Observações</label>

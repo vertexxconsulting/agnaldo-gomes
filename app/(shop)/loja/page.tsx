@@ -47,7 +47,7 @@ export default function LojaHome() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const { data, error } = await supabase.from('products').select('*').eq('active', true);
+        const { data, error } = await supabase.from('products').select('*, salon_inventory(id, name, stock_qty, image_url)').eq('active', true);
         if (error) {
           console.error('Supabase error:', error.message);
           setFetchError(error.message);

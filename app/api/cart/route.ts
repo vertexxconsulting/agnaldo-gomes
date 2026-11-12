@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Buscar preço atual do produto
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .select('id, price, stock_quantity, type')
+      .select('id, price, stock_quantity, type, salon_inventory(stock_qty)')
       .eq('id', productId)
       .maybeSingle();
 
@@ -129,11 +129,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const linkedInvPost = Array.isArray((product as any).salon_inventory)
+      ? (product as any).salon_inventory[0]
+      : (product as any).salon_inventory;
+    const availableStock =
+      product.type === 'LOCAL_STOCK' && linkedInvPost?.stock_qty !== undefined && linkedInvPost?.stock_qty !== null
+        ? Math.max(0, Math.floor(Number(linkedInvPost.stock_qty)))
+        : (product.stock_quantity || 0);
+
     // Verificar estoque se LOCAL_STOCK
-    if (product.type === 'LOCAL_STOCK' && (product.stock_quantity || 0) < quantity) {
+    if (product.type === 'LOCAL_STOCK' && availableStock < quantity) {
       return NextResponse.json({ 
         error: 'Estoque insuficiente', 
-        available: product.stock_quantity ?? 0 
+        available: availableStock 
       }, { status: 409 });
     }
 
@@ -189,14 +197,22 @@ export async function PATCH(request: NextRequest) {
     // Verificar estoque
     const { data: product } = await supabaseAdmin
       .from('products')
-      .select('stock_quantity, type')
+      .select('stock_quantity, type, salon_inventory(stock_qty)')
       .eq('id', productId)
       .maybeSingle();
 
-    if (product?.type === 'LOCAL_STOCK' && (product.stock_quantity || 0) < quantity) {
+    const linkedInvPatch = Array.isArray((product as any)?.salon_inventory)
+      ? (product as any).salon_inventory[0]
+      : (product as any)?.salon_inventory;
+    const availablePatchStock =
+      product?.type === 'LOCAL_STOCK' && linkedInvPatch?.stock_qty !== undefined && linkedInvPatch?.stock_qty !== null
+        ? Math.max(0, Math.floor(Number(linkedInvPatch.stock_qty)))
+        : (product?.stock_quantity || 0);
+
+    if (product?.type === 'LOCAL_STOCK' && availablePatchStock < quantity) {
       return NextResponse.json({ 
         error: 'Estoque insuficiente', 
-        available: product.stock_quantity ?? 0 
+        available: availablePatchStock 
       }, { status: 409 });
     }
 

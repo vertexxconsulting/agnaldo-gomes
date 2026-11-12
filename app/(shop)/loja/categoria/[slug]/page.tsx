@@ -45,7 +45,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
 
     async function fetchProducts() {
       try {
-        let q = supabase.from('products').select('*').eq('active', true);
+        let q = supabase.from('products').select('*, salon_inventory(id, name, stock_qty, image_url)').eq('active', true);
         if (slug !== 'mais-vendidos' && slug !== 'recomendacoes') {
           const mapped = SLUG_CATEGORY[slug];
           if (mapped) q = q.eq('category', mapped);

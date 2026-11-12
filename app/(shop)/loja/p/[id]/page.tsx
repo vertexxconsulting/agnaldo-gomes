@@ -36,7 +36,7 @@ export default function ProductDetailPage() {
       if (!id) return;
       // Busca mock se o Supabase não estiver configurado (env vazio) ou falhar
       const loadFromSupabase = async () => {
-        const { data, error } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
+        const { data, error } = await supabase.from('products').select('*, salon_inventory(id, name, stock_qty, image_url)').eq('id', id).maybeSingle();
         if (error) throw new Error(error.message);
         if (!data) throw new Error('not found');
         return data;

@@ -2,8 +2,10 @@ import { supabase } from '@/lib/supabase';
 import {
   calcDiscountPct,
   formatPromoTagline,
+  inferShopCategoryFromText,
   normalizeShopImageUrl,
 } from '@/lib/shop-utils';
+import type { SalonInventoryResaleItem } from '@/components/admin-loja/SalonInventoryPicker';
 
 export interface SaveAdminProductParams {
   id?: string;
@@ -144,5 +146,60 @@ export async function extractMlFromApi(rawUrl: string): Promise<ExtractedFormVal
     ml_link: product.ml_link || url,
     category: product.category || '',
     message: data.message || 'Dados extraídos com sucesso!',
+  };
+}
+
+export async function fetchResaleInventoryItems(): Promise<SalonInventoryResaleItem[]> {
+  try {
+    const res = await fetch('/api/admin-loja/estoque-revenda');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data as SalonInventoryResaleItem[];
+    }
+  } catch {
+    // Fallback client-side abaixo
+  }
+
+  const { data, error } = await supabase
+    .from('salon_inventory')
+    .select(
+      'id, name, brand, category, unit, stock_qty, sale_price, allow_sale, active, image_url, notes'
+    )
+    .eq('allow_sale', true)
+    .eq('active', true)
+    .order('name');
+
+  if (error || !data) {
+    console.error('[fetchResaleInventoryItems] Erro ao buscar estoque de revenda:', error);
+    return [];
+  }
+  return data as SalonInventoryResaleItem[];
+}
+
+export function buildInventoryFormPatch(
+  item: SalonInventoryResaleItem,
+  options?: { preserveCustomName?: boolean; currentName?: string; currentDescription?: string; currentImageUrl?: string }
+) {
+  const cleanInvImage = normalizeShopImageUrl(item.image_url);
+  const nextStock = String(Math.max(0, Math.floor(Number(item.stock_qty ?? 0))));
+  const nextPrice =
+    item.sale_price != null && Number(item.sale_price) > 0
+      ? Number(item.sale_price).toFixed(2)
+      : undefined;
+
+  return {
+    salon_inventory_id: item.id,
+    name:
+      options?.preserveCustomName && options.currentName?.trim()
+        ? options.currentName
+        : item.name,
+    category: inferShopCategoryFromText(item.name, item.category || ''),
+    ...(nextPrice !== undefined ? { price: nextPrice } : {}),
+    stock: nextStock,
+    image_url: cleanInvImage || options?.currentImageUrl || '',
+    description:
+      options?.currentDescription?.trim() ||
+      item.notes?.trim() ||
+      (item.brand ? `${item.name} — ${item.brand}` : ''),
   };
 }

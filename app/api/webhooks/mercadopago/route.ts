@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
 import { getMPConfig } from '@/lib/pagamentos-studio';
+import { deductSalonInventoryForPaidOrder } from '@/lib/salon-stock-sync';
 
 /**
  * Webhook do Mercado Pago para a LOJA.
@@ -154,7 +155,8 @@ export async function POST(request: NextRequest) {
         .eq('id', orderId);
 
       // Nota: o estoque já foi baixado atomicamente via RPC `create_order_with_stock_check` durante o checkout.
-      // Aqui nós apenas confirmamos o pagamento.
+      // Garante também baixa idempotente no estoque do salão caso vinculado:
+      await deductSalonInventoryForPaidOrder(orderId);
       console.log(`[mp-webhook] ✅ Pedido ${orderId} marcado como PAID.`);
 
     } else if (paymentStatus === 'cancelled' || paymentStatus === 'rejected' || paymentStatus === 'refunded') {

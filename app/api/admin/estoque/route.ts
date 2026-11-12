@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireStudioAuth } from '@/lib/api-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { syncStoreProductsFromInventory } from '@/lib/salon-stock-sync';
 
 export async function GET(req: Request) {
   const auth = await requireStudioAuth();
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
         console.error('[api/admin/estoque POST update]', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
+      await syncStoreProductsFromInventory(id, data?.stock_qty, data?.image_url);
       return NextResponse.json({ ok: true, id, data });
     } else {
       const { data, error } = await supabaseAdmin

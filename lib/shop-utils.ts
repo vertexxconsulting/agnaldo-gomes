@@ -127,6 +127,23 @@ export function cleanMlProductTitle(rawTitle?: string | null): string {
     .trim();
 }
 
+export function inferShopCategoryFromText(title: string, descriptionOrHint = ''): string {
+  const text = `${title} ${descriptionOrHint}`.toLowerCase();
+  if (/(secador|prancha|chapinha|babyliss|modelador|maquina|máquina|tesoura|escova|pente|borrifador|kit sal)/i.test(text)) {
+    return 'equipamentos';
+  }
+  if (/(alisamento|progressiva|selagem|botox|btx|defrizante|formol|organica|orgânica)/i.test(text)) {
+    return 'alisamento';
+  }
+  if (/(tintura|colora|tonalizante|descolorante|ox\b|agua oxigenada|água oxigenada|matizador)/i.test(text)) {
+    return 'coloracao';
+  }
+  if (/(oleo|óleo|oil|reparador|serum|sérum|spray|pomada|cera|gel|finalizador|leave-in|termo|protetor|perfume|protect)/i.test(text)) {
+    return 'finalizadores';
+  }
+  return 'tratamento';
+}
+
 export function mapDbProductToShopProduct(row: Record<string, unknown>): ShopProduct {
   const price =
     row.price !== null && row.price !== undefined
@@ -139,19 +156,38 @@ export function mapDbProductToShopProduct(row: Record<string, unknown>): ShopPro
     tagline: row.tagline,
   });
 
+  const type = row.type === 'AFFILIATE_ML' ? 'AFFILIATE_ML' : 'LOCAL_STOCK';
+  const rawInv = row.salon_inventory as
+    | { stock_qty?: unknown; image_url?: unknown }
+    | Array<{ stock_qty?: unknown; image_url?: unknown }>
+    | null
+    | undefined;
+  const linkedInv = Array.isArray(rawInv) ? rawInv[0] : rawInv;
+
+  const syncedStock =
+    type === 'LOCAL_STOCK' && linkedInv && linkedInv.stock_qty !== undefined && linkedInv.stock_qty !== null
+      ? Math.max(0, Math.floor(Number(linkedInv.stock_qty)))
+      : Number(row.stock_quantity ?? 0);
+
+  const primaryImg = normalizeShopImageUrl(row.image_url ? String(row.image_url) : '');
+  const invImg =
+    linkedInv && linkedInv.image_url
+      ? normalizeShopImageUrl(String(linkedInv.image_url))
+      : '';
+
   return {
     id: String(row.id ?? ''),
-    type: row.type === 'AFFILIATE_ML' ? 'AFFILIATE_ML' : 'LOCAL_STOCK',
+    type,
     name: String(row.name ?? 'Sem nome'),
     description: String(row.description ?? ''),
     category: String(row.category ?? 'Geral'),
-    image_url: normalizeShopImageUrl(row.image_url ? String(row.image_url) : ''),
+    image_url: primaryImg || invImg,
     active: Boolean(row.active ?? true),
     ml_link: row.ml_link ? String(row.ml_link) : null,
     price,
     original_price: promo.original_price,
     discount_pct: promo.discount_pct,
-    stock_quantity: Number(row.stock_quantity ?? 0),
+    stock_quantity: syncedStock,
     rating:
       row.rating !== null && row.rating !== undefined
         ? Number(row.rating)
